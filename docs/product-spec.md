@@ -71,9 +71,9 @@ remains optional outside the early-regulation fallback.
 | Proven M-B team versus M-C unknown results  | Proven M-B team      |
 
 Exact tournament cutoffs, ordering between comparable high ladder achievements,
-and placement of teams requiring adaptation remain to be specified before ranking
-implementation. Use concrete examples to settle these rather than an unexplained
-weighted score.
+and placement of teams requiring adaptation remain to be finalized. The browser's
+preliminary comparator and its limits are documented in [data sources](data-sources.md).
+Use concrete examples to settle these rather than an unexplained weighted score.
 
 ## Data requirements
 
@@ -144,9 +144,15 @@ plugins, and svelte-check. This is an agreed exception to mw-kit's Biome default
 because Svelte-aware tooling is preferred over experimental component support.
 
 The foundation includes Node 24 LTS via mise, npm, Lefthook, GitHub Actions, and
-Dependabot. The starter page contains an empty-catalog state and source links.
-Data imports, discovery behavior, local storage, and PWA installation remain
-unimplemented. Deployment and data-refresh hosting are not selected yet.
+Dependabot. The browser includes a cached M-C/M-B VGCPastes import,
+Pokémon/set filters, preliminary result ordering, and team details with URL and
+Back/Forward preservation. Desktop/mobile browser checks run in CI. Local storage,
+legality validation, and PWA installation remain unimplemented. Deployment and
+data-refresh hosting are not selected yet.
+
+The catalog is generated locally and ignored by Git. Dev/build/typecheck import
+it when missing and reuse it otherwise; refreshing is explicit. A clean checkout
+requires network access or a populated source cache for its first import.
 
 ## Delivery sequence
 
@@ -154,8 +160,8 @@ unimplemented. Deployment and data-refresh hosting are not selected yet.
 2. Validate representative current and historical source records, including
    missing fields and results. Establish current-legality data and remaining
    ranking examples.
-3. Build one complete browse/filter/detail/back flow with real imported teams.
-4. Add result ordering, local current-team storage, and PWA behavior.
+3. Build one complete browse/filter/detail/back flow with real imported teams (implemented).
+4. Finalize result ordering; add local current-team storage and PWA behavior.
 5. Verify acceptance criteria before expanding into editing.
 
 ## Acceptance criteria

@@ -89,6 +89,12 @@
   }
 }
 
+@layer components {
+  .filter-select {
+    @apply min-h-11 w-full rounded-lg border bg-background px-3 text-sm transition-shadow outline-none focus-visible:ring-2 focus-visible:ring-primary;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

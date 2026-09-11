@@ -1,4 +1,8 @@
 node_modules
+.cache/
+src/lib/data/catalog.json
+playwright-report/
+test-results/
 !CLAUDE.md
 
 # Output

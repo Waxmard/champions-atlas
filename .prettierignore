@@ -7,3 +7,7 @@ bun.lockb
 
 # Miscellaneous
 /static/
+.cache/
+src/lib/data/catalog.json
+playwright-report/
+test-results/

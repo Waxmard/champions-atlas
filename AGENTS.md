@@ -11,12 +11,16 @@ Read `docs/product-spec.md` before changing product behavior.
 - `npm run format`: format with Prettier.
 - `npm run typecheck`: Svelte compiler and TypeScript diagnostics.
 - `npm run build`: production build.
-- `npm test`: smoke-test the built app; run a build first.
-- `make ci`: lint, formatting, type checking, build, and smoke test.
+- `npm test`: importer/filter/ranking and built-app smoke tests; build first.
+- `npm run test:e2e`: desktop/mobile browser tests; build and install Playwright Chromium first.
+- `npm run import:catalog`: manually regenerate the catalog; see README for cache options.
+- `make ci`: lint, formatting, type checking, build, and Node tests. CI also runs browser tests.
 
 ## Layout and conventions
 
 - Routes and global styles live in `src/routes`.
+- `src/lib/data/catalog.json` is generated and ignored. Dev/build/typecheck hooks
+  create it when missing; refresh explicitly with `REFRESH=1 npm run import:catalog`.
 - Editable shadcn components live in `src/lib/components/ui`.
 - The build smoke test uses `.mjs` so Svelte's source type-check does not follow
   its imports into compiled output.
