@@ -9,5 +9,6 @@ find teams around a preferred core, and keep your current teams locally.
 The project is in planning. See [the product specification](docs/product-spec.md) for
 agreed scope, ranking examples, data research, and implementation milestones.
 
-Development tooling and deployment are not selected yet. Tooling choices should
-follow [mw-kit](../mw-kit/README.md) where applicable.
+Svelte and SvelteKit are selected. The confirmed UI stack is shadcn-svelte with
+Tailwind CSS. Remaining tooling choices should follow mw-kit where applicable;
+deployment is not selected yet.

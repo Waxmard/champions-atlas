@@ -129,9 +129,23 @@ spreads. Any borrowed or inferred spread must remain separate from sourced data.
 Version 1 has no Supabase dependency. Storage providers, free-tier terms, and
 authentication should be reconsidered when sync becomes necessary.
 
+## Development stack
+
+Svelte and SvelteKit are selected. Gaining more experience with Svelte is an
+explicit project goal. Use SvelteKit routing for team details and URL-based
+filter state.
+
+The confirmed component and styling stack is shadcn-svelte with Tailwind CSS,
+using Bits UI primitives for accessible interactions. Add components as needed
+and customize their source to suit the app.
+
+Follow mw-kit for applicable development conventions. Deployment, data-refresh
+hosting, and remaining tooling are not selected yet.
+
 ## Delivery sequence
 
-1. Choose development tooling with the owner, following mw-kit where applicable.
+1. Finalize UI and remaining development tooling with the owner, following mw-kit
+   where applicable.
 2. Validate representative current and historical source records, including
    missing fields and results. Establish current-legality data and remaining
    ranking examples.
