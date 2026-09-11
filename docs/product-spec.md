@@ -61,14 +61,14 @@ remains optional outside the early-regulation fallback.
 
 ### Agreed comparison examples
 
-| Candidates | Higher priority |
-| --- | --- |
-| M-B major top cut versus M-C Master Ball | M-C Master Ball |
-| Similar tournament finishes in M-B and M-C | M-C |
-| M-B Champions tier versus M-C Master Ball | M-C Master Ball |
+| Candidates                                  | Higher priority      |
+| ------------------------------------------- | -------------------- |
+| M-B major top cut versus M-C Master Ball    | M-C Master Ball      |
+| Similar tournament finishes in M-B and M-C  | M-C                  |
+| M-B Champions tier versus M-C Master Ball   | M-C Master Ball      |
 | M-C Showdown peak #3 versus M-C Master Ball | M-C Showdown peak #3 |
-| M-C Master Ball versus M-C unknown results | M-C Master Ball |
-| Proven M-B team versus M-C unknown results | Proven M-B team |
+| M-C Master Ball versus M-C unknown results  | M-C Master Ball      |
+| Proven M-B team versus M-C unknown results  | Proven M-B team      |
 
 Exact tournament cutoffs, ordering between comparable high ladder achievements,
 and placement of teams requiring adaptation remain to be specified before ranking
@@ -92,14 +92,14 @@ weighted score.
 
 ### Source research snapshot: 2026-09-11
 
-| Source | Verified during planning | Remaining checks |
-| --- | --- | --- |
-| [VGCPastes M-C](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=2001945654) | CSV export returned 81 teams with paste links, species, items, dates, sources, and replica metadata. Only four rows had rank metadata. | Fetch and parse paste contents; historical tabs; reuse conditions; schema changes. |
-| [Limitless API](https://docs.limitlesstcg.com/developer/tournaments.html) | A sampled M-C event returned 71 submitted teamlists with items, abilities, moves, and natures; 39 entries had placements. | Event completion, regulation/platform mapping, coverage, missing result handling. |
-| [poch.ms](https://poch.ms/en/leaderboard) | Downloaded page contained team summaries and original X links. | Full sets, achievement evidence, stable automated access, reuse conditions. |
-| [VGC History](https://vgchistory.com/data) | Documents structured standings/team-sheet files and permits cached reuse. | Champions event coverage and sample imports. |
-| [MetaVGC](https://metavgc.com/teams/tournaments) | Lists tournament teams and describes available set fields/pastes. | Stable ingestion interface and reuse conditions. |
-| [PokéKit](https://poke.itlibra.com/en/opendata) | Offers reusable JSON/CSV aggregate Showdown statistics. | Later use only; aggregate spreads are not proof of an individual team's build or Champions ladder finish. |
+| Source                                                                                                                   | Verified during planning                                                                                                               | Remaining checks                                                                                          |
+| ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| [VGCPastes M-C](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=2001945654) | CSV export returned 81 teams with paste links, species, items, dates, sources, and replica metadata. Only four rows had rank metadata. | Fetch and parse paste contents; historical tabs; reuse conditions; schema changes.                        |
+| [Limitless API](https://docs.limitlesstcg.com/developer/tournaments.html)                                                | A sampled M-C event returned 71 submitted teamlists with items, abilities, moves, and natures; 39 entries had placements.              | Event completion, regulation/platform mapping, coverage, missing result handling.                         |
+| [poch.ms](https://poch.ms/en/leaderboard)                                                                                | Downloaded page contained team summaries and original X links.                                                                         | Full sets, achievement evidence, stable automated access, reuse conditions.                               |
+| [VGC History](https://vgchistory.com/data)                                                                               | Documents structured standings/team-sheet files and permits cached reuse.                                                              | Champions event coverage and sample imports.                                                              |
+| [MetaVGC](https://metavgc.com/teams/tournaments)                                                                         | Lists tournament teams and describes available set fields/pastes.                                                                      | Stable ingestion interface and reuse conditions.                                                          |
+| [PokéKit](https://poke.itlibra.com/en/opendata)                                                                          | Offers reusable JSON/CSV aggregate Showdown statistics.                                                                                | Later use only; aggregate spreads are not proof of an individual team's build or Champions ladder finish. |
 
 Start by validating VGCPastes and Limitless imports. Add a supplementary ladder
 source if their result metadata cannot meet discovery needs. Direct X ingestion
@@ -139,13 +139,18 @@ The confirmed component and styling stack is shadcn-svelte with Tailwind CSS,
 using Bits UI primitives for accessible interactions. Add components as needed
 and customize their source to suit the app.
 
-Follow mw-kit for applicable development conventions. Deployment, data-refresh
-hosting, and remaining tooling are not selected yet.
+Use ESLint with eslint-plugin-svelte, Prettier with its Svelte and Tailwind
+plugins, and svelte-check. This is an agreed exception to mw-kit's Biome default
+because Svelte-aware tooling is preferred over experimental component support.
+
+The foundation includes Node 24 LTS via mise, npm, Lefthook, GitHub Actions, and
+Dependabot. The starter page contains an empty-catalog state and source links.
+Data imports, discovery behavior, local storage, and PWA installation remain
+unimplemented. Deployment and data-refresh hosting are not selected yet.
 
 ## Delivery sequence
 
-1. Finalize UI and remaining development tooling with the owner, following mw-kit
-   where applicable.
+1. Establish the agreed UI and development tooling foundation (implemented).
 2. Validate representative current and historical source records, including
    missing fields and results. Establish current-legality data and remaining
    ranking examples.
