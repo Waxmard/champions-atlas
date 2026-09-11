@@ -1,0 +1,157 @@
+# Product specification
+
+## Purpose
+
+Champion's Atlas helps its owner choose Pokémon Champions doubles teams on a
+phone. Existing spreadsheets are awkward to browse, and missingNO loses filters
+when opening a team. Version 1 succeeds by making discovery reliable and fast.
+
+This document records the planning conversation. It does not imply that source
+integrations or game-rule validation have been implemented.
+
+## Version 1
+
+- Ship an installable, mobile-friendly PWA for personal use.
+- Browse teams with or without a Pokémon in mind.
+- Combine multiple Pokémon filters using AND: every selected Pokémon must occur
+  on the team.
+- Attach item, move, and ability constraints to the selected Pokémon. A matching
+  item on a different teammate does not satisfy that constraint.
+- Support explicit forms and Mega selections.
+- Include older regulations by default, labeling each team's original regulation.
+- Prioritize relevant results using the ordering below.
+- Show available team sets, original sources, result evidence, paste links, and
+  copyable rental/replica codes when published.
+- Preserve filters, sorting, and scroll position when opening teams and returning.
+- Encode filters in the URL so a refresh or shared link restores the selection.
+- Save current team(s) locally. Favorites and cross-device sync are not required.
+- Distinguish teams usable unchanged from teams requiring adaptation. Do not
+  silently modify imported teams.
+
+Tournament details support team selection, not a separate tournament-browsing
+product. A compact result label is sufficient.
+
+## Ranking
+
+The agreed high-level order is:
+
+1. Current-regulation teams with qualifying results.
+2. Proven older-regulation teams.
+3. Current-regulation teams with unknown results.
+
+Other entries remain available with lower priority and accurate labels. Within a
+regulation, strong tournament finishes lead, followed by high ladder achievements,
+lower ladder achievements, and other tournament entries or unknown results.
+Participation alone does not make a team proven. Top cut is a strong indicator;
+event size, significance, placement, and recency should inform tournament ordering.
+
+Current-regulation relevance outweighs stronger historical results when the
+current team has qualifying evidence. Early in M-C, reaching Master Ball qualifies
+for discovery because higher-tier result coverage is sparse. This is a
+regulation-specific policy, not a permanent Master Ball cutoff for every season.
+
+Both Pokémon Champions and Pokémon Showdown ladder achievements count. Label the
+platform, and distinguish peak rank, season finish, rating, and tier reached.
+Do not directly compare raw ratings across platforms or seasons.
+
+The owner described Champions tiers approximately as Champions = top 100,
+Rank 1 = top 1,000, and Rank 2 = top 10,000. These are planning context, not verified
+thresholds to encode. Store the reported tier and its evidence. Rank 2 eligibility
+remains optional outside the early-regulation fallback.
+
+### Agreed comparison examples
+
+| Candidates | Higher priority |
+| --- | --- |
+| M-B major top cut versus M-C Master Ball | M-C Master Ball |
+| Similar tournament finishes in M-B and M-C | M-C |
+| M-B Champions tier versus M-C Master Ball | M-C Master Ball |
+| M-C Showdown peak #3 versus M-C Master Ball | M-C Showdown peak #3 |
+| M-C Master Ball versus M-C unknown results | M-C Master Ball |
+| Proven M-B team versus M-C unknown results | Proven M-B team |
+
+Exact tournament cutoffs, ordering between comparable high ladder achievements,
+and placement of teams requiring adaptation remain to be specified before ranking
+implementation. Use concrete examples to settle these rather than an unexplained
+weighted score.
+
+## Data requirements
+
+- Keep original source links, publication/fetch dates, game, battle format,
+  regulation, and result evidence.
+- Keep unknown fields unknown, including spreads and placements.
+- Interpret result labels in context: a tournament's "Champion" is not the
+  Champions ladder tier; Showdown "Peak 3rd" is not an in-game Champions rank.
+- Merge exact duplicates while retaining source evidence and distinct set variants.
+  Sharing six species alone does not establish identical builds.
+- A repeated import should not multiply teams. A failed refresh should preserve
+  the last successful catalog and expose its freshness.
+- Resolve current regulation and legality from verified rules. Historical legality
+  does not establish present legality or present competitive strength.
+- Verify source reuse conditions and cache fetched data before automated ingestion.
+
+### Source research snapshot: 2026-09-11
+
+| Source | Verified during planning | Remaining checks |
+| --- | --- | --- |
+| [VGCPastes M-C](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=2001945654) | CSV export returned 81 teams with paste links, species, items, dates, sources, and replica metadata. Only four rows had rank metadata. | Fetch and parse paste contents; historical tabs; reuse conditions; schema changes. |
+| [Limitless API](https://docs.limitlesstcg.com/developer/tournaments.html) | A sampled M-C event returned 71 submitted teamlists with items, abilities, moves, and natures; 39 entries had placements. | Event completion, regulation/platform mapping, coverage, missing result handling. |
+| [poch.ms](https://poch.ms/en/leaderboard) | Downloaded page contained team summaries and original X links. | Full sets, achievement evidence, stable automated access, reuse conditions. |
+| [VGC History](https://vgchistory.com/data) | Documents structured standings/team-sheet files and permits cached reuse. | Champions event coverage and sample imports. |
+| [MetaVGC](https://metavgc.com/teams/tournaments) | Lists tournament teams and describes available set fields/pastes. | Stable ingestion interface and reuse conditions. |
+| [PokéKit](https://poke.itlibra.com/en/opendata) | Offers reusable JSON/CSV aggregate Showdown statistics. | Later use only; aggregate spreads are not proof of an individual team's build or Champions ladder finish. |
+
+Start by validating VGCPastes and Limitless imports. Add a supplementary ladder
+source if their result metadata cannot meet discovery needs. Direct X ingestion
+is not a version 1 requirement.
+
+## Version 1.5: similar teams and editing
+
+- Let the user choose which Pokémon, items, moves, or other set details must stay
+  and which may change.
+- Apply locked constraints first, then prioritize similar teams by shared Pokémon
+  and matching sets, using result quality to distinguish comparable candidates.
+- Show concrete differences, such as a changed sixth Pokémon or two move changes.
+- Reuse filters to show other published builds for a Pokémon.
+- Preserve the original imported team when creating an edited draft.
+
+Similarity can suggest alternatives without AI. It cannot recover unpublished
+spreads. Any borrowed or inferred spread must remain separate from sourced data.
+
+## Version 2 and later
+
+- AI integration and separately verified subscription/API billing options.
+- Spread suggestions and calculator-assisted optimization.
+- Screenshot and team-ID import.
+- Cross-device sync.
+- Native iOS app.
+
+Version 1 has no Supabase dependency. Storage providers, free-tier terms, and
+authentication should be reconsidered when sync becomes necessary.
+
+## Delivery sequence
+
+1. Choose development tooling with the owner, following mw-kit where applicable.
+2. Validate representative current and historical source records, including
+   missing fields and results. Establish current-legality data and remaining
+   ranking examples.
+3. Build one complete browse/filter/detail/back flow with real imported teams.
+4. Add result ordering, local current-team storage, and PWA behavior.
+5. Verify acceptance criteria before expanding into editing.
+
+## Acceptance criteria
+
+- Two selected Pokémon must both appear in every result.
+- An item/move/ability constraint must match the intended team member.
+- Forms and Megas match the explicit selection consistently.
+- Opening several teams and returning preserves filters, sort, and scroll.
+- Reloading a filtered URL restores its filters.
+- Ranking checks reproduce every agreed comparison above.
+- Old regulations remain discoverable and visibly labeled.
+- Unknown placements, tiers, spreads, and legality are not fabricated.
+- Reimporting does not create duplicate teams or erase valid cached data on failure.
+- Current team(s) survive reload and app reopening without a cloud account.
+- Mobile layout, keyboard access, and reduced-motion behavior work; state
+  transitions are smooth without disturbing browsing position.
+- Relevant tests, lint, type checking, and production build pass with the selected
+  toolchain.
