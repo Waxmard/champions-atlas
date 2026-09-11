@@ -107,6 +107,14 @@ is not a version 1 requirement.
 
 ## Version 1.5: similar teams and editing
 
+The first workflow is implemented in **My teams**: save an original snapshot and
+editable copy, lock Pokémon/items/abilities/moves, compare matching catalog teams,
+copy a candidate into the draft, edit set text, save locally, and export text.
+Sources remain attached and the original stays unchanged. Similarity counts
+shared Pokémon first, matching known item/ability/nature/EV fields and moves next,
+and uses existing result ordering for ties. Exact forms remain distinct.
+Field-based editing controls and legality-aware adaptation are not implemented.
+
 - Let the user choose which Pokémon, items, moves, or other set details must stay
   and which may change.
 - Apply locked constraints first, then prioritize similar teams by shared Pokémon
@@ -146,8 +154,9 @@ because Svelte-aware tooling is preferred over experimental component support.
 The foundation includes Node 24 LTS via mise, npm, Lefthook, GitHub Actions, and
 Dependabot. The browser includes a cached M-C/M-B VGCPastes import,
 Pokémon/set filters, preliminary result ordering, and team details with URL and
-Back/Forward preservation. Desktop/mobile browser checks run in CI. Local storage,
-legality validation, and PWA installation remain unimplemented. Deployment and
+Back/Forward preservation. My teams adds local storage, comparison, set-text
+editing, and export. Desktop/mobile browser checks run in CI. Legality validation
+and PWA installation remain unimplemented. Deployment and
 data-refresh hosting are not selected yet.
 
 The catalog is generated locally and ignored by Git. Dev/build/typecheck import
@@ -161,8 +170,8 @@ requires network access or a populated source cache for its first import.
    missing fields and results. Establish current-legality data and remaining
    ranking examples.
 3. Build one complete browse/filter/detail/back flow with real imported teams (implemented).
-4. Finalize result ordering; add local current-team storage and PWA behavior.
-5. Verify acceptance criteria before expanding into editing.
+4. Finalize result ordering and add PWA behavior; local current-team storage is implemented.
+5. Verify and refine the initial comparison/editing workflow against acceptance criteria.
 
 ## Acceptance criteria
 

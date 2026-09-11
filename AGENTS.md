@@ -22,6 +22,9 @@ Read `docs/product-spec.md` before changing product behavior.
 - `src/lib/data/catalog.json` is generated and ignored. Dev/build/typecheck hooks
   create it when missing; refresh explicitly with `REFRESH=1 npm run import:catalog`.
 - Editable shadcn components live in `src/lib/components/ui`.
+- Shared paste parsing lives in `src/lib/paste.ts`; preserve raw set lines on export.
+- `src/lib/workbench.ts` owns similarity and saved-team persistence. Keep the
+  original snapshot separate from edits; never overwrite unreadable saved data.
 - The build smoke test uses `.mjs` so Svelte's source type-check does not follow
   its imports into compiled output.
 - Use Svelte 5 runes and strict TypeScript.

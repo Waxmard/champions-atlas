@@ -24,8 +24,10 @@
       ><Compass class="size-6 text-primary" aria-hidden="true" />Champion's
       Atlas</a
     >
-    <span class="hidden text-xs text-muted-foreground sm:block"
-      >Find your next team.</span
+    <a
+      href={resolve('/my-teams')}
+      class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary focus-visible:ring-2"
+      >My teams</a
     >
   </div>
 </header>

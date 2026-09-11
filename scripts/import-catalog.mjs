@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { access, mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parsePaste } from '../src/lib/paste.ts';
 
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
@@ -183,39 +184,12 @@ export function deduplicate(teams) {
 }
 
 export function enrich(team, data) {
-  if (typeof data.paste !== 'string' || data.paste.length > 50000)
-    throw new Error('Invalid paste payload');
-  const sets = data.paste
-    .trim()
-    .split(/\r?\n\s*\r?\n/)
-    .map((block) => {
-      const [first, ...lines] = block.split(/\r?\n/).map((line) => line.trim());
-      const [rawName, item] = first.split(' @ ');
-      const name = rawName.replace(/ \([MF]\)$/, '');
-      const pokemon = /\(([^)]+)\)$/.exec(name)?.[1] || name;
-      const prefix = (label) =>
-        lines.find((line) => line.startsWith(label))?.slice(label.length) ||
-        null;
-      return {
-        pokemon,
-        item: item || null,
-        ability: prefix('Ability: '),
-        moves: lines
-          .filter((line) => line.startsWith('- '))
-          .map((line) => line.slice(2)),
-        nature:
-          lines
-            .find((line) => line.endsWith(' Nature'))
-            ?.replace(/ Nature$/, '') || null,
-        spread: prefix('EVs: '),
-      };
-    });
-  if (sets.length !== 6)
-    throw new Error(`Paste does not contain six sets: ${team.pasteUrl}`);
+  const sets = parsePaste(data.paste);
   const members = team.members.map((member) => {
     const matches = sets.filter(
       (set) =>
-        base(set.pokemon) === base(member.pokemon) && set.item === member.item
+        base(set.pokemon) === base(member.pokemon) &&
+        slug(set.item || '') === slug(member.item || '')
     );
     if (matches.length !== 1)
       throw new Error(`Cannot match ${member.pokemon} in ${team.pasteUrl}`);
@@ -226,7 +200,51 @@ export function enrich(team, data) {
     members,
     paste: data.paste,
     pasteNotes: typeof data.notes === 'string' ? data.notes : null,
+    pasteError: undefined,
   };
+}
+
+export async function enrichPastes(
+  teams,
+  { loadPaste, previousTeams = [], limit = teams.length, concurrency = 3 }
+) {
+  const previous = new Map(previousTeams.map((team) => [team.pasteUrl, team]));
+  for (const team of teams) {
+    const prior = previous.get(team.pasteUrl);
+    if (!prior?.paste) continue;
+    try {
+      Object.assign(
+        team,
+        enrich(team, { paste: prior.paste, notes: prior.pasteNotes })
+      );
+    } catch {
+      // A changed sheet composition invalidates stale enrichment.
+    }
+  }
+  const selected = teams.slice(0, limit);
+  let enriched = 0;
+  let failed = 0;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < selected.length) {
+      const team = selected[cursor++];
+      try {
+        Object.assign(team, enrich(team, await loadPaste(team)));
+        enriched++;
+      } catch (error) {
+        team.pasteError =
+          error instanceof Error ? error.message : String(error);
+        failed++;
+      }
+    }
+  }
+  await Promise.all(
+    Array.from(
+      { length: Math.min(Math.max(1, concurrency), selected.length) },
+      worker
+    )
+  );
+  return { attempted: selected.length, enriched, failed };
 }
 
 export async function writeCatalog(path, catalog) {
@@ -249,16 +267,20 @@ async function main() {
       if (error.code !== 'ENOENT') throw error;
     }
   }
-  const count = Number(process.env.PASTE_LIMIT || '12');
-  if (!Number.isInteger(count) || count < 0 || count > 100)
-    throw new Error('PASTE_LIMIT must be 0–100');
+  const count = process.env.PASTE_LIMIT
+    ? Number(process.env.PASTE_LIMIT)
+    : Infinity;
+  if ((!Number.isInteger(count) && count !== Infinity) || count < 0)
+    throw new Error('PASTE_LIMIT must be a non-negative integer');
   await mkdir(cache, { recursive: true });
-  async function fetchCached(name, address) {
+  async function fetchCached(name, address, validate = () => {}) {
     const path = resolve(cache, name);
     try {
-      return await readFile(path, 'utf8');
+      const cached = await readFile(path, 'utf8');
+      validate(cached);
+      return cached;
     } catch (error) {
-      if (error.code !== 'ENOENT') throw error;
+      if (error.code !== 'ENOENT' && process.env.OFFLINE === '1') throw error;
     }
     if (process.env.OFFLINE === '1')
       throw new Error(`Missing cached file: ${name}`);
@@ -270,6 +292,7 @@ async function main() {
     const text = await response.text();
     if (text.length > 5000000)
       throw new Error('Source response exceeds size limit');
+    validate(text);
     await writeFile(path, text);
     return text;
   }
@@ -301,13 +324,22 @@ async function main() {
     teams.push(...parseSheet(csv, regulation));
   }
   const unique = deduplicate(teams);
-  for (const team of unique.slice(0, count)) {
-    const key = team.pasteUrl.split('/').at(-1);
-    const data = JSON.parse(
-      await fetchCached(`${key}.json`, `${team.pasteUrl}/json`)
-    );
-    Object.assign(team, enrich(team, data));
+  let previousTeams = [];
+  try {
+    previousTeams = JSON.parse(await readFile(output, 'utf8')).teams || [];
+  } catch (error) {
+    if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
   }
+  const stats = await enrichPastes(unique, {
+    limit: count,
+    previousTeams,
+    loadPaste: async (team) => {
+      const key = team.pasteUrl.split('/').at(-1);
+      return JSON.parse(
+        await fetchCached(`${key}.json`, `${team.pasteUrl}/json`, JSON.parse)
+      );
+    },
+  });
   await writeCatalog(output, {
     updatedAt: new Date().toISOString(),
     currentRegulation: 'M-C',
@@ -315,7 +347,7 @@ async function main() {
     teams: unique,
   });
   console.log(
-    `Imported ${unique.length} teams; ${count} pastes enriched. Catalog written atomically.`
+    `Imported ${unique.length} teams; ${stats.enriched}/${stats.attempted} pastes enriched, ${stats.failed} failed. Catalog written atomically.`
   );
 }
 

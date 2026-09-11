@@ -1,4 +1,5 @@
 export interface Member {
+  set?: string;
   pokemon: string;
   item: string | null;
   ability: string | null;
@@ -26,6 +27,7 @@ export interface Team {
   members: Member[];
   paste: string | null;
   pasteNotes: string | null;
+  pasteError?: string;
 }
 
 export interface MemberFilter {
@@ -76,7 +78,10 @@ export function writeFilters(params: URLSearchParams, filters: MemberFilter[]) {
   return result;
 }
 
-export function matchesTeam(team: Team, filters: MemberFilter[]) {
+export function matchesTeam(
+  team: Pick<Team, 'members'>,
+  filters: MemberFilter[]
+) {
   return filters.every((filter) =>
     team.members.some(
       (member) =>

@@ -1,0 +1,516 @@
+<script lang="ts">
+  import { onMount, tick, untrack } from 'svelte';
+  import { beforeNavigate, goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
+  import { page } from '$app/state';
+  import { Button } from '$lib/components/ui/button';
+  import TeamDifferences from '$lib/components/TeamDifferences.svelte';
+  import { bestEvidence, normalize, type Team } from '$lib/catalog';
+  import { parsePaste } from '$lib/paste';
+  import {
+    exportPaste,
+    readSavedTeams,
+    saveTeam,
+    setText,
+    similarTeams,
+    useCandidate,
+    type SavedTeam,
+    type MemberLock,
+  } from '$lib/workbench';
+  import type { PageData } from './$types';
+
+  let { data }: { data: PageData } = $props();
+  let saved = $state<SavedTeam[]>([]);
+  let draft = $state<SavedTeam | null>(null);
+  let baseline = $state('');
+  let sets = $state<string[]>([]);
+  let ready = $state(false);
+  let message = $state('');
+  let storageError = $state('');
+  let candidateId = $state('');
+  let limit = $state(12);
+  let showExport = $state(false);
+  let comparisonElement: HTMLElement | undefined = $state();
+  let editorElement: HTMLElement | undefined = $state();
+  const current = $derived(data.catalog.currentRegulation);
+  const results = $derived(
+    draft ? similarTeams(draft, data.catalog.teams as Team[], current) : []
+  );
+  const candidate = $derived(
+    results.find(({ team }) => team.id === candidateId)?.team
+  );
+  const dirty = $derived(
+    !!draft &&
+      (JSON.stringify(draft) !== baseline ||
+        sets.join('\n\n') !== exportPaste(draft.members))
+  );
+  const editingSets = $derived(
+    !!draft && sets.join('\n\n') !== exportPaste(draft.members)
+  );
+
+  function openSaved(id: string | null) {
+    try {
+      saved = readSavedTeams(localStorage);
+      storageError = '';
+      const entry = saved.find((team) => team.id === id);
+      draft = entry ? JSON.parse(JSON.stringify(entry)) : null;
+      baseline = JSON.stringify(draft);
+      sets = draft ? draft.members.map(setText) : [];
+      candidateId = '';
+      limit = 12;
+      showExport = false;
+      message =
+        id && !entry
+          ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
+          : '';
+    } catch {
+      storageError =
+        'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
+    }
+  }
+  onMount(() => {
+    ready = true;
+    const warn = (event: BeforeUnloadEvent) => {
+      if (dirty) {
+        event.preventDefault();
+        event.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  });
+  $effect(() => {
+    if (!ready) return;
+    const id = page.url.searchParams.get('team');
+    untrack(() => openSaved(id));
+  });
+  beforeNavigate(({ cancel, willUnload }) => {
+    if (willUnload) return;
+    if (dirty && !confirm('Discard unsaved team changes?')) cancel();
+  });
+
+  function persist(next: SavedTeam) {
+    try {
+      saved = saveTeam(localStorage, next);
+      draft = JSON.parse(JSON.stringify(next));
+      baseline = JSON.stringify(draft);
+      sets = next.members.map(setText);
+      storageError = '';
+      message = 'Changes saved on this device.';
+    } catch {
+      message =
+        'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
+    }
+  }
+  function saveChanges() {
+    if (!draft) return;
+    if (!draft.name.trim()) {
+      message = 'Give this team a name.';
+      return;
+    }
+    try {
+      const next = $state.snapshot(draft);
+      if (editingSets) {
+        const parsed = parsePaste(sets.join('\n\n'));
+        const previous = parsePaste(exportPaste(next.members));
+        next.members = parsed.map((member, index) => ({
+          ...member,
+          pokemon:
+            member.pokemon === previous[index].pokemon &&
+            member.item === previous[index].item
+              ? next.members[index].pokemon
+              : member.pokemon,
+        }));
+        next.locks = next.locks.flatMap((lock) => {
+          const member = next.members.find(
+            (member) => normalize(member.pokemon) === normalize(lock.pokemon)
+          );
+          return member
+            ? [
+                {
+                  ...lock,
+                  item: lock.item ? member.item || '' : '',
+                  ability: lock.ability ? member.ability || '' : '',
+                  moves: lock.moves.filter((move) =>
+                    member.moves.includes(move)
+                  ),
+                },
+              ]
+            : [];
+        });
+      }
+      persist(next);
+    } catch (error) {
+      message =
+        error instanceof Error
+          ? error.message
+          : 'Invalid set text. Changes were not saved.';
+    }
+  }
+  function togglePokemon(pokemon: string) {
+    if (!draft) return;
+    draft.locks = draft.locks.some((lock) => lock.pokemon === pokemon)
+      ? draft.locks.filter((lock) => lock.pokemon !== pokemon)
+      : [...draft.locks, { pokemon, item: '', ability: '', moves: [] }];
+    candidateId = '';
+  }
+  function changeLock(
+    pokemon: string,
+    field: 'item' | 'ability' | 'moves',
+    value: string
+  ) {
+    if (!draft) return;
+    draft.locks = draft.locks.map((lock): MemberLock => {
+      if (lock.pokemon !== pokemon) return lock;
+      if (field === 'moves')
+        return {
+          ...lock,
+          moves: lock.moves.includes(value)
+            ? lock.moves.filter((move) => move !== value)
+            : [...lock.moves, value],
+        };
+      return { ...lock, [field]: lock[field] === value ? '' : value };
+    });
+    candidateId = '';
+  }
+  async function applyCandidate() {
+    if (!draft || !candidate || editingSets) return;
+    try {
+      draft = useCandidate($state.snapshot(draft), candidate);
+      sets = draft.members.map(setText);
+      candidateId = '';
+      showExport = false;
+      message =
+        'Candidate loaded into your editable copy. Review it, then Save changes. Original team is preserved.';
+      await tick();
+      editorElement?.scrollIntoView({
+        block: 'start',
+        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+          ? 'instant'
+          : 'smooth',
+      });
+    } catch (error) {
+      message =
+        error instanceof Error ? error.message : 'Could not use candidate.';
+    }
+  }
+  async function copyPaste() {
+    if (!draft || editingSets) return;
+    showExport = true;
+    try {
+      await navigator.clipboard.writeText(exportPaste(draft.members));
+      message =
+        'Team text copied. Unknown fields are omitted; no stats were guessed.';
+    } catch {
+      message = 'Clipboard unavailable. Select and copy the export text below.';
+    }
+  }
+  async function selectCandidate(id: string) {
+    candidateId = id;
+    await tick();
+    comparisonElement?.scrollIntoView({
+      block: 'start',
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    });
+  }
+</script>
+
+<svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
+<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+  <div class="flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <h1 class="text-3xl font-semibold tracking-tight">My teams</h1>
+      <p class="mt-2 text-sm text-muted-foreground">
+        Keep your original. Explore changes. Save your own version.
+      </p>
+    </div>
+    <Button href={resolve('/')} variant="outline" class="min-h-11"
+      >Browse teams</Button
+    >
+  </div>
+  {#if storageError}<p role="alert" class="mt-5 rounded-xl border p-4 text-sm">
+      {storageError}
+    </p>{/if}
+  {#if !ready}<p class="mt-8 text-muted-foreground">Loading saved teams…</p>
+  {:else if !storageError}
+    <label class="mt-6 block max-w-xl text-sm font-medium"
+      >Saved team
+      <select
+        class="filter-select mt-2"
+        value={draft?.id || ''}
+        onchange={(event) => {
+          void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
+        }}
+      >
+        <option value="">Choose a team</option>
+        {#each saved as team (team.id)}<option value={team.id}
+            >{team.name}</option
+          >{/each}
+      </select>
+    </label>
+    {#if !saved.length}<p
+        class="mt-8 rounded-xl border border-dashed p-6 text-sm text-muted-foreground"
+      >
+        No saved teams yet. Open a catalog team and choose “Use this team”.
+      </p>{/if}
+    <p
+      role="status"
+      aria-live="polite"
+      class="mt-4 min-h-6 text-sm text-primary"
+    >
+      {message}
+    </p>
+    {#if draft}
+      <section
+        aria-label="Your team"
+        bind:this={editorElement}
+        class="mt-4 rounded-2xl border bg-card p-5 sm:p-6"
+      >
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <label class="block w-full max-w-xl text-sm font-medium"
+            >Team name<input
+              class="filter-select mt-2"
+              maxlength="200"
+              bind:value={draft.name}
+            /></label
+          >
+          <div class="flex flex-wrap gap-2">
+            <Button class="min-h-11" onclick={saveChanges}>Save changes</Button
+            ><Button
+              variant="outline"
+              class="min-h-11"
+              disabled={editingSets}
+              onclick={copyPaste}>Copy team text</Button
+            >
+          </div>
+        </div>
+        <p class="mt-3 text-xs text-muted-foreground">
+          {dirty ? 'Unsaved changes.' : 'Saved on this device.'} Original: {draft
+            .original.name} · {draft.original.regulation}. Editing does not
+          create a working rental code.
+        </p>
+        <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {#each draft.members as member, index (index)}
+            {@const lock = draft.locks.find(
+              (entry) => entry.pokemon === member.pokemon
+            )}
+            <section
+              class="min-w-0 rounded-xl border p-4"
+              aria-label={`${member.pokemon} locks`}
+            >
+              <h2 class="font-semibold wrap-break-word">{member.pokemon}</h2>
+              <p class="mt-1 text-sm text-primary">
+                {member.item || 'Item unknown'}
+              </p>
+              <label class="mt-3 flex min-h-11 items-center gap-2 text-sm"
+                ><input
+                  type="checkbox"
+                  checked={!!lock}
+                  onchange={() => togglePokemon(member.pokemon)}
+                />Keep {member.pokemon}</label
+              >
+              {#if lock}
+                {#each ['item', 'ability'] as field (field)}
+                  {@const value = member[field as 'item' | 'ability']}
+                  <label class="flex min-h-11 items-center gap-2 text-xs"
+                    ><input
+                      type="checkbox"
+                      disabled={!value}
+                      checked={!!lock[field as 'item' | 'ability']}
+                      onchange={() =>
+                        changeLock(
+                          member.pokemon,
+                          field as 'item' | 'ability',
+                          value || ''
+                        )}
+                    />Keep {field}: {value || 'unknown'}</label
+                  >
+                {/each}
+                {#each member.moves as move (move)}<label
+                    class="flex min-h-11 items-center gap-2 text-xs"
+                    ><input
+                      type="checkbox"
+                      checked={lock.moves.includes(move)}
+                      onchange={() => changeLock(member.pokemon, 'moves', move)}
+                    />Keep {move}</label
+                  >{/each}
+                {#if !member.moves.length}<p
+                    class="my-2 text-xs text-muted-foreground"
+                  >
+                    Moves unknown; cannot lock them.
+                  </p>{/if}
+              {/if}
+              <details class="mt-3">
+                <summary class="cursor-pointer py-2 text-sm text-primary"
+                  >Edit set</summary
+                >
+                <label class="mt-2 block text-xs text-muted-foreground"
+                  >Set text for {member.pokemon}<textarea
+                    class="mt-2 min-h-64 w-full rounded-lg border bg-background p-3 font-mono text-xs leading-5"
+                    maxlength="8000"
+                    bind:value={sets[index]}></textarea></label
+                >
+              </details>
+            </section>
+          {/each}
+        </div>
+        <p class="mt-4 text-xs leading-5 text-muted-foreground">
+          Locks filter suggestions; they do not restrict your manual edits. Save
+          set edits before comparing. Published text preserves IVs and other
+          extra lines; unknown details stay omitted.
+        </p>
+        {#if showExport}<label class="mt-4 block text-sm font-medium"
+            >Export text<textarea
+              readonly
+              class="mt-2 min-h-72 w-full rounded-lg border p-3 font-mono text-xs"
+              value={exportPaste(draft.members)}></textarea></label
+          >{/if}
+        <details class="mt-5">
+          <summary class="cursor-pointer py-2 text-sm font-medium"
+            >Original & source history</summary
+          >
+          <p class="mt-2 text-xs text-muted-foreground">
+            Sources document where sets came from. Manual changes are your
+            draft, not claims about the original team.
+          </p>
+          <ul class="mt-3 space-y-3 text-sm">
+            {#each draft.sources as source (source.pasteUrl)}<li>
+                <a
+                  class="text-primary underline"
+                  href={source.pasteUrl}
+                  rel="external"
+                  target="_blank">{source.name}</a
+                >
+              </li>{/each}
+          </ul>
+          <pre
+            class="mt-4 overflow-x-auto rounded-lg bg-secondary p-3 text-xs leading-5">{draft
+              .original.paste || exportPaste(draft.original.members)}</pre>
+          <TeamDifferences
+            before={draft.original.members}
+            after={draft.members}
+            beforeLabel="Original"
+            afterLabel="Your version"
+          />
+        </details>
+      </section>
+
+      <section aria-label="Similar teams" class="mt-8">
+        <div class="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <h2 class="text-2xl font-semibold">Find similar teams</h2>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Keep what matters using locks above. Shared Pokémon first,
+              matching known set details next, reported results break ties.
+              These are alternatives, not proven upgrades.
+            </p>
+          </div>
+          <label class="text-sm font-medium"
+            >Candidate regulation<select
+              class="filter-select mt-2"
+              bind:value={draft.targetRegulation}
+              onchange={() => {
+                candidateId = '';
+                limit = 12;
+              }}
+            >
+              <option value="all">All regulations</option>
+              {#each [...new Set(data.catalog.teams.map((team) => team.regulation))]
+                .sort()
+                .reverse() as regulation (regulation)}<option value={regulation}
+                  >{regulation}{regulation === current
+                    ? ' · current'
+                    : ''}</option
+                >{/each}
+            </select></label
+          >
+        </div>
+        <p class="mt-4 text-sm" aria-live="polite">
+          {results.length} matching alternatives. Current-regulation legality remains
+          unverified.
+        </p>
+        {#if editingSets}<p class="mt-4 rounded-lg border p-4 text-sm">
+            Save set edits to update comparisons.
+          </p>{/if}
+        {#if candidate}
+          {@const evidence = bestEvidence(candidate, current)}
+          <section
+            aria-label="Selected comparison"
+            bind:this={comparisonElement}
+            class="mt-5 rounded-2xl border bg-card p-5"
+          >
+            <h3 class="text-lg font-semibold">Compare with {candidate.name}</h3>
+            <p class="mt-2 text-sm text-muted-foreground">
+              {candidate.regulation} · {evidence.label} · {evidence.event ||
+                'No event reported'}
+            </p>
+            <TeamDifferences before={draft.members} after={candidate.members} />
+            <div class="mt-5 flex flex-wrap gap-3">
+              <Button
+                class="min-h-11"
+                disabled={editingSets}
+                onclick={applyCandidate}>Use candidate as edited copy</Button
+              ><a
+                class="inline-flex min-h-11 items-center text-sm text-primary underline"
+                href={candidate.pasteUrl}
+                rel="external"
+                target="_blank">Candidate source</a
+              >
+            </div>
+            <p class="mt-3 text-xs text-muted-foreground">
+              Replaces all six sets in your editable copy. Original remains
+              saved; candidate source is retained. Review before saving.
+            </p>
+          </section>
+        {/if}
+        <div class="mt-5 grid gap-3 md:grid-cols-2">
+          {#each results.slice(0, limit) as result (result.team.id)}
+            {@const evidence = bestEvidence(result.team, current)}
+            <article
+              class="min-w-0 rounded-xl border bg-card p-5 transition-colors hover:border-primary/40"
+            >
+              <p class="text-xs text-primary">
+                {result.shared}/6 Pokémon shared · {result.details} matching set details
+                · {result.team.regulation}
+              </p>
+              <h3 class="mt-2 font-semibold">{result.team.name}</h3>
+              <p class="mt-2 text-xs leading-5 text-muted-foreground">
+                {result.team.members
+                  .map((member) => member.pokemon)
+                  .join(' · ')}
+              </p>
+              <p class="mt-3 text-xs">
+                {evidence.label} · {evidence.event || 'No event reported'}
+              </p>
+              {#if !result.team.paste}<p
+                  class="mt-2 text-xs text-muted-foreground"
+                >
+                  Set details incomplete.
+                </p>{/if}
+              <Button
+                variant="outline"
+                class="mt-4 min-h-11"
+                disabled={editingSets}
+                onclick={() => selectCandidate(result.team.id)}
+                >Compare {result.team.creator || 'team'}</Button
+              >
+            </article>
+          {/each}
+        </div>
+        {#if !results.length}<p
+            class="mt-5 rounded-xl border border-dashed p-6 text-sm text-muted-foreground"
+          >
+            No teams match these locks and regulation. Try unlocking a detail or
+            choosing all regulations. Locks are never silently relaxed.
+          </p>{/if}
+        {#if results.length > limit}<Button
+            variant="outline"
+            class="mt-5 min-h-11"
+            onclick={() => (limit += 12)}>Show more alternatives</Button
+          >{/if}
+      </section>
+    {/if}
+  {/if}
+</main>

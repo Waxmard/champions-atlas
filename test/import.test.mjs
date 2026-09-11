@@ -10,8 +10,10 @@ import {
   parseSheet,
   deduplicate,
   enrich,
+  enrichPastes,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
+import { parsePaste } from '../src/lib/paste.ts';
 
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-bootstrap-'));
@@ -97,12 +99,126 @@ test('paste enrichment matches species and item, never array position', () => {
   assert.equal(enriched.members[0].pokemon, 'Pokemon0');
   assert.equal(enriched.members[0].spread, '32 HP');
   assert.deepEqual(enriched.members[0].moves, ['Protect']);
+  assert.match(enriched.members[0].set, /^Pokemon0 @ Item0/);
   assert.throws(() =>
     enrich(
       { members, pasteUrl: '' },
       { paste: paste.replace('Item0', 'Different item') }
     )
   );
+});
+
+test('paste parser preserves complete sets and rejects unsafe input', () => {
+  const blocks = Array.from(
+    { length: 6 },
+    (_, i) =>
+      `Nickname${i} (Pokemon-${i}) @ Item ${i}\r\nAbility: Ability ${i}\r\nIVs: 0 Atk\r\nEVs: ${i + 1} HP\r\nJolly Nature\r\n- Move ${i}`
+  );
+  const members = parsePaste(blocks.join('\r\n\r\n'));
+  assert.equal(members[0].pokemon, 'Pokemon-0');
+  assert.match(members[0].set, /IVs: 0 Atk/);
+  assert.throws(() => parsePaste(blocks.slice(0, 5).join('\n\n')), /six/);
+  assert.throws(
+    () => parsePaste([...blocks.slice(0, 5), blocks[0]].join('\n\n')),
+    /duplicate/
+  );
+  assert.throws(() => parsePaste('x'.repeat(50001)), /Invalid/);
+  assert.throws(
+    () =>
+      parsePaste(blocks.join('\n\n').replace('- Move 0', '- Move 0\n- move-0')),
+    /Pokemon-0 has duplicate moves/
+  );
+  assert.throws(
+    () =>
+      parsePaste(
+        blocks
+          .join('\n\n')
+          .replace('- Move 0', '- One\n- Two\n- Three\n- Four\n- Five')
+      ),
+    /Pokemon-0 has more than four moves/
+  );
+});
+
+test('paste failures stay isolated and retain previous enrichment', async () => {
+  const stubs = (id) => ({
+    id,
+    pasteUrl: `https://pokepast.es/${id}`,
+    members: Array.from({ length: 6 }, (_, i) => ({
+      pokemon: `Pokemon${i}`,
+      item: `Item${i}`,
+      ability: null,
+      moves: [],
+      nature: null,
+      spread: null,
+    })),
+    paste: null,
+    pasteNotes: null,
+  });
+  const paste = Array.from(
+    { length: 6 },
+    (_, i) =>
+      `Pokemon${i} @ Item${i}\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- Protect`
+  ).join('\n\n');
+  const previous = enrich(stubs('old'), { paste, notes: 'published' });
+  const teams = [stubs('old'), stubs('new'), stubs('good')];
+  const stats = await enrichPastes(teams, {
+    previousTeams: [previous],
+    concurrency: 2,
+    loadPaste: async ({ id }) => {
+      if (id === 'good') return { paste };
+      throw new Error('temporary outage');
+    },
+  });
+  assert.deepEqual(stats, { attempted: 3, enriched: 1, failed: 2 });
+  assert.equal(teams[0].paste, paste);
+  assert.equal(teams[0].members[0].ability, 'Ability');
+  assert.equal(teams[0].pasteError, 'temporary outage');
+  assert.equal(teams[1].paste, null);
+  assert.equal(teams[1].pasteError, 'temporary outage');
+  assert.equal(teams[2].pasteError, undefined);
+});
+
+test('partial imports retain compatible prior sets without masking sheet changes', async () => {
+  const team = (item = 'Item0') => ({
+    id: 'team',
+    pasteUrl: 'https://pokepast.es/team',
+    members: Array.from({ length: 6 }, (_, i) => ({
+      pokemon: `Pokemon${i}`,
+      item: i ? `Item${i}` : item,
+      ability: null,
+      moves: [],
+      nature: null,
+      spread: null,
+    })),
+    paste: null,
+    pasteNotes: null,
+  });
+  const paste = Array.from(
+    { length: 6 },
+    (_, i) =>
+      `Pokemon${i} @ Item${i}\nAbility: Ability\nAdamant Nature\n- Protect`
+  ).join('\n\n');
+  const previous = enrich(team(), { paste });
+
+  const compatible = team();
+  const retained = await enrichPastes([compatible], {
+    previousTeams: [previous],
+    limit: 0,
+    loadPaste: () => assert.fail('limit zero must not fetch'),
+  });
+  assert.deepEqual(retained, { attempted: 0, enriched: 0, failed: 0 });
+  assert.equal(compatible.paste, paste);
+  assert.equal(compatible.members[0].ability, 'Ability');
+
+  const changed = team('New Item');
+  await enrichPastes([changed], {
+    previousTeams: [previous],
+    limit: 0,
+    loadPaste: () => assert.fail('limit zero must not fetch'),
+  });
+  assert.equal(changed.paste, null);
+  assert.equal(changed.members[0].item, 'New Item');
+  assert.equal(changed.members[0].ability, null);
 });
 
 test('invalid refresh preserves existing catalog', async () => {

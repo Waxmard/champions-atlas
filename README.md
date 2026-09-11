@@ -8,8 +8,9 @@ find teams around a preferred core, and keep your current teams locally.
 
 The browser includes a VGCPastes M-C/M-B snapshot, combined Pokémon and set
 filters, preliminary result ordering, and team details. Filters, sorting, and
-browsing position survive opening a team and returning. Local current-team
-storage, legality validation, and PWA installation remain unimplemented. See
+browsing position survive opening a team and returning. Saved teams, similarity
+comparison, and set-text editing work locally. Legality validation and PWA
+installation remain unimplemented. See
 [the product specification](docs/product-spec.md) for agreed behavior and milestones.
 
 ## Development
@@ -36,7 +37,7 @@ npm run test:e2e
 ```
 
 These cover desktop and mobile filtering, details, Back/Forward, reload, and
-invalid links against the production build.
+invalid links, saving, comparison, editing, and export against the production build.
 Use `npm run format` to format files and `npm run preview` to serve a built app.
 
 ## Catalog
@@ -57,13 +58,38 @@ OFFLINE=1 npm run import:catalog
 
 The importer caches source files in `.cache/catalog`; `REFRESH=1` refreshes
 spreadsheet metadata. `OFFLINE=1` requires cached files. `PASTE_LIMIT` controls
-how many recent teams get full paste details (default 12, maximum 100).
+how many recent teams to fetch when explicitly set; by default every team gets
+full paste details. Already loaded compatible sets survive partial imports.
 Species and items are available for every imported team; moves, abilities, and
 spreads require an enriched paste. Unknown details never satisfy a filter.
-Imports replace the catalog atomically only after validation succeeds.
+Imports replace the catalog atomically. Invalid spreadsheet data fails the
+import. Individual paste failures are reported on the team and in importer output;
+compatible previous sets are retained, otherwise details remain unknown.
 
 See [data sources and ranking limits](docs/data-sources.md). No scheduled
 refresh or additional source integration is configured.
+
+## Save, compare, and edit
+
+1. Open a catalog team and choose **Use this team**. **My teams** stores an
+   independent original snapshot and editable copy in this browser's localStorage.
+2. Lock Pokémon and optional items, abilities, or moves. Choose M-C (default) or
+   all regulations. Suggestions must satisfy every lock, then sort by shared
+   Pokémon, matching known set details, and reported result priority.
+3. Choose **Compare** to see additions, removals, set differences, and unknown
+   fields. **Use candidate as edited copy** replaces the draft's six sets and
+   records the candidate source; the original is preserved.
+4. Expand **Edit set** to change Pokémon or published set text, then **Save
+   changes**. **Copy team text** exports the current sets, preserving raw extra
+   lines such as IVs. Unknown fields are omitted, not inferred. Edited teams do
+   not receive a new rental code.
+
+Saved copies survive reload and catalog refreshes on the same browser origin.
+They do not sync across devices; clearing browser storage removes them. Saving
+requires available browser storage. Unsaved edits prompt before navigation.
+Locks affect suggestions rather than manual edits, and follow edited set values
+when saved. M-C labels indicate source regulation, not a legality check or a
+guaranteed upgrade. No-match results never relax locks automatically.
 
 ## Stack
 

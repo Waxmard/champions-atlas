@@ -1,15 +1,27 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Copy from '@lucide/svelte/icons/copy';
   import { Button } from '$lib/components/ui/button';
-  import { evidence } from '$lib/catalog';
+  import { evidence, type Team } from '$lib/catalog';
+  import { newSavedTeam, saveTeam } from '$lib/workbench';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
-  const team = $derived(data.team);
+  const team: Team = $derived(data.team);
   let copyStatus = $state('');
+  function useTeam() {
+    try {
+      const saved = newSavedTeam(team, data.currentRegulation);
+      saveTeam(localStorage, saved);
+      void goto(resolve(`/my-teams?team=${saved.id}`));
+    } catch {
+      copyStatus =
+        'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+    }
+  }
 
   function back(event: MouseEvent) {
     if (
@@ -66,6 +78,7 @@
     By {team.creator || 'an unlisted creator'}
   </p>
   <div class="mt-6 flex flex-wrap gap-3">
+    <Button class="min-h-11 px-4" onclick={useTeam}>Use this team</Button>
     <Button href={team.pasteUrl} class="min-h-11 px-4"
       >Open original paste</Button
     >
@@ -102,6 +115,9 @@
       : 'The regulation label comes from the source sheet.'} Missing set details remain
     unknown.
   </p>
+  {#if team.pasteError}<p class="mt-3 text-sm text-muted-foreground">
+      Some published details could not be loaded. {team.pasteError}
+    </p>{/if}
 
   <section
     aria-label="Pokémon sets"

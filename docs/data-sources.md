@@ -1,8 +1,9 @@
 # Catalog snapshot
 
 The initial snapshot contains 941 distinct M-C/M-B team records from 942
-VGCPastes rows, fetched on 2026-09-11. Twelve recent M-C teams include full
-PokéPaste sets. M-A and other data providers are not imported yet.
+VGCPastes rows, fetched on 2026-09-11. All 941 teams now include parsed PokéPaste
+sets, including Peter Chen's Worlds team (MB809). Missing fields within a
+published paste remain unknown. M-A and other data providers are not imported yet.
 
 Sources:
 
@@ -29,6 +30,15 @@ Exact duplicates share regulation, paste URL, and member species/items. Their
 sheet IDs and report links merge; different paste URLs remain separate variants.
 Imports are atomic, and source files are cached. The displayed snapshot date
 tracks catalog generation, not independent verification of source claims.
+By default every paste is fetched with three concurrent workers and reused from
+cache. Individual paste failures preserve compatible previous sets and expose an
+error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
+partial-fetch option and does not erase compatible previously loaded sets.
+
+Saved teams retain their own original snapshot and source history. Candidate
+replacement copies published raw sets; manual edits belong to the user's draft.
+Similarity measures shared Pokémon and matching known set details, with result
+priority breaking ties. It does not predict matchup quality or infer EVs.
 
 M-C is the configured current regulation from the planning discussion. No
 current-rule legality checker exists. Original regulation is not evidence that
