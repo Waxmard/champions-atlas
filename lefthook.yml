@@ -1,0 +1,9 @@
+pre-commit:
+  commands:
+    format:
+      glob: '*.{js,mjs,ts,svelte,json,css,md,yml,yaml}'
+      run: npx prettier --write --ignore-unknown {staged_files}
+      stage_fixed: true
+    lint:
+      glob: '*.{js,mjs,ts,svelte}'
+      run: npx eslint --max-warnings 0 {staged_files}
