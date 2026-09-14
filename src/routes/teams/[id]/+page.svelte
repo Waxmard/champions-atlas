@@ -14,7 +14,7 @@
   let copyStatus = $state('');
   function useTeam() {
     try {
-      const saved = newSavedTeam(team, data.currentRegulation);
+      const saved = newSavedTeam(team);
       saveTeam(localStorage, saved);
       void goto(resolve(`/my-teams?team=${saved.id}`));
     } catch {

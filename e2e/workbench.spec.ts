@@ -4,7 +4,7 @@ import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
 
-test('save Peter, lock Weavile, compare, edit, export, and reopen without changing original', async ({
+test('save Peter, choose one slot, compare, edit, export, and preserve other five sets', async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
@@ -30,25 +30,59 @@ test('save Peter, lock Weavile, compare, edit, export, and reopen without changi
     original.members.every((member: { spread: string }) => !!member.spread)
   ).toBe(true);
   const weavile = page.getByRole('region', {
-    name: 'Weavile locks',
+    name: 'Weavile set',
     exact: true,
   });
-  await weavile
-    .getByRole('checkbox', { name: 'Keep Weavile', exact: true })
-    .check();
+  await expect(page.getByRole('checkbox')).toHaveCount(0);
+  await expect(page.getByLabel('Candidate regulation')).toHaveCount(0);
   await expect(
-    page.getByText('No teams match these locks and regulation.', {
-      exact: false,
-    })
-  ).toBeVisible();
-  await page.getByLabel('Candidate regulation').selectOption('all');
+    page.getByRole('button', { name: /^Change /, pressed: true })
+  ).toHaveCount(0);
+  const defaultRecommendations = page
+    .getByRole('region', { name: 'Similar teams', exact: true })
+    .getByRole('article');
+  await expect(defaultRecommendations.first()).toBeVisible();
+  await defaultRecommendations
+    .first()
+    .getByRole('button', { name: /^Compare / })
+    .click();
+  await expect(
+    page.getByRole('button', { name: 'Use replacement', exact: true })
+  ).toHaveCount(0);
+  await weavile
+    .getByRole('button', { name: 'Change Weavile', exact: true })
+    .click();
+  await page
+    .getByRole('button', { name: 'Change Sinistcha', exact: true })
+    .click();
+  await expect(
+    weavile.getByRole('button', { name: 'Change Weavile', exact: true })
+  ).toHaveAttribute('aria-pressed', 'false');
+  await expect(
+    page.getByRole('button', { name: /^Change /, pressed: true })
+  ).toHaveCount(1);
+  await weavile
+    .getByRole('button', { name: 'Change Weavile', exact: true })
+    .click();
+  await weavile
+    .getByRole('button', { name: 'Change Weavile', exact: true })
+    .click();
+  await expect(
+    page.getByRole('button', { name: /^Change /, pressed: true })
+  ).toHaveCount(0);
+  await weavile
+    .getByRole('button', { name: 'Change Weavile', exact: true })
+    .click();
   const alternatives = page
     .getByRole('region', { name: 'Similar teams', exact: true })
     .getByRole('article');
+  await page
+    .getByRole('region', { name: 'Your team', exact: true })
+    .screenshot({ path: testInfo.outputPath('single-slot-controls.png') });
   await expect(alternatives.first()).toBeVisible();
   await alternatives
+    .getByRole('button', { name: 'Compare Weavile', exact: true })
     .first()
-    .getByRole('button', { name: /^Compare / })
     .click();
   const comparison = page.getByRole('region', { name: 'Selected comparison' });
   await expect(comparison).toBeVisible();
@@ -56,12 +90,10 @@ test('save Peter, lock Weavile, compare, edit, export, and reopen without changi
     comparison.getByRole('table', { name: 'Team differences' })
   ).toBeVisible();
   await page.screenshot({ path: testInfo.outputPath('comparison.png') });
-  await comparison
-    .getByRole('button', { name: 'Use candidate as edited copy' })
-    .click();
+  await comparison.getByRole('button', { name: 'Use replacement' }).click();
   await expect(
-    weavile.getByRole('checkbox', { name: 'Keep Weavile', exact: true })
-  ).toBeChecked();
+    weavile.getByRole('button', { name: 'Change Weavile', exact: true })
+  ).toHaveAttribute('aria-pressed', 'true');
   await page
     .getByLabel('Team name', { exact: true })
     .fill('My Weavile adaptation');
@@ -87,8 +119,8 @@ test('save Peter, lock Weavile, compare, edit, export, and reopen without changi
     'My Weavile adaptation'
   );
   await expect(
-    weavile.getByRole('checkbox', { name: 'Keep Weavile', exact: true })
-  ).toBeChecked();
+    weavile.getByRole('button', { name: 'Change Weavile', exact: true })
+  ).toHaveAttribute('aria-pressed', 'true');
   await page
     .getByRole('button', { name: 'Copy team text', exact: true })
     .click();
@@ -100,6 +132,15 @@ test('save Peter, lock Weavile, compare, edit, export, and reopen without changi
     storageKey
   );
   expect(stored.original).toEqual(original);
+  expect(
+    stored.members.filter(
+      (member: { pokemon: string }) => member.pokemon !== 'Weavile'
+    )
+  ).toEqual(
+    original.members.filter(
+      (member: { pokemon: string }) => member.pokemon !== 'Weavile'
+    )
+  );
   expect(stored.sources.length).toBe(2);
   expect(
     await page.evaluate(

@@ -73,12 +73,15 @@ refresh or additional source integration is configured.
 
 1. Open a catalog team and choose **Use this team**. **My teams** stores an
    independent original snapshot and editable copy in this browser's localStorage.
-2. Lock Pokémon and optional items, abilities, or moves. Choose M-C (default) or
-   all regulations. Suggestions must satisfy every lock, then sort by shared
-   Pokémon, matching known set details, and reported result priority.
-3. Choose **Compare** to see additions, removals, set differences, and unknown
-   fields. **Use candidate as edited copy** replaces the draft's six sets and
-   records the candidate source; the original is preserved.
+2. Similar teams appear immediately, with all six of your sets kept unchanged.
+   Toggle **Change [Pokémon]** on one slot to see alternative builds of that
+   Pokémon and replacement species taken from similar source teams. Toggle it
+   again to return to team comparisons. Only one slot can be selected.
+3. Choose **Compare** to preview the change. **Use replacement** changes only
+   that slot and records its source; the other five sets and original stay intact.
+   All regulations are included. Replacement order favors keeping the Pokémon and its set details; source-team
+   similarity and reported results break ties. Identical replacement sets are
+   shown once, and Pokémon already in another slot are excluded.
 4. Expand **Edit set** to change Pokémon or published set text, then **Save
    changes**. **Copy team text** exports the current sets, preserving raw extra
    lines such as IVs. Unknown fields are omitted, not inferred. Edited teams do
@@ -87,9 +90,10 @@ refresh or additional source integration is configured.
 Saved copies survive reload and catalog refreshes on the same browser origin.
 They do not sync across devices; clearing browser storage removes them. Saving
 requires available browser storage. Unsaved edits prompt before navigation.
-Locks affect suggestions rather than manual edits, and follow edited set values
-when saved. M-C labels indicate source regulation, not a legality check or a
-guaranteed upgrade. No-match results never relax locks automatically.
+M-C labels indicate source regulation, not a legality check or a guaranteed
+upgrade. Replacement suggestions do not require the source team to match your
+other five Pokémon exactly. Existing saved teams retain their original and edits
+when switching to the single-slot comparison controls.
 
 ## Stack
 

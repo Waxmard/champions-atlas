@@ -1,17 +1,4 @@
-import {
-  compareTeams,
-  matchesTeam,
-  normalize,
-  type Member,
-  type Team,
-} from './catalog.ts';
-
-export interface MemberLock {
-  pokemon: string;
-  item: string;
-  ability: string;
-  moves: string[];
-}
+import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
 
 export interface SavedTeam {
   id: string;
@@ -21,8 +8,7 @@ export interface SavedTeam {
     'id' | 'name' | 'regulation' | 'pasteUrl' | 'members' | 'paste'
   >;
   members: Member[];
-  targetRegulation: string;
-  locks: MemberLock[];
+  changeSlot: number | null;
   sources: { name: string; pasteUrl: string }[];
 }
 
@@ -46,7 +32,7 @@ export function setText(member: Member) {
 export const exportPaste = (members: Member[]) =>
   members.map(setText).join('\n\n');
 
-export function newSavedTeam(team: Team, currentRegulation: string): SavedTeam {
+export function newSavedTeam(team: Team): SavedTeam {
   return {
     id: crypto.randomUUID(),
     name: team.name,
@@ -59,18 +45,9 @@ export function newSavedTeam(team: Team, currentRegulation: string): SavedTeam {
       paste: team.paste,
     }),
     members: structuredClone(team.members),
-    targetRegulation: currentRegulation,
-    locks: [],
+    changeSlot: null,
     sources: [{ name: team.name, pasteUrl: team.pasteUrl }],
   };
-}
-
-export function matchesLocks(team: Pick<Team, 'members'>, locks: MemberLock[]) {
-  return locks.every(
-    (lock) =>
-      matchesTeam(team, [{ ...lock, move: '' }]) &&
-      lock.moves.every((move) => matchesTeam(team, [{ ...lock, move }]))
-  );
 }
 
 export function similarity(members: Member[], candidate: Member[]) {
@@ -96,16 +73,26 @@ export function similarity(members: Member[], candidate: Member[]) {
   return { shared, details };
 }
 
-export function similarTeams(saved: SavedTeam, teams: Team[], current: string) {
-  return teams
-    .filter(
-      (team) =>
-        team.id !== saved.original.id &&
-        (saved.targetRegulation === 'all' ||
-          team.regulation === saved.targetRegulation) &&
-        matchesLocks(team, saved.locks)
-    )
-    .map((team) => ({ team, ...similarity(saved.members, team.members) }))
+export interface Recommendation {
+  id: string;
+  team: Team;
+  member?: Member;
+  shared: number;
+  details: number;
+}
+
+export function similarTeams(
+  saved: SavedTeam,
+  teams: Team[],
+  current: string
+): Recommendation[] {
+  const ranked = teams
+    .filter((team) => team.id !== saved.original.id)
+    .map((team) => ({
+      id: team.id,
+      team,
+      ...similarity(saved.members, team.members),
+    }))
     .filter(({ shared }) => shared > 0)
     .sort(
       (a, b) =>
@@ -113,15 +100,66 @@ export function similarTeams(saved: SavedTeam, teams: Team[], current: string) {
         b.details - a.details ||
         compareTeams(a.team, b.team, current)
     );
+  if (saved.changeSlot === null) return ranked;
+  const slot = saved.changeSlot;
+  const seen = new Set<string>();
+  return ranked
+    .flatMap((result) =>
+      result.team.members.flatMap((member, index) => {
+        if (
+          saved.members.some(
+            (other, i) =>
+              i !== slot &&
+              normalize(other.pokemon) === normalize(member.pokemon)
+          )
+        )
+          return [];
+        const signature = JSON.stringify([member.pokemon, setText(member)]);
+        if (
+          signature ===
+            JSON.stringify([
+              saved.members[slot].pokemon,
+              setText(saved.members[slot]),
+            ]) ||
+          seen.has(signature)
+        )
+          return [];
+        seen.add(signature);
+        return [{ ...result, id: `${result.team.id}:${index}`, member }];
+      })
+    )
+    .sort((a, b) => {
+      const before = similarity([saved.members[slot]], [a.member]);
+      const after = similarity([saved.members[slot]], [b.member]);
+      return after.shared - before.shared || after.details - before.details;
+    });
 }
 
-export function useCandidate(saved: SavedTeam, candidate: Team): SavedTeam {
-  if (!matchesLocks(candidate, saved.locks))
-    throw new Error('This team does not satisfy your locks.');
-  const source = { name: candidate.name, pasteUrl: candidate.pasteUrl };
+export function replacementMembers(saved: SavedTeam, member: Member) {
+  const slot = saved.changeSlot;
+  if (slot === null || !Number.isInteger(slot) || slot < 0 || slot >= 6)
+    throw new Error('Choose one Pokémon to change.');
+  if (
+    saved.members.some(
+      (other, index) =>
+        index !== slot && normalize(other.pokemon) === normalize(member.pokemon)
+    )
+  )
+    throw new Error('That Pokémon is already in another slot.');
+  return saved.members.map((other, index) => (index === slot ? member : other));
+}
+
+export function useCandidate(
+  saved: SavedTeam,
+  recommendation: Recommendation
+): SavedTeam {
+  const { team, member } = recommendation;
+  if (!member || !team.members.includes(member))
+    throw new Error('Choose a replacement from a source team.');
+  const source = { name: team.name, pasteUrl: team.pasteUrl };
   return {
     ...saved,
-    members: structuredClone(candidate.members),
+    members: structuredClone(replacementMembers(saved, member)),
     sources: saved.sources.some((entry) => entry.pasteUrl === source.pasteUrl)
       ? saved.sources
       : [...saved.sources, source],
@@ -241,7 +279,6 @@ export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
         object(team) &&
         text(team.id) &&
         text(team.name) &&
-        text(team.targetRegulation) &&
         object(team.original) &&
         source(team.original) &&
         text(team.original.id) &&
@@ -252,16 +289,11 @@ export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
         Array.isArray(team.sources) &&
         team.sources.length <= 100 &&
         team.sources.every(source) &&
-        Array.isArray(team.locks) &&
-        team.locks.length <= 6 &&
-        team.locks.every(
-          (lock) =>
-            object(lock) &&
-            text(lock.pokemon) &&
-            text(lock.item) &&
-            text(lock.ability) &&
-            texts(lock.moves)
-        )
+        (team.changeSlot === undefined ||
+          team.changeSlot === null ||
+          (Number.isInteger(team.changeSlot) &&
+            Number(team.changeSlot) >= 0 &&
+            Number(team.changeSlot) < 6))
     )
   )
     throw new Error(
@@ -271,7 +303,14 @@ export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
     throw new Error(
       'Duplicate saved team IDs. Existing data has been left untouched.'
     );
-  return value as SavedTeam[];
+  return value.map((team) => ({
+    id: team.id,
+    name: team.name,
+    original: team.original,
+    members: team.members,
+    sources: team.sources,
+    changeSlot: team.changeSlot ?? null,
+  })) as SavedTeam[];
 }
 
 export function saveTeam(

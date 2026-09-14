@@ -107,21 +107,28 @@ is not a version 1 requirement.
 
 ## Version 1.5: similar teams and editing
 
-The first workflow is implemented in **My teams**: save an original snapshot and
-editable copy, lock Pokémon/items/abilities/moves, compare matching catalog teams,
-copy a candidate into the draft, edit set text, save locally, and export text.
-Sources remain attached and the original stays unchanged. Similarity counts
-shared Pokémon first, matching known item/ability/nature/EV fields and moves next,
-and uses existing result ordering for ties. Exact forms remain distinct.
-Field-based editing controls and legality-aware adaptation are not implemented.
+The workflow in **My teams** saves an original snapshot and editable copy,
+shows similar teams by default, and lets the user toggle one Pokémon to change.
+This is the only comparison setting. All six sets stay unchanged by default;
+choosing a slot shows alternative builds of that Pokémon and different species
+from similar teams. Applying a replacement changes only that slot. The other
+five sets and original remain intact. Set-text editing, local saving, and export
+remain available.
 
-- Let the user choose which Pokémon, items, moves, or other set details must stay
-  and which may change.
-- Apply locked constraints first, then prioritize similar teams by shared Pokémon
-  and matching sets, using result quality to distinguish comparable candidates.
-- Show concrete differences, such as a changed sixth Pokémon or two move changes.
-- Reuse filters to show other published builds for a Pokémon.
+Similarity counts shared Pokémon first, matching known item/ability/nature/EV
+fields and moves next, then uses result ordering for ties. All regulations are
+included. Replacement sets favor retaining the chosen Pokémon and its set details,
+then use source-team ranking for ties, with duplicate sets
+collapsed and species already in another slot excluded. Sources need not match
+the fixed five members exactly. Source result claims are not attributed to the
+user's edited team. Exact forms remain distinct.
+
+- One Pokémon toggle replaces individual item, move, and ability locks.
+- Show concrete differences for the proposed single-slot replacement.
+- Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
+
+Field-based editing controls and legality-aware adaptation are not implemented.
 
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.

@@ -5,7 +5,7 @@
   import { page } from '$app/state';
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
-  import { bestEvidence, normalize, type Team } from '$lib/catalog';
+  import { bestEvidence, type Team } from '$lib/catalog';
   import { parsePaste } from '$lib/paste';
   import {
     exportPaste,
@@ -15,7 +15,7 @@
     similarTeams,
     useCandidate,
     type SavedTeam,
-    type MemberLock,
+    replacementMembers,
   } from '$lib/workbench';
   import type { PageData } from './$types';
 
@@ -37,7 +37,14 @@
     draft ? similarTeams(draft, data.catalog.teams as Team[], current) : []
   );
   const candidate = $derived(
-    results.find(({ team }) => team.id === candidateId)?.team
+    results.find((result) => result.id === candidateId)
+  );
+  const comparisonMembers = $derived(
+    draft && candidate
+      ? candidate.member
+        ? replacementMembers(draft, candidate.member)
+        : candidate.team.members
+      : []
   );
   const dirty = $derived(
     !!draft &&
@@ -113,31 +120,18 @@
       if (editingSets) {
         const parsed = parsePaste(sets.join('\n\n'));
         const previous = parsePaste(exportPaste(next.members));
-        next.members = parsed.map((member, index) => ({
-          ...member,
-          pokemon:
-            member.pokemon === previous[index].pokemon &&
-            member.item === previous[index].item
-              ? next.members[index].pokemon
-              : member.pokemon,
-        }));
-        next.locks = next.locks.flatMap((lock) => {
-          const member = next.members.find(
-            (member) => normalize(member.pokemon) === normalize(lock.pokemon)
-          );
-          return member
-            ? [
-                {
-                  ...lock,
-                  item: lock.item ? member.item || '' : '',
-                  ability: lock.ability ? member.ability || '' : '',
-                  moves: lock.moves.filter((move) =>
-                    member.moves.includes(move)
-                  ),
-                },
-              ]
-            : [];
-        });
+        next.members = parsed.map((member, index) =>
+          sets[index] === setText(next.members[index])
+            ? next.members[index]
+            : {
+                ...member,
+                pokemon:
+                  member.pokemon === previous[index].pokemon &&
+                  member.item === previous[index].item
+                    ? next.members[index].pokemon
+                    : member.pokemon,
+              }
+        );
       }
       persist(next);
     } catch (error) {
@@ -147,31 +141,11 @@
           : 'Invalid set text. Changes were not saved.';
     }
   }
-  function togglePokemon(pokemon: string) {
+  function togglePokemon(index: number) {
     if (!draft) return;
-    draft.locks = draft.locks.some((lock) => lock.pokemon === pokemon)
-      ? draft.locks.filter((lock) => lock.pokemon !== pokemon)
-      : [...draft.locks, { pokemon, item: '', ability: '', moves: [] }];
+    draft.changeSlot = draft.changeSlot === index ? null : index;
     candidateId = '';
-  }
-  function changeLock(
-    pokemon: string,
-    field: 'item' | 'ability' | 'moves',
-    value: string
-  ) {
-    if (!draft) return;
-    draft.locks = draft.locks.map((lock): MemberLock => {
-      if (lock.pokemon !== pokemon) return lock;
-      if (field === 'moves')
-        return {
-          ...lock,
-          moves: lock.moves.includes(value)
-            ? lock.moves.filter((move) => move !== value)
-            : [...lock.moves, value],
-        };
-      return { ...lock, [field]: lock[field] === value ? '' : value };
-    });
-    candidateId = '';
+    limit = 12;
   }
   async function applyCandidate() {
     if (!draft || !candidate || editingSets) return;
@@ -181,7 +155,7 @@
       candidateId = '';
       showExport = false;
       message =
-        'Candidate loaded into your editable copy. Review it, then Save changes. Original team is preserved.';
+        'Replacement loaded. Other five sets are unchanged. Review, then Save changes.';
       await tick();
       editorElement?.scrollIntoView({
         block: 'start',
@@ -293,55 +267,22 @@
         </p>
         <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {#each draft.members as member, index (index)}
-            {@const lock = draft.locks.find(
-              (entry) => entry.pokemon === member.pokemon
-            )}
             <section
               class="min-w-0 rounded-xl border p-4"
-              aria-label={`${member.pokemon} locks`}
+              aria-label={`${member.pokemon} set`}
             >
               <h2 class="font-semibold wrap-break-word">{member.pokemon}</h2>
               <p class="mt-1 text-sm text-primary">
                 {member.item || 'Item unknown'}
               </p>
-              <label class="mt-3 flex min-h-11 items-center gap-2 text-sm"
-                ><input
-                  type="checkbox"
-                  checked={!!lock}
-                  onchange={() => togglePokemon(member.pokemon)}
-                />Keep {member.pokemon}</label
+              <Button
+                variant={draft.changeSlot === index ? 'default' : 'outline'}
+                class="mt-3 min-h-11"
+                aria-pressed={draft.changeSlot === index}
+                disabled={editingSets}
+                onclick={() => togglePokemon(index)}
+                >Change {member.pokemon}</Button
               >
-              {#if lock}
-                {#each ['item', 'ability'] as field (field)}
-                  {@const value = member[field as 'item' | 'ability']}
-                  <label class="flex min-h-11 items-center gap-2 text-xs"
-                    ><input
-                      type="checkbox"
-                      disabled={!value}
-                      checked={!!lock[field as 'item' | 'ability']}
-                      onchange={() =>
-                        changeLock(
-                          member.pokemon,
-                          field as 'item' | 'ability',
-                          value || ''
-                        )}
-                    />Keep {field}: {value || 'unknown'}</label
-                  >
-                {/each}
-                {#each member.moves as move (move)}<label
-                    class="flex min-h-11 items-center gap-2 text-xs"
-                    ><input
-                      type="checkbox"
-                      checked={lock.moves.includes(move)}
-                      onchange={() => changeLock(member.pokemon, 'moves', move)}
-                    />Keep {move}</label
-                  >{/each}
-                {#if !member.moves.length}<p
-                    class="my-2 text-xs text-muted-foreground"
-                  >
-                    Moves unknown; cannot lock them.
-                  </p>{/if}
-              {/if}
               <details class="mt-3">
                 <summary class="cursor-pointer py-2 text-sm text-primary"
                   >Edit set</summary
@@ -357,8 +298,10 @@
           {/each}
         </div>
         <p class="mt-4 text-xs leading-5 text-muted-foreground">
-          Locks filter suggestions; they do not restrict your manual edits. Save
-          set edits before comparing. Published text preserves IVs and other
+          {draft.changeSlot === null
+            ? 'Keeping all six. Choose one Pokémon above to explore replacements.'
+            : `Changing ${draft.members[draft.changeSlot].pokemon} only. Other five sets stay unchanged.`}
+          Save set edits before comparing. Published text preserves IVs and other
           extra lines; unknown details stay omitted.
         </p>
         {#if showExport}<label class="mt-4 block text-sm font-medium"
@@ -402,30 +345,13 @@
           <div>
             <h2 class="text-2xl font-semibold">Find similar teams</h2>
             <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
-              Keep what matters using locks above. Shared Pokémon first,
-              matching known set details next, reported results break ties.
-              These are alternatives, not proven upgrades.
+              {draft.changeSlot === null
+                ? 'Similar teams for reference. Your team stays unchanged until you choose a Pokémon to change.'
+                : 'Alternative builds first, then different species from similar teams. Only the selected slot changes.'}
+              Shared Pokémon first, matching known set details next, reported results
+              break ties. All regulations included; alternatives are not proven upgrades.
             </p>
           </div>
-          <label class="text-sm font-medium"
-            >Candidate regulation<select
-              class="filter-select mt-2"
-              bind:value={draft.targetRegulation}
-              onchange={() => {
-                candidateId = '';
-                limit = 12;
-              }}
-            >
-              <option value="all">All regulations</option>
-              {#each [...new Set(data.catalog.teams.map((team) => team.regulation))]
-                .sort()
-                .reverse() as regulation (regulation)}<option value={regulation}
-                  >{regulation}{regulation === current
-                    ? ' · current'
-                    : ''}</option
-                >{/each}
-            </select></label
-          >
         </div>
         <p class="mt-4 text-sm" aria-live="polite">
           {results.length} matching alternatives. Current-regulation legality remains
@@ -435,47 +361,60 @@
             Save set edits to update comparisons.
           </p>{/if}
         {#if candidate}
-          {@const evidence = bestEvidence(candidate, current)}
+          {@const evidence = bestEvidence(candidate.team, current)}
           <section
             aria-label="Selected comparison"
             bind:this={comparisonElement}
             class="mt-5 rounded-2xl border bg-card p-5"
           >
-            <h3 class="text-lg font-semibold">Compare with {candidate.name}</h3>
+            <h3 class="text-lg font-semibold">
+              {candidate.member
+                ? `Replace ${draft.members[draft.changeSlot!].pokemon} with ${candidate.member.pokemon}`
+                : `Compare with ${candidate.team.name}`}
+            </h3>
             <p class="mt-2 text-sm text-muted-foreground">
-              {candidate.regulation} · {evidence.label} · {evidence.event ||
+              {candidate.team.regulation} · {evidence.label} · {evidence.event ||
                 'No event reported'}
             </p>
-            <TeamDifferences before={draft.members} after={candidate.members} />
+            <TeamDifferences before={draft.members} after={comparisonMembers} />
             <div class="mt-5 flex flex-wrap gap-3">
-              <Button
-                class="min-h-11"
-                disabled={editingSets}
-                onclick={applyCandidate}>Use candidate as edited copy</Button
-              ><a
+              {#if candidate.member}<Button
+                  class="min-h-11"
+                  disabled={editingSets}
+                  onclick={applyCandidate}>Use replacement</Button
+                >{/if}<a
                 class="inline-flex min-h-11 items-center text-sm text-primary underline"
-                href={candidate.pasteUrl}
+                href={candidate.team.pasteUrl}
                 rel="external"
                 target="_blank">Candidate source</a
               >
             </div>
             <p class="mt-3 text-xs text-muted-foreground">
-              Replaces all six sets in your editable copy. Original remains
-              saved; candidate source is retained. Review before saving.
+              {candidate.member
+                ? 'Only the selected slot will change. Original and source history stay saved.'
+                : 'Reference comparison only. Choose one Pokémon above to explore a replacement.'}
             </p>
           </section>
         {/if}
         <div class="mt-5 grid gap-3 md:grid-cols-2">
-          {#each results.slice(0, limit) as result (result.team.id)}
+          {#each results.slice(0, limit) as result (result.id)}
             {@const evidence = bestEvidence(result.team, current)}
             <article
               class="min-w-0 rounded-xl border bg-card p-5 transition-colors hover:border-primary/40"
             >
               <p class="text-xs text-primary">
-                {result.shared}/6 Pokémon shared · {result.details} matching set details
-                · {result.team.regulation}
+                Source: {result.shared}/6 Pokémon shared · {result.details} matching
+                set details · {result.team.regulation}
               </p>
-              <h3 class="mt-2 font-semibold">{result.team.name}</h3>
+              <h3 class="mt-2 font-semibold">
+                {result.member
+                  ? `${result.member.pokemon} · ${result.member.item || 'Item unknown'}`
+                  : result.team.name}
+              </h3>
+              {#if result.member}<p class="mt-2 text-xs text-muted-foreground">
+                  {result.member.moves.join(' · ') || 'Moves unknown'}
+                </p>
+                <p class="mt-2 text-xs">From {result.team.name}</p>{/if}
               <p class="mt-2 text-xs leading-5 text-muted-foreground">
                 {result.team.members
                   .map((member) => member.pokemon)
@@ -493,8 +432,10 @@
                 variant="outline"
                 class="mt-4 min-h-11"
                 disabled={editingSets}
-                onclick={() => selectCandidate(result.team.id)}
-                >Compare {result.team.creator || 'team'}</Button
+                onclick={() => selectCandidate(result.id)}
+                >{result.member
+                  ? `Compare ${result.member.pokemon}`
+                  : `Compare ${result.team.creator || 'team'}`}</Button
               >
             </article>
           {/each}
@@ -502,8 +443,9 @@
         {#if !results.length}<p
             class="mt-5 rounded-xl border border-dashed p-6 text-sm text-muted-foreground"
           >
-            No teams match these locks and regulation. Try unlocking a detail or
-            choosing all regulations. Locks are never silently relaxed.
+            No alternatives found in this catalog. {draft.changeSlot === null
+              ? 'Choose one Pokémon to explore individual replacements.'
+              : 'Try choosing another Pokémon to change.'}
           </p>{/if}
         {#if results.length > limit}<Button
             variant="outline"

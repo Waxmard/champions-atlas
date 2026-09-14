@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   differences,
   exportPaste,
-  matchesLocks,
+  replacementMembers,
   newSavedTeam,
   readSavedTeams,
   saveTeam,
@@ -32,64 +32,86 @@ const team = (id = 'original', regulation = 'M-B') => ({
   reports: [],
 });
 
-test('similarity applies every lock, ranks shared species before details/results, and never rewards unknowns', () => {
-  const saved = newSavedTeam(team(), 'M-C');
-  saved.locks = [
-    {
-      pokemon: 'Pokemon0',
-      item: 'Item',
-      ability: 'Ability',
-      moves: ['Protect', 'Fake Out'],
-    },
-  ];
+test('default recommendations keep discovery ranking; selecting one slot yields builds and replacements from similar teams', () => {
+  const saved = newSavedTeam(team());
+  assert.equal(saved.changeSlot, null);
   const close = team('close', 'M-C');
   close.members[5] = member('New');
+  close.members[0].item = 'Other item';
   const less = team('less', 'M-C');
   less.members[4] = member('Other');
   less.members[5] = member('Another');
   less.reports = [{ event: 'Worlds', rank: 'Champion', sourceUrl: '' }];
-  const invalid = team('invalid', 'M-C');
-  invalid.members[0].item = 'Different';
-  const unknown = team('unknown', 'M-C');
-  unknown.members[0].moves = [];
   assert.deepEqual(
-    similarTeams(saved, [less, invalid, unknown, close, team()], 'M-C').map(
+    similarTeams(saved, [less, close, team()], 'M-C').map(
       ({ team }) => team.id
     ),
     ['close', 'less']
   );
-  assert.equal(matchesLocks(invalid, saved.locks), false);
-  assert.equal(matchesLocks(unknown, saved.locks), false);
-  const equal = team('equal', 'M-C');
-  equal.members = [...close.members].reverse();
-  equal.reports = less.reports;
-  assert.equal(similarTeams(saved, [close, equal], 'M-C')[0].team.id, 'equal');
+  assert.throws(
+    () => useCandidate(saved, similarTeams(saved, [close], 'M-C')[0]),
+    /replacement/
+  );
+  saved.changeSlot = 0;
+  const recommendations = similarTeams(saved, [less, close], 'M-C');
+  assert.equal(recommendations[0].team.id, 'close');
+  assert.equal(recommendations[0].member.pokemon, 'Pokemon0');
+  assert.ok(
+    recommendations.some(
+      ({ member }) =>
+        member.pokemon === 'Pokemon0' && member.item === 'Other item'
+    )
+  );
+  assert.ok(recommendations.some(({ member }) => member.pokemon === 'New'));
+  assert.ok(
+    recommendations.every(
+      ({ member }) =>
+        !saved.members
+          .slice(1)
+          .some((other) => other.pokemon === member.pokemon)
+    )
+  );
+  assert.throws(
+    () => replacementMembers(saved, saved.members[1]),
+    /another slot/
+  );
+  saved.changeSlot = 3;
+  const next = useCandidate(saved, similarTeams(saved, [close], 'M-C')[0]);
+  assert.deepEqual(
+    next.members.filter((_, i) => i !== 3),
+    saved.members.filter((_, i) => i !== 3)
+  );
 });
 
-test('candidate copies preserve immutable original, retain sources, enforce locks, and export raw extra fields', () => {
+test('replacement changes only selected slot, preserves original and raw export fields, and deduplicates suggestions', () => {
   const source = team();
   source.members[0].set =
     'Nickname (Pokemon0) @ Item\nAbility: Ability\nIVs: 0 Atk\nEVs: 32 HP\nAdamant Nature\n- Protect\n- Fake Out';
-  const saved = newSavedTeam(source, 'M-C');
+  const saved = newSavedTeam(source);
+  saved.changeSlot = 5;
   const snapshot = JSON.stringify(saved.original);
   const candidate = team('candidate', 'M-C');
   candidate.pasteUrl = 'https://pokepast.es/1111111111111111';
-  candidate.members[0].set = source.members[0].set;
   candidate.members[5] = member('Replacement');
-  const edited = useCandidate(saved, candidate);
-  edited.members[1].item = 'Changed';
+  candidate.members[1].item = 'Must not be applied';
+  const recommendations = similarTeams(
+    saved,
+    [candidate, { ...candidate, id: 'duplicate' }],
+    'M-C'
+  );
+  assert.equal(recommendations.length, 1);
+  const edited = useCandidate(saved, recommendations[0]);
   assert.equal(JSON.stringify(saved.original), snapshot);
   assert.equal(JSON.stringify(edited.original), snapshot);
-  assert.equal(saved.members[1].item, 'Item');
-  assert.equal(candidate.members[1].item, 'Item');
+  assert.deepEqual(edited.members.slice(0, 5), saved.members.slice(0, 5));
+  assert.equal(edited.members[5].pokemon, 'Replacement');
+  assert.equal(saved.members[5].pokemon, 'Pokemon5');
   assert.equal(edited.sources.length, 2);
-  assert.equal(useCandidate(edited, candidate).sources.length, 2);
+  assert.equal(useCandidate(edited, recommendations[0]).sources.length, 2);
   const paste = exportPaste(edited.members);
   assert.match(paste, /Nickname \(Pokemon0\)/);
   assert.match(paste, /IVs: 0 Atk/);
   assert.equal(parsePaste(paste).length, 6);
-  saved.locks = [{ pokemon: 'Pokemon5', item: '', ability: '', moves: [] }];
-  assert.throws(() => useCandidate(saved, candidate), /locks/);
 });
 
 test('diff aligns species despite reordered slots, and distinguishes missing information from known changes', () => {
@@ -120,9 +142,9 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
       value = next;
     },
   };
-  const first = newSavedTeam(team(), 'M-C');
+  const first = newSavedTeam(team());
   saveTeam(storage, first);
-  const second = newSavedTeam(team('second'), 'M-C');
+  const second = newSavedTeam(team('second'));
   saveTeam(storage, second);
   first.name = 'Edited';
   saveTeam(storage, first);
@@ -151,4 +173,25 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
   assert.equal(value, '{broken');
   value = JSON.stringify([{ ...first, members: [] }]);
   assert.throws(() => readSavedTeams(storage), /untouched/);
+});
+
+test('old saved teams load without retaining obsolete locks or losing original and edits', () => {
+  const saved = newSavedTeam(team());
+  const { changeSlot, ...old } = saved;
+  assert.equal(changeSlot, null);
+  const raw = JSON.stringify([
+    {
+      ...old,
+      targetRegulation: 'M-C',
+      locks: [{ pokemon: 'Pokemon0', item: '', ability: '', moves: [] }],
+    },
+  ]);
+  assert.deepEqual(readSavedTeams({ getItem: () => raw }), [saved]);
+  assert.throws(
+    () =>
+      readSavedTeams({
+        getItem: () => JSON.stringify([{ ...saved, changeSlot: 6 }]),
+      }),
+    /untouched/
+  );
 });

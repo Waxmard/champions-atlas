@@ -35,8 +35,8 @@ cache. Individual paste failures preserve compatible previous sets and expose an
 error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
 partial-fetch option and does not erase compatible previously loaded sets.
 
-Saved teams retain their own original snapshot and source history. Candidate
-replacement copies published raw sets; manual edits belong to the user's draft.
+Saved teams retain their own original snapshot and source history. Single-slot
+replacement copies the selected published raw set; manual edits belong to the user's draft.
 Similarity measures shared Pokémon and matching known set details, with result
 priority breaking ties. It does not predict matchup quality or infer EVs.
 
