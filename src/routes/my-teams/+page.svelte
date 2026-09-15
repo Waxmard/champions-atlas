@@ -3,6 +3,8 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import ExternalLink from '@lucide/svelte/icons/external-link';
+  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import { bestEvidence, type Team } from '$lib/catalog';
@@ -276,10 +278,17 @@
               class="min-w-0 rounded-xl border p-4"
               aria-label={`${member.pokemon} set`}
             >
-              <h2 class="font-semibold wrap-break-word">{member.pokemon}</h2>
-              <p class="mt-1 text-sm text-primary">
-                {member.item || 'Item unknown'}
-              </p>
+              <div class="flex items-center gap-3">
+                <PokemonSprite pokemon={member.pokemon} size={64} />
+                <div class="min-w-0">
+                  <h2 class="font-semibold wrap-break-word">
+                    {member.pokemon}
+                  </h2>
+                  <p class="mt-1 text-sm wrap-break-word text-primary">
+                    {member.item || 'Item unknown'}
+                  </p>
+                </div>
+              </div>
               <Button
                 variant={draft.changeSlot === index ? 'default' : 'outline'}
                 class="mt-3 min-h-11"
@@ -325,11 +334,13 @@
           </p>
           {#if draft.sources.length}<ul class="mt-3 space-y-3 text-sm">
               {#each draft.sources as source (source.pasteUrl)}<li>
-                  <a
-                    class="text-primary underline"
+                  <Button
                     href={source.pasteUrl}
-                    rel="external"
-                    target="_blank">{source.name}</a
+                    variant="outline"
+                    class="min-h-11 whitespace-normal"
+                    rel="external noreferrer"
+                    target="_blank"
+                    ><ExternalLink aria-hidden="true" />{source.name}</Button
                   >
                 </li>{/each}
             </ul>
@@ -384,17 +395,29 @@
               {candidate.team.regulation} · {evidence.label} · {evidence.event ||
                 'No event reported'}
             </p>
+            <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
+              {#if candidate.team.regulation === current}<span
+                  class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
+                  >Current regulation</span
+                >{/if}
+              {#if evidence.level <= 2}<span
+                  class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
+                  >Strong evidence</span
+                >{/if}
+            </div>
             <TeamDifferences before={draft.members} after={comparisonMembers} />
             <div class="mt-5 flex flex-wrap gap-3">
               {#if candidate.member}<Button
                   class="min-h-11"
                   disabled={editingSets}
                   onclick={applyCandidate}>Use replacement</Button
-                >{/if}<a
-                class="inline-flex min-h-11 items-center text-sm text-primary underline"
+                >{/if}<Button
                 href={candidate.team.pasteUrl}
-                rel="external"
-                target="_blank">Candidate source</a
+                variant="outline"
+                class="min-h-11"
+                rel="external noreferrer"
+                target="_blank"
+                ><ExternalLink aria-hidden="true" />Candidate source</Button
               >
             </div>
             <p class="mt-3 text-xs text-muted-foreground">
@@ -414,11 +437,34 @@
                 Source: {result.shared}/6 Pokémon shared · {result.details} matching
                 set details · {result.team.regulation}
               </p>
-              <h3 class="mt-2 font-semibold">
-                {result.member
-                  ? `${result.member.pokemon} · ${result.member.item || 'Item unknown'}`
-                  : result.team.name}
-              </h3>
+              <div class="mt-2 flex items-center gap-3">
+                {#if result.member}<PokemonSprite
+                    pokemon={result.member.pokemon}
+                    size={32}
+                  />{:else}<ul
+                    class="grid shrink-0 grid-cols-3 gap-1"
+                    aria-label="Team members"
+                  >
+                    {#each result.team.members as member (member.pokemon)}<li>
+                        <PokemonSprite pokemon={member.pokemon} size={24} />
+                      </li>{/each}
+                  </ul>{/if}
+                <h3 class="min-w-0 font-semibold wrap-break-word">
+                  {result.member
+                    ? `${result.member.pokemon} · ${result.member.item || 'Item unknown'}`
+                    : result.team.name}
+                </h3>
+              </div>
+              <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
+                {#if result.team.regulation === current}<span
+                    class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
+                    >Current regulation</span
+                  >{/if}
+                {#if evidence.level <= 2}<span
+                    class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
+                    >Strong evidence</span
+                  >{/if}
+              </div>
               {#if result.member}<p class="mt-2 text-xs text-muted-foreground">
                   {result.member.moves.join(' · ') || 'Moves unknown'}
                 </p>

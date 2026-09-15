@@ -3,7 +3,7 @@ import test from 'node:test';
 import { Server } from '../.svelte-kit/output/server/index.js';
 import { manifest } from '../.svelte-kit/output/server/manifest.js';
 
-test('built home page renders the real catalog and source attribution', async () => {
+test('built home page renders the catalog, local sprites, and attribution', async () => {
   const server = new Server(manifest);
   await server.init({ env: {} });
 
@@ -18,4 +18,7 @@ test('built home page renders the real catalog and source attribution', async ()
   assert.match(html, /Reg M-C/);
   assert.match(html, /Catalog snapshot/);
   assert.match(html, /href="https:\/\/docs\.google\.com\/spreadsheets\//);
+  assert.match(html, /src="(?:\.\/|\/)?sprites\/[^"/]+\.png"/);
+  assert.match(html, /PokéAPI sprites/);
+  assert.match(html, /href="https:\/\/github\.com\/PokeAPI\/sprites"/);
 });

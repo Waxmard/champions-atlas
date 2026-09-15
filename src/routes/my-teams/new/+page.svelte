@@ -35,7 +35,7 @@
         <a
           class="text-primary underline"
           href="https://play.pokemonshowdown.com/teambuilder"
-          rel="external"
+          rel="external noreferrer"
           target="_blank">Pokémon Showdown Teambuilder</a
         >, then paste its exported text. No legality check.
       </p>

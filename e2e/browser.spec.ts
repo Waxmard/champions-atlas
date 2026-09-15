@@ -1,11 +1,76 @@
 import { expect, test } from '@playwright/test';
 
+test('sprite cards, responsive filters, and external attribution work', async ({
+  page,
+}, testInfo) => {
+  await page.goto('/');
+  const panel = page.locator('#filters-panel');
+
+  if (testInfo.project.name === 'mobile') {
+    const toggle = page.getByRole('button', { name: 'Filters', exact: true });
+    await expect(toggle).toHaveAttribute('aria-controls', 'filters-panel');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(panel).toBeHidden();
+    await toggle.click();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await expect(panel).toBeVisible();
+  } else {
+    await expect(panel).toBeVisible();
+  }
+
+  const cards = page
+    .getByRole('region', { name: 'Matching teams' })
+    .getByRole('article');
+  const card = cards.first();
+  const sprites = card.locator('img[src*="/sprites/"]');
+  const sprite = sprites.first();
+  await expect(sprite).toBeVisible();
+  await expect
+    .poll(() =>
+      sprites.evaluateAll((images) =>
+        images.every((image) => image.complete && image.naturalWidth > 0)
+      )
+    )
+    .toBe(true);
+
+  const member = card
+    .getByRole('list', { name: 'Team members' })
+    .getByRole('listitem')
+    .first();
+  const species = (await member.innerText()).split('\n')[0];
+  await sprite.dispatchEvent('error');
+  await expect(sprite).toBeHidden();
+  await expect(card.getByText(species, { exact: true })).toBeVisible();
+
+  const attribution = page.locator(
+    'a[href="https://github.com/PokeAPI/sprites"]'
+  );
+  await expect(attribution).toHaveAttribute('target', '_blank');
+  await expect(attribution).toHaveAttribute('rel', /external/);
+  await expect(attribution).toHaveAttribute('rel', /noreferrer/);
+
+  if (testInfo.project.name === 'mobile') {
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth
+      )
+    ).toBe(true);
+  }
+});
+
 test('multi-Pokémon item filters survive details, Back, Forward, and reload', async ({
   page,
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
+  const openMobileFilters = async () => {
+    if (testInfo.project.name !== 'mobile') return;
+    const toggle = page.getByRole('button', { name: 'Filters', exact: true });
+    if ((await toggle.getAttribute('aria-expanded')) === 'false')
+      await toggle.click();
+  };
   await page.goto('/');
+  await openMobileFilters();
   const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
   const incineroar = page.getByRole('option', {
     name: 'Incineroar',
@@ -66,6 +131,7 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
     page.getByRole('heading', { name: 'Results & sources' })
   ).toBeVisible();
   await page.getByRole('link', { name: 'Back to teams' }).click();
+  await openMobileFilters();
   await expect(page).toHaveURL(
     new RegExp(`\\?${query.slice(1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
   );
@@ -79,6 +145,7 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
   await page.goBack();
   await page.reload();
+  await openMobileFilters();
   await expect(
     page.getByRole('button', { name: 'Remove Rillaboom', exact: true })
   ).toBeVisible();

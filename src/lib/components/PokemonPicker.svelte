@@ -2,6 +2,7 @@
   import { Combobox } from 'bits-ui';
   import Search from '@lucide/svelte/icons/search';
   import { normalize } from '$lib/catalog';
+  import PokemonSprite from './PokemonSprite.svelte';
 
   let {
     options,
@@ -61,8 +62,8 @@
           <Combobox.Item
             value={pokemon}
             label={pokemon}
-            class="flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
-            >{pokemon}</Combobox.Item
+            class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+            ><PokemonSprite {pokemon} size={32} />{pokemon}</Combobox.Item
           >
         {:else}
           <p class="p-3 text-sm text-muted-foreground">

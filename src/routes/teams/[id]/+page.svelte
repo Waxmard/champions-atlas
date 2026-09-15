@@ -3,14 +3,18 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import Copy from '@lucide/svelte/icons/copy';
+  import ExternalLink from '@lucide/svelte/icons/external-link';
+  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
-  import { evidence, type Team } from '$lib/catalog';
+  import { bestEvidence, evidence, type Team } from '$lib/catalog';
   import { newSavedTeam, saveTeam } from '$lib/workbench';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const team: Team = $derived(data.team);
+  const strongest = $derived(bestEvidence(team, data.currentRegulation));
   let copyStatus = $state('');
   function useTeam() {
     try {
@@ -65,6 +69,14 @@
     <span class="rounded-md border bg-card px-2 py-1 font-semibold"
       >Reg {team.regulation}</span
     >
+    {#if team.regulation === data.currentRegulation}<span
+        class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
+        >Current regulation</span
+      >{/if}
+    {#if strongest.level <= 2}<span
+        class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
+        >Strong evidence</span
+      >{/if}
     <span class="text-muted-foreground"
       >Shared {team.publishedAt || 'date unknown'} · Doubles</span
     >
@@ -79,8 +91,13 @@
   </p>
   <div class="mt-6 flex flex-wrap gap-3">
     <Button class="min-h-11 px-4" onclick={useTeam}>Use this team</Button>
-    <Button href={team.pasteUrl} class="min-h-11 px-4"
-      >Open original paste</Button
+    <Button
+      href={team.pasteUrl}
+      variant="outline"
+      class="min-h-11 px-4"
+      target="_blank"
+      rel="external noreferrer"
+      ><ExternalLink aria-hidden="true" />Open original paste</Button
     >
     {#if team.paste}<Button
         variant="outline"
@@ -107,13 +124,20 @@
         : 'Source does not list this code as available.'}
     </p>{/if}
   <p
-    class="mt-5 rounded-xl border bg-secondary/50 p-4 text-sm leading-6 text-muted-foreground"
+    role="alert"
+    class="mt-5 flex gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6"
   >
-    Current-regulation legality is unverified. {team.regulation !==
-    data.currentRegulation
-      ? `This team was shared for ${team.regulation}; check it against ${data.currentRegulation} before using it.`
-      : 'The regulation label comes from the source sheet.'} Missing set details remain
-    unknown.
+    <AlertTriangle
+      class="mt-1 size-4 shrink-0 text-destructive"
+      aria-hidden="true"
+    />
+    <span
+      >Current-regulation legality is unverified. {team.regulation !==
+      data.currentRegulation
+        ? `This team was shared for ${team.regulation}; check it against ${data.currentRegulation} before using it.`
+        : 'The regulation label comes from the source sheet.'} Missing set details
+      remain unknown.</span
+    >
   </p>
   {#if team.pasteError}<p class="mt-3 text-sm text-muted-foreground">
       Some published details could not be loaded. {team.pasteError}
@@ -125,11 +149,20 @@
   >
     {#each team.members as member, index (index)}
       <article class="rounded-2xl border bg-card p-5">
-        <p class="mb-3 text-xs font-medium text-muted-foreground">
-          Slot {index + 1}
-        </p>
-        <h2 class="text-lg font-semibold">{member.pokemon}</h2>
-        <p class="mt-1 text-sm text-primary">{member.item || 'Item unknown'}</p>
+        <div class="flex items-center gap-3">
+          <PokemonSprite pokemon={member.pokemon} size={64} />
+          <div class="min-w-0">
+            <p class="text-xs font-medium text-muted-foreground">
+              Slot {index + 1}
+            </p>
+            <h2 class="mt-1 text-lg font-semibold wrap-break-word">
+              {member.pokemon}
+            </h2>
+            <p class="mt-1 text-sm wrap-break-word text-primary">
+              {member.item || 'Item unknown'}
+            </p>
+          </div>
+        </div>
         <dl
           class="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-t pt-4 text-xs"
         >
@@ -185,7 +218,10 @@
           {#if report.sourceUrl}<Button
               href={report.sourceUrl}
               variant="outline"
-              class="min-h-11">Original source</Button
+              class="min-h-11"
+              target="_blank"
+              rel="external noreferrer"
+              ><ExternalLink aria-hidden="true" />Original source</Button
             >{/if}
         </li>
       {/each}

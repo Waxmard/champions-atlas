@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import { bestEvidence, type Team } from '$lib/catalog';
+  import PokemonSprite from './PokemonSprite.svelte';
 
   let {
     team,
@@ -35,10 +36,20 @@
     onclick={open}
     class="block rounded-2xl p-5 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
   >
-    <div class="mb-4 flex items-center justify-between gap-2">
-      <span class="rounded-md bg-secondary px-2 py-1 text-xs font-semibold"
-        >Reg {team.regulation}</span
-      >
+    <div class="mb-4 flex items-start justify-between gap-2">
+      <div class="flex flex-wrap gap-1.5">
+        <span class="rounded-md bg-secondary px-2 py-1 text-xs font-semibold"
+          >Reg {team.regulation}</span
+        >
+        {#if team.regulation === currentRegulation}<span
+            class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"
+            >Current regulation</span
+          >{/if}
+        {#if result.level <= 2}<span
+            class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"
+            >Strong evidence</span
+          >{/if}
+      </div>
       <span class="text-xs text-muted-foreground">{team.publishedAt}</span>
     </div>
     <h2
@@ -49,13 +60,16 @@
     <p class="mt-1 truncate text-xs text-muted-foreground">
       {team.creator || 'Creator not listed'}
     </p>
-    <ul class="my-5 grid grid-cols-2 gap-2" aria-label="Team members">
+    <ul class="my-5 grid grid-cols-3 gap-2" aria-label="Team members">
       {#each team.members as member, index (index)}
-        <li class="min-w-0 rounded-lg bg-secondary/60 px-3 py-2.5">
-          <p class="text-xs font-semibold wrap-break-word">
+        <li
+          class="flex min-w-0 flex-col items-center rounded-lg bg-secondary/60 px-2 py-2.5 text-center"
+        >
+          <PokemonSprite pokemon={member.pokemon} />
+          <p class="mt-1 text-xs font-semibold wrap-break-word">
             {member.pokemon}
           </p>
-          <p class="mt-1 text-[11px] wrap-break-word text-muted-foreground">
+          <p class="mt-1 text-xs wrap-break-word text-muted-foreground">
             {member.item || 'Item unknown'}
           </p>
         </li>
@@ -70,7 +84,7 @@
           {result.label}
         </p>
         {#if result.event}<p
-            class="mt-0.5 truncate text-[11px] text-muted-foreground"
+            class="mt-0.5 truncate text-xs text-muted-foreground"
             title={result.event}
           >
             {result.event}

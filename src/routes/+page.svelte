@@ -20,6 +20,7 @@
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
+  let filtersOpen = $state(page.url.searchParams.has('member'));
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const filterState = $derived.by(() => {
@@ -166,131 +167,153 @@
   </div>
 
   <div class="grid items-start gap-7 lg:grid-cols-[280px_1fr]">
-    <aside class="rounded-2xl border bg-card p-5 lg:sticky lg:top-6">
-      <details open>
-        <summary
-          class="flex min-h-11 cursor-pointer list-none items-center gap-2 font-semibold"
+    <aside
+      aria-label="Filters"
+      class="rounded-2xl border bg-card p-5 lg:sticky lg:top-6"
+    >
+      <div class="flex min-h-11 items-center gap-2">
+        <span class="sr-only" aria-live="polite"
+          >{filters.length} of 6 Pokémon selected</span
+        >
+        <button
+          type="button"
+          class="flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-md font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+          aria-label="Filters"
+          aria-controls="filters-panel"
+          aria-expanded={filtersOpen}
+          onclick={() => (filtersOpen = !filtersOpen)}
           ><SlidersHorizontal class="size-4" aria-hidden="true" />Filters
           <span class="ml-auto text-sm font-normal text-muted-foreground"
             >{filters.length}/6</span
-          ></summary
+          ></button
         >
-        <p class="mt-1 mb-4 text-xs leading-5 text-muted-foreground">
-          Teams must include every Pokémon you select. Forms and Megas match
-          exactly.
-        </p>
-        <PokemonPicker
-          options={availablePokemon}
-          onselect={addPokemon}
-          disabled={filters.length >= 6}
-        />
-        <div class="mt-4 space-y-3">
-          {#each filters as filter, index (filter.pokemon)}
-            <section
-              class="rounded-xl border bg-background p-3"
-              aria-label={`${filter.pokemon} constraints`}
-            >
-              <div class="flex items-center justify-between gap-2">
-                <h2 class="text-sm font-semibold">{filter.pokemon}</h2>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove ${filter.pokemon}`}
-                  onclick={() =>
-                    changeFilters(filters.filter((_, i) => i !== index))}
-                  ><X class="size-4" aria-hidden="true" /></Button
-                >
-              </div>
-              <label
-                for={`item-${index}`}
-                class="mt-1 block text-xs text-muted-foreground"
-                >Held item</label
-              >
-              <select
-                id={`item-${index}`}
-                class="filter-select mt-1"
-                value={filter.item}
-                onchange={(event) =>
-                  updateMember(index, 'item', event.currentTarget.value)}
-              >
-                <option value="">Any item</option>
-                {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
-                    value={filter.item}>{filter.item}</option
-                  >{/if}
-                {#each options(filter.pokemon, 'item') as item (item)}<option
-                    value={item}>{item}</option
-                  >{/each}
-              </select>
-              <details
-                class="mt-3"
-                open={Boolean(filter.ability || filter.move)}
-              >
-                <summary
-                  class="cursor-pointer py-1 text-xs text-muted-foreground"
-                  >Move & ability</summary
-                >
-                {#each ['move', 'ability'] as field (field)}
-                  <label
-                    for={`${field}-${index}`}
-                    class="mt-2 block text-xs text-muted-foreground capitalize"
-                    >{field}</label
-                  >
-                  <select
-                    id={`${field}-${index}`}
-                    class="filter-select mt-1"
-                    value={filter[field as 'move' | 'ability']}
-                    onchange={(event) =>
-                      updateMember(
-                        index,
-                        field as 'move' | 'ability',
-                        event.currentTarget.value
-                      )}
-                  >
-                    <option value="">Any {field}</option>
-                    {#if filter[field as 'move' | 'ability'] && !options(filter.pokemon, field as 'move' | 'ability').includes(filter[field as 'move' | 'ability'])}
-                      <option value={filter[field as 'move' | 'ability']}
-                        >{filter[field as 'move' | 'ability']}</option
-                      >
-                    {/if}
-                    {#each options(filter.pokemon, field as 'move' | 'ability') as option (option)}<option
-                        value={option}>{option}</option
-                      >{/each}
-                  </select>
-                {/each}
-                <p class="mt-2 text-[11px] leading-4 text-muted-foreground">
-                  Matches published sets only. Many teams have no set details
-                  yet.
-                </p>
-              </details>
-            </section>
-          {/each}
+        <div class="hidden flex-1 items-center gap-2 font-semibold lg:flex">
+          <SlidersHorizontal class="size-4" aria-hidden="true" />Filters
+          <span class="ml-auto text-sm font-normal text-muted-foreground"
+            >{filters.length}/6</span
+          >
         </div>
-        <label for="regulation" class="mt-6 block text-xs font-semibold"
-          >Regulation</label
-        >
-        <select
-          id="regulation"
-          class="filter-select mt-2"
-          value={regulation}
-          onchange={(event) =>
-            changeOption('regulation', event.currentTarget.value)}
-        >
-          <option value="all">All regulations</option>
-          {#each [...new Set(teams.map((team) => team.regulation))]
-            .sort()
-            .reverse() as reg (reg)}<option value={reg}
-              >{reg}{reg === current ? ' · current' : ''}</option
-            >{/each}
-        </select>
-        {#if filters.length || regulation !== 'all' || filterState.error}
-          <Button
+        {#if filters.length || regulation !== 'all' || filterState.error}<Button
             variant="ghost"
-            class="mt-3 min-h-11 w-full"
+            class="min-h-11 px-2"
             onclick={() => navigate(new URLSearchParams())}
             >Clear filters</Button
+          >{/if}
+      </div>
+      <div
+        id="filters-panel"
+        class={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${filtersOpen ? 'visible grid-rows-[1fr] opacity-100' : 'invisible grid-rows-[0fr] opacity-0'} lg:visible lg:grid-rows-[1fr] lg:opacity-100`}
+      >
+        <div class="min-h-0 overflow-hidden">
+          <p class="mt-1 mb-4 text-xs leading-5 text-muted-foreground">
+            Teams must include every Pokémon you select. Forms and Megas match
+            exactly.
+          </p>
+          <PokemonPicker
+            options={availablePokemon}
+            onselect={addPokemon}
+            disabled={filters.length >= 6}
+          />
+          <div class="mt-4 space-y-3">
+            {#each filters as filter, index (filter.pokemon)}
+              <section
+                class="rounded-xl border bg-background p-3"
+                aria-label={`${filter.pokemon} constraints`}
+              >
+                <div class="flex items-center justify-between gap-2">
+                  <h2 class="text-sm font-semibold">{filter.pokemon}</h2>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove ${filter.pokemon}`}
+                    onclick={() =>
+                      changeFilters(filters.filter((_, i) => i !== index))}
+                    ><X class="size-4" aria-hidden="true" /></Button
+                  >
+                </div>
+                <label
+                  for={`item-${index}`}
+                  class="mt-1 block text-xs text-muted-foreground"
+                  >Held item</label
+                >
+                <select
+                  id={`item-${index}`}
+                  class="filter-select mt-1"
+                  value={filter.item}
+                  onchange={(event) =>
+                    updateMember(index, 'item', event.currentTarget.value)}
+                >
+                  <option value="">Any item</option>
+                  {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
+                      value={filter.item}>{filter.item}</option
+                    >{/if}
+                  {#each options(filter.pokemon, 'item') as item (item)}<option
+                      value={item}>{item}</option
+                    >{/each}
+                </select>
+                <details
+                  class="mt-3"
+                  open={Boolean(filter.ability || filter.move)}
+                >
+                  <summary
+                    class="cursor-pointer py-1 text-xs text-muted-foreground"
+                    >Move & ability</summary
+                  >
+                  {#each ['move', 'ability'] as field (field)}
+                    <label
+                      for={`${field}-${index}`}
+                      class="mt-2 block text-xs text-muted-foreground capitalize"
+                      >{field}</label
+                    >
+                    <select
+                      id={`${field}-${index}`}
+                      class="filter-select mt-1"
+                      value={filter[field as 'move' | 'ability']}
+                      onchange={(event) =>
+                        updateMember(
+                          index,
+                          field as 'move' | 'ability',
+                          event.currentTarget.value
+                        )}
+                    >
+                      <option value="">Any {field}</option>
+                      {#if filter[field as 'move' | 'ability'] && !options(filter.pokemon, field as 'move' | 'ability').includes(filter[field as 'move' | 'ability'])}
+                        <option value={filter[field as 'move' | 'ability']}
+                          >{filter[field as 'move' | 'ability']}</option
+                        >
+                      {/if}
+                      {#each options(filter.pokemon, field as 'move' | 'ability') as option (option)}<option
+                          value={option}>{option}</option
+                        >{/each}
+                    </select>
+                  {/each}
+                  <p class="mt-2 text-xs leading-4 text-muted-foreground">
+                    Matches published sets only. Many teams have no set details
+                    yet.
+                  </p>
+                </details>
+              </section>
+            {/each}
+          </div>
+          <label for="regulation" class="mt-6 block text-xs font-semibold"
+            >Regulation</label
           >
-        {/if}
-      </details>
+          <select
+            id="regulation"
+            class="filter-select mt-2"
+            value={regulation}
+            onchange={(event) =>
+              changeOption('regulation', event.currentTarget.value)}
+          >
+            <option value="all">All regulations</option>
+            {#each [...new Set(teams.map((team) => team.regulation))]
+              .sort()
+              .reverse() as reg (reg)}<option value={reg}
+                >{reg}{reg === current ? ' · current' : ''}</option
+              >{/each}
+          </select>
+        </div>
+      </div>
     </aside>
 
     <section aria-label="Matching teams" class="min-w-0">
@@ -377,7 +400,8 @@
         <a
           class="underline underline-offset-2"
           href={data.catalog.sources[0].url}
-          rel="external">Teams and result claims via VGCPastes</a
+          target="_blank"
+          rel="external noreferrer">Teams and result claims via VGCPastes</a
         >. Detailed sets available for {teams.filter((team) => team.paste)
           .length} teams.
       </p>

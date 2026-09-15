@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +11,8 @@ import {
   deduplicate,
   enrich,
   enrichPastes,
+  resolveSprite,
+  syncSprites,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
@@ -258,6 +260,84 @@ test('invalid refresh preserves existing catalog', async () => {
       JSON.parse(await readFile(path, 'utf8')).teams[0].id,
       'original'
     );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('sprite resolution keeps forms exact and covers catalog naming aliases', () => {
+  const results = [
+    ['lucario', 448],
+    ['arcanine-hisui', 10229],
+    ['indeedee-female', 10186],
+    ['lucario-mega', 10059],
+    ['lucario-mega-z', 10310],
+    ['floette-mega', 10296],
+  ].map(([name, id]) => ({
+    name,
+    url: `https://pokeapi.co/api/v2/pokemon/${id}/`,
+  }));
+  const index = { results };
+  const champions = (id) =>
+    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/champions/${id}.png`;
+
+  assert.equal(resolveSprite('Lucario', index), champions(448));
+  assert.equal(resolveSprite('Arcanine-Hisui', index), champions(10229));
+  assert.equal(resolveSprite('Indeedee-F', index), champions(10186));
+  assert.equal(resolveSprite('Lucario-Mega', index), champions(10059));
+  assert.equal(resolveSprite('Lucario-Mega-Z', index), champions(10310));
+  assert.equal(resolveSprite('Floette-Mega', index), champions(10296));
+  assert.equal(resolveSprite('Floette-Eternal-Mega', index), champions(10296));
+  assert.equal(
+    resolveSprite('Vivillon-Fancy', index),
+    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/666-fancy.png'
+  );
+  assert.equal(
+    resolveSprite('Sinistcha-Masterpiece', index),
+    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1013-masterpiece.png'
+  );
+  assert.equal(resolveSprite('Unknownmon', index), null);
+});
+
+test('sprite failures warn without changing catalog output or using wrong art', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-sprites-'));
+  const output = join(directory, 'catalog.json');
+  const sprites = join(directory, 'sprites');
+  const catalog = {
+    teams: [
+      {
+        members: [
+          { pokemon: 'Lucario' },
+          { pokemon: 'Vivillon-Fancy' },
+          { pokemon: 'Unknownmon' },
+        ],
+      },
+    ],
+  };
+  const index = {
+    results: [
+      {
+        name: 'lucario',
+        url: 'https://pokeapi.co/api/v2/pokemon/448/',
+      },
+    ],
+  };
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+  const warnings = [];
+  try {
+    await writeFile(output, JSON.stringify(catalog));
+    await syncSprites(catalog.teams, index, {
+      directory: sprites,
+      load: async (address) => {
+        if (address.endsWith('/448.png')) return png;
+        throw new Error('offline');
+      },
+      warn: (message) => warnings.push(message),
+    });
+    assert.deepEqual(await readdir(sprites), ['lucario.png']);
+    assert.match(warnings.join('\n'), /Sprite unavailable for Unknownmon/);
+    assert.match(warnings.join('\n'), /vivillonfancy\.png: offline/);
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
