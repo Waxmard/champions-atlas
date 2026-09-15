@@ -136,8 +136,9 @@ Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
 ability, nature, EVs, and four unique moves. Team building happens in
 [Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder);
 Champion's Atlas accepts its exported text only. Imported text becomes the
-immutable original; nickname, gender, IV, Tera Type, and unknown lines remain
-intact. Custom teams are saved locally under the current regulation with legality
+immutable original snapshot; nickname, gender, and unknown lines remain intact,
+while IVs, level, and Tera Type are omitted from displayed and exported Champions
+text. Custom teams are saved locally under the current regulation with legality
 unverified and no published source claims. File, URL, screenshot, rental-code,
 legality, and cross-device import are out of scope.
 
@@ -180,6 +181,8 @@ data-refresh hosting are not selected yet.
 The catalog is generated locally and ignored by Git. Dev/build/typecheck import
 it when missing and reuse it otherwise; refreshing is explicit. A clean checkout
 requires network access or a populated source cache for its first import.
+Catalog bootstrap also caches decorative Pokémon and item images locally. Missing
+images do not block catalog generation, and visible names remain authoritative.
 
 ## Delivery sequence
 

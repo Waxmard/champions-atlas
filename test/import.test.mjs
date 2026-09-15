@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdir,
+  mkdtemp,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,10 +18,15 @@ import {
   deduplicate,
   enrich,
   enrichPastes,
-  resolveSprite,
-  syncSprites,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
+import {
+  resolveItemIcon,
+  resolveSprite,
+  syncItems,
+  syncSprites,
+  validatePng,
+} from '../scripts/sync-assets.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
@@ -141,7 +153,7 @@ test('paste parser preserves complete sets and rejects unsafe input', () => {
   );
 });
 
-test('normalizes team sheets to champions formatting: EVs out of 32 and no IVs', () => {
+test('normalizes team sheets to champions formatting', () => {
   const paste = `Dragonite (M) @ Dragoninite  
 Ability: Inner Focus  
 Level: 50  
@@ -218,7 +230,12 @@ IVs: 31 Atk
 
   for (const member of members) {
     assert.doesNotMatch(member.set, /IVs:/);
+    assert.doesNotMatch(member.set, /Level:/);
+    assert.doesNotMatch(member.set, /Tera Type:/);
     assert.doesNotMatch(member.set, /252/);
+    assert.match(member.set, /Ability:/);
+    assert.match(member.set, /Nature/);
+    assert.match(member.set, /- /);
   }
 });
 
@@ -418,6 +435,60 @@ test('sprite failures warn without changing catalog output or using wrong art', 
     assert.deepEqual(await readdir(sprites), ['lucario.png']);
     assert.match(warnings.join('\n'), /Sprite unavailable for Unknownmon/);
     assert.match(warnings.join('\n'), /vivillonfancy\.png: offline/);
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('item icons resolve normal and Champions names, validate PNGs, and fail safely', async () => {
+  assert.equal(
+    resolveItemIcon('Leftovers'),
+    'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/ileftovers.png'
+  );
+  assert.equal(
+    resolveItemIcon('Absolite Z'),
+    'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/iabsolite_z.png'
+  );
+  assert.throws(() => validatePng(Buffer.from('not png')), /Invalid PNG/);
+
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-items-'));
+  const items = join(directory, 'items');
+  const output = join(directory, 'catalog.json');
+  const catalog = {
+    teams: [
+      {
+        members: [
+          { item: 'Leftovers' },
+          { item: 'Absolite Z' },
+          { item: null },
+        ],
+      },
+    ],
+  };
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+  const warnings = [];
+  try {
+    await writeCatalog(output, catalog);
+    await mkdir(items, { recursive: true });
+    await writeFile(join(items, 'stale.png'), png);
+    await writeFile(join(items, 'absolitez.png'), Buffer.from('broken'));
+    const stats = await syncItems(catalog.teams, {
+      directory: items,
+      load: async (address) => {
+        if (address.endsWith('/ileftovers.png')) return png;
+        return Buffer.from('not png');
+      },
+      warn: (message) => warnings.push(message),
+    });
+    assert.deepEqual(stats, {
+      wanted: 2,
+      downloaded: 1,
+      failed: 1,
+      removed: 1,
+    });
+    assert.deepEqual(await readdir(items), ['leftovers.png']);
+    assert.match(warnings.join('\n'), /absolitez\.png: Invalid PNG sprite/);
     assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
   } finally {
     await rm(directory, { recursive: true, force: true });

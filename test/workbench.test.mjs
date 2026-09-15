@@ -8,6 +8,7 @@ import {
   newSavedTeam,
   readSavedTeams,
   saveTeam,
+  setText,
   similarTeams,
   storageKey,
   useCandidate,
@@ -178,6 +179,10 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
 
 test('old saved teams load without retaining obsolete locks or losing original and edits', () => {
   const saved = newSavedTeam(team());
+  saved.members[0].set =
+    'Pokemon0 @ Item\nAbility: Ability\nLevel: 50\nTera Type: Fire\nIVs: 0 Atk\nEVs: 32 HP\nAdamant Nature\n- Protect';
+  saved.original.members[0].set = saved.members[0].set;
+  saved.original.paste = saved.members[0].set;
   const { changeSlot, ...old } = saved;
   assert.equal(changeSlot, null);
   const raw = JSON.stringify([
@@ -188,6 +193,18 @@ test('old saved teams load without retaining obsolete locks or losing original a
     },
   ]);
   assert.deepEqual(readSavedTeams({ getItem: () => raw }), [saved]);
+  const loaded = readSavedTeams({ getItem: () => raw })[0];
+  assert.match(loaded.original.paste, /Level: 50/);
+  for (const text of [
+    setText(loaded.members[0]),
+    exportPaste(loaded.members),
+    exportPaste(loaded.original.members),
+  ]) {
+    assert.doesNotMatch(text, /IVs:|Level:|Tera Type:/);
+    assert.match(text, /Ability: Ability/);
+    assert.match(text, /EVs: 32 HP/);
+    assert.match(text, /- Protect/);
+  }
   assert.throws(
     () =>
       readSavedTeams({

@@ -19,6 +19,9 @@ test('built home page renders the catalog, local sprites, and attribution', asyn
   assert.match(html, /Catalog snapshot/);
   assert.match(html, /href="https:\/\/docs\.google\.com\/spreadsheets\//);
   assert.match(html, /src="(?:\.\/|\/)?sprites\/[^"/]+\.png"/);
+  assert.match(html, /src="(?:\.\/|\/)?items\/[^"/]+\.png"/);
   assert.match(html, /PokéAPI sprites/);
   assert.match(html, /href="https:\/\/github\.com\/PokeAPI\/sprites"/);
+  assert.match(html, /Smogon sprites/);
+  assert.match(html, /href="https:\/\/github\.com\/smogon\/sprites"/);
 });

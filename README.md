@@ -65,6 +65,9 @@ spreads require an enriched paste. Unknown details never satisfy a filter.
 Imports replace the catalog atomically. Invalid spreadsheet data fails the
 import. Individual paste failures are reported on the team and in importer output;
 compatible previous sets are retained, otherwise details remain unknown.
+Pokémon sprites and 24px item icons are cached under ignored `static/` folders
+during catalog bootstrap. Missing or invalid images fail independently without
+changing catalog data; item names remain visible when icons are unavailable.
 
 See [data sources and ranking limits](docs/data-sources.md). No scheduled
 refresh or additional source integration is configured.
@@ -89,8 +92,9 @@ refresh or additional source integration is configured.
    shown once, and Pokémon already in another slot are excluded.
 4. Expand **Edit set** to change Pokémon or published set text, then **Save
    changes**. **Copy team text** exports current sets, normalizing EVs out of
-   32 and omitting IVs for Pokémon Champions. Unknown fields are omitted, not inferred. Edited teams do
-   not receive a new rental code.
+   32 and omitting IVs, level, and Tera Type for Pokémon Champions. Other set
+   fields remain unchanged. Unknown fields are omitted, not inferred. Edited
+   teams do not receive a new rental code.
 
 Saved copies survive reload and catalog refreshes on the same browser origin.
 They do not sync across devices; clearing browser storage removes them. Saving

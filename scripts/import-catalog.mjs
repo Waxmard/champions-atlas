@@ -1,45 +1,20 @@
 import { createHash } from 'node:crypto';
-import {
-  mkdir,
-  readFile,
-  readdir,
-  rename,
-  unlink,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parsePaste } from '../src/lib/paste.ts';
+import {
+  assetSlug as slug,
+  basePokemon as base,
+  pokemonIndex,
+  syncItems,
+  syncSprites,
+  validateIndex,
+} from './sync-assets.mjs';
 
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
-const pokemonIndex = 'https://pokeapi.co/api/v2/pokemon?limit=100000';
-const spriteRoot =
-  'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
-const championsRoot = `${spriteRoot}/versions/generation-ix/champions`;
-
-const spriteAliases = {
-  aegislash: 'aegislash-shield',
-  basculegion: 'basculegion-male',
-  basculegionf: 'basculegion-female',
-  floetteeternalmega: 'floette-mega',
-  indeedee: 'indeedee-male',
-  indeedeef: 'indeedee-female',
-  maushold: 'maushold-family-of-four',
-  mausholdfour: 'maushold-family-of-four',
-  meowstic: 'meowstic-male',
-  meowsticfmega: 'meowstic-female-mega',
-  mimikyu: 'mimikyu-disguised',
-  palafin: 'palafin-zero',
-  taurospaldeaaqua: 'tauros-paldea-aqua-breed',
-  toxtricity: 'toxtricity-amped',
-};
-const exactSprites = {
-  sinistchamasterpiece: `${spriteRoot}/1013-masterpiece.png`,
-  vivillonfancy: `${spriteRoot}/666-fancy.png`,
-};
-
 export function parseCsv(text) {
   const rows = [];
   let row = [],
@@ -82,127 +57,6 @@ const value = (text = '') =>
   ['-', 'None', 'N/A', 'No Tweet', 'Discord Submission'].includes(text.trim())
     ? ''
     : text.trim();
-const slug = (text) => text.toLowerCase().replace(/[^a-z0-9]/g, '');
-const base = (text) => slug(text).replace(/mega[a-z]?$/, '');
-
-export function resolveSprite(pokemon, index) {
-  const key = slug(pokemon);
-  if (exactSprites[key]) return exactSprites[key];
-  const name = spriteAliases[key] || pokemon;
-  const entry = index.results.find(
-    (candidate) => slug(candidate.name) === slug(name)
-  );
-  const id =
-    entry &&
-    /^https:\/\/pokeapi\.co\/api\/v2\/pokemon\/(\d+)\/?$/.exec(entry.url)?.[1];
-  return id ? `${championsRoot}/${id}.png` : null;
-}
-
-function validateIndex(text) {
-  const data = JSON.parse(text);
-  if (
-    !Array.isArray(data.results) ||
-    !data.results.length ||
-    data.results.some(
-      (entry) =>
-        typeof entry?.name !== 'string' || typeof entry?.url !== 'string'
-    )
-  )
-    throw new Error('Invalid PokéAPI Pokémon index');
-  return data;
-}
-
-function validatePng(data) {
-  if (
-    data.length < 8 ||
-    data.length > 500000 ||
-    !data.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
-  )
-    throw new Error('Invalid PNG sprite');
-}
-
-export async function syncSprites(
-  teams,
-  index,
-  {
-    directory = resolve('static/sprites'),
-    load = async (address) => {
-      const response = await fetch(address, {
-        signal: AbortSignal.timeout(30000),
-        redirect: 'error',
-      });
-      if (!response.ok)
-        throw new Error(`${response.status} fetching ${address}`);
-      if (
-        response.headers.get('content-type')?.split(';')[0] !== 'image/png' ||
-        Number(response.headers.get('content-length') || 0) > 500000
-      )
-        throw new Error(`Invalid PNG response from ${address}`);
-      return Buffer.from(await response.arrayBuffer());
-    },
-    warn = console.warn,
-  } = {}
-) {
-  await mkdir(directory, { recursive: true });
-  const pokemon = [
-    ...new Set(
-      teams.flatMap((team) =>
-        team.members.flatMap((member) => [member.pokemon, base(member.pokemon)])
-      )
-    ),
-  ];
-  const wanted = new Map();
-  for (const name of pokemon) {
-    const source = resolveSprite(name, index);
-    wanted.set(`${slug(name)}.png`, source);
-    if (!source) warn(`Sprite unavailable for ${name}`);
-  }
-  const entries = [...wanted];
-  let downloaded = 0;
-  let failed = 0;
-  let cursor = 0;
-  async function worker() {
-    while (cursor < entries.length) {
-      const [filename, source] = entries[cursor++];
-      if (!source) continue;
-      const path = resolve(directory, filename);
-      try {
-        validatePng(await readFile(path));
-        continue;
-      } catch (error) {
-        if (error.code !== 'ENOENT' && error.message !== 'Invalid PNG sprite')
-          throw error;
-      }
-      const temporary = `${path}.${process.pid}.tmp`;
-      try {
-        const data = await load(source);
-        validatePng(data);
-        await writeFile(temporary, data);
-        await rename(temporary, path);
-        downloaded++;
-      } catch (error) {
-        await unlink(temporary).catch(() => {});
-        warn(`Sprite download failed for ${filename}: ${error.message}`);
-        failed++;
-      }
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(8, entries.length) }, worker)
-  );
-  let removed = 0;
-  for (const entry of await readdir(directory, { withFileTypes: true }))
-    if (
-      entry.isFile() &&
-      entry.name.endsWith('.png') &&
-      !wanted.has(entry.name)
-    ) {
-      await unlink(resolve(directory, entry.name));
-      removed++;
-    }
-  return { wanted: wanted.size, downloaded, failed, removed };
-}
-
 function url(text, host) {
   if (!value(text)) return '';
   const parsed = new URL(text);
@@ -461,10 +315,19 @@ async function main() {
       return null;
     }
   }
+  async function restoreItems(teams) {
+    try {
+      return await syncItems(teams);
+    } catch (error) {
+      console.warn(`Item icons unavailable: ${error.message}`);
+      return null;
+    }
+  }
   if (process.argv.includes('--if-missing')) {
     try {
       const catalog = JSON.parse(await readFile(output, 'utf8'));
       await restoreSprites(catalog.teams || []);
+      await restoreItems(catalog.teams || []);
       return;
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
@@ -521,8 +384,9 @@ async function main() {
     teams: unique,
   });
   const sprites = await restoreSprites(unique);
+  const items = await restoreItems(unique);
   console.log(
-    `Imported ${unique.length} teams; ${stats.enriched}/${stats.attempted} pastes enriched, ${stats.failed} failed. Catalog written atomically.${sprites ? ` ${sprites.wanted} sprites ready, ${sprites.failed} failed.` : ''}`
+    `Imported ${unique.length} teams; ${stats.enriched}/${stats.attempted} pastes enriched, ${stats.failed} failed. Catalog written atomically.${sprites ? ` ${sprites.wanted} sprites ready, ${sprites.failed} failed.` : ''}${items ? ` ${items.wanted} item icons ready, ${items.failed} failed.` : ''}`
   );
 }
 

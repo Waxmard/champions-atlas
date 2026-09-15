@@ -29,7 +29,7 @@ export function normalizeSpread(spread: string | null): string | null {
 export function normalizeSet(set: string): string {
   return set
     .split(/\r?\n/)
-    .filter((line) => !line.trim().startsWith('IVs:'))
+    .filter((line) => !/^(?:IVs|Level|Tera Type):/.test(line.trim()))
     .map((line) => {
       const trimmed = line.trim();
       if (trimmed.startsWith('EVs:')) {

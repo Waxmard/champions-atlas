@@ -4,6 +4,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import ExternalLink from '@lucide/svelte/icons/external-link';
+  import ItemIcon from '$lib/components/ItemIcon.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
@@ -284,8 +285,12 @@
                   <h2 class="font-semibold wrap-break-word">
                     {member.pokemon}
                   </h2>
-                  <p class="mt-1 text-sm wrap-break-word text-primary">
-                    {member.item || 'Item unknown'}
+                  <p
+                    class="mt-1 flex items-center gap-1 text-sm wrap-break-word text-primary"
+                  >
+                    {#if member.item}<ItemIcon
+                        item={member.item}
+                      />{/if}{member.item || 'Item unknown'}
                   </p>
                 </div>
               </div>
@@ -348,8 +353,9 @@
               No published sources; created from your team text.
             </p>{/if}
           <pre
-            class="mt-4 overflow-x-auto rounded-lg bg-secondary p-3 text-xs leading-5">{draft
-              .original.paste || exportPaste(draft.original.members)}</pre>
+            class="mt-4 overflow-x-auto rounded-lg bg-secondary p-3 text-xs leading-5">{exportPaste(
+              draft.original.members
+            )}</pre>
           <TeamDifferences
             before={draft.original.members}
             after={draft.members}
@@ -449,10 +455,14 @@
                         <PokemonSprite pokemon={member.pokemon} size={24} />
                       </li>{/each}
                   </ul>{/if}
-                <h3 class="min-w-0 font-semibold wrap-break-word">
-                  {result.member
-                    ? `${result.member.pokemon} · ${result.member.item || 'Item unknown'}`
-                    : result.team.name}
+                <h3
+                  class="flex min-w-0 flex-wrap items-center gap-1 font-semibold wrap-break-word"
+                >
+                  {#if result.member}
+                    {result.member.pokemon} · {#if result.member.item}<ItemIcon
+                        item={result.member.item}
+                      />{/if}{result.member.item || 'Item unknown'}
+                  {:else}{result.team.name}{/if}
                 </h3>
               </div>
               <div class="mt-3 flex flex-wrap gap-1.5 text-xs">

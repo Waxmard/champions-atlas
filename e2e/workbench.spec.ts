@@ -26,6 +26,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     (key) => JSON.parse(localStorage.getItem(key)!)[0].original,
     storageKey
   );
+  expect(original.paste).toMatch(/Level:/);
   expect(
     original.members.every((member: { spread: string }) => !!member.spread)
   ).toBe(true);
@@ -33,6 +34,12 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     name: 'Weavile set',
     exact: true,
   });
+  await expect(weavile.locator('img[src*="/items/"]')).toBeVisible();
+  const history = page.getByText('Original & source history').locator('..');
+  await history.locator('summary').click();
+  await expect(history.locator('pre')).not.toContainText('Level:');
+  await expect(history.locator('pre')).not.toContainText('Tera Type:');
+  await expect(history.locator('pre')).not.toContainText('IVs:');
   await expect(page.getByRole('checkbox')).toHaveCount(0);
   await expect(page.getByLabel('Candidate regulation')).toHaveCount(0);
   await expect(
@@ -80,6 +87,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .getByRole('region', { name: 'Your team', exact: true })
     .screenshot({ path: testInfo.outputPath('single-slot-controls.png') });
   await expect(alternatives.first()).toBeVisible();
+  await expect(
+    alternatives.first().locator('img[src*="/items/"]')
+  ).toBeVisible();
   await alternatives
     .getByRole('button', { name: 'Compare Weavile', exact: true })
     .first()
@@ -100,6 +110,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await weavile.getByText('Edit set', { exact: true }).click();
   const set = weavile.getByLabel('Set text for Weavile', { exact: true });
   const setText = await set.inputValue();
+  expect(setText).not.toMatch(/(?:IVs|Level|Tera Type):/);
   await set.fill(`${setText}\n- Protect`);
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toContainText('more than four moves');
@@ -126,6 +137,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .click();
   await expect(page.getByLabel('Export text', { exact: true })).toHaveValue(
     /EVs: 32 HP \/ 32 Atk \/ 2 Spe/
+  );
+  await expect(page.getByLabel('Export text', { exact: true })).not.toHaveValue(
+    /(?:IVs|Level|Tera Type):/
   );
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],

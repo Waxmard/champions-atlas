@@ -1,6 +1,7 @@
 node_modules
 .cache/
 static/sprites/
+static/items/
 src/lib/data/catalog.json
 playwright-report/
 test-results/

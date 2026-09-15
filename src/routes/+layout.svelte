@@ -36,7 +36,7 @@
   class="mx-auto mt-6 max-w-7xl border-t px-4 py-6 text-xs leading-5 text-muted-foreground sm:px-8"
 >
   An independent fan project. Pokémon belongs to its respective owners. Team
-  sources credited in each entry. Champions sprites from
+  sources credited in each entry. Champions Pokémon sprites from
   <a
     class="underline underline-offset-2"
     href="https://github.com/PokeAPI/sprites"
@@ -48,5 +48,12 @@
     href="https://github.com/PokeAPI/sprites/blob/master/LICENCE.txt"
     target="_blank"
     rel="external noreferrer">license notice</a
-  >. Champions sprite set and image rights belong to The Pokémon Company.
+  >. Champions sprite set and image rights belong to The Pokémon Company. Item
+  icons from
+  <a
+    class="underline underline-offset-2"
+    href="https://github.com/smogon/sprites"
+    target="_blank"
+    rel="external noreferrer">Smogon sprites</a
+  >. Item image rights belong to Nintendo, Game Freak, and The Pokémon Company.
 </footer>

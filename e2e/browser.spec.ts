@@ -37,10 +37,23 @@ test('sprite cards, responsive filters, and external attribution work', async ({
     .getByRole('list', { name: 'Team members' })
     .getByRole('listitem')
     .first();
-  const species = (await member.innerText()).split('\n')[0];
+  const species = await member.locator('p').first().innerText();
+  const itemLabel = member.locator('p').nth(1);
+  const itemIcon = member.locator('img[src*="/items/"]');
+  await expect(itemIcon).toBeVisible();
+  await expect
+    .poll(() =>
+      itemIcon.evaluate((image: HTMLImageElement) =>
+        Boolean(image.complete && image.naturalWidth > 0)
+      )
+    )
+    .toBe(true);
   await sprite.dispatchEvent('error');
   await expect(sprite).toBeHidden();
   await expect(card.getByText(species, { exact: true })).toBeVisible();
+  await itemIcon.dispatchEvent('error');
+  await expect(itemIcon).toBeHidden();
+  await expect(itemLabel).toBeVisible();
 
   const attribution = page.locator(
     'a[href="https://github.com/PokeAPI/sprites"]'
@@ -48,6 +61,11 @@ test('sprite cards, responsive filters, and external attribution work', async ({
   await expect(attribution).toHaveAttribute('target', '_blank');
   await expect(attribution).toHaveAttribute('rel', /external/);
   await expect(attribution).toHaveAttribute('rel', /noreferrer/);
+  const itemAttribution = page.locator(
+    'a[href="https://github.com/smogon/sprites"]'
+  );
+  await expect(itemAttribution).toHaveAttribute('target', '_blank');
+  await expect(itemAttribution).toHaveAttribute('rel', /external/);
 
   if (testInfo.project.name === 'mobile') {
     expect(
@@ -129,6 +147,17 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
   await expect(
     page.getByRole('heading', { name: 'Results & sources' })
+  ).toBeVisible();
+  const published = page.getByText('Published paste text').locator('..');
+  await published.locator('summary').click();
+  await expect(published.locator('pre')).not.toContainText('Level:');
+  await expect(published.locator('pre')).not.toContainText('Tera Type:');
+  await expect(published.locator('pre')).not.toContainText('IVs:');
+  await expect(
+    page
+      .getByRole('region', { name: 'Pokémon sets' })
+      .locator('img[src*="/items/"]')
+      .first()
   ).toBeVisible();
   await page.getByRole('link', { name: 'Back to teams' }).click();
   await openMobileFilters();

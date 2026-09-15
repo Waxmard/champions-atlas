@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import { bestEvidence, type Team } from '$lib/catalog';
+  import ItemIcon from './ItemIcon.svelte';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
@@ -69,8 +70,11 @@
           <p class="mt-1 text-xs font-semibold wrap-break-word">
             {member.pokemon}
           </p>
-          <p class="mt-1 text-xs wrap-break-word text-muted-foreground">
-            {member.item || 'Item unknown'}
+          <p
+            class="mt-1 flex items-center justify-center gap-1 text-xs wrap-break-word text-muted-foreground"
+          >
+            {#if member.item}<ItemIcon item={member.item} />{/if}{member.item ||
+              'Item unknown'}
           </p>
         </li>
       {/each}

@@ -257,12 +257,14 @@ export function differences(before: Member[], after: Member[]) {
         before: member.moves.join(', ') || 'Unknown',
         after: match.moves.join(', ') || 'Unknown',
       });
-    if (member.set && match.set && member.set !== match.set)
+    const beforeSet = member.set && setText(member);
+    const afterSet = match.set && setText(match);
+    if (beforeSet && afterSet && beforeSet !== afterSet)
       rows.push({
         pokemon: member.pokemon,
         field: 'Full set',
-        before: member.set,
-        after: match.set,
+        before: beforeSet,
+        after: afterSet,
       });
   }
   for (const member of after)

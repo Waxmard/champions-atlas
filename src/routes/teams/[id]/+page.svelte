@@ -6,14 +6,16 @@
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
+  import ItemIcon from '$lib/components/ItemIcon.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import { bestEvidence, evidence, type Team } from '$lib/catalog';
-  import { newSavedTeam, saveTeam } from '$lib/workbench';
+  import { exportPaste, newSavedTeam, saveTeam } from '$lib/workbench';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const team: Team = $derived(data.team);
+  const paste = $derived(team.paste ? exportPaste(team.members) : '');
   const strongest = $derived(bestEvidence(team, data.currentRegulation));
   let copyStatus = $state('');
   function useTeam() {
@@ -99,10 +101,10 @@
       rel="external noreferrer"
       ><ExternalLink aria-hidden="true" />Open original paste</Button
     >
-    {#if team.paste}<Button
+    {#if paste}<Button
         variant="outline"
         class="min-h-11 px-4"
-        onclick={() => copy(team.paste || '', 'Team paste')}
+        onclick={() => copy(paste, 'Team paste')}
         ><Copy aria-hidden="true" />Copy team</Button
       >{/if}
     {#if team.replicaCode && team.replicaStatus === '✔'}<Button
@@ -158,8 +160,12 @@
             <h2 class="mt-1 text-lg font-semibold wrap-break-word">
               {member.pokemon}
             </h2>
-            <p class="mt-1 text-sm wrap-break-word text-primary">
-              {member.item || 'Item unknown'}
+            <p
+              class="mt-1 flex items-center gap-1 text-sm wrap-break-word text-primary"
+            >
+              {#if member.item}<ItemIcon
+                  item={member.item}
+                />{/if}{member.item || 'Item unknown'}
             </p>
           </div>
         </div>
@@ -231,7 +237,7 @@
       names while the sheet lists Mega forms.
     </p>
   </section>
-  {#if team.paste}
+  {#if paste}
     <details class="mt-8 rounded-xl border bg-card p-5">
       <summary class="cursor-pointer text-sm font-medium"
         >Published paste text</summary
@@ -239,7 +245,7 @@
       {#if team.pasteNotes}<p class="mt-3 text-xs text-muted-foreground">
           Paste notes (may differ from sheet regulation): {team.pasteNotes}
         </p>{/if}
-      <pre class="mt-4 overflow-x-auto text-xs leading-6">{team.paste}</pre>
+      <pre class="mt-4 overflow-x-auto text-xs leading-6">{paste}</pre>
     </details>
   {/if}
 </main>

@@ -1,6 +1,7 @@
 <script lang="ts">
   import { differences } from '$lib/workbench';
   import type { Member } from '$lib/catalog';
+  import ItemIcon from './ItemIcon.svelte';
   let {
     before,
     after,
@@ -43,7 +44,10 @@
                     >
                     <p class="mt-2 whitespace-pre-wrap">{value}</p>
                   </details>
-                {:else}{value}{/if}
+                {:else if row.field === 'Item' && value !== 'Unknown'}<span
+                    class="flex items-center gap-1"
+                    ><ItemIcon item={value} />{value}</span
+                  >{:else}{value}{/if}
               </td>
             {/each}</tr
           >
