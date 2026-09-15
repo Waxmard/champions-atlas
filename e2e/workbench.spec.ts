@@ -155,6 +155,95 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   expect(errors).toEqual([]);
 });
 
+test('import, edit, reload, compare, and export a custom team', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto('/my-teams');
+  await page.getByRole('link', { name: 'Add custom team' }).click();
+  const teambuilder = page.getByRole('link', {
+    name: 'Pokémon Showdown Teambuilder',
+  });
+  await expect(teambuilder).toHaveAttribute(
+    'href',
+    'https://play.pokemonshowdown.com/teambuilder'
+  );
+  await expect(teambuilder).toHaveAttribute('target', '_blank');
+  await page.getByLabel('Team name', { exact: true }).fill('My custom team');
+  await page.getByLabel('Team text', { exact: true }).fill(peter.paste!);
+  await page.getByRole('button', { name: 'Save custom team' }).click();
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    'My custom team'
+  );
+  await page.getByText('Original & source history').click();
+  await expect(
+    page.getByText('No published sources; created from your team text.')
+  ).toBeVisible();
+
+  const stored = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!)[0],
+    storageKey
+  );
+  expect(stored.original.pasteUrl).toBe('');
+  expect(stored.sources).toEqual([]);
+  const storedWeavile = stored.original.members.find(
+    (member: { pokemon: string }) => member.pokemon === 'Weavile'
+  );
+  expect(storedWeavile.item).toBe(
+    peter.members.find((member) => member.pokemon === 'Weavile')!.item
+  );
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile.getByText('Edit set', { exact: true }).click();
+  const set = weavile.getByLabel('Set text for Weavile', { exact: true });
+  await set.fill(
+    (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
+  );
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText(
+    'Changes saved on this device.'
+  );
+  await page.reload();
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    'My custom team'
+  );
+  await expect(
+    page
+      .getByRole('region', { name: 'Similar teams', exact: true })
+      .getByRole('article')
+      .first()
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Copy team text' }).click();
+  await expect(page.getByLabel('Export text')).toHaveValue(/Custom Ability/);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth
+    )
+  ).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('invalid custom import never changes local storage', async ({ page }) => {
+  await page.goto('/my-teams/new');
+  const before = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    storageKey
+  );
+  await page.getByLabel('Team name', { exact: true }).fill('Invalid team');
+  await page
+    .getByLabel('Team text', { exact: true })
+    .fill(peter.paste!.replace(/EVs:[^\r\n]*\r?\n/, ''));
+  await page.getByRole('button', { name: 'Save custom team' }).click();
+  await expect(page.getByRole('status')).toContainText('missing EVs');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(before);
+});
+
 test('corrupt storage is reported and kept; missing local IDs do not show another team', async ({
   page,
 }) => {

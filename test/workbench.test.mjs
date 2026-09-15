@@ -4,6 +4,7 @@ import {
   differences,
   exportPaste,
   replacementMembers,
+  newCustomTeam,
   newSavedTeam,
   readSavedTeams,
   saveTeam,
@@ -11,7 +12,7 @@ import {
   storageKey,
   useCandidate,
 } from '../src/lib/workbench.ts';
-import { parsePaste } from '../src/lib/paste.ts';
+import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 
 const member = (pokemon, item = 'Item') => ({
   pokemon,
@@ -194,4 +195,35 @@ test('old saved teams load without retaining obsolete locks or losing original a
       }),
     /untouched/
   );
+});
+
+test('custom teams validate paste and preserve independent snapshots and empty source metadata through storage', () => {
+  const paste = Array.from(
+    { length: 6 },
+    (_, i) =>
+      `Pokemon${i} @ Item\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- One\n- Two\n- Three\n- Four`
+  ).join('\n\n');
+  const custom = newCustomTeam('  Mine  ', 'M-C', paste);
+  assert.throws(() => newCustomTeam('  ', 'M-C', paste), /name/);
+  assert.throws(
+    () => newCustomTeam('Mine', 'M-C', paste.replace('EVs: 32 HP\n', '')),
+    /missing EVs/
+  );
+  assert.equal(custom.name, 'Mine');
+  assert.equal(custom.original.name, 'Mine');
+  assert.equal(custom.original.id, custom.id);
+  assert.equal(custom.original.pasteUrl, '');
+  assert.deepEqual(custom.sources, []);
+  assert.equal(parseCustomPaste(custom.original.paste).length, 6);
+  custom.members[0].item = 'Changed';
+  assert.equal(custom.original.members[0].item, 'Item');
+  let raw = null;
+  const storage = {
+    getItem: () => raw,
+    setItem: (_, value) => (raw = value),
+  };
+  saveTeam(storage, custom);
+  assert.deepEqual(readSavedTeams(storage), [custom]);
+  const invalid = { ...custom, sources: [{ name: 'No URL', pasteUrl: '' }] };
+  assert.throws(() => saveTeam(storage, invalid), /untouched/);
 });

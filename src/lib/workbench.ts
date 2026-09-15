@@ -1,4 +1,5 @@
 import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
+import { parseCustomPaste } from './paste.ts';
 
 export interface SavedTeam {
   id: string;
@@ -47,6 +48,32 @@ export function newSavedTeam(team: Team): SavedTeam {
     members: structuredClone(team.members),
     changeSlot: null,
     sources: [{ name: team.name, pasteUrl: team.pasteUrl }],
+  };
+}
+
+export function newCustomTeam(
+  name: string,
+  currentRegulation: string,
+  paste: string
+): SavedTeam {
+  if (!name.trim()) throw new Error('Give this team a name.');
+  const id = crypto.randomUUID();
+  const members = parseCustomPaste(paste);
+  const storedPaste = exportPaste(members);
+  return {
+    id,
+    name: name.trim(),
+    original: structuredClone({
+      id,
+      name: name.trim(),
+      regulation: currentRegulation,
+      pasteUrl: '',
+      members,
+      paste: storedPaste,
+    }),
+    members: structuredClone(members),
+    changeSlot: null,
+    sources: [],
   };
 }
 
@@ -251,6 +278,12 @@ const source = (value: unknown) =>
   text(value.name) &&
   text(value.pasteUrl) &&
   /^https:\/\/pokepast\.es\/[a-f0-9]{16}$/.test(value.pasteUrl);
+const original = (value: unknown) =>
+  object(value) &&
+  text(value.name) &&
+  text(value.pasteUrl) &&
+  (value.pasteUrl === '' ||
+    /^https:\/\/pokepast\.es\/[a-f0-9]{16}$/.test(value.pasteUrl));
 const members = (value: unknown): value is Member[] =>
   Array.isArray(value) &&
   value.length === 6 &&
@@ -280,7 +313,7 @@ export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
         text(team.id) &&
         text(team.name) &&
         object(team.original) &&
-        source(team.original) &&
+        original(team.original) &&
         text(team.original.id) &&
         text(team.original.regulation) &&
         optionalText(team.original.paste) &&

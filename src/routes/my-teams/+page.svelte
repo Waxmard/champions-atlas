@@ -200,9 +200,14 @@
         Keep your original. Explore changes. Save your own version.
       </p>
     </div>
-    <Button href={resolve('/')} variant="outline" class="min-h-11"
-      >Browse teams</Button
-    >
+    <div class="flex flex-wrap gap-2">
+      <Button href={resolve('/my-teams/new')} class="min-h-11"
+        >Add custom team</Button
+      >
+      <Button href={resolve('/')} variant="outline" class="min-h-11"
+        >Browse teams</Button
+      >
+    </div>
   </div>
   {#if storageError}<p role="alert" class="mt-5 rounded-xl border p-4 text-sm">
       {storageError}
@@ -318,16 +323,19 @@
             Sources document where sets came from. Manual changes are your
             draft, not claims about the original team.
           </p>
-          <ul class="mt-3 space-y-3 text-sm">
-            {#each draft.sources as source (source.pasteUrl)}<li>
-                <a
-                  class="text-primary underline"
-                  href={source.pasteUrl}
-                  rel="external"
-                  target="_blank">{source.name}</a
-                >
-              </li>{/each}
-          </ul>
+          {#if draft.sources.length}<ul class="mt-3 space-y-3 text-sm">
+              {#each draft.sources as source (source.pasteUrl)}<li>
+                  <a
+                    class="text-primary underline"
+                    href={source.pasteUrl}
+                    rel="external"
+                    target="_blank">{source.name}</a
+                  >
+                </li>{/each}
+            </ul>
+          {:else}<p class="mt-3 text-sm text-muted-foreground">
+              No published sources; created from your team text.
+            </p>{/if}
           <pre
             class="mt-4 overflow-x-auto rounded-lg bg-secondary p-3 text-xs leading-5">{draft
               .original.paste || exportPaste(draft.original.members)}</pre>

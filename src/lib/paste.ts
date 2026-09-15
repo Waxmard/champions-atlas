@@ -45,3 +45,18 @@ export function parsePaste(text: string): Member[] {
     throw new Error('Paste contains duplicate Pokémon forms');
   return members;
 }
+
+export function parseCustomPaste(text: string): Member[] {
+  const members = parsePaste(text);
+  for (const member of members) {
+    if (!member.item) throw new Error(`${member.pokemon} is missing an item`);
+    if (!member.ability)
+      throw new Error(`${member.pokemon} is missing an ability`);
+    if (!member.nature)
+      throw new Error(`${member.pokemon} is missing a nature`);
+    if (!member.spread) throw new Error(`${member.pokemon} is missing EVs`);
+    if (member.moves.length !== 4)
+      throw new Error(`${member.pokemon} must have exactly four moves`);
+  }
+  return members;
+}

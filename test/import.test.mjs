@@ -13,7 +13,7 @@ import {
   enrichPastes,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
-import { parsePaste } from '../src/lib/paste.ts';
+import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-bootstrap-'));
@@ -136,6 +136,33 @@ test('paste parser preserves complete sets and rejects unsafe input', () => {
           .replace('- Move 0', '- One\n- Two\n- Three\n- Four\n- Five')
       ),
     /Pokemon-0 has more than four moves/
+  );
+});
+
+test('custom paste requires every editable field without tightening catalog parsing', () => {
+  const blocks = Array.from(
+    { length: 6 },
+    (_, i) =>
+      `Pokemon${i} @ Item${i}\nAbility: Ability${i}\nEVs: 4 HP / 252 Atk / 252 Spe\nJolly Nature\n- Move ${i}A\n- Move ${i}B\n- Move ${i}C\n- Move ${i}D`
+  );
+  const paste = blocks.join('\n\n');
+  assert.equal(parseCustomPaste(paste).length, 6);
+  assert.equal(parsePaste(paste.replace('Ability: Ability0\n', '')).length, 6);
+  for (const [removed, error] of [
+    [' @ Item0', /missing an item/],
+    ['Ability: Ability0\n', /missing an ability/],
+    ['EVs: 4 HP / 252 Atk / 252 Spe\n', /missing EVs/],
+    ['Jolly Nature\n', /missing a nature/],
+    ['- Move 0D', /exactly four moves/],
+  ])
+    assert.throws(() => parseCustomPaste(paste.replace(removed, '')), error);
+  assert.throws(
+    () => parseCustomPaste(paste.replace('- Move 0D', '- Move 0A')),
+    /duplicate moves/
+  );
+  assert.throws(
+    () => parseCustomPaste(paste.replace('Pokemon1 @', 'Pokemon0 @')),
+    /duplicate Pokémon/
   );
 });
 

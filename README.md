@@ -71,7 +71,12 @@ refresh or additional source integration is configured.
 
 ## Save, compare, and edit
 
-1. Open a catalog team and choose **Use this team**. **My teams** stores an
+1. Open a catalog team and choose **Use this team**, or choose **Add custom
+   team**. Build it in [Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder),
+   export it as text, then paste that complete six-Pokémon team. Custom imports
+   require an item, ability, nature, EVs, and four unique moves for every Pokémon.
+   Custom teams use the current regulation with legality unverified; file, URL,
+   screenshot, and legality inference are not supported. **My teams** stores an
    independent original snapshot and editable copy in this browser's localStorage.
 2. Similar teams appear immediately, with all six of your sets kept unchanged.
    Toggle **Change [Pokémon]** on one slot to see alternative builds of that

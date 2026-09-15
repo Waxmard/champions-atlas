@@ -128,7 +128,18 @@ user's edited team. Exact forms remain distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-Field-based editing controls and legality-aware adaptation are not implemented.
+Field-based editing for saved catalog teams and legality-aware adaptation are not
+implemented.
+
+Custom import starts in **My teams** with a required name and complete
+Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
+ability, nature, EVs, and four unique moves. Team building happens in
+[Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder);
+Champion's Atlas accepts its exported text only. Imported text becomes the
+immutable original; nickname, gender, IV, Tera Type, and unknown lines remain
+intact. Custom teams are saved locally under the current regulation with legality
+unverified and no published source claims. File, URL, screenshot, rental-code,
+legality, and cross-device import are out of scope.
 
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.

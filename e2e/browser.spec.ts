@@ -7,8 +7,15 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto('/');
   const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
-  await picker.fill('Incineroar');
-  await page.getByRole('option', { name: 'Incineroar', exact: true }).click();
+  const incineroar = page.getByRole('option', {
+    name: 'Incineroar',
+    exact: true,
+  });
+  await expect(async () => {
+    await picker.fill('Incineroar');
+    await expect(incineroar).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 15_000 });
+  await incineroar.click();
   await expect(
     page.getByRole('button', { name: 'Remove Incineroar', exact: true })
   ).toBeVisible();
