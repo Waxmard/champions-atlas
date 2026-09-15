@@ -7,3 +7,6 @@ pre-commit:
     lint:
       glob: '*.{js,mjs,ts,svelte}'
       run: npx eslint --max-warnings 0 {staged_files}
+    line-limit:
+      glob: '*.{mjs,ts,svelte,css}'
+      run: bash scripts/check-line-limit.sh
