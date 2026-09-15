@@ -88,8 +88,8 @@ refresh or additional source integration is configured.
    similarity and reported results break ties. Identical replacement sets are
    shown once, and Pokémon already in another slot are excluded.
 4. Expand **Edit set** to change Pokémon or published set text, then **Save
-   changes**. **Copy team text** exports the current sets, preserving raw extra
-   lines such as IVs. Unknown fields are omitted, not inferred. Edited teams do
+   changes**. **Copy team text** exports current sets, normalizing EVs out of
+   32 and omitting IVs for Pokémon Champions. Unknown fields are omitted, not inferred. Edited teams do
    not receive a new rental code.
 
 Saved copies survive reload and catalog refreshes on the same browser origin.

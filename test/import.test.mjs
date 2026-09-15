@@ -118,7 +118,7 @@ test('paste parser preserves complete sets and rejects unsafe input', () => {
   );
   const members = parsePaste(blocks.join('\r\n\r\n'));
   assert.equal(members[0].pokemon, 'Pokemon-0');
-  assert.match(members[0].set, /IVs: 0 Atk/);
+  assert.doesNotMatch(members[0].set, /IVs:/);
   assert.throws(() => parsePaste(blocks.slice(0, 5).join('\n\n')), /six/);
   assert.throws(
     () => parsePaste([...blocks.slice(0, 5), blocks[0]].join('\n\n')),
@@ -139,6 +139,87 @@ test('paste parser preserves complete sets and rejects unsafe input', () => {
       ),
     /Pokemon-0 has more than four moves/
   );
+});
+
+test('normalizes team sheets to champions formatting: EVs out of 32 and no IVs', () => {
+  const paste = `Dragonite (M) @ Dragoninite  
+Ability: Inner Focus  
+Level: 50  
+EVs: 12 HP / 252 SpA / 252 Spe  
+Timid Nature  
+- Dragon Pulse  
+- Tailwind  
+- Flamethrower  
+- Protect  
+
+Rillaboom (M) @ Miracle Seed  
+Ability: Grassy Surge  
+Level: 50  
+EVs: 252 HP / 84 Atk / 4 Def / 108 SpD / 60 Spe  
+Adamant Nature  
+- Grassy Glide  
+- Wood Hammer  
+- Fake Out  
+- High Horsepower  
+
+Weavile (F) @ Focus Sash  
+Ability: Pickpocket  
+Level: 50  
+Tera Type: Dark  
+EVs: 44 HP / 252 Atk / 220 Spe  
+Jolly Nature  
+- Icicle Crash  
+- Fake Out  
+- Protect  
+- Knock Off  
+
+Gholdengo @ Grassy Seed  
+Ability: Good as Gold  
+Level: 50  
+Tera Type: Water  
+EVs: 236 HP / 124 Def / 92 SpA / 28 SpD / 28 Spe  
+Bold Nature  
+IVs: 31 Atk  
+- Protect  
+- Nasty Plot  
+- Shadow Ball  
+- Make It Rain  
+
+Golisopod (F) @ Golisopite  
+Ability: Emergency Exit  
+Level: 50  
+Tera Type: Water  
+EVs: 236 HP / 252 Atk / 12 Def / 12 SpD  
+Brave Nature  
+- Iron Head  
+- Leech Life  
+- First Impression  
+- Wide Guard  
+
+Milotic (F) @ Leftovers  
+Ability: Competitive  
+Level: 50  
+EVs: 252 HP / 212 Def / 36 SpA / 12 SpD  
+Calm Nature  
+IVs: 31 Atk  
+- Muddy Water  
+- Hypnosis  
+- Coil  
+- Protect`;
+
+  const members = parsePaste(paste);
+  assert.equal(members.length, 6);
+  assert.equal(members[0].spread, '2 HP / 32 SpA / 32 Spe');
+  assert.equal(members[1].spread, '32 HP / 11 Atk / 1 Def / 14 SpD / 8 Spe');
+  assert.equal(members[2].spread, '6 HP / 32 Atk / 28 Spe');
+  assert.equal(members[3].spread, '30 HP / 16 Def / 12 SpA / 4 SpD / 4 Spe');
+  assert.equal(members[4].spread, '30 HP / 32 Atk / 2 Def / 2 SpD');
+  assert.equal(members[5].spread, '32 HP / 27 Def / 5 SpA / 2 SpD');
+
+  for (const member of members) {
+    assert.doesNotMatch(member.set, /IVs:/);
+    assert.doesNotMatch(member.set, /252/);
+  }
 });
 
 test('custom paste requires every editable field without tightening catalog parsing', () => {

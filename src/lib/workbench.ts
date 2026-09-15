@@ -1,5 +1,5 @@
 import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
-import { parseCustomPaste } from './paste.ts';
+import { normalizeSet, normalizeSpread, parseCustomPaste } from './paste.ts';
 
 export interface SavedTeam {
   id: string;
@@ -17,12 +17,12 @@ export const storageKey = 'champions-atlas:teams:v1';
 
 export function setText(member: Member) {
   return (
-    member.set ||
+    (member.set && normalizeSet(member.set)) ||
     [
       member.pokemon + (member.item ? ` @ ${member.item}` : ''),
       member.ability && `Ability: ${member.ability}`,
       member.nature && `${member.nature} Nature`,
-      member.spread && `EVs: ${member.spread}`,
+      member.spread && `EVs: ${normalizeSpread(member.spread)}`,
       ...member.moves.map((move) => `- ${move}`),
     ]
       .filter(Boolean)

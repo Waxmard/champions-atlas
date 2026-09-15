@@ -1,12 +1,56 @@
 import { normalize, type Member } from './catalog.ts';
 
+export function normalizeSpread(spread: string | null): string | null {
+  if (!spread) return null;
+  const parts = spread
+    .split('/')
+    .map((part) => part.trim())
+    .map((part) => {
+      const match = /^(\d+)\s+([A-Za-z]+)$/.exec(part);
+      return match ? { value: Number(match[1]), stat: match[2] } : null;
+    })
+    .filter((entry): entry is { value: number; stat: string } =>
+      Boolean(entry)
+    );
+  if (!parts.length) return spread.trim();
+  const isTraditional = parts.some((entry) => entry.value > 32);
+  return parts
+    .map((entry) => ({
+      ...entry,
+      value: isTraditional
+        ? Math.min(32, Math.floor((entry.value + 4) / 8))
+        : entry.value,
+    }))
+    .filter((entry) => entry.value > 0)
+    .map((entry) => `${entry.value} ${entry.stat}`)
+    .join(' / ');
+}
+
+export function normalizeSet(set: string): string {
+  return set
+    .split(/\r?\n/)
+    .filter((line) => !line.trim().startsWith('IVs:'))
+    .map((line) => {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('EVs:')) {
+        const spread = trimmed.slice(4).trim();
+        const normalized = normalizeSpread(spread);
+        return normalized ? `EVs: ${normalized}` : '';
+      }
+      return line.trimEnd();
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+
 export function parsePaste(text: string): Member[] {
   if (!text || text.length > 50000) throw new Error('Invalid paste payload');
   const blocks = text.trim().split(/\r?\n\s*\r?\n/);
   if (blocks.length !== 6) throw new Error('Paste must contain six sets');
 
-  const members = blocks.map((set) => {
-    const [first, ...lines] = set.split(/\r?\n/).map((line) => line.trim());
+  const members = blocks.map((rawSet) => {
+    const set = normalizeSet(rawSet);
+    const [first, ...lines] = set.split('\n').map((line) => line.trim());
     const [rawName, item] = first.split(' @ ');
     if (!rawName) throw new Error('Paste set is missing a Pokémon');
     const name = rawName.replace(/ \([MF]\)$/, '');

@@ -111,7 +111,7 @@ test('replacement changes only selected slot, preserves original and raw export 
   assert.equal(useCandidate(edited, recommendations[0]).sources.length, 2);
   const paste = exportPaste(edited.members);
   assert.match(paste, /Nickname \(Pokemon0\)/);
-  assert.match(paste, /IVs: 0 Atk/);
+  assert.doesNotMatch(paste, /IVs:/);
   assert.equal(parsePaste(paste).length, 6);
 });
 

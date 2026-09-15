@@ -315,8 +315,8 @@
           {draft.changeSlot === null
             ? 'Keeping all six. Choose one Pokémon above to explore replacements.'
             : `Changing ${draft.members[draft.changeSlot].pokemon} only. Other five sets stay unchanged.`}
-          Save set edits before comparing. Published text preserves IVs and other
-          extra lines; unknown details stay omitted.
+          Save set edits before comparing. Team text normalizes to Pokémon Champions
+          format (EVs out of 32, no IVs); unknown details stay omitted.
         </p>
         {#if showExport}<label class="mt-4 block text-sm font-medium"
             >Export text<textarea

@@ -348,7 +348,7 @@ export function enrich(team, data) {
   return {
     ...team,
     members,
-    paste: data.paste,
+    paste: members.map((m) => m.set).join('\n\n'),
     pasteNotes: typeof data.notes === 'string' ? data.notes : null,
     pasteError: undefined,
   };
