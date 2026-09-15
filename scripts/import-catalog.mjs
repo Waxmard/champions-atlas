@@ -146,7 +146,9 @@ export async function syncSprites(
   await mkdir(directory, { recursive: true });
   const pokemon = [
     ...new Set(
-      teams.flatMap((team) => team.members.map((member) => member.pokemon))
+      teams.flatMap((team) =>
+        team.members.flatMap((member) => [member.pokemon, base(member.pokemon)])
+      )
     ),
   ];
   const wanted = new Map();

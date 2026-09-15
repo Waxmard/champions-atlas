@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "predev": "node scripts/import-catalog.mjs --if-missing",
-    "dev": "vite dev",
+    "dev": "vite dev --host",
     "prebuild": "node scripts/import-catalog.mjs --if-missing",
     "build": "vite build",
     "preview": "vite preview",
