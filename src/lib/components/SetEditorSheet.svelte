@@ -129,6 +129,14 @@
     ondirtychange(dirty);
   });
 
+  function revealPanel(node: HTMLElement) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    node.dataset.motionReady = 'true';
+    node.dataset.open = 'false';
+    const frame = requestAnimationFrame(() => (node.dataset.open = 'true'));
+    return { destroy: () => cancelAnimationFrame(frame) };
+  }
+
   function activate(field: NonNullable<typeof activeField>) {
     activeField = field;
     natureOpen = field === 'nature';
@@ -220,7 +228,8 @@
 
 <section
   aria-label={`Edit ${form.pokemon} set`}
-  class="min-w-0 animate-in duration-200 fade-in-0 slide-in-from-top-2"
+  class="t-panel-slide min-w-0"
+  use:revealPanel
 >
   <div class="flex flex-wrap items-center gap-3">
     <PokemonSprite pokemon={form.pokemon} size={44} />

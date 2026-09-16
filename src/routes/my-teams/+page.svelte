@@ -57,6 +57,14 @@
     (!!draft && JSON.stringify(draft) !== baseline) || editorDirty
   );
 
+  function revealPanel(node: HTMLElement) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    node.dataset.motionReady = 'true';
+    node.dataset.open = 'false';
+    const frame = requestAnimationFrame(() => (node.dataset.open = 'true'));
+    return { destroy: () => cancelAnimationFrame(frame) };
+  }
+
   function openSaved(id: string | null) {
     try {
       saved = readSavedTeams(localStorage);
@@ -430,7 +438,9 @@
           Team text normalizes to Pokémon Champions format (EVs out of 32, no IVs);
           unknown details stay omitted.
         </p>
-        {#if showExport}<label class="mt-4 block text-sm font-medium"
+        {#if showExport}<label
+            class="t-panel-slide mt-4 block text-sm font-medium"
+            use:revealPanel
             >Export text<textarea
               readonly
               class="mt-2 min-h-72 w-full rounded-lg border p-3 font-mono text-xs"
@@ -494,7 +504,8 @@
           <section
             aria-label="Selected comparison"
             bind:this={comparisonElement}
-            class="mt-5 rounded-2xl border bg-card p-5"
+            class="t-panel-slide mt-5 rounded-2xl border bg-card p-5"
+            use:revealPanel
           >
             <h3 class="text-lg font-semibold">
               {candidate.member
