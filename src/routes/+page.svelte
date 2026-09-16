@@ -195,10 +195,9 @@
           >
         </div>
         {#if filters.length || regulation !== 'all' || filterState.error}<Button
+            href={resolve('/')}
             variant="ghost"
-            class="min-h-11 px-2"
-            onclick={() => navigate(new URLSearchParams())}
-            >Clear filters</Button
+            class="min-h-11 px-2">Clear filters</Button
           >{/if}
       </div>
       <div
@@ -388,10 +387,7 @@
             {filterState.error ||
               'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
           </p>
-          <Button
-            variant="outline"
-            class="mt-5 min-h-11"
-            onclick={() => navigate(new URLSearchParams())}
+          <Button href={resolve('/')} variant="outline" class="mt-5 min-h-11"
             >Clear filters</Button
           >
         </div>

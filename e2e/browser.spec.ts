@@ -196,10 +196,8 @@ test('invalid filters stay explicit; team deep links and missing teams work', as
   await expect(
     page.getByRole('heading', { name: 'Invalid filter link' })
   ).toBeVisible();
-  await expect(async () => {
-    await page.getByRole('button', { name: 'Clear filters' }).last().click();
-    await expect(page).toHaveURL('/');
-  }).toPass({ timeout: 5_000 });
+  await page.getByRole('link', { name: 'Clear filters' }).last().click();
+  await expect(page).toHaveURL('/');
   const card = page
     .getByRole('region', { name: 'Matching teams' })
     .getByRole('article')
