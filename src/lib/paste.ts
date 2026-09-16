@@ -1,5 +1,46 @@
 import { normalize, type Member } from './catalog.ts';
 
+export const CHAMPIONS_STATS = [
+  'HP',
+  'Atk',
+  'Def',
+  'SpA',
+  'SpD',
+  'Spe',
+] as const;
+export type ChampionsStat = (typeof CHAMPIONS_STATS)[number];
+export type ChampionsSpread = Record<ChampionsStat, number>;
+
+export function parseChampionsSpread(
+  spread: string | null
+): ChampionsSpread | null {
+  const values = Object.fromEntries(
+    CHAMPIONS_STATS.map((stat) => [stat, 0])
+  ) as ChampionsSpread;
+  if (!spread?.trim()) return values;
+  const seen = new Set<ChampionsStat>();
+  for (const part of spread.split('/')) {
+    const match = /^(\d+)\s+(HP|Atk|Def|SpA|SpD|Spe)$/i.exec(part.trim());
+    const stat = CHAMPIONS_STATS.find(
+      (candidate) => candidate.toLowerCase() === match?.[2].toLowerCase()
+    );
+    const value = Number(match?.[1]);
+    if (!stat || seen.has(stat) || !Number.isInteger(value) || value > 32)
+      return null;
+    seen.add(stat);
+    values[stat] = value;
+  }
+  return values;
+}
+
+export const formatChampionsSpread = (spread: ChampionsSpread) =>
+  CHAMPIONS_STATS.filter((stat) => spread[stat] > 0)
+    .map((stat) => `${spread[stat]} ${stat}`)
+    .join(' / ');
+
+export const championsSpreadTotal = (spread: ChampionsSpread) =>
+  CHAMPIONS_STATS.reduce((total, stat) => total + spread[stat], 0);
+
 export function normalizeSpread(spread: string | null): string | null {
   if (!spread) return null;
   const parts = spread

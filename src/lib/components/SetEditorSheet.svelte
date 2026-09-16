@@ -1,10 +1,16 @@
 <script lang="ts">
+  import { Combobox } from 'bits-ui';
   import X from '@lucide/svelte/icons/x';
+  import EvEditor from '$lib/components/EvEditor.svelte';
   import ItemIcon from '$lib/components/ItemIcon.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import { normalize, type Member, type Team } from '$lib/catalog';
-  import { parseSetBlock } from '$lib/paste';
+  import {
+    championsSpreadTotal,
+    parseChampionsSpread,
+    parseSetBlock,
+  } from '$lib/paste';
   import { catalogSuggestions, setText } from '$lib/workbench';
 
   let {
@@ -23,33 +29,10 @@
     ondirtychange: (dirty: boolean) => void;
   } = $props();
 
-  const NATURES = [
-    'Adamant',
-    'Bashful',
-    'Bold',
-    'Brave',
-    'Calm',
-    'Careful',
-    'Docile',
-    'Gentle',
-    'Hardy',
-    'Hasty',
-    'Impish',
-    'Jolly',
-    'Lax',
-    'Lonely',
-    'Mild',
-    'Modest',
-    'Naive',
-    'Naughty',
-    'Quiet',
-    'Quirky',
-    'Rash',
-    'Relaxed',
-    'Sassy',
-    'Serious',
-    'Timid',
-  ];
+  const NATURES =
+    'Adamant Bashful Bold Brave Calm Careful Docile Gentle Hardy Hasty Impish Jolly Lax Lonely Mild Modest Naive Naughty Quiet Quirky Rash Relaxed Sassy Serious Timid'.split(
+      ' '
+    );
   let initialText = $state('');
   let form = $state({
     pokemon: '',
@@ -60,15 +43,21 @@
     moves: [] as string[],
   });
   let initialized = $state(false),
+    initialSpread = $state(''),
     rawText = $state(''),
     rawDirty = $state(false),
+    spreadTouched = $state(false),
     error = $state(''),
-    moveInput = $state('');
-  let showItems = $state(false),
-    showAbilities = $state(false),
-    showMoves = $state(false),
-    showSpreads = $state(false),
-    spreadFilter = $state('');
+    moveInput = $state(''),
+    itemQuery = $state(''),
+    abilityQuery = $state(''),
+    natureQuery = $state('');
+  let activeField = $state<
+      'item' | 'ability' | 'nature' | 'spread' | 'moves' | null
+    >(null),
+    expanded = $state(false),
+    natureSelection = $state(''),
+    natureOpen = $state(false);
 
   const draftMember = $derived<Member>({
     pokemon: form.pokemon.trim(),
@@ -83,16 +72,41 @@
   const suggestions = $derived(
     catalogSuggestions(form.pokemon, teams, currentRegulation)
   );
+  const filteredItems = $derived(
+    suggestions.items.filter((option) =>
+      normalize(option.value).includes(normalize(itemQuery))
+    )
+  );
+  const filteredAbilities = $derived(
+    suggestions.abilities.filter((option) =>
+      normalize(option.value).includes(normalize(abilityQuery))
+    )
+  );
   const remainingMoves = $derived(
     suggestions.moves.filter(
       (option) =>
+        normalize(option.value).includes(normalize(moveInput)) &&
         !form.moves.some((move) => normalize(move) === normalize(option.value))
     )
   );
-  const filteredSpreads = $derived(
-    suggestions.spreads.filter((option) =>
-      normalize(option.value).includes(normalize(spreadFilter))
+  const filteredNatures = $derived(
+    NATURES.filter((nature) =>
+      nature.toLowerCase().startsWith(natureQuery.trim().toLowerCase())
     )
+  );
+  const spreadValues = $derived(
+    parseChampionsSpread(form.spread) || parseChampionsSpread('')!
+  );
+  const spreadTotal = $derived(championsSpreadTotal(spreadValues));
+  const spreadValid = $derived(
+    !spreadTouched ||
+      (parseChampionsSpread(form.spread) !== null && spreadTotal === 66)
+  );
+  const spreadSuggestions = $derived(
+    suggestions.spreads.filter((option) => {
+      const spread = parseChampionsSpread(option.value);
+      return spread && championsSpreadTotal(spread) === 66;
+    })
   );
 
   $effect(() => {
@@ -106,6 +120,7 @@
         moves: [...member.moves],
       };
       initialText = setText({ ...member, set: undefined });
+      initialSpread = member.spread || '';
       rawText = initialText;
       initialized = true;
       return;
@@ -114,6 +129,29 @@
     ondirtychange(dirty);
   });
 
+  function activate(field: NonNullable<typeof activeField>) {
+    activeField = field;
+    natureOpen = field === 'nature';
+    expanded = false;
+    if (field === 'item') itemQuery = '';
+    if (field === 'ability') abilityQuery = '';
+    if (field === 'nature') natureQuery = '';
+    error = '';
+  }
+  function closeOnBlur(
+    field: NonNullable<typeof activeField>,
+    element: HTMLElement
+  ) {
+    requestAnimationFrame(() => {
+      if (activeField === field && !element.contains(document.activeElement))
+        activeField = null;
+    });
+  }
+  function exactNature(value: string) {
+    return NATURES.find(
+      (nature) => nature.toLowerCase() === value.trim().toLowerCase()
+    );
+  }
   function addMove(value = moveInput) {
     const move = value.trim();
     if (!move) return;
@@ -129,6 +167,7 @@
     }
     form.moves = [...form.moves, move];
     moveInput = '';
+    activeField = null;
     error = '';
   }
   function removeMove(index: number) {
@@ -146,6 +185,7 @@
         spread: parsed.spread || '',
         moves: parsed.moves,
       };
+      if ((parsed.spread || '') !== initialSpread) spreadTouched = true;
       rawDirty = false;
       error = '';
     } catch (err) {
@@ -158,6 +198,16 @@
     error = '';
   }
   function apply() {
+    const nature = exactNature(form.nature);
+    if (!nature) {
+      error = 'Choose a standard nature.';
+      return;
+    }
+    form.nature = nature;
+    if (!spreadValid) {
+      error = `Changed EV spreads must total 66 points (currently ${spreadTotal}).`;
+      return;
+    }
     try {
       onapply(parseSetBlock(fieldText));
     } catch (err) {
@@ -181,7 +231,10 @@
   </div>
 
   <div class="mt-5 grid gap-4 lg:grid-cols-2">
-    <div class="min-w-0">
+    <div
+      class="min-w-0"
+      onfocusout={(event) => closeOnBlur('item', event.currentTarget)}
+    >
       <label for="set-item-input" class="text-sm font-medium">Item</label>
       <div class="relative mt-2">
         {#if form.item}<span class="pointer-events-none absolute top-3 left-3"
@@ -194,128 +247,176 @@
             : 'pl-3'}"
           placeholder="Custom item"
           bind:value={form.item}
-          oninput={() => (error = '')}
+          onfocus={() => activate('item')}
+          oninput={(event) => {
+            itemQuery = event.currentTarget.value;
+            error = '';
+          }}
+          onkeydown={(event) => {
+            if (event.key === 'Escape') activeField = null;
+          }}
         />
       </div>
-      <div class="mt-2 flex flex-wrap gap-2">
-        {#each suggestions.items.slice(0, showItems ? undefined : 5) as option (option.value)}
-          <Button
-            variant={normalize(form.item) === normalize(option.value)
-              ? 'default'
-              : 'outline'}
-            class="min-h-11 max-w-full text-left whitespace-normal"
-            onclick={() => {
-              form.item = option.value;
-              error = '';
-            }}
-            >{option.value}
-            <span class="text-xs opacity-70"
-              >{option.currentCount}/{option.totalCount}</span
-            ></Button
-          >
-        {/each}
-      </div>
-      {#if suggestions.items.length > 5}<Button
-          variant="ghost"
-          class="mt-1 min-h-11"
-          onclick={() => (showItems = !showItems)}
-          >{showItems
-            ? 'Show fewer items'
-            : `Show ${suggestions.items.length - 5} more items`}</Button
-        >{/if}
+      {#if activeField === 'item'}<div
+          class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
+          aria-label="Item suggestions"
+        >
+          {#each filteredItems.slice(0, expanded ? undefined : 5) as option (option.value)}
+            <Button
+              variant={normalize(form.item) === normalize(option.value)
+                ? 'default'
+                : 'outline'}
+              class="min-h-11 max-w-full text-left whitespace-normal"
+              onclick={() => {
+                form.item = option.value;
+                activeField = null;
+                error = '';
+              }}
+              >{option.value}
+              <span class="text-xs opacity-70"
+                >{option.currentCount}/{option.totalCount}</span
+              ></Button
+            >
+          {/each}
+        </div>
+        {#if filteredItems.length > 5}<Button
+            variant="ghost"
+            class="mt-1 min-h-11"
+            onclick={() => (expanded = !expanded)}
+            >{expanded
+              ? 'Show fewer items'
+              : `Show ${filteredItems.length - 5} more items`}</Button
+          >{/if}{/if}
     </div>
 
-    <div class="min-w-0">
+    <div
+      class="min-w-0"
+      onfocusout={(event) => closeOnBlur('ability', event.currentTarget)}
+    >
       <label for="set-ability-input" class="text-sm font-medium">Ability</label>
       <input
         id="set-ability-input"
         class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
         placeholder="Custom ability"
         bind:value={form.ability}
-        oninput={() => (error = '')}
+        onfocus={() => activate('ability')}
+        oninput={(event) => {
+          abilityQuery = event.currentTarget.value;
+          error = '';
+        }}
+        onkeydown={(event) => {
+          if (event.key === 'Escape') activeField = null;
+        }}
       />
-      <div class="mt-2 flex flex-wrap gap-2">
-        {#each suggestions.abilities.slice(0, showAbilities ? undefined : 5) as option (option.value)}
-          <Button
-            variant={normalize(form.ability) === normalize(option.value)
-              ? 'default'
-              : 'outline'}
-            class="min-h-11 max-w-full text-left whitespace-normal"
-            onclick={() => {
-              form.ability = option.value;
-              error = '';
-            }}
-            >{option.value}
-            <span class="text-xs opacity-70"
-              >{option.currentCount}/{option.totalCount}</span
-            ></Button
-          >
-        {/each}
-      </div>
-      {#if suggestions.abilities.length > 5}<Button
-          variant="ghost"
-          class="mt-1 min-h-11"
-          onclick={() => (showAbilities = !showAbilities)}
-          >{showAbilities
-            ? 'Show fewer abilities'
-            : `Show ${suggestions.abilities.length - 5} more abilities`}</Button
-        >{/if}
+      {#if activeField === 'ability'}<div
+          class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
+          aria-label="Ability suggestions"
+        >
+          {#each filteredAbilities.slice(0, expanded ? undefined : 5) as option (option.value)}
+            <Button
+              variant={normalize(form.ability) === normalize(option.value)
+                ? 'default'
+                : 'outline'}
+              class="min-h-11 max-w-full text-left whitespace-normal"
+              onclick={() => {
+                form.ability = option.value;
+                activeField = null;
+                error = '';
+              }}
+              >{option.value}
+              <span class="text-xs opacity-70"
+                >{option.currentCount}/{option.totalCount}</span
+              ></Button
+            >
+          {/each}
+        </div>
+        {#if filteredAbilities.length > 5}<Button
+            variant="ghost"
+            class="mt-1 min-h-11"
+            onclick={() => (expanded = !expanded)}
+            >{expanded
+              ? 'Show fewer abilities'
+              : `Show ${filteredAbilities.length - 5} more abilities`}</Button
+          >{/if}{/if}
     </div>
 
     <div class="min-w-0">
-      <label for="set-nature-select" class="text-sm font-medium">Nature</label>
-      <select
-        id="set-nature-select"
-        class="filter-select mt-2"
-        bind:value={form.nature}
-        ><option value="">Select nature</option
-        >{#each NATURES as nature (nature)}<option value={nature}
-            >{nature}</option
-          >{/each}</select
+      <label for="set-nature-input" class="text-sm font-medium">Nature</label>
+      <Combobox.Root
+        type="single"
+        bind:open={natureOpen}
+        value={natureSelection}
+        inputValue={form.nature}
+        onOpenChange={(open) => {
+          if (open) activate('nature');
+          else if (activeField === 'nature') activeField = null;
+        }}
+        onValueChange={(value) => {
+          if (!value) return;
+          form.nature = value;
+          natureSelection = value;
+          natureOpen = false;
+          activeField = null;
+          error = '';
+        }}
       >
+        <Combobox.Input
+          id="set-nature-input"
+          aria-label="Nature"
+          class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          placeholder="Choose nature"
+          onfocus={() => activate('nature')}
+          oninput={(event) => {
+            form.nature = event.currentTarget.value;
+            natureQuery = event.currentTarget.value;
+            activeField = 'nature';
+            natureOpen = true;
+            error = '';
+          }}
+          onblur={() => {
+            const nature = exactNature(form.nature);
+            if (nature) form.nature = nature;
+          }}
+        />
+        <Combobox.Portal>
+          <Combobox.Content
+            sideOffset={6}
+            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-xl border bg-popover p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0"
+          >
+            <Combobox.Viewport>
+              {#each filteredNatures as nature (nature)}
+                <Combobox.Item
+                  value={nature}
+                  label={nature}
+                  class="flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                  >{nature}</Combobox.Item
+                >
+              {:else}<p class="p-3 text-sm text-muted-foreground">
+                  No matching nature.
+                </p>{/each}
+            </Combobox.Viewport>
+          </Combobox.Content>
+        </Combobox.Portal>
+      </Combobox.Root>
     </div>
 
     <div class="min-w-0">
       <label for="set-evs-input" class="text-sm font-medium">EV spread</label>
-      <input
-        id="set-evs-input"
-        class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 font-mono text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        placeholder="32 HP / 32 SpA"
-        bind:value={form.spread}
-        oninput={() => (error = '')}
-      />
-      {#if showSpreads && suggestions.spreads.length > 3}<input
-          aria-label="Filter EV spreads"
-          class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          placeholder="Filter spreads"
-          bind:value={spreadFilter}
+      {#if activeField !== 'spread'}<Button
+          id="set-evs-input"
+          variant="outline"
+          class="mt-2 min-h-11 w-full justify-start font-mono whitespace-normal"
+          onclick={() => activate('spread')}>{form.spread || 'No EVs'}</Button
+        >{:else}<EvEditor
+          spread={form.spread}
+          suggestions={spreadSuggestions}
+          onspreadchange={(spread) => {
+            form.spread = spread;
+            spreadTouched = true;
+            error = '';
+          }}
+          ondone={() => (activeField = null)}
         />{/if}
-      <div class="mt-2 grid gap-2">
-        {#each filteredSpreads.slice(0, showSpreads ? undefined : 3) as option (option.value)}
-          <Button
-            variant={normalize(form.spread) === normalize(option.value)
-              ? 'default'
-              : 'outline'}
-            class="h-auto min-h-11 w-full justify-between text-left whitespace-normal"
-            onclick={() => {
-              form.spread = option.value;
-              error = '';
-            }}
-            ><span class="wrap-break-word">{option.value}</span><span
-              class="shrink-0 text-xs opacity-70"
-              >{option.currentCount}/{option.totalCount}</span
-            ></Button
-          >
-        {/each}
-      </div>
-      {#if suggestions.spreads.length > 3}<Button
-          variant="ghost"
-          class="mt-1 min-h-11"
-          onclick={() => (showSpreads = !showSpreads)}
-          >{showSpreads
-            ? 'Show fewer spreads'
-            : `Show ${suggestions.spreads.length - 3} more spreads`}</Button
-        >{/if}
     </div>
   </div>
 
@@ -323,7 +424,10 @@
     Suggestion counts: current regulation / all catalog teams.
   </p>
 
-  <div class="mt-5 min-w-0 border-t pt-5">
+  <div
+    class="mt-5 min-w-0 border-t pt-5"
+    onfocusout={(event) => closeOnBlur('moves', event.currentTarget)}
+  >
     <h3 class="text-sm font-medium">Moves ({form.moves.length}/4)</h3>
     {#if form.moves.length}<ul
         class="mt-2 grid gap-2 sm:grid-cols-2"
@@ -348,37 +452,42 @@
         class="min-h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
         placeholder="Custom move"
         bind:value={moveInput}
+        onfocus={() => activate('moves')}
         onkeydown={(event) => {
           if (event.key === 'Enter') {
             event.preventDefault();
             addMove();
           }
+          if (event.key === 'Escape') activeField = null;
         }}
       />
       <Button class="min-h-11" onclick={() => addMove()}>Add move</Button>
     </div>
-    <div class="mt-2 flex flex-wrap gap-2">
-      {#each remainingMoves.slice(0, showMoves ? undefined : 8) as option (option.value)}
-        <Button
-          variant="outline"
-          class="min-h-11 max-w-full text-left whitespace-normal"
-          disabled={form.moves.length === 4}
-          onclick={() => addMove(option.value)}
-          >{option.value}
-          <span class="text-xs opacity-70"
-            >{option.currentCount}/{option.totalCount}</span
-          ></Button
-        >
-      {/each}
-    </div>
-    {#if remainingMoves.length > 8}<Button
-        variant="ghost"
-        class="mt-1 min-h-11"
-        onclick={() => (showMoves = !showMoves)}
-        >{showMoves
-          ? 'Show fewer moves'
-          : `Show ${remainingMoves.length - 8} more moves`}</Button
-      >{/if}
+    {#if activeField === 'moves'}<div
+        class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
+        aria-label="Move suggestions"
+      >
+        {#each remainingMoves.slice(0, expanded ? undefined : 8) as option (option.value)}
+          <Button
+            variant="outline"
+            class="min-h-11 max-w-full text-left whitespace-normal"
+            disabled={form.moves.length === 4}
+            onclick={() => addMove(option.value)}
+            >{option.value}
+            <span class="text-xs opacity-70"
+              >{option.currentCount}/{option.totalCount}</span
+            ></Button
+          >
+        {/each}
+      </div>
+      {#if remainingMoves.length > 8}<Button
+          variant="ghost"
+          class="mt-1 min-h-11"
+          onclick={() => (expanded = !expanded)}
+          >{expanded
+            ? 'Show fewer moves'
+            : `Show ${remainingMoves.length - 8} more moves`}</Button
+        >{/if}{/if}
   </div>
 
   <details class="mt-5 rounded-xl border p-3">
@@ -412,8 +521,10 @@
     </p>{/if}
   <div class="mt-5 flex flex-wrap justify-end gap-2 border-t pt-4">
     <Button variant="outline" class="min-h-11" onclick={oncancel}>Cancel</Button
-    ><Button class="min-h-11" disabled={rawDirty} onclick={apply}
-      >Apply set</Button
+    ><Button
+      class="min-h-11"
+      disabled={rawDirty || !spreadValid}
+      onclick={apply}>Apply set</Button
     >
   </div>
 </section>

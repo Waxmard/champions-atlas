@@ -15,6 +15,9 @@ import {
   catalogSuggestions,
 } from '../src/lib/workbench.ts';
 import {
+  championsSpreadTotal,
+  formatChampionsSpread,
+  parseChampionsSpread,
   parseCustomPaste,
   parsePaste,
   parseSetBlock,
@@ -286,6 +289,31 @@ EVs: 252 HP / 4 Atk / 156 Def / 76 SpD / 20 Spe
   assert.equal(parsed.ability, 'Intimidate');
   assert.equal(parsed.nature, 'Careful');
   assert.equal(parsed.moves.length, 4);
+});
+
+test('strict Champions spreads parse, format, and total six ordered stats', () => {
+  const spread = parseChampionsSpread(
+    '2 Spe / 32 SpA / 0 Def / 32 HP / 0 SpD / 0 Atk'
+  );
+  assert.deepEqual(spread, {
+    HP: 32,
+    Atk: 0,
+    Def: 0,
+    SpA: 32,
+    SpD: 0,
+    Spe: 2,
+  });
+  assert.equal(formatChampionsSpread(spread), '32 HP / 32 SpA / 2 Spe');
+  for (const total of [64, 65, 66, 67])
+    assert.equal(championsSpreadTotal({ ...spread, HP: total - 34 }), total);
+  for (const invalid of [
+    '33 HP',
+    '-1 HP',
+    '1.5 HP',
+    '1 HP / 2 HP',
+    '1 Special',
+  ])
+    assert.equal(parseChampionsSpread(invalid), null);
 });
 
 test('catalogSuggestions ranks current usage, merges normalized values, and isolates forms', () => {
