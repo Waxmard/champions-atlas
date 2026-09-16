@@ -12,8 +12,14 @@ import {
   similarTeams,
   storageKey,
   useCandidate,
+  popularBuilds,
+  catalogSuggestions,
 } from '../src/lib/workbench.ts';
-import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
+import {
+  parseCustomPaste,
+  parsePaste,
+  parseSetBlock,
+} from '../src/lib/paste.ts';
 
 const member = (pokemon, item = 'Item') => ({
   pokemon,
@@ -264,4 +270,45 @@ test('generateUUID falls back when crypto.randomUUID is undefined (insecure cont
   } finally {
     crypto.randomUUID = original;
   }
+});
+
+test('parseSetBlock, popularBuilds, and catalogSuggestions extract and autofill sets', () => {
+  const raw = `Incineroar @ Sitrus Berry
+Ability: Intimidate
+Careful Nature
+EVs: 252 HP / 4 Atk / 156 Def / 76 SpD / 20 Spe
+- Fake Out
+- Parting Shot
+- Knock Off
+- Flare Blitz`;
+  const parsed = parseSetBlock(raw);
+  assert.equal(parsed.pokemon, 'Incineroar');
+  assert.equal(parsed.item, 'Sitrus Berry');
+  assert.equal(parsed.ability, 'Intimidate');
+  assert.equal(parsed.nature, 'Careful');
+  assert.equal(parsed.moves.length, 4);
+
+  const testTeam = {
+    ...team('t1'),
+    members: [parsed, member('Pelipper')],
+  };
+  const testTeam2 = {
+    ...team('t2'),
+    members: [
+      {
+        ...parsed,
+        moves: ['Fake Out', 'Parting Shot', 'Knock Off', 'Flare Blitz'],
+      },
+    ],
+  };
+
+  const builds = popularBuilds('Incineroar', [testTeam, testTeam2]);
+  assert.equal(builds.length, 1);
+  assert.equal(builds[0].count, 2);
+  assert.equal(builds[0].item, 'Sitrus Berry');
+
+  const suggestions = catalogSuggestions('Incineroar', [testTeam]);
+  assert.deepEqual(suggestions.items, ['Sitrus Berry']);
+  assert.deepEqual(suggestions.abilities, ['Intimidate']);
+  assert.ok(suggestions.moves.includes('Fake Out'));
 });

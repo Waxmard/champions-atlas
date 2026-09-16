@@ -8,8 +8,9 @@
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
+  import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import { bestEvidence, type Team } from '$lib/catalog';
-  import { parsePaste } from '$lib/paste';
+  import { parsePaste, parseSetBlock } from '$lib/paste';
   import {
     exportPaste,
     readSavedTeams,
@@ -23,18 +24,20 @@
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
-  let saved = $state<SavedTeam[]>([]);
-  let draft = $state<SavedTeam | null>(null);
-  let baseline = $state('');
-  let sets = $state<string[]>([]);
-  let ready = $state(false);
-  let message = $state('');
-  let storageError = $state('');
-  let candidateId = $state('');
-  let limit = $state(12);
-  let showExport = $state(false);
-  let comparisonElement: HTMLElement | undefined = $state();
-  let editorElement: HTMLElement | undefined = $state();
+  let saved = $state<SavedTeam[]>([]),
+    draft = $state<SavedTeam | null>(null),
+    baseline = $state(''),
+    sets = $state<string[]>([]);
+  let ready = $state(false),
+    message = $state(''),
+    storageError = $state(''),
+    candidateId = $state(''),
+    limit = $state(12),
+    showExport = $state(false);
+  let editorOpen = $state(false),
+    activeEditIndex = $state<number | null>(null);
+  let comparisonElement: HTMLElement | undefined = $state(),
+    editorElement: HTMLElement | undefined = $state();
   const current = $derived(data.catalog.currentRegulation);
   const results = $derived(
     draft ? similarTeams(draft, data.catalog.teams as Team[], current) : []
@@ -49,13 +52,11 @@
         : candidate.team.members
       : []
   );
-  const dirty = $derived(
-    !!draft &&
-      (JSON.stringify(draft) !== baseline ||
-        sets.join('\n\n') !== exportPaste(draft.members))
-  );
   const editingSets = $derived(
     !!draft && sets.join('\n\n') !== exportPaste(draft.members)
+  );
+  const dirty = $derived(
+    !!draft && (JSON.stringify(draft) !== baseline || editingSets)
   );
 
   function openSaved(id: string | null) {
@@ -80,10 +81,10 @@
   }
   onMount(() => {
     ready = true;
-    const warn = (event: BeforeUnloadEvent) => {
+    const warn = (e: BeforeUnloadEvent) => {
       if (dirty) {
-        event.preventDefault();
-        event.returnValue = '';
+        e.preventDefault();
+        e.returnValue = '';
       }
     };
     window.addEventListener('beforeunload', warn);
@@ -144,12 +145,33 @@
           : 'Invalid set text. Changes were not saved.';
     }
   }
+  const openSetEditor = (index: number) => {
+    activeEditIndex = index;
+    editorOpen = true;
+  };
+  function applySetEdit(index: number, text: string) {
+    if (!draft) return;
+    try {
+      const m = parseSetBlock(text);
+      draft.members[index] = m;
+      sets[index] = setText(m);
+    } catch {
+      sets[index] = text;
+    }
+  }
   function togglePokemon(index: number) {
     if (!draft) return;
     draft.changeSlot = draft.changeSlot === index ? null : index;
     candidateId = '';
     limit = 12;
   }
+  const scrollTo = (el?: HTMLElement) =>
+    el?.scrollIntoView({
+      block: 'start',
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    });
   async function applyCandidate() {
     if (!draft || !candidate || editingSets) return;
     try {
@@ -160,12 +182,7 @@
       message =
         'Replacement loaded. Other five sets are unchanged. Review, then Save changes.';
       await tick();
-      editorElement?.scrollIntoView({
-        block: 'start',
-        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-          ? 'instant'
-          : 'smooth',
-      });
+      scrollTo(editorElement);
     } catch (error) {
       message =
         error instanceof Error ? error.message : 'Could not use candidate.';
@@ -185,12 +202,7 @@
   async function selectCandidate(id: string) {
     candidateId = id;
     await tick();
-    comparisonElement?.scrollIntoView({
-      block: 'start',
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'instant'
-        : 'smooth',
-    });
+    scrollTo(comparisonElement);
   }
 </script>
 
@@ -302,7 +314,13 @@
                 onclick={() => togglePokemon(index)}
                 >Change {member.pokemon}</Button
               >
-              <details class="mt-3">
+              <Button
+                variant="outline"
+                class="mt-2 min-h-11 w-full"
+                disabled={editingSets}
+                onclick={() => openSetEditor(index)}>Visual editor</Button
+              >
+              <details class="mt-2">
                 <summary class="cursor-pointer py-2 text-sm text-primary"
                   >Edit set</summary
                 >
@@ -518,5 +536,15 @@
           >{/if}
       </section>
     {/if}
+  {/if}
+
+  {#if activeEditIndex !== null && draft}
+    <SetEditorSheet
+      bind:open={editorOpen}
+      member={draft.members[activeEditIndex]}
+      setTextValue={sets[activeEditIndex]}
+      teams={data.catalog.teams as Team[]}
+      onapply={(newText) => applySetEdit(activeEditIndex!, newText)}
+    />
   {/if}
 </main>

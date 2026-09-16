@@ -374,3 +374,83 @@ export function saveTeam(
   storage.setItem(storageKey, raw);
   return next;
 }
+
+export interface PopularBuild {
+  label: string;
+  count: number;
+  item: string | null;
+  ability: string | null;
+  nature: string | null;
+  spread: string | null;
+  moves: string[];
+}
+
+export function popularBuilds(
+  pokemon: string,
+  teams: Team[],
+  limit = 5
+): PopularBuild[] {
+  const norm = normalize(pokemon);
+  if (!norm) return [];
+  const map = new Map<string, { count: number; member: Member }>();
+  for (const team of teams) {
+    for (const member of team.members) {
+      if (normalize(member.pokemon) === norm) {
+        const movesKey = [...member.moves].sort().join(', ');
+        const key = `${member.item || ''}|${member.ability || ''}|${member.nature || ''}|${movesKey}`;
+        const existing = map.get(key);
+        if (existing) {
+          existing.count++;
+        } else {
+          map.set(key, { count: 1, member });
+        }
+      }
+    }
+  }
+  return [...map.values()]
+    .sort((a, b) => b.count - a.count)
+    .slice(0, limit)
+    .map(({ count, member }) => {
+      const summary = [
+        member.item,
+        member.ability,
+        member.moves.slice(0, 2).join(', ') +
+          (member.moves.length > 2 ? '…' : ''),
+      ]
+        .filter(Boolean)
+        .join(' · ');
+      return {
+        label: `${summary || 'Empty build'} (${count})`,
+        count,
+        item: member.item,
+        ability: member.ability,
+        nature: member.nature,
+        spread: member.spread,
+        moves: member.moves,
+      };
+    });
+}
+
+export function catalogSuggestions(pokemon: string, teams: Team[]) {
+  const norm = normalize(pokemon);
+  const items = new Set<string>();
+  const abilities = new Set<string>();
+  const moves = new Set<string>();
+  const spreads = new Set<string>();
+  for (const team of teams) {
+    for (const member of team.members) {
+      if (normalize(member.pokemon) === norm) {
+        if (member.item) items.add(member.item);
+        if (member.ability) abilities.add(member.ability);
+        if (member.spread) spreads.add(member.spread);
+        for (const move of member.moves) moves.add(move);
+      }
+    }
+  }
+  return {
+    items: [...items].sort(),
+    abilities: [...abilities].sort(),
+    moves: [...moves].sort(),
+    spreads: [...spreads].sort(),
+  };
+}
