@@ -34,7 +34,19 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     name: 'Weavile set',
     exact: true,
   });
+  const originalWeavile = peter.members.find(
+    (member) => member.pokemon === 'Weavile'
+  )!;
   await expect(weavile.locator('img[src*="/items/"]')).toBeVisible();
+  await expect(
+    weavile.getByText(originalWeavile.item!, { exact: true })
+  ).toBeVisible();
+  await expect(
+    weavile.locator('p', { hasText: `Ability: ${originalWeavile.ability}` })
+  ).toHaveText(`Ability: ${originalWeavile.ability}`);
+  for (const move of originalWeavile.moves)
+    await expect(weavile.getByText(move, { exact: true })).toBeVisible();
+  await expect(weavile.locator('textarea')).toHaveCount(0);
   const history = page.getByText('Original & source history').locator('..');
   await history.locator('summary').click();
   await expect(history.locator('pre')).not.toContainText('Level:');
@@ -107,13 +119,17 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await page
     .getByLabel('Team name', { exact: true })
     .fill('My Weavile adaptation');
-  await weavile.getByText('Edit set', { exact: true }).click();
-  const set = weavile.getByLabel('Set text for Weavile', { exact: true });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  const set = page.getByLabel('Set Text (Showdown format)', { exact: true });
   const setText = await set.inputValue();
   expect(setText).not.toMatch(/(?:IVs|Level|Tera Type):/);
   await set.fill(`${setText}\n- Protect`);
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
-  await expect(page.getByRole('status')).toContainText('more than four moves');
+  await page.getByRole('button', { name: 'Apply set', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('more than four moves');
+  await expect(page.getByRole('dialog')).toBeVisible();
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!)[0].name,
@@ -121,6 +137,8 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     )
   ).toBe(peter.name);
   await set.fill(setText.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe'));
+  await page.getByRole('button', { name: 'Apply set', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Changes saved on this device.'
@@ -212,11 +230,15 @@ test('import, edit, reload, compare, and export a custom team', async ({
     name: 'Weavile set',
     exact: true,
   });
-  await weavile.getByText('Edit set', { exact: true }).click();
-  const set = weavile.getByLabel('Set text for Weavile', { exact: true });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Text', exact: true }).click();
+  const set = page.getByLabel('Set Text (Showdown format)', { exact: true });
   await set.fill(
     (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
   );
+  await page.getByRole('button', { name: 'Apply set', exact: true }).click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Changes saved on this device.'
@@ -239,6 +261,58 @@ test('import, edit, reload, compare, and export a custom team', async ({
     )
   ).toBe(true);
   expect(errors).toEqual([]);
+});
+
+test('unknown and long card fields stay usable without phone overflow', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const longName = 'VeryLongPokemonNameWithoutBreaks'.repeat(4);
+  await page.evaluate(
+    ({ key, longName }) => {
+      const teams = JSON.parse(localStorage.getItem(key)!);
+      teams[0].members[0].ability = null;
+      teams[0].members[0].moves = [];
+      teams[0].members[1].pokemon = longName;
+      localStorage.setItem(key, JSON.stringify(teams));
+    },
+    { key: storageKey, longName }
+  );
+  await page.reload();
+
+  const team = page.getByRole('region', { name: 'Your team', exact: true });
+  await expect(
+    team.getByText('Ability unknown', { exact: true })
+  ).toBeVisible();
+  await expect(team.getByText('Moves unknown', { exact: true })).toBeVisible();
+  await expect(team.getByText(longName, { exact: true })).toBeVisible();
+  await expect(team.locator('textarea')).toHaveCount(0);
+
+  const firstPokemon = peter.members[0].pokemon;
+  const change = team.getByRole('button', {
+    name: `Change ${firstPokemon}`,
+    exact: true,
+  });
+  await change.focus();
+  await change.press('Enter');
+  await expect(change).toHaveAttribute('aria-pressed', 'true');
+
+  const edit = team.getByRole('button', {
+    name: `Edit ${firstPokemon} set`,
+    exact: true,
+  });
+  await edit.focus();
+  await edit.press('Enter');
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.keyboard.press('Escape');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth
+    )
+  ).toBe(true);
 });
 
 test('invalid custom import never changes local storage', async ({ page }) => {

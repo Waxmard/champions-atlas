@@ -12,15 +12,13 @@
   let {
     open = $bindable(false),
     member,
-    setTextValue,
     teams,
     onapply,
   }: {
     open: boolean;
     member: Member;
-    setTextValue: string;
     teams: Team[];
-    onapply: (newSetText: string) => void;
+    onapply: (member: Member) => void;
   } = $props();
 
   let mode = $state<'form' | 'text'>('form');
@@ -67,7 +65,7 @@
   $effect(() => {
     if (open) {
       error = '';
-      rawText = setTextValue || setText(member);
+      rawText = setText(member);
       form = {
         pokemon: member.pokemon,
         item: member.item || '',
@@ -108,7 +106,7 @@
   function apply() {
     error = '';
     try {
-      let text = '';
+      let parsed: Member;
       if (mode === 'form') {
         const moves = form.moves.map((m) => m.trim()).filter(Boolean);
         const setMember: Member = {
@@ -119,13 +117,11 @@
           spread: form.spread.trim() || null,
           moves,
         };
-        text = setText(setMember);
-        parseSetBlock(text);
+        parsed = parseSetBlock(setText(setMember));
       } else {
-        parseSetBlock(rawText);
-        text = rawText.trim();
+        parsed = parseSetBlock(rawText);
       }
-      onapply(text);
+      onapply(parsed);
       open = false;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Invalid set format.';

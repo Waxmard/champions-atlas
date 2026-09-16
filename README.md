@@ -90,8 +90,8 @@ refresh or additional source integration is configured.
    All regulations are included. Replacement order favors keeping the Pokémon and its set details; source-team
    similarity and reported results break ties. Identical replacement sets are
    shown once, and Pokémon already in another slot are excluded.
-4. Expand **Edit set** to change Pokémon or published set text, then **Save
-   changes**. **Copy team text** exports current sets, normalizing EVs out of
+4. Choose **Edit set** to update fields in the form or use its **Text** tab,
+   apply the valid set, then **Save changes**. **Copy team text** exports current sets, normalizing EVs out of
    32 and omitting IVs, level, and Tera Type for Pokémon Champions. Other set
    fields remain unchanged. Unknown fields are omitted, not inferred. Edited
    teams do not receive a new rental code.

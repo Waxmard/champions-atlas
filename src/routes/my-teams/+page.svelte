@@ -9,13 +9,11 @@
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
-  import { bestEvidence, type Team } from '$lib/catalog';
-  import { parsePaste, parseSetBlock } from '$lib/paste';
+  import { bestEvidence, type Member, type Team } from '$lib/catalog';
   import {
     exportPaste,
     readSavedTeams,
     saveTeam,
-    setText,
     similarTeams,
     useCandidate,
     type SavedTeam,
@@ -26,8 +24,7 @@
   let { data }: { data: PageData } = $props();
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
-    baseline = $state(''),
-    sets = $state<string[]>([]);
+    baseline = $state('');
   let ready = $state(false),
     message = $state(''),
     storageError = $state(''),
@@ -52,12 +49,7 @@
         : candidate.team.members
       : []
   );
-  const editingSets = $derived(
-    !!draft && sets.join('\n\n') !== exportPaste(draft.members)
-  );
-  const dirty = $derived(
-    !!draft && (JSON.stringify(draft) !== baseline || editingSets)
-  );
+  const dirty = $derived(!!draft && JSON.stringify(draft) !== baseline);
 
   function openSaved(id: string | null) {
     try {
@@ -66,7 +58,6 @@
       const entry = saved.find((team) => team.id === id);
       draft = entry ? JSON.parse(JSON.stringify(entry)) : null;
       baseline = JSON.stringify(draft);
-      sets = draft ? draft.members.map(setText) : [];
       candidateId = '';
       limit = 12;
       showExport = false;
@@ -105,7 +96,6 @@
       saved = saveTeam(localStorage, next);
       draft = JSON.parse(JSON.stringify(next));
       baseline = JSON.stringify(draft);
-      sets = next.members.map(setText);
       storageError = '';
       message = 'Changes saved on this device.';
     } catch {
@@ -119,45 +109,15 @@
       message = 'Give this team a name.';
       return;
     }
-    try {
-      const next = $state.snapshot(draft);
-      if (editingSets) {
-        const parsed = parsePaste(sets.join('\n\n'));
-        const previous = parsePaste(exportPaste(next.members));
-        next.members = parsed.map((member, index) =>
-          sets[index] === setText(next.members[index])
-            ? next.members[index]
-            : {
-                ...member,
-                pokemon:
-                  member.pokemon === previous[index].pokemon &&
-                  member.item === previous[index].item
-                    ? next.members[index].pokemon
-                    : member.pokemon,
-              }
-        );
-      }
-      persist(next);
-    } catch (error) {
-      message =
-        error instanceof Error
-          ? error.message
-          : 'Invalid set text. Changes were not saved.';
-    }
+    persist($state.snapshot(draft));
   }
   const openSetEditor = (index: number) => {
     activeEditIndex = index;
     editorOpen = true;
   };
-  function applySetEdit(index: number, text: string) {
+  function applySetEdit(index: number, member: Member) {
     if (!draft) return;
-    try {
-      const m = parseSetBlock(text);
-      draft.members[index] = m;
-      sets[index] = setText(m);
-    } catch {
-      sets[index] = text;
-    }
+    draft.members[index] = member;
   }
   function togglePokemon(index: number) {
     if (!draft) return;
@@ -173,10 +133,9 @@
         : 'smooth',
     });
   async function applyCandidate() {
-    if (!draft || !candidate || editingSets) return;
+    if (!draft || !candidate) return;
     try {
       draft = useCandidate($state.snapshot(draft), candidate);
-      sets = draft.members.map(setText);
       candidateId = '';
       showExport = false;
       message =
@@ -189,7 +148,7 @@
     }
   }
   async function copyPaste() {
-    if (!draft || editingSets) return;
+    if (!draft) return;
     showExport = true;
     try {
       await navigator.clipboard.writeText(exportPaste(draft.members));
@@ -272,11 +231,8 @@
           >
           <div class="flex flex-wrap gap-2">
             <Button class="min-h-11" onclick={saveChanges}>Save changes</Button
-            ><Button
-              variant="outline"
-              class="min-h-11"
-              disabled={editingSets}
-              onclick={copyPaste}>Copy team text</Button
+            ><Button variant="outline" class="min-h-11" onclick={copyPaste}
+              >Copy team text</Button
             >
           </div>
         </div>
@@ -306,31 +262,43 @@
                   </p>
                 </div>
               </div>
-              <Button
-                variant={draft.changeSlot === index ? 'default' : 'outline'}
-                class="mt-3 min-h-11"
-                aria-pressed={draft.changeSlot === index}
-                disabled={editingSets}
-                onclick={() => togglePokemon(index)}
-                >Change {member.pokemon}</Button
-              >
-              <Button
-                variant="outline"
-                class="mt-2 min-h-11 w-full"
-                disabled={editingSets}
-                onclick={() => openSetEditor(index)}>Visual editor</Button
-              >
-              <details class="mt-2">
-                <summary class="cursor-pointer py-2 text-sm text-primary"
-                  >Edit set</summary
+              <div class="mt-3 min-w-0 text-sm">
+                <p class="wrap-break-word">
+                  {#if member.ability}<span class="text-muted-foreground"
+                      >Ability:</span
+                    >
+                    {member.ability}{:else}<span class="text-muted-foreground"
+                      >Ability unknown</span
+                    >{/if}
+                </p>
+                {#if member.moves.length}
+                  <ul
+                    class="mt-2 grid min-w-0 grid-cols-2 gap-x-3 gap-y-1"
+                    aria-label={`${member.pokemon} moves`}
+                  >
+                    {#each member.moves as move (move)}
+                      <li class="min-w-0 wrap-break-word">{move}</li>
+                    {/each}
+                  </ul>
+                {:else}
+                  <p class="mt-2 text-muted-foreground">Moves unknown</p>
+                {/if}
+              </div>
+              <div class="mt-4 grid grid-cols-2 gap-2">
+                <Button
+                  variant={draft.changeSlot === index ? 'default' : 'outline'}
+                  class="min-h-11 min-w-0"
+                  aria-label={`Change ${member.pokemon}`}
+                  aria-pressed={draft.changeSlot === index}
+                  onclick={() => togglePokemon(index)}>Change</Button
                 >
-                <label class="mt-2 block text-xs text-muted-foreground"
-                  >Set text for {member.pokemon}<textarea
-                    class="mt-2 min-h-64 w-full rounded-lg border bg-background p-3 font-mono text-xs leading-5"
-                    maxlength="8000"
-                    bind:value={sets[index]}></textarea></label
+                <Button
+                  variant="outline"
+                  class="min-h-11 min-w-0"
+                  aria-label={`Edit ${member.pokemon} set`}
+                  onclick={() => openSetEditor(index)}>Edit set</Button
                 >
-              </details>
+              </div>
             </section>
           {/each}
         </div>
@@ -338,8 +306,8 @@
           {draft.changeSlot === null
             ? 'Keeping all six. Choose one Pokémon above to explore replacements.'
             : `Changing ${draft.members[draft.changeSlot].pokemon} only. Other five sets stay unchanged.`}
-          Save set edits before comparing. Team text normalizes to Pokémon Champions
-          format (EVs out of 32, no IVs); unknown details stay omitted.
+          Team text normalizes to Pokémon Champions format (EVs out of 32, no IVs);
+          unknown details stay omitted.
         </p>
         {#if showExport}<label class="mt-4 block text-sm font-medium"
             >Export text<textarea
@@ -400,9 +368,6 @@
           {results.length} matching alternatives. Current-regulation legality remains
           unverified.
         </p>
-        {#if editingSets}<p class="mt-4 rounded-lg border p-4 text-sm">
-            Save set edits to update comparisons.
-          </p>{/if}
         {#if candidate}
           {@const evidence = bestEvidence(candidate.team, current)}
           <section
@@ -433,7 +398,6 @@
             <div class="mt-5 flex flex-wrap gap-3">
               {#if candidate.member}<Button
                   class="min-h-11"
-                  disabled={editingSets}
                   onclick={applyCandidate}>Use replacement</Button
                 >{/if}<Button
                 href={candidate.team.pasteUrl}
@@ -513,7 +477,6 @@
               <Button
                 variant="outline"
                 class="mt-4 min-h-11"
-                disabled={editingSets}
                 onclick={() => selectCandidate(result.id)}
                 >{result.member
                   ? `Compare ${result.member.pokemon}`
@@ -542,9 +505,8 @@
     <SetEditorSheet
       bind:open={editorOpen}
       member={draft.members[activeEditIndex]}
-      setTextValue={sets[activeEditIndex]}
       teams={data.catalog.teams as Team[]}
-      onapply={(newText) => applySetEdit(activeEditIndex!, newText)}
+      onapply={(member) => applySetEdit(activeEditIndex!, member)}
     />
   {/if}
 </main>
