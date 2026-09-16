@@ -82,7 +82,8 @@
   );
 
   function navigate(params: URLSearchParams, noScroll = true) {
-    void goto(resolve(`/?${params}`), {
+    const query = params.toString();
+    void goto(resolve(query ? `/?${query}` : '/'), {
       replaceState: true,
       noScroll,
       keepFocus: true,

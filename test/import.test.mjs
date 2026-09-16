@@ -103,7 +103,7 @@ test('paste enrichment matches species and item, never array position', () => {
     .reverse()
     .map(
       (m) =>
-        `${m.pokemon} @ ${m.item}\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- Protect`
+        `${m.pokemon} @ ${m.item}\nAbility: Ability\nLevel: 50\nEVs: 32 HP\nAdamant Nature\n- Protect`
     )
     .join('\n\n');
   const enriched = enrich(
@@ -114,6 +114,9 @@ test('paste enrichment matches species and item, never array position', () => {
   assert.equal(enriched.members[0].spread, '32 HP');
   assert.deepEqual(enriched.members[0].moves, ['Protect']);
   assert.match(enriched.members[0].set, /^Pokemon0 @ Item0/);
+  assert.doesNotMatch(enriched.members[0].set, /Level:/);
+  assert.equal(enriched.paste, paste);
+  assert.match(enriched.paste, /Level: 50/);
   assert.throws(() =>
     enrich(
       { members, pasteUrl: '' },
