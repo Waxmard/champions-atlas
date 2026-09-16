@@ -197,21 +197,23 @@
     rawDirty = false;
     error = '';
   }
-  function apply() {
+  export function apply(): boolean {
     const nature = exactNature(form.nature);
     if (!nature) {
       error = 'Choose a standard nature.';
-      return;
+      return false;
     }
     form.nature = nature;
     if (!spreadValid) {
       error = `Changed EV spreads must total 66 points (currently ${spreadTotal}).`;
-      return;
+      return false;
     }
     try {
       onapply(parseSetBlock(fieldText));
+      return true;
     } catch (err) {
       error = err instanceof Error ? err.message : 'Invalid set format.';
+      return false;
     }
   }
 </script>

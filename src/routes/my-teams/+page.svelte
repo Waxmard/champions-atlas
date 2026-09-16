@@ -8,12 +8,14 @@
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
+  import SimilarTeamCard from '$lib/components/SimilarTeamCard.svelte';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import { bestEvidence, type Member, type Team } from '$lib/catalog';
   import {
     activeTeamKey,
     exportPaste,
     readSavedTeams,
+    resolveSavedTeamId,
     saveTeam,
     similarTeams,
     useCandidate,
@@ -28,21 +30,21 @@
     baseline = $state('');
   let ready = $state(false),
     message = $state(''),
-    storageError = $state(''),
-    candidateId = $state(''),
+    storageError = $state('');
+  let candidateId = $state(''),
     limit = $state(12),
     showExport = $state(false);
   let activeEditIndex = $state<number | null>(null),
+    originalMember = $state<Member | null>(null),
     editorDirty = $state(false);
-  let comparisonElement: HTMLElement | undefined = $state(),
-    editorElement: HTMLElement | undefined = $state();
+  let editorRef = $state<{ apply: () => boolean } | undefined>();
+  let comparisonElement = $state<HTMLElement>(),
+    editorElement = $state<HTMLElement>();
   const current = $derived(data.catalog.currentRegulation);
   const results = $derived(
     draft ? similarTeams(draft, data.catalog.teams as Team[], current) : []
   );
-  const candidate = $derived(
-    results.find((result) => result.id === candidateId)
-  );
+  const candidate = $derived(results.find((r) => r.id === candidateId));
   const comparisonMembers = $derived(
     draft && candidate
       ? candidate.member
@@ -59,20 +61,14 @@
     try {
       saved = readSavedTeams(localStorage);
       storageError = '';
-      const resolvedId =
-        !page.url.searchParams.has('team') && saved.length
-          ? ((localStorage.getItem(activeTeamKey) &&
-              saved.find(
-                (team) => team.id === localStorage.getItem(activeTeamKey)
-              )?.id) ??
-            saved[0].id)
-          : id;
+      const activeId = localStorage.getItem(activeTeamKey);
+      const resolvedId = resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? JSON.parse(JSON.stringify(entry)) : null;
       baseline = JSON.stringify(draft);
       if (entry) {
         localStorage.setItem(activeTeamKey, entry.id);
-        if (!page.url.searchParams.has('team')) {
+        if (page.url.searchParams.get('team') !== entry.id) {
           void goto(resolve(`/my-teams?team=${entry.id}`), {
             replaceState: true,
           });
@@ -82,9 +78,10 @@
       limit = 12;
       showExport = false;
       activeEditIndex = null;
+      originalMember = null;
       editorDirty = false;
       message =
-        id && !entry
+        id && !entry && !resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
           : '';
     } catch {
@@ -114,13 +111,30 @@
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') persistIfDirty();
     };
+    const onPointerDown = (e: PointerEvent) => {
+      if (activeEditIndex === null) return;
+      const target = e.target as HTMLElement | null;
+      const card = document.getElementById(`pokemon-slot-${activeEditIndex}`);
+      if (
+        target &&
+        card &&
+        !card.contains(target) &&
+        !target.closest(
+          '[data-bits-combobox-content], [role="listbox"], [role="dialog"]'
+        )
+      ) {
+        editorRef?.apply();
+      }
+    };
     window.addEventListener('beforeunload', warn);
     window.addEventListener('pagehide', onHide);
     document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pointerdown', onPointerDown);
     return () => {
       window.removeEventListener('beforeunload', warn);
       window.removeEventListener('pagehide', onHide);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pointerdown', onPointerDown);
     };
   });
   $effect(() => {
@@ -154,21 +168,54 @@
     }
     persist($state.snapshot(draft));
   }
+  const scrollSmooth = (
+    el?: HTMLElement | null,
+    block: ScrollLogicalPosition = 'start'
+  ) =>
+    el?.scrollIntoView({
+      block,
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    });
   const openSetEditor = (index: number) => {
     if (editing) return;
     activeEditIndex = index;
+    originalMember = draft
+      ? structuredClone($state.snapshot(draft.members[index]))
+      : null;
     editorDirty = false;
+    void tick().then(() =>
+      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center')
+    );
   };
   function applySetEdit(index: number, member: Member) {
     if (!draft) return;
     draft.members[index] = member;
     activeEditIndex = null;
+    originalMember = null;
     editorDirty = false;
     persist($state.snapshot(draft));
+    void tick().then(() =>
+      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center')
+    );
   }
   function cancelSetEdit() {
+    if (draft && activeEditIndex !== null && originalMember) {
+      draft.members[activeEditIndex] = originalMember;
+    }
+    const targetSlot = activeEditIndex;
     activeEditIndex = null;
+    originalMember = null;
     editorDirty = false;
+    if (targetSlot !== null) {
+      void tick().then(() =>
+        scrollSmooth(
+          document.getElementById(`pokemon-slot-${targetSlot}`),
+          'center'
+        )
+      );
+    }
   }
   function togglePokemon(index: number) {
     if (!draft || editing) return;
@@ -176,13 +223,6 @@
     candidateId = '';
     limit = 12;
   }
-  const scrollTo = (el?: HTMLElement) =>
-    el?.scrollIntoView({
-      block: 'start',
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'instant'
-        : 'smooth',
-    });
   async function applyCandidate() {
     if (!draft || !candidate || editing) return;
     try {
@@ -192,7 +232,7 @@
       message =
         'Replacement loaded. Other five sets are unchanged. Review, then Save changes.';
       await tick();
-      scrollTo(editorElement);
+      scrollSmooth(editorElement);
     } catch (error) {
       message =
         error instanceof Error ? error.message : 'Could not use candidate.';
@@ -213,12 +253,18 @@
     if (editing) return;
     candidateId = id;
     await tick();
-    scrollTo(comparisonElement);
+    scrollSmooth(comparisonElement);
   }
 </script>
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+  {#if activeEditIndex !== null}
+    <div
+      class="pointer-events-none fixed inset-0 z-30 bg-black/60 backdrop-blur-[1px] transition-opacity duration-200 motion-reduce:transition-none"
+      aria-hidden="true"
+    ></div>
+  {/if}
   <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="text-3xl font-semibold tracking-tight">My teams</h1>
@@ -240,26 +286,28 @@
     </p>{/if}
   {#if !ready}<p class="mt-8 text-muted-foreground">Loading saved teams…</p>
   {:else if !storageError}
-    <label class="mt-6 block max-w-xl text-sm font-medium"
-      >Saved team
-      <select
-        class="filter-select mt-2"
-        value={draft?.id || ''}
-        onchange={(event) => {
-          void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
-        }}
-      >
-        <option value="">Choose a team</option>
-        {#each saved as team (team.id)}<option value={team.id}
-            >{team.name}</option
-          >{/each}
-      </select>
-    </label>
-    {#if !saved.length}<p
+    {#if saved.length}
+      <label class="mt-6 block max-w-xl text-sm font-medium"
+        >Saved team
+        <select
+          class="filter-select mt-2"
+          value={draft?.id || ''}
+          onchange={(event) => {
+            void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
+          }}
+        >
+          {#each saved as team (team.id)}<option value={team.id}
+              >{team.name}</option
+            >{/each}
+        </select>
+      </label>
+    {:else}
+      <p
         class="mt-8 rounded-xl border border-dashed p-6 text-sm text-muted-foreground"
       >
         No saved teams yet. Open a catalog team and choose “Use this team”.
-      </p>{/if}
+      </p>
+    {/if}
     <p
       role="status"
       aria-live="polite"
@@ -300,14 +348,16 @@
         <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {#each draft.members as member, index (index)}
             <section
+              id={`pokemon-slot-${index}`}
               class="min-w-0 rounded-xl border p-4 transition-[grid-column,border-color,background-color] duration-200 motion-reduce:transition-none {activeEditIndex ===
               index
-                ? 'bg-secondary/20 sm:col-span-2 lg:col-span-3'
+                ? 'relative z-50 bg-card shadow-2xl ring-1 ring-primary sm:col-span-2 lg:col-span-3'
                 : ''}"
               aria-label={`${member.pokemon} set`}
             >
               {#if activeEditIndex === index}
                 <SetEditorSheet
+                  bind:this={editorRef}
                   {member}
                   teams={data.catalog.teams as Team[]}
                   currentRegulation={current}
@@ -489,73 +539,12 @@
         {/if}
         <div class="mt-5 grid gap-3 md:grid-cols-2">
           {#each results.slice(0, limit) as result (result.id)}
-            {@const evidence = bestEvidence(result.team, current)}
-            <article
-              class="min-w-0 rounded-xl border bg-card p-5 transition-colors hover:border-primary/40"
-            >
-              <p class="text-xs text-primary">
-                Source: {result.shared}/6 Pokémon shared · {result.details} matching
-                set details · {result.team.regulation}
-              </p>
-              <div class="mt-2 flex items-center gap-3">
-                {#if result.member}<PokemonSprite
-                    pokemon={result.member.pokemon}
-                    size={32}
-                  />{:else}<ul
-                    class="grid shrink-0 grid-cols-3 gap-1"
-                    aria-label="Team members"
-                  >
-                    {#each result.team.members as member (member.pokemon)}<li>
-                        <PokemonSprite pokemon={member.pokemon} size={24} />
-                      </li>{/each}
-                  </ul>{/if}
-                <h3
-                  class="flex min-w-0 flex-wrap items-center gap-1 font-semibold wrap-break-word"
-                >
-                  {#if result.member}
-                    {result.member.pokemon} · {#if result.member.item}<ItemIcon
-                        item={result.member.item}
-                      />{/if}{result.member.item || 'Item unknown'}
-                  {:else}{result.team.name}{/if}
-                </h3>
-              </div>
-              <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
-                {#if result.team.regulation === current}<span
-                    class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
-                    >Current regulation</span
-                  >{/if}
-                {#if evidence.level <= 2}<span
-                    class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
-                    >Strong evidence</span
-                  >{/if}
-              </div>
-              {#if result.member}<p class="mt-2 text-xs text-muted-foreground">
-                  {result.member.moves.join(' · ') || 'Moves unknown'}
-                </p>
-                <p class="mt-2 text-xs">From {result.team.name}</p>{/if}
-              <p class="mt-2 text-xs leading-5 text-muted-foreground">
-                {result.team.members
-                  .map((member) => member.pokemon)
-                  .join(' · ')}
-              </p>
-              <p class="mt-3 text-xs">
-                {evidence.label} · {evidence.event || 'No event reported'}
-              </p>
-              {#if !result.team.paste}<p
-                  class="mt-2 text-xs text-muted-foreground"
-                >
-                  Set details incomplete.
-                </p>{/if}
-              <Button
-                variant="outline"
-                class="mt-4 min-h-11"
-                disabled={editing}
-                onclick={() => selectCandidate(result.id)}
-                >{result.member
-                  ? `Compare ${result.member.pokemon}`
-                  : `Compare ${result.team.creator || 'team'}`}</Button
-              >
-            </article>
+            <SimilarTeamCard
+              {result}
+              {current}
+              {editing}
+              onselect={selectCandidate}
+            />
           {/each}
         </div>
         {#if !results.length}<p

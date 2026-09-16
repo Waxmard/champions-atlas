@@ -16,6 +16,20 @@ export interface SavedTeam {
 export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
 
+export function resolveSavedTeamId(
+  saved: SavedTeam[],
+  requestedId: string | null,
+  activeId: string | null
+): string | null {
+  const fallbackId =
+    (activeId && saved.find((team) => team.id === activeId)?.id) ??
+    saved[0]?.id ??
+    null;
+  return requestedId && saved.some((team) => team.id === requestedId)
+    ? requestedId
+    : fallbackId;
+}
+
 export function setText(member: Member) {
   return (
     (member.set && normalizeSet(member.set)) ||

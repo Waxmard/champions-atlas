@@ -236,3 +236,35 @@ test('set edit auto-persists and reopening my-teams restores active team', async
   );
   await expect(weavile.getByText('Focus Sash', { exact: true })).toBeVisible();
 });
+
+test('outside click applies set changes and cancel rolls back', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .click();
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
+  await page.locator('h1').click();
+  await expect(editor).toHaveCount(0);
+  await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
+
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .click();
+  await editor.getByLabel('Item', { exact: true }).fill('Life Orb');
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
+});
