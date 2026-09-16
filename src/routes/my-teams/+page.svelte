@@ -31,8 +31,8 @@
     candidateId = $state(''),
     limit = $state(12),
     showExport = $state(false);
-  let editorOpen = $state(false),
-    activeEditIndex = $state<number | null>(null);
+  let activeEditIndex = $state<number | null>(null),
+    editorDirty = $state(false);
   let comparisonElement: HTMLElement | undefined = $state(),
     editorElement: HTMLElement | undefined = $state();
   const current = $derived(data.catalog.currentRegulation);
@@ -49,7 +49,10 @@
         : candidate.team.members
       : []
   );
-  const dirty = $derived(!!draft && JSON.stringify(draft) !== baseline);
+  const editing = $derived(activeEditIndex !== null);
+  const dirty = $derived(
+    (!!draft && JSON.stringify(draft) !== baseline) || editorDirty
+  );
 
   function openSaved(id: string | null) {
     try {
@@ -61,6 +64,8 @@
       candidateId = '';
       limit = 12;
       showExport = false;
+      activeEditIndex = null;
+      editorDirty = false;
       message =
         id && !entry
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
@@ -104,7 +109,7 @@
     }
   }
   function saveChanges() {
-    if (!draft) return;
+    if (!draft || editing) return;
     if (!draft.name.trim()) {
       message = 'Give this team a name.';
       return;
@@ -112,15 +117,22 @@
     persist($state.snapshot(draft));
   }
   const openSetEditor = (index: number) => {
+    if (editing) return;
     activeEditIndex = index;
-    editorOpen = true;
+    editorDirty = false;
   };
   function applySetEdit(index: number, member: Member) {
     if (!draft) return;
     draft.members[index] = member;
+    activeEditIndex = null;
+    editorDirty = false;
+  }
+  function cancelSetEdit() {
+    activeEditIndex = null;
+    editorDirty = false;
   }
   function togglePokemon(index: number) {
-    if (!draft) return;
+    if (!draft || editing) return;
     draft.changeSlot = draft.changeSlot === index ? null : index;
     candidateId = '';
     limit = 12;
@@ -133,7 +145,7 @@
         : 'smooth',
     });
   async function applyCandidate() {
-    if (!draft || !candidate) return;
+    if (!draft || !candidate || editing) return;
     try {
       draft = useCandidate($state.snapshot(draft), candidate);
       candidateId = '';
@@ -148,7 +160,7 @@
     }
   }
   async function copyPaste() {
-    if (!draft) return;
+    if (!draft || editing) return;
     showExport = true;
     try {
       await navigator.clipboard.writeText(exportPaste(draft.members));
@@ -159,6 +171,7 @@
     }
   }
   async function selectCandidate(id: string) {
+    if (editing) return;
     candidateId = id;
     await tick();
     scrollTo(comparisonElement);
@@ -230,9 +243,13 @@
             /></label
           >
           <div class="flex flex-wrap gap-2">
-            <Button class="min-h-11" onclick={saveChanges}>Save changes</Button
-            ><Button variant="outline" class="min-h-11" onclick={copyPaste}
-              >Copy team text</Button
+            <Button class="min-h-11" disabled={editing} onclick={saveChanges}
+              >Save changes</Button
+            ><Button
+              variant="outline"
+              class="min-h-11"
+              disabled={editing}
+              onclick={copyPaste}>Copy team text</Button
             >
           </div>
         </div>
@@ -244,61 +261,76 @@
         <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {#each draft.members as member, index (index)}
             <section
-              class="min-w-0 rounded-xl border p-4"
+              class="min-w-0 rounded-xl border p-4 transition-[grid-column,border-color,background-color] duration-200 motion-reduce:transition-none {activeEditIndex ===
+              index
+                ? 'bg-secondary/20 sm:col-span-2 lg:col-span-3'
+                : ''}"
               aria-label={`${member.pokemon} set`}
             >
-              <div class="flex items-center gap-3">
-                <PokemonSprite pokemon={member.pokemon} size={64} />
-                <div class="min-w-0">
-                  <h2 class="font-semibold wrap-break-word">
-                    {member.pokemon}
-                  </h2>
-                  <p
-                    class="mt-1 flex items-center gap-1 text-sm wrap-break-word text-primary"
-                  >
-                    {#if member.item}<ItemIcon
-                        item={member.item}
-                      />{/if}{member.item || 'Item unknown'}
-                  </p>
-                </div>
-              </div>
-              <div class="mt-3 min-w-0 text-sm">
-                <p class="wrap-break-word">
-                  {#if member.ability}<span class="text-muted-foreground"
-                      >Ability:</span
+              {#if activeEditIndex === index}
+                <SetEditorSheet
+                  {member}
+                  teams={data.catalog.teams as Team[]}
+                  currentRegulation={current}
+                  onapply={(next) => applySetEdit(index, next)}
+                  oncancel={cancelSetEdit}
+                  ondirtychange={(value) => (editorDirty = value)}
+                />
+              {:else}<div class="flex items-center gap-3">
+                  <PokemonSprite pokemon={member.pokemon} size={64} />
+                  <div class="min-w-0">
+                    <h2 class="font-semibold wrap-break-word">
+                      {member.pokemon}
+                    </h2>
+                    <p
+                      class="mt-1 flex items-center gap-1 text-sm wrap-break-word text-primary"
                     >
-                    {member.ability}{:else}<span class="text-muted-foreground"
-                      >Ability unknown</span
-                    >{/if}
-                </p>
-                {#if member.moves.length}
-                  <ul
-                    class="mt-2 grid min-w-0 grid-cols-2 gap-x-3 gap-y-1"
-                    aria-label={`${member.pokemon} moves`}
+                      {#if member.item}<ItemIcon
+                          item={member.item}
+                        />{/if}{member.item || 'Item unknown'}
+                    </p>
+                  </div>
+                </div>
+                <div class="mt-3 min-w-0 text-sm">
+                  <p class="wrap-break-word">
+                    {#if member.ability}<span class="text-muted-foreground"
+                        >Ability:</span
+                      >
+                      {member.ability}{:else}<span class="text-muted-foreground"
+                        >Ability unknown</span
+                      >{/if}
+                  </p>
+                  {#if member.moves.length}
+                    <ul
+                      class="mt-2 grid min-w-0 grid-cols-2 gap-x-3 gap-y-1"
+                      aria-label={`${member.pokemon} moves`}
+                    >
+                      {#each member.moves as move (move)}
+                        <li class="min-w-0 wrap-break-word">{move}</li>
+                      {/each}
+                    </ul>
+                  {:else}
+                    <p class="mt-2 text-muted-foreground">Moves unknown</p>
+                  {/if}
+                </div>
+                <div class="mt-4 grid grid-cols-2 gap-2">
+                  <Button
+                    variant={draft.changeSlot === index ? 'default' : 'outline'}
+                    class="min-h-11 min-w-0"
+                    aria-label={`Change ${member.pokemon}`}
+                    aria-pressed={draft.changeSlot === index}
+                    disabled={editing}
+                    onclick={() => togglePokemon(index)}>Change</Button
                   >
-                    {#each member.moves as move (move)}
-                      <li class="min-w-0 wrap-break-word">{move}</li>
-                    {/each}
-                  </ul>
-                {:else}
-                  <p class="mt-2 text-muted-foreground">Moves unknown</p>
-                {/if}
-              </div>
-              <div class="mt-4 grid grid-cols-2 gap-2">
-                <Button
-                  variant={draft.changeSlot === index ? 'default' : 'outline'}
-                  class="min-h-11 min-w-0"
-                  aria-label={`Change ${member.pokemon}`}
-                  aria-pressed={draft.changeSlot === index}
-                  onclick={() => togglePokemon(index)}>Change</Button
-                >
-                <Button
-                  variant="outline"
-                  class="min-h-11 min-w-0"
-                  aria-label={`Edit ${member.pokemon} set`}
-                  onclick={() => openSetEditor(index)}>Edit set</Button
-                >
-              </div>
+                  <Button
+                    variant="outline"
+                    class="min-h-11 min-w-0"
+                    aria-label={`Edit ${member.pokemon} set`}
+                    disabled={editing}
+                    onclick={() => openSetEditor(index)}>Edit set</Button
+                  >
+                </div>
+              {/if}
             </section>
           {/each}
         </div>
@@ -398,6 +430,7 @@
             <div class="mt-5 flex flex-wrap gap-3">
               {#if candidate.member}<Button
                   class="min-h-11"
+                  disabled={editing}
                   onclick={applyCandidate}>Use replacement</Button
                 >{/if}<Button
                 href={candidate.team.pasteUrl}
@@ -477,6 +510,7 @@
               <Button
                 variant="outline"
                 class="mt-4 min-h-11"
+                disabled={editing}
                 onclick={() => selectCandidate(result.id)}
                 >{result.member
                   ? `Compare ${result.member.pokemon}`
@@ -495,18 +529,10 @@
         {#if results.length > limit}<Button
             variant="outline"
             class="mt-5 min-h-11"
+            disabled={editing}
             onclick={() => (limit += 12)}>Show more alternatives</Button
           >{/if}
       </section>
     {/if}
-  {/if}
-
-  {#if activeEditIndex !== null && draft}
-    <SetEditorSheet
-      bind:open={editorOpen}
-      member={draft.members[activeEditIndex]}
-      teams={data.catalog.teams as Team[]}
-      onapply={(member) => applySetEdit(activeEditIndex!, member)}
-    />
   {/if}
 </main>

@@ -12,7 +12,6 @@ import {
   similarTeams,
   storageKey,
   useCandidate,
-  popularBuilds,
   catalogSuggestions,
 } from '../src/lib/workbench.ts';
 import {
@@ -272,7 +271,7 @@ test('generateUUID falls back when crypto.randomUUID is undefined (insecure cont
   }
 });
 
-test('parseSetBlock, popularBuilds, and catalogSuggestions extract and autofill sets', () => {
+test('parseSetBlock extracts a set', () => {
   const raw = `Incineroar @ Sitrus Berry
 Ability: Intimidate
 Careful Nature
@@ -287,28 +286,61 @@ EVs: 252 HP / 4 Atk / 156 Def / 76 SpD / 20 Spe
   assert.equal(parsed.ability, 'Intimidate');
   assert.equal(parsed.nature, 'Careful');
   assert.equal(parsed.moves.length, 4);
+});
 
-  const testTeam = {
-    ...team('t1'),
-    members: [parsed, member('Pelipper')],
-  };
-  const testTeam2 = {
-    ...team('t2'),
-    members: [
-      {
-        ...parsed,
-        moves: ['Fake Out', 'Parting Shot', 'Knock Off', 'Flare Blitz'],
-      },
-    ],
-  };
+test('catalogSuggestions ranks current usage, merges normalized values, and isolates forms', () => {
+  const incineroar = (item, ability = 'Intimidate', moves = ['Fake Out']) => ({
+    ...member('Incineroar', item),
+    ability,
+    moves,
+  });
+  const current = team('current', 'M-C');
+  current.members = [
+    incineroar('Alpha'),
+    incineroar('Beta'),
+    incineroar('sitrus-berry', 'Blaze', ['Flare Blitz']),
+    incineroar('---', '---', ['---']),
+    incineroar('Gamma', '---', ['---']),
+  ];
+  current.members[3].spread = '---';
+  current.members[4].spread = '---';
+  const historical = team('historical', 'M-B');
+  historical.members = [
+    incineroar('Beta'),
+    incineroar('Beta'),
+    incineroar('Sitrus Berry', 'Intimidate', ['Fake Out']),
+  ];
+  const otherForm = team('other-form', 'M-C');
+  otherForm.members = [incineroar('Heat item')];
+  otherForm.members[0].pokemon = 'Rotom-Heat';
+  const wash = team('wash', 'M-C');
+  wash.members = [incineroar('Wash item')];
+  wash.members[0].pokemon = 'Rotom-Wash';
 
-  const builds = popularBuilds('Incineroar', [testTeam, testTeam2]);
-  assert.equal(builds.length, 1);
-  assert.equal(builds[0].count, 2);
-  assert.equal(builds[0].item, 'Sitrus Berry');
-
-  const suggestions = catalogSuggestions('Incineroar', [testTeam]);
-  assert.deepEqual(suggestions.items, ['Sitrus Berry']);
-  assert.deepEqual(suggestions.abilities, ['Intimidate']);
-  assert.ok(suggestions.moves.includes('Fake Out'));
+  const suggestions = catalogSuggestions(
+    'Incineroar',
+    [current, historical, otherForm, wash],
+    'M-C'
+  );
+  assert.deepEqual(suggestions.items, [
+    { value: 'Beta', currentCount: 1, totalCount: 3 },
+    { value: 'sitrus-berry', currentCount: 1, totalCount: 2 },
+    { value: 'Alpha', currentCount: 1, totalCount: 1 },
+    { value: 'Gamma', currentCount: 1, totalCount: 1 },
+  ]);
+  assert.deepEqual(suggestions.abilities, [
+    { value: 'Intimidate', currentCount: 2, totalCount: 5 },
+    { value: 'Blaze', currentCount: 1, totalCount: 1 },
+  ]);
+  assert.deepEqual(suggestions.moves, [
+    { value: 'Fake Out', currentCount: 2, totalCount: 5 },
+    { value: 'Flare Blitz', currentCount: 1, totalCount: 1 },
+  ]);
+  assert.deepEqual(suggestions.spreads, [
+    { value: '32 HP', currentCount: 3, totalCount: 6 },
+  ]);
+  assert.deepEqual(
+    catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
+    [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
+  );
 });

@@ -3,6 +3,7 @@ import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 
 const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
+const optionValue = (text: string) => text.replace(/\s?\d+\/\d+$/, '').trim();
 
 test('save Peter, choose one slot, compare, edit, export, and preserve other five sets', async ({
   page,
@@ -122,23 +123,178 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await weavile
     .getByRole('button', { name: 'Edit Weavile set', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
-  const set = page.getByLabel('Set Text (Showdown format)', { exact: true });
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await expect(editor).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const item = editor.getByLabel('Item', { exact: true });
+  const ability = editor.getByLabel('Ability', { exact: true });
+  const nature = editor.getByLabel('Nature', { exact: true });
+  const spread = editor.getByLabel('EV spread', { exact: true });
+  const moves = editor.getByRole('list', { name: 'Selected moves' });
+  const initialItem = await item.inputValue();
+  const initialAbility = await ability.inputValue();
+  const initialNature = await nature.inputValue();
+  const initialSpread = await spread.inputValue();
+  const initialMoves = await moves.getByRole('listitem').allTextContents();
+  expect(initialItem).not.toBe('');
+  expect(initialAbility).not.toBe('');
+  expect(initialNature).not.toBe('');
+  expect(initialSpread).not.toBe('');
+  expect(initialMoves).toHaveLength(4);
+  await expect(
+    page.getByRole('button', { name: 'Save changes', exact: true })
+  ).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: 'Copy team text', exact: true })
+  ).toBeDisabled();
+  await expect(
+    page.getByRole('button', { name: 'Change Sinistcha', exact: true })
+  ).toBeDisabled();
+  await expect(
+    page
+      .getByRole('region', { name: 'Similar teams', exact: true })
+      .getByRole('button', { name: /^Compare / })
+      .first()
+  ).toBeDisabled();
+
+  const itemChoices = editor
+    .locator('#set-item-input')
+    .locator('xpath=../following-sibling::div')
+    .getByRole('button');
+  const replacementItem = itemChoices
+    .filter({ hasNotText: initialItem })
+    .first();
+  await expect(replacementItem).toBeVisible();
+  const itemText = await replacementItem.textContent();
+  await replacementItem.click();
+  await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
+    optionValue(itemText!)
+  );
+  await expect(ability).toHaveValue(initialAbility);
+  await expect(spread).toHaveValue(initialSpread);
+  await expect(moves).toHaveText(initialMoves.join(''));
+  const abilityChoices = editor
+    .locator('#set-ability-input')
+    .locator('xpath=following-sibling::div')
+    .getByRole('button');
+  const replacementAbility = abilityChoices
+    .filter({ hasNotText: initialAbility })
+    .first();
+  await expect(replacementAbility).toBeVisible();
+  const abilityText = await replacementAbility.textContent();
+  await replacementAbility.click();
+  await expect(ability).toHaveValue(optionValue(abilityText!));
+  await expect(item).toHaveValue(optionValue(itemText!));
+  await expect(spread).toHaveValue(initialSpread);
+  const spreadChoices = editor
+    .locator('#set-evs-input')
+    .locator('xpath=following-sibling::div')
+    .getByRole('button');
+  const replacementSpread = spreadChoices
+    .filter({ hasNotText: initialSpread })
+    .first();
+  await expect(replacementSpread).toBeVisible();
+  const spreadText = await replacementSpread.textContent();
+  await replacementSpread.click();
+  await expect(spread).toHaveValue(optionValue(spreadText!));
+  await expect(ability).toHaveValue(optionValue(abilityText!));
+  await expect(item).toHaveValue(optionValue(itemText!));
+  await editor
+    .getByRole('button', { name: `Remove ${initialMoves[0]}` })
+    .click();
+  await expect(moves).not.toContainText(initialMoves[0]);
+  const suggestedMoves = editor
+    .getByLabel('Custom move', { exact: true })
+    .locator('xpath=../following-sibling::div')
+    .getByRole('button');
+  const suggestedMove = suggestedMoves.first();
+  const suggestedMoveText = await suggestedMove.textContent();
+  await suggestedMove.click();
+  await expect(moves).toContainText(optionValue(suggestedMoveText!));
+  await editor
+    .getByRole('button', {
+      name: `Remove ${optionValue(suggestedMoveText!)}`,
+    })
+    .click();
+  const customMove = editor.getByLabel('Custom move', { exact: true });
+  await customMove.fill('Test Move');
+  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
+  await expect(moves).toContainText('Test Move');
+  await editor
+    .getByRole('button', { name: `Remove ${initialMoves[1]}` })
+    .click();
+  await customMove.fill('Test Move');
+  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
+  await expect(editor.getByRole('alert')).toContainText('same move twice');
+  await customMove.fill('Another Test Move');
+  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
+  await customMove.fill('One More Test Move');
+  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
+  await expect(editor.getByRole('alert')).toContainText('at most four moves');
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    page.getByRole('region', { name: 'Edit Weavile set' })
+  ).toHaveCount(0);
+  await expect(weavile).toContainText(initialItem);
+
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .click();
+  const reopened = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await expect(reopened.getByLabel('Item', { exact: true })).toHaveValue(
+    initialItem
+  );
+  await expect(reopened.getByLabel('Ability', { exact: true })).toHaveValue(
+    initialAbility
+  );
+  await expect(reopened.getByLabel('Nature', { exact: true })).toHaveValue(
+    initialNature
+  );
+  await expect(reopened.getByLabel('EV spread', { exact: true })).toHaveValue(
+    initialSpread
+  );
+  await expect(
+    reopened.getByRole('list', { name: 'Selected moves' })
+  ).toHaveText(initialMoves.join(''));
+  await reopened.getByText('Advanced set text', { exact: true }).click();
+  const set = reopened.getByLabel('Showdown set text', { exact: true });
   const setText = await set.inputValue();
   expect(setText).not.toMatch(/(?:IVs|Level|Tera Type):/);
   await set.fill(`${setText}\n- Protect`);
-  await page.getByRole('button', { name: 'Apply set', exact: true }).click();
-  await expect(page.getByRole('alert')).toContainText('more than four moves');
-  await expect(page.getByRole('dialog')).toBeVisible();
+  await expect(
+    reopened.getByRole('button', { name: 'Apply set', exact: true })
+  ).toBeDisabled();
+  await reopened
+    .getByRole('button', { name: 'Load text into fields', exact: true })
+    .click();
+  await expect(reopened.getByRole('alert')).toContainText(
+    'more than four moves'
+  );
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!)[0].name,
       storageKey
     )
   ).toBe(peter.name);
+  await reopened
+    .getByRole('button', { name: 'Reset text', exact: true })
+    .click();
   await set.fill(setText.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe'));
-  await page.getByRole('button', { name: 'Apply set', exact: true }).click();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await reopened
+    .getByRole('button', { name: 'Load text into fields', exact: true })
+    .click();
+  await reopened
+    .getByRole('button', { name: 'Apply set', exact: true })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Edit Weavile set' })
+  ).toHaveCount(0);
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Changes saved on this device.'
@@ -233,12 +389,19 @@ test('import, edit, reload, compare, and export a custom team', async ({
   await weavile
     .getByRole('button', { name: 'Edit Weavile set', exact: true })
     .click();
-  await page.getByRole('button', { name: 'Text', exact: true }).click();
-  const set = page.getByLabel('Set Text (Showdown format)', { exact: true });
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await editor.getByText('Advanced set text', { exact: true }).click();
+  const set = editor.getByLabel('Showdown set text', { exact: true });
   await set.fill(
     (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
   );
-  await page.getByRole('button', { name: 'Apply set', exact: true }).click();
+  await editor
+    .getByRole('button', { name: 'Load text into fields', exact: true })
+    .click();
+  await editor.getByRole('button', { name: 'Apply set', exact: true }).click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Changes saved on this device.'
@@ -270,6 +433,7 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   await page
     .getByRole('button', { name: 'Use this team', exact: true })
     .click();
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
   const longName = 'VeryLongPokemonNameWithoutBreaks'.repeat(4);
   await page.evaluate(
     ({ key, longName }) => {
@@ -306,13 +470,43 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   });
   await edit.focus();
   await edit.press('Enter');
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await page.keyboard.press('Escape');
+  const editor = page.getByRole('region', {
+    name: `Edit ${firstPokemon} set`,
+    exact: true,
+  });
+  await expect(editor).toBeVisible();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  for (const button of await editor.getByRole('button').all()) {
+    const box = await button.boundingBox();
+    expect(box?.height).toBeGreaterThanOrEqual(44);
+  }
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth
     )
   ).toBe(true);
+});
+
+test('inline draft changes warn before navigation', async ({ page }) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .click();
+  await page
+    .getByRole('region', { name: 'Edit Weavile set', exact: true })
+    .getByLabel('Item', { exact: true })
+    .fill('Unsaved item');
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
 });
 
 test('invalid custom import never changes local storage', async ({ page }) => {
