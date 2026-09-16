@@ -10,7 +10,12 @@
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import { bestEvidence, evidence, type Team } from '$lib/catalog';
-  import { exportPaste, newSavedTeam, saveTeam } from '$lib/workbench';
+  import {
+    activeTeamKey,
+    exportPaste,
+    newSavedTeam,
+    saveTeam,
+  } from '$lib/workbench';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -22,6 +27,7 @@
     try {
       const saved = newSavedTeam(team);
       saveTeam(localStorage, saved);
+      localStorage.setItem(activeTeamKey, saved.id);
       void goto(resolve(`/my-teams?team=${saved.id}`));
     } catch {
       copyStatus =

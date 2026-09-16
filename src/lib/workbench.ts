@@ -14,6 +14,7 @@ export interface SavedTeam {
 }
 
 export const storageKey = 'champions-atlas:teams:v1';
+export const activeTeamKey = 'champions-atlas:active-team:v1';
 
 export function setText(member: Member) {
   return (

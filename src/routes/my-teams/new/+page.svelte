@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { Button } from '$lib/components/ui/button';
-  import { newCustomTeam, saveTeam } from '$lib/workbench';
+  import { activeTeamKey, newCustomTeam, saveTeam } from '$lib/workbench';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -15,6 +15,7 @@
     try {
       const saved = newCustomTeam(name, data.currentRegulation, paste);
       saveTeam(localStorage, saved);
+      localStorage.setItem(activeTeamKey, saved.id);
       await goto(resolve(`/my-teams?team=${saved.id}`));
     } catch (error) {
       message =

@@ -11,6 +11,7 @@
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import { bestEvidence, type Member, type Team } from '$lib/catalog';
   import {
+    activeTeamKey,
     exportPaste,
     readSavedTeams,
     saveTeam,
@@ -58,9 +59,25 @@
     try {
       saved = readSavedTeams(localStorage);
       storageError = '';
-      const entry = saved.find((team) => team.id === id);
+      const resolvedId =
+        !page.url.searchParams.has('team') && saved.length
+          ? ((localStorage.getItem(activeTeamKey) &&
+              saved.find(
+                (team) => team.id === localStorage.getItem(activeTeamKey)
+              )?.id) ??
+            saved[0].id)
+          : id;
+      const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? JSON.parse(JSON.stringify(entry)) : null;
       baseline = JSON.stringify(draft);
+      if (entry) {
+        localStorage.setItem(activeTeamKey, entry.id);
+        if (!page.url.searchParams.has('team')) {
+          void goto(resolve(`/my-teams?team=${entry.id}`), {
+            replaceState: true,
+          });
+        }
+      }
       candidateId = '';
       limit = 12;
       showExport = false;
@@ -75,6 +92,16 @@
         'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
     }
   }
+  function persistIfDirty() {
+    if (
+      draft &&
+      !editing &&
+      draft.name.trim() &&
+      JSON.stringify(draft) !== baseline
+    ) {
+      persist($state.snapshot(draft));
+    }
+  }
   onMount(() => {
     ready = true;
     const warn = (e: BeforeUnloadEvent) => {
@@ -83,8 +110,18 @@
         e.returnValue = '';
       }
     };
+    const onHide = () => persistIfDirty();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') persistIfDirty();
+    };
     window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', warn);
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   });
   $effect(() => {
     if (!ready) return;
@@ -99,6 +136,7 @@
   function persist(next: SavedTeam) {
     try {
       saved = saveTeam(localStorage, next);
+      localStorage.setItem(activeTeamKey, next.id);
       draft = JSON.parse(JSON.stringify(next));
       baseline = JSON.stringify(draft);
       storageError = '';
@@ -126,6 +164,7 @@
     draft.members[index] = member;
     activeEditIndex = null;
     editorDirty = false;
+    persist($state.snapshot(draft));
   }
   function cancelSetEdit() {
     activeEditIndex = null;

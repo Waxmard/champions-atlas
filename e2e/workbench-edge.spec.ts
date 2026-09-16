@@ -201,3 +201,38 @@ test('corrupt storage is reported and kept; missing local IDs do not show anothe
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe('{broken');
 });
+
+test('set edit auto-persists and reopening my-teams restores active team', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .click();
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
+  await editor.getByRole('button', { name: 'Apply set', exact: true }).click();
+  const stored = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!)[0],
+    storageKey
+  );
+  const storedWeavile = stored.members.find(
+    (m: { pokemon: string }) => m.pokemon === 'Weavile'
+  );
+  expect(storedWeavile.item).toBe('Focus Sash');
+  await page.goto('/my-teams');
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    peter.name
+  );
+  await expect(weavile.getByText('Focus Sash', { exact: true })).toBeVisible();
+});
