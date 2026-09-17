@@ -3,7 +3,7 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import EditableMemberCard from '$lib/components/EditableMemberCard.svelte';
+  import MemberCard from '$lib/components/MemberCard.svelte';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
@@ -251,7 +251,7 @@
       <Button href={resolve('/my-teams/new')} class="min-h-11"
         >Add custom team</Button
       >
-      <Button href={resolve('/')} variant="outline" class="min-h-11"
+      <Button href={resolve('/?browse=all')} variant="outline" class="min-h-11"
         >Browse teams</Button
       >
     </div>
@@ -359,8 +359,9 @@
                   oncancel={cancelSetEdit}
                   ondirtychange={(value) => (editorDirty = value)}
                 />
-              {:else}<EditableMemberCard
+              {:else}<MemberCard
                   {member}
+                  editable={true}
                   {editing}
                   pending={editedSlots.has(index)}
                   onedit={(field) => openSetEditor(index, field)}

@@ -2,6 +2,10 @@
   import { differences } from '$lib/workbench';
   import type { Member } from '$lib/catalog';
   import ItemIcon from './ItemIcon.svelte';
+  import MovePill from './MovePill.svelte';
+  import PokemonSprite from './PokemonSprite.svelte';
+  import TypeBadge from './TypeBadge.svelte';
+  import { getPokemonTypes } from '$lib/types';
   let {
     before,
     after,
@@ -29,28 +33,64 @@
       </thead>
       <tbody class="divide-y">
         {#each rows as row, index (index)}
-          <tr class="align-top"
-            ><th scope="row" class="p-3 font-medium wrap-break-word"
-              >{row.pokemon}<span
-                class="block font-normal text-muted-foreground"
-                >{row.field}</span
-              ></th
-            >
+          <tr class="align-top">
+            <th scope="row" class="p-3 font-medium wrap-break-word">
+              <div class="flex items-center gap-2">
+                <PokemonSprite pokemon={row.pokemon} size={28} />
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-1">
+                    <span>{row.pokemon}</span>
+                    {#if row.field === 'Pokémon'}
+                      {#each getPokemonTypes(row.pokemon) as type (type)}
+                        <TypeBadge {type} size="sm" />
+                      {/each}
+                    {/if}
+                  </div>
+                  <span class="block font-normal text-muted-foreground"
+                    >{row.field}</span
+                  >
+                </div>
+              </div>
+            </th>
             {#each [row.before, row.after] as value, side (side)}
               <td class="p-3 wrap-break-word">
-                {#if row.field === 'Full set'}<details>
+                {#if row.field === 'Full set'}
+                  <details>
                     <summary class="cursor-pointer py-1 text-primary"
                       >Show set</summary
                     >
                     <p class="mt-2 whitespace-pre-wrap">{value}</p>
                   </details>
-                {:else if row.field === 'Item' && value !== 'Unknown'}<span
-                    class="flex items-center gap-1"
-                    ><ItemIcon item={value} />{value}</span
-                  >{:else}{value}{/if}
+                {:else if row.field === 'Item' && value !== 'Unknown'}
+                  <span class="flex items-center gap-1">
+                    <ItemIcon item={value} />
+                    <span>{value}</span>
+                  </span>
+                {:else if (row.field === 'Moves' || row.field.startsWith('Move')) && value !== 'Unknown'}
+                  {#if value.includes(', ')}
+                    <div class="flex flex-col gap-1">
+                      {#each value.split(', ') as move (move)}
+                        <MovePill {move} />
+                      {/each}
+                    </div>
+                  {:else}
+                    <MovePill move={value} />
+                  {/if}
+                {:else if row.field === 'Pokémon'}
+                  <span
+                    class="inline-flex rounded px-1.5 py-0.5 text-xs font-semibold {value ===
+                      'Added' || value === 'On team'
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground'}"
+                  >
+                    {value}
+                  </span>
+                {:else}
+                  {value}
+                {/if}
               </td>
-            {/each}</tr
-          >
+            {/each}
+          </tr>
         {/each}
       </tbody>
     </table>

@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import { bestEvidence, type Team } from '$lib/catalog';
+  import { getCardBackgroundStyle } from '$lib/types';
   import ItemIcon from './ItemIcon.svelte';
   import PokemonSprite from './PokemonSprite.svelte';
 
@@ -64,7 +65,8 @@
     <ul class="my-5 grid grid-cols-3 gap-2" aria-label="Team members">
       {#each team.members as member, index (index)}
         <li
-          class="flex min-w-0 flex-col items-center rounded-lg bg-secondary/60 px-2 py-2.5 text-center"
+          class="flex min-w-0 flex-col items-center rounded-lg border border-border/50 bg-secondary/40 px-2 py-2.5 text-center transition-all duration-200 hover:border-primary/40 hover:shadow-2xs"
+          style={getCardBackgroundStyle(member.pokemon, true)}
         >
           <PokemonSprite pokemon={member.pokemon} />
           <p class="mt-1 text-xs font-semibold wrap-break-word">

@@ -1,8 +1,11 @@
 <script lang="ts">
   import ItemIcon from './ItemIcon.svelte';
+  import MovePill from './MovePill.svelte';
   import PokemonSprite from './PokemonSprite.svelte';
+  import TypeBadge from './TypeBadge.svelte';
   import { Button } from './ui/button';
   import { bestEvidence } from '$lib/catalog';
+  import { getCardBackgroundStyle, getPokemonTypes } from '$lib/types';
   import type { Recommendation } from '$lib/workbench';
 
   let {
@@ -38,10 +41,17 @@
       </ul>
     {/if}
     <h3
-      class="flex min-w-0 flex-wrap items-center gap-1 font-semibold wrap-break-word"
+      class="flex min-w-0 flex-wrap items-center gap-1.5 font-semibold wrap-break-word"
     >
       {#if result.member}
-        {result.member.pokemon} · {#if result.member.item}<ItemIcon
+        <span>{result.member.pokemon}</span>
+        <span class="inline-flex items-center gap-1">
+          {#each getPokemonTypes(result.member.pokemon) as type (type)}
+            <TypeBadge {type} size="sm" />
+          {/each}
+        </span>
+        <span class="text-muted-foreground">·</span>
+        {#if result.member.item}<ItemIcon
             item={result.member.item}
           />{/if}{result.member.item || 'Item unknown'}
       {:else}
@@ -64,10 +74,21 @@
     {/if}
   </div>
   {#if result.member}
-    <p class="mt-2 text-xs text-muted-foreground">
-      {result.member.moves.join(' · ') || 'Moves unknown'}
-    </p>
-    <p class="mt-2 text-xs">From {result.team.name}</p>
+    <div
+      class="mt-2.5 rounded-lg border border-border/50 p-2.5"
+      style={getCardBackgroundStyle(result.member.pokemon, true)}
+    >
+      {#if result.member.moves.length}
+        <div class="grid grid-cols-2 gap-1.5 text-xs">
+          {#each result.member.moves as move (move)}
+            <MovePill {move} />
+          {/each}
+        </div>
+      {:else}
+        <p class="text-xs text-muted-foreground italic">Moves unknown</p>
+      {/if}
+    </div>
+    <p class="mt-2 text-xs text-muted-foreground">From {result.team.name}</p>
   {/if}
   <p class="mt-2 text-xs leading-5 text-muted-foreground">
     {result.team.members.map((member) => member.pokemon).join(' · ')}

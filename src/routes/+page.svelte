@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
@@ -7,7 +8,15 @@
   import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
   import X from '@lucide/svelte/icons/x';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
+  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import TeamCard from '$lib/components/TeamCard.svelte';
+  import TypeBadge from '$lib/components/TypeBadge.svelte';
+  import { getCardBackgroundStyle, getPokemonTypes } from '$lib/types';
+  import {
+    activeTeamKey,
+    readSavedTeams,
+    resolveSavedTeamId,
+  } from '$lib/workbench';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
@@ -22,6 +31,24 @@
 
   let { data }: { data: PageData } = $props();
   let filtersOpen = $state(page.url.searchParams.has('member'));
+  onMount(() => {
+    if (page.url.searchParams.size === 0) {
+      try {
+        const saved = readSavedTeams(localStorage);
+        if (saved.length > 0) {
+          const activeId = localStorage.getItem(activeTeamKey);
+          const targetId = resolveSavedTeamId(saved, null, activeId);
+          if (targetId) {
+            void goto(resolve(`/my-teams?team=${targetId}`), {
+              replaceState: true,
+            });
+          }
+        }
+      } catch {
+        // Storage access unavailable; remain on catalog
+      }
+    }
+  });
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const filterState = $derived.by(() => {
@@ -237,11 +264,24 @@
           <div class="mt-4 space-y-3">
             {#each filters as filter, index (filter.pokemon)}
               <section
-                class="rounded-xl border bg-background p-3"
+                class="rounded-xl border border-border/60 bg-card p-3 shadow-2xs transition-all duration-200"
+                style={getCardBackgroundStyle(filter.pokemon, true)}
                 aria-label={`${filter.pokemon} constraints`}
               >
                 <div class="flex items-center justify-between gap-2">
-                  <h2 class="text-sm font-semibold">{filter.pokemon}</h2>
+                  <div class="flex min-w-0 items-center gap-2">
+                    <PokemonSprite pokemon={filter.pokemon} size={28} />
+                    <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                      <h2 class="truncate text-sm font-semibold">
+                        {filter.pokemon}
+                      </h2>
+                      <div class="flex items-center gap-1">
+                        {#each getPokemonTypes(filter.pokemon) as type (type)}
+                          <TypeBadge {type} size="sm" />
+                        {/each}
+                      </div>
+                    </div>
+                  </div>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -258,7 +298,7 @@
                 >
                 <select
                   id={`item-${index}`}
-                  class="filter-select mt-1"
+                  class="filter-select mt-1 border-border/70 bg-background/80 backdrop-blur-xs"
                   value={filter.item}
                   onchange={(event) =>
                     updateMember(index, 'item', event.currentTarget.value)}
@@ -287,7 +327,7 @@
                     >
                     <select
                       id={`${field}-${index}`}
-                      class="filter-select mt-1"
+                      class="filter-select mt-1 border-border/70 bg-background/80 backdrop-blur-xs"
                       value={filter[field as 'move' | 'ability']}
                       onchange={(event) =>
                         updateMember(
