@@ -48,21 +48,19 @@ test('import, edit, reload, compare, and export a custom team', async ({
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
     .click();
   const editor = page.getByRole('region', {
     name: 'Edit Weavile set',
     exact: true,
   });
-  await editor.getByText('Advanced set text', { exact: true }).click();
   const set = editor.getByLabel('Showdown set text', { exact: true });
   await set.fill(
     (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
   );
   await editor
-    .getByRole('button', { name: 'Load text into fields', exact: true })
+    .getByRole('button', { name: 'Apply set text', exact: true })
     .click();
-  await editor.getByRole('button', { name: 'Apply set', exact: true }).click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Changes saved on this device.'
@@ -125,7 +123,7 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   await change.press('Enter');
   await expect(change).toHaveAttribute('aria-pressed', 'true');
   const edit = team.getByRole('button', {
-    name: `Edit ${firstPokemon} set`,
+    name: `Edit ${firstPokemon} item`,
     exact: true,
   });
   await edit.focus();
@@ -135,12 +133,14 @@ test('unknown and long card fields stay usable without phone overflow', async ({
     exact: true,
   });
   await expect(editor).toBeVisible();
+  await expect(editor.getByLabel('Item', { exact: true })).toBeFocused();
   await expect(page.getByRole('dialog')).toHaveCount(0);
   for (const button of await editor.getByRole('button').all()) {
     const box = await button.boundingBox();
     expect(box?.height).toBeGreaterThanOrEqual(44);
   }
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(edit).toBeFocused();
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth
@@ -158,7 +158,7 @@ test('inline draft changes warn before navigation', async ({ page }) => {
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
   await page
     .getByRole('region', { name: 'Edit Weavile set', exact: true })
@@ -214,14 +214,14 @@ test('set edit auto-persists and reopening my-teams restores active team', async
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
   const editor = page.getByRole('region', {
     name: 'Edit Weavile set',
     exact: true,
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
-  await editor.getByRole('button', { name: 'Apply set', exact: true }).click();
+  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
@@ -237,6 +237,46 @@ test('set edit auto-persists and reopening my-teams restores active team', async
   await expect(weavile.getByText('Focus Sash', { exact: true })).toBeVisible();
 });
 
+test('item edits preserve an unknown nature', async ({ page }) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
+  await page.evaluate((key) => {
+    const teams = JSON.parse(localStorage.getItem(key)!);
+    const member = teams[0].members.find(
+      ({ pokemon }: { pokemon: string }) => pokemon === 'Weavile'
+    );
+    member.nature = null;
+    delete member.set;
+    localStorage.setItem(key, JSON.stringify(teams));
+  }, storageKey);
+  await page.reload();
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
+    .click();
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
+  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  const stored = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!)[0],
+    storageKey
+  );
+  const storedWeavile = stored.members.find(
+    (member: { pokemon: string }) => member.pokemon === 'Weavile'
+  );
+  expect(storedWeavile.nature).toBeNull();
+  expect(storedWeavile.item).toBe('Focus Sash');
+});
+
 test('outside click applies set changes and cancel rolls back', async ({
   page,
 }) => {
@@ -249,7 +289,7 @@ test('outside click applies set changes and cancel rolls back', async ({
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
   const editor = page.getByRole('region', {
     name: 'Edit Weavile set',
@@ -261,7 +301,7 @@ test('outside click applies set changes and cancel rolls back', async ({
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
 
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
   await editor.getByLabel('Item', { exact: true }).fill('Life Orb');
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();

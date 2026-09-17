@@ -121,72 +121,53 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .getByLabel('Team name', { exact: true })
     .fill('My Weavile adaptation');
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
-  const editor = page.getByRole('region', {
+  const itemEditor = page.getByRole('region', {
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expect(editor).toBeVisible();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
-  const item = editor.getByLabel('Item', { exact: true });
-  const ability = editor.getByLabel('Ability', { exact: true });
-  const nature = editor.getByLabel('Nature', { exact: true });
-  const spread = editor.getByLabel('EV spread', { exact: true });
-  const moves = editor.getByRole('list', { name: 'Selected moves' });
+  const item = itemEditor.getByLabel('Item', { exact: true });
   const initialItem = await item.inputValue();
-  const initialAbility = await ability.inputValue();
-  const initialNature = await nature.inputValue();
-  const initialSpread = (await spread.textContent())!;
-  const initialMoves = await moves.getByRole('listitem').allTextContents();
-  expect(initialItem).not.toBe('');
-  expect(initialAbility).not.toBe('');
-  expect(initialNature).not.toBe('');
-  expect(initialSpread).not.toBe('');
-  expect(initialMoves).toHaveLength(4);
-  await expect(
-    page.getByRole('button', { name: 'Save changes', exact: true })
-  ).toBeDisabled();
-  await expect(
-    page.getByRole('button', { name: 'Copy team text', exact: true })
-  ).toBeDisabled();
-  await expect(
-    page.getByRole('button', { name: 'Change Sinistcha', exact: true })
-  ).toBeDisabled();
-  await expect(
-    page
-      .getByRole('region', { name: 'Similar teams', exact: true })
-      .getByRole('button', { name: /^Compare / })
-      .first()
-  ).toBeDisabled();
-
-  await expect(editor.getByLabel('Item suggestions')).toHaveCount(0);
-  await expect(editor.getByLabel('Ability suggestions')).toHaveCount(0);
-  await expect(editor.getByLabel('Move suggestions')).toHaveCount(0);
-  await expect(editor.getByLabel('EV editor')).toHaveCount(0);
-  await item.focus();
-  await item.press('Escape');
-  await expect(editor.getByLabel('Item suggestions')).toHaveCount(0);
-  await editor.getByText('Advanced set text', { exact: true }).focus();
-  await item.focus();
-  const itemChoices = editor.getByLabel('Item suggestions').getByRole('button');
+  await expect(item).toBeVisible();
+  await expect(itemEditor.getByLabel('Ability', { exact: true })).toHaveCount(
+    0
+  );
+  await expect(itemEditor.getByLabel('Nature', { exact: true })).toHaveCount(0);
+  await expect(itemEditor.getByLabel('EV editor')).toHaveCount(0);
+  await expect(itemEditor.getByLabel('Selected moves')).toHaveCount(0);
+  await expect(itemEditor.getByLabel('Showdown set text')).toHaveCount(0);
+  const itemChoices = itemEditor
+    .getByLabel('Item suggestions')
+    .getByRole('button');
   const replacementItem = itemChoices
     .filter({ hasNotText: initialItem })
     .first();
   await expect(replacementItem).toBeVisible();
   const itemText = await replacementItem.textContent();
-  await item.fill(optionValue(itemText!).slice(1, -1));
-  await expect(replacementItem).toBeVisible();
   await replacementItem.click();
-  await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
-    optionValue(itemText!)
+  await itemEditor
+    .getByRole('button', { name: 'Apply item', exact: true })
+    .click();
+  await expect(itemEditor).toHaveCount(0);
+  await expect(weavile).toContainText(optionValue(itemText!));
+
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile ability', exact: true })
+    .click();
+  const abilityEditor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  const ability = abilityEditor.getByLabel('Ability', { exact: true });
+  const initialAbility = await ability.inputValue();
+  await expect(abilityEditor.getByLabel('Item', { exact: true })).toHaveCount(
+    0
   );
-  await expect(ability).toHaveValue(initialAbility);
-  await expect(spread).toHaveText(initialSpread);
-  await expect(moves).toHaveText(initialMoves.join(''));
-  await ability.focus();
-  await expect(editor.getByLabel('Item suggestions')).toHaveCount(0);
-  const abilityChoices = editor
+  await expect(abilityEditor.getByLabel('Nature', { exact: true })).toHaveCount(
+    0
+  );
+  const abilityChoices = abilityEditor
     .getByLabel('Ability suggestions')
     .getByRole('button');
   const replacementAbility = abilityChoices
@@ -194,157 +175,85 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .first();
   await expect(replacementAbility).toBeVisible();
   const abilityText = await replacementAbility.textContent();
-  await ability.fill(optionValue(abilityText!).slice(1, -1));
-  await expect(replacementAbility).toBeVisible();
   await replacementAbility.click();
-  await expect(ability).toHaveValue(optionValue(abilityText!));
-  await expect(item).toHaveValue(optionValue(itemText!));
-  await expect(spread).toHaveText(initialSpread);
-  await spread.click();
-  const spreadChoices = editor
-    .getByLabel('EV spread suggestions')
-    .getByRole('button');
-  const replacementSpread = spreadChoices
-    .filter({ hasNotText: initialSpread })
-    .first();
-  await expect(replacementSpread).toBeVisible();
-  await replacementSpread.click();
-  await expect(editor.getByLabel('EV editor')).toContainText('66/66');
-  await expect(ability).toHaveValue(optionValue(abilityText!));
-  await expect(item).toHaveValue(optionValue(itemText!));
-  const hp = editor.getByLabel('HP EV', { exact: true });
-  const hpSlider = editor.getByLabel('HP EV slider', { exact: true });
-  for (const [stat, value] of [
-    ['HP', '1'],
-    ['Atk', '32'],
-    ['Def', '0'],
-    ['SpA', '0'],
-    ['SpD', '0'],
-    ['Spe', '32'],
-  ])
-    await editor.getByLabel(`${stat} EV`, { exact: true }).fill(value);
-  await expect(hpSlider).toHaveValue('1');
-  await expect(editor.getByLabel('EV editor')).toContainText('65/66');
-  await expect(
-    editor.getByRole('button', { name: 'Apply set', exact: true })
-  ).toBeDisabled();
-  await hpSlider.fill('3');
-  await expect(hp).toHaveValue('3');
-  await expect(editor.getByLabel('EV editor')).toContainText('67/66');
-  await hpSlider.fill('2');
-  await expect(editor.getByLabel('EV editor')).toContainText('66/66');
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(spread).toHaveText('2 HP / 32 Atk / 32 Spe');
-  await nature.fill('a');
-  await expect(page.getByRole('option', { name: 'Adamant' })).toBeVisible();
-  await expect(page.getByRole('option', { name: 'Timid' })).toHaveCount(0);
-  await nature.press('ArrowDown');
-  await nature.press('Enter');
-  await expect(nature).toHaveValue('Adamant');
-  await nature.fill('ti');
-  await page.getByRole('option', { name: 'Timid' }).click();
-  await expect(nature).toHaveValue('Timid');
-  await nature.fill('Not a nature');
-  await editor.getByRole('button', { name: 'Apply set', exact: true }).click();
-  await expect(editor.getByRole('alert')).toContainText('standard nature');
-  await nature.fill('timid');
-  await editor.getByText('Advanced set text', { exact: true }).focus();
-  await expect(nature).toHaveValue('Timid');
-  await editor
-    .getByRole('button', { name: `Remove ${initialMoves[0]}` })
+  await abilityEditor
+    .getByRole('button', { name: 'Apply ability', exact: true })
     .click();
-  await expect(moves).not.toContainText(initialMoves[0]);
-  const customMove = editor.getByLabel('Custom move', { exact: true });
-  await customMove.focus();
-  const suggestedMoves = editor
-    .getByLabel('Move suggestions')
-    .getByRole('button');
-  const suggestedMove = suggestedMoves.first();
-  const suggestedMoveText = await suggestedMove.textContent();
-  await customMove.fill(optionValue(suggestedMoveText!).slice(1, -1));
-  await expect(suggestedMove).toBeVisible();
-  await suggestedMove.click();
-  await expect(moves).toContainText(optionValue(suggestedMoveText!));
-  await editor
-    .getByRole('button', {
-      name: `Remove ${optionValue(suggestedMoveText!)}`,
-    })
-    .click();
-  await customMove.fill('Test Move');
-  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
-  await expect(moves).toContainText('Test Move');
-  await editor
-    .getByRole('button', { name: `Remove ${initialMoves[1]}` })
-    .click();
-  await customMove.fill('Test Move');
-  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
-  await expect(editor.getByRole('alert')).toContainText('same move twice');
-  await customMove.fill('Another Test Move');
-  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
-  await customMove.fill('One More Test Move');
-  await editor.getByRole('button', { name: 'Add move', exact: true }).click();
-  await expect(editor.getByRole('alert')).toContainText('at most four moves');
-  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(
-    page.getByRole('region', { name: 'Edit Weavile set' })
-  ).toHaveCount(0);
-  await expect(weavile).toContainText(initialItem);
+  await expect(abilityEditor).toHaveCount(0);
+  await expect(weavile).toContainText(optionValue(abilityText!));
 
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile moves', exact: true })
     .click();
-  const reopened = page.getByRole('region', {
+  const movesEditor = page.getByRole('region', {
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expect(reopened.getByLabel('Item', { exact: true })).toHaveValue(
-    initialItem
+  const moves = movesEditor.getByRole('list', { name: 'Selected moves' });
+  const initialMoves = await moves.getByRole('listitem').allTextContents();
+  expect(initialMoves).toHaveLength(4);
+  await expect(movesEditor.getByLabel('Item', { exact: true })).toHaveCount(0);
+  await expect(movesEditor.getByLabel('Ability', { exact: true })).toHaveCount(
+    0
   );
-  await expect(reopened.getByLabel('Ability', { exact: true })).toHaveValue(
-    initialAbility
+  await expect(movesEditor.getByLabel('Nature', { exact: true })).toHaveCount(
+    0
   );
-  await expect(reopened.getByLabel('Nature', { exact: true })).toHaveValue(
-    initialNature
+  await expect(movesEditor.getByLabel('EV editor')).toHaveCount(0);
+  await expect(movesEditor.getByLabel('Showdown set text')).toHaveCount(0);
+  await movesEditor
+    .getByRole('button', { name: 'Remove ' + initialMoves[0] })
+    .click();
+  const customMove = movesEditor.getByLabel('Custom move', { exact: true });
+  await customMove.fill('Test Move');
+  await movesEditor
+    .getByRole('button', { name: 'Add move', exact: true })
+    .click();
+  await expect(moves).toContainText('Test Move');
+  await movesEditor
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(movesEditor).toHaveCount(0);
+  await expect(weavile).toContainText(initialMoves[0]);
+
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
+    .click();
+  const textEditor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  const set = textEditor.getByLabel('Showdown set text', { exact: true });
+  await expect(set).toBeVisible();
+  await expect(textEditor.getByLabel('Item', { exact: true })).toHaveCount(0);
+  await expect(textEditor.getByLabel('Ability', { exact: true })).toHaveCount(
+    0
   );
-  await expect(reopened.getByLabel('EV spread', { exact: true })).toHaveText(
-    initialSpread
-  );
-  await expect(
-    reopened.getByRole('list', { name: 'Selected moves' })
-  ).toHaveText(initialMoves.join(''));
-  await reopened.getByText('Advanced set text', { exact: true }).click();
-  const set = reopened.getByLabel('Showdown set text', { exact: true });
+  await expect(textEditor.getByLabel('Nature', { exact: true })).toHaveCount(0);
+  await expect(textEditor.getByLabel('EV editor')).toHaveCount(0);
+  await expect(textEditor.getByLabel('Selected moves')).toHaveCount(0);
   const setText = await set.inputValue();
   expect(setText).not.toMatch(/(?:IVs|Level|Tera Type):/);
   await set.fill(`${setText}\n- Protect`);
-  await expect(
-    reopened.getByRole('button', { name: 'Apply set', exact: true })
-  ).toBeDisabled();
-  await reopened
-    .getByRole('button', { name: 'Load text into fields', exact: true })
+  await textEditor
+    .getByRole('button', { name: 'Apply set text', exact: true })
     .click();
-  await expect(reopened.getByRole('alert')).toContainText(
+  await expect(textEditor.getByRole('alert')).toContainText(
     'more than four moves'
   );
   expect(
-    await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)!)[0].name,
-      storageKey
-    )
-  ).toBe(peter.name);
-  await reopened
-    .getByRole('button', { name: 'Reset text', exact: true })
-    .click();
+    await page.evaluate((key) => {
+      const team = JSON.parse(localStorage.getItem(key)!)[0];
+      return team.members.find(
+        (member: { pokemon: string }) => member.pokemon === 'Weavile'
+      ).spread;
+    }, storageKey)
+  ).not.toBe('32 HP / 32 Atk / 2 Spe');
   await set.fill(setText.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe'));
-  await reopened
-    .getByRole('button', { name: 'Load text into fields', exact: true })
+  await textEditor
+    .getByRole('button', { name: 'Apply set text', exact: true })
     .click();
-  await reopened
-    .getByRole('button', { name: 'Apply set', exact: true })
-    .click();
-  await expect(
-    page.getByRole('region', { name: 'Edit Weavile set' })
-  ).toHaveCount(0);
+  await expect(textEditor).toHaveCount(0);
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Changes saved on this device.'
@@ -416,22 +325,21 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
   let editor = page.getByRole('region', { name: 'Edit Weavile set' });
   await editor.getByLabel('Item', { exact: true }).fill('Legacy custom item');
-  await editor.getByRole('button', { name: 'Apply set', exact: true }).click();
+  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText('Legacy custom item');
 
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile EVs', exact: true })
     .click();
   editor = page.getByRole('region', { name: 'Edit Weavile set' });
-  await editor.getByLabel('EV spread', { exact: true }).click();
   await editor.getByLabel('HP EV', { exact: true }).fill('31');
   await expect(editor.getByLabel('EV editor')).toContainText('31/66');
   await expect(
-    editor.getByRole('button', { name: 'Apply set', exact: true })
+    editor.getByRole('button', { name: 'Apply evs', exact: true })
   ).toBeDisabled();
 });

@@ -4,8 +4,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import ExternalLink from '@lucide/svelte/icons/external-link';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import EditableMemberCard from '$lib/components/EditableMemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import SimilarTeamCard from '$lib/components/SimilarTeamCard.svelte';
@@ -24,6 +23,9 @@
   } from '$lib/workbench';
   import type { PageData } from './$types';
 
+  type EditableSetField =
+    'item' | 'ability' | 'nature' | 'spread' | 'moves' | 'text';
+
   let { data }: { data: PageData } = $props();
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
@@ -35,9 +37,12 @@
     limit = $state(12),
     showExport = $state(false);
   let activeEditIndex = $state<number | null>(null),
+    activeEditField = $state<EditableSetField>('item'),
     originalMember = $state<Member | null>(null),
     editorDirty = $state(false);
-  let editorRef = $state<{ apply: () => boolean } | undefined>();
+  let editorRef = $state<
+    { apply: () => boolean; focus: () => void } | undefined
+  >();
   let comparisonElement = $state<HTMLElement>(),
     editorElement = $state<HTMLElement>();
   const current = $derived(data.catalog.currentRegulation);
@@ -186,43 +191,54 @@
         ? 'instant'
         : 'smooth',
     });
-  const openSetEditor = (index: number) => {
+  const focusSetField = (index: number, field: EditableSetField) =>
+    document
+      .getElementById(`pokemon-slot-${index}`)
+      ?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`)
+      ?.focus();
+  const openSetEditor = (index: number, field: EditableSetField) => {
     if (editing) return;
     activeEditIndex = index;
+    activeEditField = field;
     originalMember = draft
       ? structuredClone($state.snapshot(draft.members[index]))
       : null;
     editorDirty = false;
-    void tick().then(() =>
-      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center')
-    );
+    void tick().then(() => {
+      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
+      editorRef?.focus();
+    });
   };
   function applySetEdit(index: number, member: Member) {
     if (!draft) return;
+    const field = activeEditField;
     draft.members[index] = member;
     activeEditIndex = null;
     originalMember = null;
     editorDirty = false;
     persist($state.snapshot(draft));
-    void tick().then(() =>
-      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center')
-    );
+    void tick().then(() => {
+      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
+      focusSetField(index, field);
+    });
   }
   function cancelSetEdit() {
     if (draft && activeEditIndex !== null && originalMember) {
       draft.members[activeEditIndex] = originalMember;
     }
     const targetSlot = activeEditIndex;
+    const field = activeEditField;
     activeEditIndex = null;
     originalMember = null;
     editorDirty = false;
     if (targetSlot !== null) {
-      void tick().then(() =>
+      void tick().then(() => {
         scrollSmooth(
           document.getElementById(`pokemon-slot-${targetSlot}`),
           'center'
-        )
-      );
+        );
+        focusSetField(targetSlot, field);
+      });
     }
   }
   function togglePokemon(index: number) {
@@ -267,12 +283,6 @@
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  {#if activeEditIndex !== null}
-    <div
-      class="pointer-events-none fixed inset-0 z-30 bg-black/60 backdrop-blur-[1px] transition-opacity duration-200 motion-reduce:transition-none"
-      aria-hidden="true"
-    ></div>
-  {/if}
   <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="text-3xl font-semibold tracking-tight">My teams</h1>
@@ -353,14 +363,14 @@
             .original.name} · {draft.original.regulation}. Editing does not
           create a working rental code.
         </p>
-        <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-5 grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {#each draft.members as member, index (index)}
             <section
               id={`pokemon-slot-${index}`}
-              class="min-w-0 rounded-xl border p-4 transition-[grid-column,border-color,background-color] duration-200 motion-reduce:transition-none {activeEditIndex ===
+              class="min-w-0 rounded-xl border bg-card p-4 transition-[border-color,background-color] duration-200 motion-reduce:transition-none {activeEditIndex ===
               index
-                ? 'relative z-50 bg-card shadow-2xl ring-1 ring-primary sm:col-span-2 lg:col-span-3'
-                : ''}"
+                ? 'border-primary ring-1 ring-primary'
+                : 'hover:border-primary/40'}"
               aria-label={`${member.pokemon} set`}
             >
               {#if activeEditIndex === index}
@@ -369,64 +379,18 @@
                   {member}
                   teams={data.catalog.teams as Team[]}
                   currentRegulation={current}
+                  initialField={activeEditField}
                   onapply={(next) => applySetEdit(index, next)}
                   oncancel={cancelSetEdit}
                   ondirtychange={(value) => (editorDirty = value)}
                 />
-              {:else}<div class="flex items-center gap-3">
-                  <PokemonSprite pokemon={member.pokemon} size={64} />
-                  <div class="min-w-0">
-                    <h2 class="font-semibold wrap-break-word">
-                      {member.pokemon}
-                    </h2>
-                    <p
-                      class="mt-1 flex items-center gap-1 text-sm wrap-break-word text-primary"
-                    >
-                      {#if member.item}<ItemIcon
-                          item={member.item}
-                        />{/if}{member.item || 'Item unknown'}
-                    </p>
-                  </div>
-                </div>
-                <div class="mt-3 min-w-0 text-sm">
-                  <p class="wrap-break-word">
-                    {#if member.ability}<span class="text-muted-foreground"
-                        >Ability:</span
-                      >
-                      {member.ability}{:else}<span class="text-muted-foreground"
-                        >Ability unknown</span
-                      >{/if}
-                  </p>
-                  {#if member.moves.length}
-                    <ul
-                      class="mt-2 grid min-w-0 grid-cols-2 gap-x-3 gap-y-1"
-                      aria-label={`${member.pokemon} moves`}
-                    >
-                      {#each member.moves as move (move)}
-                        <li class="min-w-0 wrap-break-word">{move}</li>
-                      {/each}
-                    </ul>
-                  {:else}
-                    <p class="mt-2 text-muted-foreground">Moves unknown</p>
-                  {/if}
-                </div>
-                <div class="mt-4 grid grid-cols-2 gap-2">
-                  <Button
-                    variant={draft.changeSlot === index ? 'default' : 'outline'}
-                    class="min-h-11 min-w-0"
-                    aria-label={`Change ${member.pokemon}`}
-                    aria-pressed={draft.changeSlot === index}
-                    disabled={editing}
-                    onclick={() => togglePokemon(index)}>Change</Button
-                  >
-                  <Button
-                    variant="outline"
-                    class="min-h-11 min-w-0"
-                    aria-label={`Edit ${member.pokemon} set`}
-                    disabled={editing}
-                    onclick={() => openSetEditor(index)}>Edit set</Button
-                  >
-                </div>
+              {:else}<EditableMemberCard
+                  {member}
+                  changing={draft.changeSlot === index}
+                  {editing}
+                  onedit={(field) => openSetEditor(index, field)}
+                  onchange={() => togglePokemon(index)}
+                />
               {/if}
             </section>
           {/each}
