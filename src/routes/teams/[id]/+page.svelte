@@ -164,54 +164,54 @@
     {#each team.members as member, index (index)}
       <MemberCard {member} slot={index + 1} editable={false} />
     {/each}
-
-    <section aria-labelledby="results-heading" class="mt-10">
-      <h2 id="results-heading" class="text-lg font-semibold">
-        Results & sources
-      </h2>
-      <p class="mt-2 text-sm text-muted-foreground">
-        Claims transcribed from VGCPastes, not independently verified.
-      </p>
-      <ul class="mt-4 divide-y rounded-xl border bg-card">
-        {#each team.reports as report, index (index)}
-          {@const result = evidence(
-            report,
-            team.regulation,
-            data.currentRegulation
-          )}
-          <li class="flex flex-wrap items-center justify-between gap-3 p-4">
-            <div>
-              <p class="text-sm font-medium">{result.label}</p>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {report.event || 'Event not listed'} · {result.platform}
-              </p>
-            </div>
-            {#if report.sourceUrl}<Button
-                href={report.sourceUrl}
-                variant="outline"
-                class="min-h-11"
-                target="_blank"
-                rel="external noreferrer"
-                ><ExternalLink aria-hidden="true" />Original source</Button
-              >{/if}
-          </li>
-        {/each}
-      </ul>
-      <p class="mt-3 text-xs text-muted-foreground">
-        Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
-        names while the sheet lists Mega forms.
-      </p>
-    </section>
-    {#if paste}
-      <details class="mt-8 rounded-xl border bg-card p-5">
-        <summary class="cursor-pointer text-sm font-medium"
-          >Published paste text</summary
-        >
-        {#if team.pasteNotes}<p class="mt-3 text-xs text-muted-foreground">
-            Paste notes (may differ from sheet regulation): {team.pasteNotes}
-          </p>{/if}
-        <pre class="mt-4 overflow-x-auto text-xs leading-6">{paste}</pre>
-      </details>
-    {/if}
   </section>
+
+  <section aria-labelledby="results-heading" class="mt-10">
+    <h2 id="results-heading" class="text-lg font-semibold">
+      Results & sources
+    </h2>
+    <p class="mt-2 text-sm text-muted-foreground">
+      Claims transcribed from VGCPastes, not independently verified.
+    </p>
+    <ul class="mt-4 divide-y rounded-xl border bg-card">
+      {#each team.reports as report, index (index)}
+        {@const result = evidence(
+          report,
+          team.regulation,
+          data.currentRegulation
+        )}
+        <li class="flex flex-wrap items-center justify-between gap-3 p-4">
+          <div>
+            <p class="text-sm font-medium">{result.label}</p>
+            <p class="mt-1 text-xs text-muted-foreground">
+              {report.event || 'Event not listed'} · {result.platform}
+            </p>
+          </div>
+          {#if report.sourceUrl}<Button
+              href={report.sourceUrl}
+              variant="outline"
+              class="min-h-11"
+              target="_blank"
+              rel="external noreferrer"
+              ><ExternalLink aria-hidden="true" />Original source</Button
+            >{/if}
+        </li>
+      {/each}
+    </ul>
+    <p class="mt-3 text-xs text-muted-foreground">
+      Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
+      names while the sheet lists Mega forms.
+    </p>
+  </section>
+  {#if paste}
+    <details class="mt-8 rounded-xl border bg-card p-5">
+      <summary class="cursor-pointer text-sm font-medium"
+        >Published paste text</summary
+      >
+      {#if team.pasteNotes}<p class="mt-3 text-xs text-muted-foreground">
+          Paste notes (may differ from sheet regulation): {team.pasteNotes}
+        </p>{/if}
+      <pre class="mt-4 overflow-x-auto text-xs leading-6">{paste}</pre>
+    </details>
+  {/if}
 </main>

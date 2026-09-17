@@ -68,9 +68,10 @@
         {#if editable}
           <button
             type="button"
-            class="mt-0.5 inline-flex items-center font-mono text-xs text-muted-foreground transition-colors hover:text-foreground"
+            class="mt-0.5 inline-flex items-center font-mono text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             aria-label={`Edit ${member.pokemon} EVs`}
             data-set-field="spread"
+            disabled={editing}
             onclick={() => onedit?.('spread')}
           >
             {member.spread || 'No EVs'}
@@ -106,9 +107,10 @@
     {#if editable}
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary"
+        class="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} item`}
         data-set-field="item"
+        disabled={editing}
         onclick={() => onedit?.('item')}
       >
         {@render itemContent()}
@@ -116,9 +118,10 @@
 
       <button
         type="button"
-        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-foreground/90 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary"
+        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-foreground/90 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} ability`}
         data-set-field="ability"
+        disabled={editing}
         onclick={() => onedit?.('ability')}
       >
         {@render abilityContent()}
@@ -126,9 +129,10 @@
 
       <button
         type="button"
-        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-muted-foreground backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
+        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-muted-foreground backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} nature`}
         data-set-field="nature"
+        disabled={editing}
         onclick={() => onedit?.('nature')}
       >
         {@render natureContent()}
@@ -159,9 +163,10 @@
     {#if editable}
       <button
         type="button"
-        class="w-full rounded-lg p-0.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-primary"
+        class="w-full rounded-lg p-0.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} moves`}
         data-set-field="moves"
+        disabled={editing}
         onclick={() => onedit?.('moves')}
       >
         {@render movesContent()}
@@ -181,9 +186,9 @@
   {/snippet}
 
   {#snippet abilityContent()}
-    <p class="max-w-[150px] truncate">
+    <span class="max-w-[150px] truncate">
       {member.ability ? `Ability: ${member.ability}` : 'Ability unknown'}
-    </p>
+    </span>
   {/snippet}
 
   {#snippet natureContent()}
@@ -215,6 +220,7 @@
         class="h-7 gap-1 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
         aria-label={`Edit ${member.pokemon} set text`}
         data-set-field="text"
+        disabled={editing}
         onclick={() => onedit?.('text')}
       >
         <FileText class="size-3" />
