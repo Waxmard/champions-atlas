@@ -373,11 +373,7 @@
                     form.item = option.value;
                     activeField = null;
                     error = '';
-                  }}
-                  >{option.value}
-                  <span class="text-xs opacity-70"
-                    >{option.currentCount}/{option.totalCount}</span
-                  ></Button
+                  }}>{option.value}</Button
                 >
               {/each}
             </div>{/if}
@@ -415,11 +411,7 @@
                     form.ability = option.value;
                     activeField = null;
                     error = '';
-                  }}
-                  >{option.value}
-                  <span class="text-xs opacity-70"
-                    >{option.currentCount}/{option.totalCount}</span
-                  ></Button
+                  }}>{option.value}</Button
                 >
               {/each}
             </div>{/if}
@@ -565,10 +557,7 @@
                 />
               {/if}
               <span>{option.value}</span>
-              <span class="text-xs opacity-70"
-                >{option.currentCount}/{option.totalCount}</span
-              ></Button
-            >
+            </Button>
           {/each}
         </div>{/if}
     </div>
@@ -583,11 +572,6 @@
       class="mt-2 min-h-52 w-full resize-y rounded-lg border bg-background p-3 font-mono text-xs leading-5 outline-none focus-visible:ring-2 focus-visible:ring-primary"
       bind:value={rawText}
       oninput={() => (error = '')}></textarea>
-  {/if}
-  {#if initialField !== 'text'}
-    <p class="mt-2 text-xs text-muted-foreground">
-      Catalog counts: current regulation / all teams. Legality unverified.
-    </p>
   {/if}
 
   {#if error}<p role="alert" class="mt-3 text-sm font-medium text-destructive">

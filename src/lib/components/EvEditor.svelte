@@ -105,9 +105,6 @@
         {/if}
         {option.value}
       </span>
-      <span class="shrink-0 text-xs opacity-70"
-        >{option.currentCount}/{option.totalCount}</span
-      ></Button
-    >
+    </Button>
   {/each}
 </div>
