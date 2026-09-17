@@ -4,6 +4,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import EditableMemberCard from '$lib/components/EditableMemberCard.svelte';
+  import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import type { Member, Team } from '$lib/catalog';
@@ -31,6 +32,7 @@
     activeEditField = $state<EditableSetField>('item'),
     originalMember = $state<Member | null>(null),
     editorDirty = $state(false);
+  let editedSlots = $state(new Set<number>());
   let editorRef = $state<
     { apply: () => boolean; focus: () => void } | undefined
   >();
@@ -70,6 +72,7 @@
       activeEditIndex = null;
       originalMember = null;
       editorDirty = false;
+      editedSlots = new Set();
       message =
         id && !entry && !resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
@@ -141,6 +144,7 @@
       localStorage.setItem(activeTeamKey, next.id);
       draft = JSON.parse(JSON.stringify(next));
       baseline = JSON.stringify(draft);
+      editedSlots = new Set();
       storageError = '';
       message = 'Changes saved on this device.';
     } catch {
@@ -155,6 +159,11 @@
       return;
     }
     persist($state.snapshot(draft));
+  }
+  function discardChanges() {
+    if (!draft) return;
+    openSaved(draft.id);
+    message = 'Changes discarded.';
   }
   const scrollSmooth = (
     el?: HTMLElement | null,
@@ -188,10 +197,10 @@
     if (!draft) return;
     const field = activeEditField;
     draft.members[index] = member;
+    editedSlots = new Set([...editedSlots, index]);
     activeEditIndex = null;
     originalMember = null;
     editorDirty = false;
-    persist($state.snapshot(draft));
     void tick().then(() => {
       scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
       focusSetField(index, field);
@@ -296,8 +305,17 @@
             /></label
           >
           <div class="flex flex-wrap gap-2">
-            <Button class="min-h-11" disabled={editing} onclick={saveChanges}
-              >Save changes</Button
+            {#if dirty && !editing}
+              <Button
+                variant="outline"
+                class="min-h-11"
+                onclick={discardChanges}>Discard changes</Button
+              >
+            {/if}
+            <Button
+              class="min-h-11"
+              disabled={!dirty || editing}
+              onclick={saveChanges}>Apply changes</Button
             ><Button
               variant="outline"
               class="min-h-11"
@@ -306,6 +324,14 @@
             >
           </div>
         </div>
+        {#if dirty && !editing}
+          <TeamDifferences
+            before={JSON.parse(baseline).members}
+            after={draft.members}
+            beforeLabel="Current"
+            afterLabel="With changes"
+          />
+        {/if}
         <p class="mt-3 text-xs text-muted-foreground">
           {dirty ? 'Unsaved changes.' : 'Saved on this device.'} Original: {draft
             .original.name} · {draft.original.regulation}. Editing does not
@@ -336,6 +362,7 @@
               {:else}<EditableMemberCard
                   {member}
                   {editing}
+                  pending={editedSlots.has(index)}
                   onedit={(field) => openSetEditor(index, field)}
                 />
               {/if}

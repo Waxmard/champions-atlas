@@ -580,7 +580,7 @@
   <div class="mt-4 flex justify-end gap-2 border-t pt-3">
     <Button variant="outline" class="min-h-11" onclick={oncancel}>Cancel</Button
     ><Button class="min-h-11" disabled={!spreadValid} onclick={apply}
-      >Apply {fieldLabel.toLowerCase()}</Button
+      >Done</Button
     >
   </div>
 </section>

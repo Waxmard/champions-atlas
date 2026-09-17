@@ -18,14 +18,16 @@
   let {
     member,
     editing,
+    pending = false,
     onedit,
   }: {
     member: Member;
     editing: boolean;
+    pending?: boolean;
     onedit: (field: EditableSetField) => void;
   } = $props();
 
-  const cardStyle = $derived(getCardBackgroundStyle(member.pokemon));
+  const cardStyle = $derived(getCardBackgroundStyle(member.pokemon, pending));
 </script>
 
 <div

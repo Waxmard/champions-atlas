@@ -82,10 +82,9 @@ export function getPokemonTypes(pokemon: string): PokemonType[] {
   return ['normal'];
 }
 
-export function getCardBackgroundStyle(pokemon: string): string {
+export function getCardBackgroundStyle(pokemon: string, muted = false): string {
   const types = getPokemonTypes(pokemon);
-  const opacity = 0.15;
-
+  const opacity = muted ? 0.06 : 0.15;
   if (types.length === 1) {
     const color = TYPE_COLORS[types[0]]?.bg || '#A8A878';
     return `background: linear-gradient(135deg, ${hexToRgba(color, opacity)} 0%, ${hexToRgba(color, opacity * 0.3)} 100%)`;
