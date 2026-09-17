@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -10,18 +11,28 @@
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import { bestEvidence, evidence, type Team } from '$lib/catalog';
-  import { exportPaste, newSavedTeam, saveTeam } from '$lib/workbench';
+  import {
+    activeTeamKey,
+    exportPaste,
+    newSavedTeam,
+    saveTeam,
+  } from '$lib/workbench';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   const team: Team = $derived(data.team);
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
   const strongest = $derived(bestEvidence(team, data.currentRegulation));
+  let ready = $state(false);
   let copyStatus = $state('');
+  onMount(() => {
+    ready = true;
+  });
   function useTeam() {
     try {
       const saved = newSavedTeam(team);
       saveTeam(localStorage, saved);
+      localStorage.setItem(activeTeamKey, saved.id);
       void goto(resolve(`/my-teams?team=${saved.id}`));
     } catch {
       copyStatus =
@@ -92,7 +103,9 @@
     By {team.creator || 'an unlisted creator'}
   </p>
   <div class="mt-6 flex flex-wrap gap-3">
-    <Button class="min-h-11 px-4" onclick={useTeam}>Use this team</Button>
+    <Button class="min-h-11 px-4" disabled={!ready} onclick={useTeam}
+      >Use this team</Button
+    >
     <Button
       href={team.pasteUrl}
       variant="outline"

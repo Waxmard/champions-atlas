@@ -59,7 +59,12 @@ const value = (text = '') =>
     : text.trim();
 function url(text, host) {
   if (!value(text)) return '';
-  const parsed = new URL(text);
+  let parsed;
+  try {
+    parsed = new URL(text);
+  } catch {
+    throw new Error(`Invalid ${host} URL`);
+  }
   if (
     host === 'pokepast.es' &&
     parsed.hostname === host &&
@@ -202,7 +207,7 @@ export function enrich(team, data) {
   return {
     ...team,
     members,
-    paste: members.map((m) => m.set).join('\n\n'),
+    paste: data.paste,
     pasteNotes: typeof data.notes === 'string' ? data.notes : null,
     pasteError: undefined,
   };
@@ -372,9 +377,16 @@ async function main() {
     previousTeams,
     loadPaste: async (team) => {
       const key = team.pasteUrl.split('/').at(-1);
-      return JSON.parse(
-        await fetchCached(`${key}.json`, `${team.pasteUrl}/json`, JSON.parse)
+      const cached = await fetchCached(
+        `${key}.json`,
+        `${team.pasteUrl}/json`,
+        JSON.parse
       );
+      try {
+        return JSON.parse(cached);
+      } catch {
+        throw new Error(`Invalid cached paste: ${key}`);
+      }
     },
   });
   await writeCatalog(output, {

@@ -4,17 +4,18 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import ExternalLink from '@lucide/svelte/icons/external-link';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import EditableMemberCard from '$lib/components/EditableMemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
-  import { bestEvidence, type Team } from '$lib/catalog';
-  import { parsePaste } from '$lib/paste';
+  import SimilarTeamCard from '$lib/components/SimilarTeamCard.svelte';
+  import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
+  import { bestEvidence, type Member, type Team } from '$lib/catalog';
   import {
+    activeTeamKey,
     exportPaste,
     readSavedTeams,
+    resolveSavedTeamId,
     saveTeam,
-    setText,
     similarTeams,
     useCandidate,
     type SavedTeam,
@@ -22,26 +23,33 @@
   } from '$lib/workbench';
   import type { PageData } from './$types';
 
+  type EditableSetField =
+    'item' | 'ability' | 'nature' | 'spread' | 'moves' | 'text';
+
   let { data }: { data: PageData } = $props();
-  let saved = $state<SavedTeam[]>([]);
-  let draft = $state<SavedTeam | null>(null);
-  let baseline = $state('');
-  let sets = $state<string[]>([]);
-  let ready = $state(false);
-  let message = $state('');
-  let storageError = $state('');
-  let candidateId = $state('');
-  let limit = $state(12);
-  let showExport = $state(false);
-  let comparisonElement: HTMLElement | undefined = $state();
-  let editorElement: HTMLElement | undefined = $state();
+  let saved = $state<SavedTeam[]>([]),
+    draft = $state<SavedTeam | null>(null),
+    baseline = $state('');
+  let ready = $state(false),
+    message = $state(''),
+    storageError = $state('');
+  let candidateId = $state(''),
+    limit = $state(12),
+    showExport = $state(false);
+  let activeEditIndex = $state<number | null>(null),
+    activeEditField = $state<EditableSetField>('item'),
+    originalMember = $state<Member | null>(null),
+    editorDirty = $state(false);
+  let editorRef = $state<
+    { apply: () => boolean; focus: () => void } | undefined
+  >();
+  let comparisonElement = $state<HTMLElement>(),
+    editorElement = $state<HTMLElement>();
   const current = $derived(data.catalog.currentRegulation);
   const results = $derived(
     draft ? similarTeams(draft, data.catalog.teams as Team[], current) : []
   );
-  const candidate = $derived(
-    results.find((result) => result.id === candidateId)
-  );
+  const candidate = $derived(results.find((r) => r.id === candidateId));
   const comparisonMembers = $derived(
     draft && candidate
       ? candidate.member
@@ -49,28 +57,44 @@
         : candidate.team.members
       : []
   );
+  const editing = $derived(activeEditIndex !== null);
   const dirty = $derived(
-    !!draft &&
-      (JSON.stringify(draft) !== baseline ||
-        sets.join('\n\n') !== exportPaste(draft.members))
+    (!!draft && JSON.stringify(draft) !== baseline) || editorDirty
   );
-  const editingSets = $derived(
-    !!draft && sets.join('\n\n') !== exportPaste(draft.members)
-  );
+
+  function revealPanel(node: HTMLElement) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    node.dataset.motionReady = 'true';
+    node.dataset.open = 'false';
+    const frame = requestAnimationFrame(() => (node.dataset.open = 'true'));
+    return { destroy: () => cancelAnimationFrame(frame) };
+  }
 
   function openSaved(id: string | null) {
     try {
       saved = readSavedTeams(localStorage);
       storageError = '';
-      const entry = saved.find((team) => team.id === id);
+      const activeId = localStorage.getItem(activeTeamKey);
+      const resolvedId = resolveSavedTeamId(saved, id, activeId);
+      const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? JSON.parse(JSON.stringify(entry)) : null;
       baseline = JSON.stringify(draft);
-      sets = draft ? draft.members.map(setText) : [];
+      if (entry) {
+        localStorage.setItem(activeTeamKey, entry.id);
+        if (page.url.searchParams.get('team') !== entry.id) {
+          void goto(resolve(`/my-teams?team=${entry.id}`), {
+            replaceState: true,
+          });
+        }
+      }
       candidateId = '';
       limit = 12;
       showExport = false;
+      activeEditIndex = null;
+      originalMember = null;
+      editorDirty = false;
       message =
-        id && !entry
+        id && !entry && !resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
           : '';
     } catch {
@@ -78,16 +102,52 @@
         'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
     }
   }
+  function persistIfDirty() {
+    if (editing) {
+      editorRef?.apply();
+      return;
+    }
+    if (draft && draft.name.trim() && JSON.stringify(draft) !== baseline) {
+      persist($state.snapshot(draft));
+    }
+  }
   onMount(() => {
     ready = true;
-    const warn = (event: BeforeUnloadEvent) => {
+    const warn = (e: BeforeUnloadEvent) => {
       if (dirty) {
-        event.preventDefault();
-        event.returnValue = '';
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    const onHide = () => persistIfDirty();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') persistIfDirty();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (activeEditIndex === null) return;
+      const target = e.target as HTMLElement | null;
+      const card = document.getElementById(`pokemon-slot-${activeEditIndex}`);
+      if (
+        target &&
+        card &&
+        !card.contains(target) &&
+        !target.closest(
+          '[data-bits-combobox-content], [role="listbox"], [role="dialog"]'
+        )
+      ) {
+        editorRef?.apply();
       }
     };
     window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
+    window.addEventListener('pagehide', onHide);
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => {
+      window.removeEventListener('beforeunload', warn);
+      window.removeEventListener('pagehide', onHide);
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pointerdown', onPointerDown);
+    };
   });
   $effect(() => {
     if (!ready) return;
@@ -102,9 +162,9 @@
   function persist(next: SavedTeam) {
     try {
       saved = saveTeam(localStorage, next);
+      localStorage.setItem(activeTeamKey, next.id);
       draft = JSON.parse(JSON.stringify(next));
       baseline = JSON.stringify(draft);
-      sets = next.members.map(setText);
       storageError = '';
       message = 'Changes saved on this device.';
     } catch {
@@ -113,66 +173,96 @@
     }
   }
   function saveChanges() {
-    if (!draft) return;
+    if (!draft || editing) return;
     if (!draft.name.trim()) {
       message = 'Give this team a name.';
       return;
     }
-    try {
-      const next = $state.snapshot(draft);
-      if (editingSets) {
-        const parsed = parsePaste(sets.join('\n\n'));
-        const previous = parsePaste(exportPaste(next.members));
-        next.members = parsed.map((member, index) =>
-          sets[index] === setText(next.members[index])
-            ? next.members[index]
-            : {
-                ...member,
-                pokemon:
-                  member.pokemon === previous[index].pokemon &&
-                  member.item === previous[index].item
-                    ? next.members[index].pokemon
-                    : member.pokemon,
-              }
+    persist($state.snapshot(draft));
+  }
+  const scrollSmooth = (
+    el?: HTMLElement | null,
+    block: ScrollLogicalPosition = 'start'
+  ) =>
+    el?.scrollIntoView({
+      block,
+      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
+        ? 'instant'
+        : 'smooth',
+    });
+  const focusSetField = (index: number, field: EditableSetField) =>
+    document
+      .getElementById(`pokemon-slot-${index}`)
+      ?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`)
+      ?.focus();
+  const openSetEditor = (index: number, field: EditableSetField) => {
+    if (editing) return;
+    activeEditIndex = index;
+    activeEditField = field;
+    originalMember = draft
+      ? structuredClone($state.snapshot(draft.members[index]))
+      : null;
+    editorDirty = false;
+    void tick().then(() => {
+      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
+      editorRef?.focus();
+    });
+  };
+  function applySetEdit(index: number, member: Member) {
+    if (!draft) return;
+    const field = activeEditField;
+    draft.members[index] = member;
+    activeEditIndex = null;
+    originalMember = null;
+    editorDirty = false;
+    persist($state.snapshot(draft));
+    void tick().then(() => {
+      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
+      focusSetField(index, field);
+    });
+  }
+  function cancelSetEdit() {
+    if (draft && activeEditIndex !== null && originalMember) {
+      draft.members[activeEditIndex] = originalMember;
+    }
+    const targetSlot = activeEditIndex;
+    const field = activeEditField;
+    activeEditIndex = null;
+    originalMember = null;
+    editorDirty = false;
+    if (targetSlot !== null) {
+      void tick().then(() => {
+        scrollSmooth(
+          document.getElementById(`pokemon-slot-${targetSlot}`),
+          'center'
         );
-      }
-      persist(next);
-    } catch (error) {
-      message =
-        error instanceof Error
-          ? error.message
-          : 'Invalid set text. Changes were not saved.';
+        focusSetField(targetSlot, field);
+      });
     }
   }
   function togglePokemon(index: number) {
-    if (!draft) return;
+    if (!draft || editing) return;
     draft.changeSlot = draft.changeSlot === index ? null : index;
     candidateId = '';
     limit = 12;
   }
   async function applyCandidate() {
-    if (!draft || !candidate || editingSets) return;
+    if (!draft || !candidate || editing) return;
     try {
       draft = useCandidate($state.snapshot(draft), candidate);
-      sets = draft.members.map(setText);
       candidateId = '';
       showExport = false;
       message =
         'Replacement loaded. Other five sets are unchanged. Review, then Save changes.';
       await tick();
-      editorElement?.scrollIntoView({
-        block: 'start',
-        behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-          ? 'instant'
-          : 'smooth',
-      });
+      scrollSmooth(editorElement);
     } catch (error) {
       message =
         error instanceof Error ? error.message : 'Could not use candidate.';
     }
   }
   async function copyPaste() {
-    if (!draft || editingSets) return;
+    if (!draft || editing) return;
     showExport = true;
     try {
       await navigator.clipboard.writeText(exportPaste(draft.members));
@@ -183,14 +273,10 @@
     }
   }
   async function selectCandidate(id: string) {
+    if (editing) return;
     candidateId = id;
     await tick();
-    comparisonElement?.scrollIntoView({
-      block: 'start',
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'instant'
-        : 'smooth',
-    });
+    scrollSmooth(comparisonElement);
   }
 </script>
 
@@ -217,26 +303,28 @@
     </p>{/if}
   {#if !ready}<p class="mt-8 text-muted-foreground">Loading saved teams…</p>
   {:else if !storageError}
-    <label class="mt-6 block max-w-xl text-sm font-medium"
-      >Saved team
-      <select
-        class="filter-select mt-2"
-        value={draft?.id || ''}
-        onchange={(event) => {
-          void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
-        }}
-      >
-        <option value="">Choose a team</option>
-        {#each saved as team (team.id)}<option value={team.id}
-            >{team.name}</option
-          >{/each}
-      </select>
-    </label>
-    {#if !saved.length}<p
+    {#if saved.length}
+      <label class="mt-6 block max-w-xl text-sm font-medium"
+        >Saved team
+        <select
+          class="filter-select mt-2"
+          value={draft?.id || ''}
+          onchange={(event) => {
+            void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
+          }}
+        >
+          {#each saved as team (team.id)}<option value={team.id}
+              >{team.name}</option
+            >{/each}
+        </select>
+      </label>
+    {:else}
+      <p
         class="mt-8 rounded-xl border border-dashed p-6 text-sm text-muted-foreground"
       >
         No saved teams yet. Open a catalog team and choose “Use this team”.
-      </p>{/if}
+      </p>
+    {/if}
     <p
       role="status"
       aria-live="polite"
@@ -259,11 +347,12 @@
             /></label
           >
           <div class="flex flex-wrap gap-2">
-            <Button class="min-h-11" onclick={saveChanges}>Save changes</Button
+            <Button class="min-h-11" disabled={editing} onclick={saveChanges}
+              >Save changes</Button
             ><Button
               variant="outline"
               class="min-h-11"
-              disabled={editingSets}
+              disabled={editing}
               onclick={copyPaste}>Copy team text</Button
             >
           </div>
@@ -273,46 +362,35 @@
             .original.name} · {draft.original.regulation}. Editing does not
           create a working rental code.
         </p>
-        <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-5 grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {#each draft.members as member, index (index)}
             <section
-              class="min-w-0 rounded-xl border p-4"
+              id={`pokemon-slot-${index}`}
+              class="min-w-0 overflow-hidden rounded-2xl border bg-card transition-all duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
+              index
+                ? 'border-primary p-4 shadow-md ring-2 ring-primary/30'
+                : 'hover:border-primary/30 hover:shadow-xs'}"
               aria-label={`${member.pokemon} set`}
             >
-              <div class="flex items-center gap-3">
-                <PokemonSprite pokemon={member.pokemon} size={64} />
-                <div class="min-w-0">
-                  <h2 class="font-semibold wrap-break-word">
-                    {member.pokemon}
-                  </h2>
-                  <p
-                    class="mt-1 flex items-center gap-1 text-sm wrap-break-word text-primary"
-                  >
-                    {#if member.item}<ItemIcon
-                        item={member.item}
-                      />{/if}{member.item || 'Item unknown'}
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant={draft.changeSlot === index ? 'default' : 'outline'}
-                class="mt-3 min-h-11"
-                aria-pressed={draft.changeSlot === index}
-                disabled={editingSets}
-                onclick={() => togglePokemon(index)}
-                >Change {member.pokemon}</Button
-              >
-              <details class="mt-3">
-                <summary class="cursor-pointer py-2 text-sm text-primary"
-                  >Edit set</summary
-                >
-                <label class="mt-2 block text-xs text-muted-foreground"
-                  >Set text for {member.pokemon}<textarea
-                    class="mt-2 min-h-64 w-full rounded-lg border bg-background p-3 font-mono text-xs leading-5"
-                    maxlength="8000"
-                    bind:value={sets[index]}></textarea></label
-                >
-              </details>
+              {#if activeEditIndex === index}
+                <SetEditorSheet
+                  bind:this={editorRef}
+                  {member}
+                  teams={data.catalog.teams as Team[]}
+                  currentRegulation={current}
+                  initialField={activeEditField}
+                  onapply={(next) => applySetEdit(index, next)}
+                  oncancel={cancelSetEdit}
+                  ondirtychange={(value) => (editorDirty = value)}
+                />
+              {:else}<EditableMemberCard
+                  {member}
+                  changing={draft.changeSlot === index}
+                  {editing}
+                  onedit={(field) => openSetEditor(index, field)}
+                  onchange={() => togglePokemon(index)}
+                />
+              {/if}
             </section>
           {/each}
         </div>
@@ -320,10 +398,12 @@
           {draft.changeSlot === null
             ? 'Keeping all six. Choose one Pokémon above to explore replacements.'
             : `Changing ${draft.members[draft.changeSlot].pokemon} only. Other five sets stay unchanged.`}
-          Save set edits before comparing. Team text normalizes to Pokémon Champions
-          format (EVs out of 32, no IVs); unknown details stay omitted.
+          Team text normalizes to Pokémon Champions format (EVs out of 32, no IVs);
+          unknown details stay omitted.
         </p>
-        {#if showExport}<label class="mt-4 block text-sm font-medium"
+        {#if showExport}<label
+            class="t-panel-slide mt-4 block text-sm font-medium"
+            use:revealPanel
             >Export text<textarea
               readonly
               class="mt-2 min-h-72 w-full rounded-lg border p-3 font-mono text-xs"
@@ -382,15 +462,13 @@
           {results.length} matching alternatives. Current-regulation legality remains
           unverified.
         </p>
-        {#if editingSets}<p class="mt-4 rounded-lg border p-4 text-sm">
-            Save set edits to update comparisons.
-          </p>{/if}
         {#if candidate}
           {@const evidence = bestEvidence(candidate.team, current)}
           <section
             aria-label="Selected comparison"
             bind:this={comparisonElement}
-            class="mt-5 rounded-2xl border bg-card p-5"
+            class="t-panel-slide mt-5 rounded-2xl border bg-card p-5"
+            use:revealPanel
           >
             <h3 class="text-lg font-semibold">
               {candidate.member
@@ -415,7 +493,7 @@
             <div class="mt-5 flex flex-wrap gap-3">
               {#if candidate.member}<Button
                   class="min-h-11"
-                  disabled={editingSets}
+                  disabled={editing}
                   onclick={applyCandidate}>Use replacement</Button
                 >{/if}<Button
                 href={candidate.team.pasteUrl}
@@ -435,73 +513,12 @@
         {/if}
         <div class="mt-5 grid gap-3 md:grid-cols-2">
           {#each results.slice(0, limit) as result (result.id)}
-            {@const evidence = bestEvidence(result.team, current)}
-            <article
-              class="min-w-0 rounded-xl border bg-card p-5 transition-colors hover:border-primary/40"
-            >
-              <p class="text-xs text-primary">
-                Source: {result.shared}/6 Pokémon shared · {result.details} matching
-                set details · {result.team.regulation}
-              </p>
-              <div class="mt-2 flex items-center gap-3">
-                {#if result.member}<PokemonSprite
-                    pokemon={result.member.pokemon}
-                    size={32}
-                  />{:else}<ul
-                    class="grid shrink-0 grid-cols-3 gap-1"
-                    aria-label="Team members"
-                  >
-                    {#each result.team.members as member (member.pokemon)}<li>
-                        <PokemonSprite pokemon={member.pokemon} size={24} />
-                      </li>{/each}
-                  </ul>{/if}
-                <h3
-                  class="flex min-w-0 flex-wrap items-center gap-1 font-semibold wrap-break-word"
-                >
-                  {#if result.member}
-                    {result.member.pokemon} · {#if result.member.item}<ItemIcon
-                        item={result.member.item}
-                      />{/if}{result.member.item || 'Item unknown'}
-                  {:else}{result.team.name}{/if}
-                </h3>
-              </div>
-              <div class="mt-3 flex flex-wrap gap-1.5 text-xs">
-                {#if result.team.regulation === current}<span
-                    class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
-                    >Current regulation</span
-                  >{/if}
-                {#if evidence.level <= 2}<span
-                    class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
-                    >Strong evidence</span
-                  >{/if}
-              </div>
-              {#if result.member}<p class="mt-2 text-xs text-muted-foreground">
-                  {result.member.moves.join(' · ') || 'Moves unknown'}
-                </p>
-                <p class="mt-2 text-xs">From {result.team.name}</p>{/if}
-              <p class="mt-2 text-xs leading-5 text-muted-foreground">
-                {result.team.members
-                  .map((member) => member.pokemon)
-                  .join(' · ')}
-              </p>
-              <p class="mt-3 text-xs">
-                {evidence.label} · {evidence.event || 'No event reported'}
-              </p>
-              {#if !result.team.paste}<p
-                  class="mt-2 text-xs text-muted-foreground"
-                >
-                  Set details incomplete.
-                </p>{/if}
-              <Button
-                variant="outline"
-                class="mt-4 min-h-11"
-                disabled={editingSets}
-                onclick={() => selectCandidate(result.id)}
-                >{result.member
-                  ? `Compare ${result.member.pokemon}`
-                  : `Compare ${result.team.creator || 'team'}`}</Button
-              >
-            </article>
+            <SimilarTeamCard
+              {result}
+              {current}
+              {editing}
+              onselect={selectCandidate}
+            />
           {/each}
         </div>
         {#if !results.length}<p
@@ -514,6 +531,7 @@
         {#if results.length > limit}<Button
             variant="outline"
             class="mt-5 min-h-11"
+            disabled={editing}
             onclick={() => (limit += 12)}>Show more alternatives</Button
           >{/if}
       </section>

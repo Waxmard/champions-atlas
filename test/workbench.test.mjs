@@ -12,8 +12,17 @@ import {
   similarTeams,
   storageKey,
   useCandidate,
+  catalogSuggestions,
+  resolveSavedTeamId,
 } from '../src/lib/workbench.ts';
-import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
+import {
+  championsSpreadTotal,
+  formatChampionsSpread,
+  parseChampionsSpread,
+  parseCustomPaste,
+  parsePaste,
+  parseSetBlock,
+} from '../src/lib/paste.ts';
 
 const member = (pokemon, item = 'Item') => ({
   pokemon,
@@ -264,4 +273,113 @@ test('generateUUID falls back when crypto.randomUUID is undefined (insecure cont
   } finally {
     crypto.randomUUID = original;
   }
+});
+
+test('parseSetBlock extracts a set', () => {
+  const raw = `Incineroar @ Sitrus Berry
+Ability: Intimidate
+Careful Nature
+EVs: 252 HP / 4 Atk / 156 Def / 76 SpD / 20 Spe
+- Fake Out
+- Parting Shot
+- Knock Off
+- Flare Blitz`;
+  const parsed = parseSetBlock(raw);
+  assert.equal(parsed.pokemon, 'Incineroar');
+  assert.equal(parsed.item, 'Sitrus Berry');
+  assert.equal(parsed.ability, 'Intimidate');
+  assert.equal(parsed.nature, 'Careful');
+  assert.equal(parsed.moves.length, 4);
+});
+
+test('strict Champions spreads parse, format, and total six ordered stats', () => {
+  const spread = parseChampionsSpread(
+    '2 Spe / 32 SpA / 0 Def / 32 HP / 0 SpD / 0 Atk'
+  );
+  assert.deepEqual(spread, {
+    HP: 32,
+    Atk: 0,
+    Def: 0,
+    SpA: 32,
+    SpD: 0,
+    Spe: 2,
+  });
+  assert.equal(formatChampionsSpread(spread), '32 HP / 32 SpA / 2 Spe');
+  for (const total of [64, 65, 66, 67])
+    assert.equal(championsSpreadTotal({ ...spread, HP: total - 34 }), total);
+  for (const invalid of [
+    '33 HP',
+    '-1 HP',
+    '1.5 HP',
+    '1 HP / 2 HP',
+    '1 Special',
+  ])
+    assert.equal(parseChampionsSpread(invalid), null);
+});
+
+test('catalogSuggestions ranks current usage, merges normalized values, and isolates forms', () => {
+  const incineroar = (item, ability = 'Intimidate', moves = ['Fake Out']) => ({
+    ...member('Incineroar', item),
+    ability,
+    moves,
+  });
+  const current = team('current', 'M-C');
+  current.members = [
+    incineroar('Alpha'),
+    incineroar('Beta'),
+    incineroar('sitrus-berry', 'Blaze', ['Flare Blitz']),
+    incineroar('---', '---', ['---']),
+    incineroar('Gamma', '---', ['---']),
+  ];
+  current.members[3].spread = '---';
+  current.members[4].spread = '---';
+  const historical = team('historical', 'M-B');
+  historical.members = [
+    incineroar('Beta'),
+    incineroar('Beta'),
+    incineroar('Sitrus Berry', 'Intimidate', ['Fake Out']),
+  ];
+  const otherForm = team('other-form', 'M-C');
+  otherForm.members = [incineroar('Heat item')];
+  otherForm.members[0].pokemon = 'Rotom-Heat';
+  const wash = team('wash', 'M-C');
+  wash.members = [incineroar('Wash item')];
+  wash.members[0].pokemon = 'Rotom-Wash';
+
+  const suggestions = catalogSuggestions(
+    'Incineroar',
+    [current, historical, otherForm, wash],
+    'M-C'
+  );
+  assert.deepEqual(suggestions.items, [
+    { value: 'Beta', currentCount: 1, totalCount: 3 },
+    { value: 'sitrus-berry', currentCount: 1, totalCount: 2 },
+    { value: 'Alpha', currentCount: 1, totalCount: 1 },
+    { value: 'Gamma', currentCount: 1, totalCount: 1 },
+  ]);
+  assert.deepEqual(suggestions.abilities, [
+    { value: 'Intimidate', currentCount: 2, totalCount: 5 },
+    { value: 'Blaze', currentCount: 1, totalCount: 1 },
+  ]);
+  assert.deepEqual(suggestions.moves, [
+    { value: 'Fake Out', currentCount: 2, totalCount: 5 },
+    { value: 'Flare Blitz', currentCount: 1, totalCount: 1 },
+  ]);
+  assert.deepEqual(suggestions.spreads, [
+    { value: '32 HP', currentCount: 3, totalCount: 6 },
+  ]);
+  assert.deepEqual(
+    catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
+    [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
+  );
+});
+
+test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
+  const teams = [team('t1'), team('t2')];
+  assert.equal(resolveSavedTeamId(teams, 't2', 't1'), 't2');
+  assert.equal(resolveSavedTeamId(teams, null, 't2'), 't2');
+  assert.equal(resolveSavedTeamId(teams, 'nonexistent', 't2'), 't2');
+  assert.equal(resolveSavedTeamId(teams, null, 'nonexistent'), 't1');
+  assert.equal(resolveSavedTeamId(teams, null, null), 't1');
+  assert.equal(resolveSavedTeamId([], 't1', 't1'), null);
 });

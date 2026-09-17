@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { SvelteURLSearchParams } from 'svelte/reactivity';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
   import X from '@lucide/svelte/icons/x';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
@@ -81,8 +82,20 @@
     results.slice((pageNumber - 1) * 24, pageNumber * 24)
   );
 
+  function revealText(node: HTMLElement) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    node.classList.add('is-ready');
+    const frame = requestAnimationFrame(() => node.classList.add('is-shown'));
+    return { destroy: () => cancelAnimationFrame(frame) };
+  }
+
+  function prepareAccordion(node: HTMLElement) {
+    node.dataset.motionReady = 'true';
+  }
+
   function navigate(params: URLSearchParams, noScroll = true) {
-    void goto(resolve(`/?${params}`), {
+    const query = params.toString();
+    void goto(resolve(query ? `/?${query}` : '/'), {
       replaceState: true,
       noScroll,
       keepFocus: true,
@@ -153,12 +166,18 @@
       >
         Your next six start here
       </p>
-      <h1 class="text-3xl font-semibold tracking-tight sm:text-4xl">
-        Explore teams
-      </h1>
-      <p class="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
-        Find a core you love. Compare the teams around it.
-      </p>
+      <div class="t-stagger" use:revealText>
+        <h1
+          class="t-stagger-line t-stagger-line--1 text-3xl font-semibold tracking-tight sm:text-4xl"
+        >
+          Explore teams
+        </h1>
+        <p
+          class="t-stagger-line t-stagger-line--2 mt-3 max-w-xl text-sm leading-6 text-muted-foreground"
+        >
+          Find a core you love. Compare the teams around it.
+        </p>
+      </div>
     </div>
     <span
       class="rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground"
@@ -169,7 +188,9 @@
   <div class="grid items-start gap-7 lg:grid-cols-[280px_1fr]">
     <aside
       aria-label="Filters"
-      class="rounded-2xl border bg-card p-5 lg:sticky lg:top-6"
+      class="t-acc filters-accordion rounded-2xl border bg-card p-5 lg:sticky lg:top-6"
+      data-open={filtersOpen}
+      use:prepareAccordion
     >
       <div class="flex min-h-11 items-center gap-2">
         <span class="sr-only" aria-live="polite"
@@ -177,7 +198,7 @@
         >
         <button
           type="button"
-          class="flex min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-md font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary lg:hidden"
+          class="t-acc-head filters-toggle min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-md font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary"
           aria-label="Filters"
           aria-controls="filters-panel"
           aria-expanded={filtersOpen}
@@ -185,6 +206,9 @@
           ><SlidersHorizontal class="size-4" aria-hidden="true" />Filters
           <span class="ml-auto text-sm font-normal text-muted-foreground"
             >{filters.length}/6</span
+          >
+          <span class="t-acc-chevron" aria-hidden="true"
+            ><ChevronDown class="size-4" /></span
           ></button
         >
         <div class="hidden flex-1 items-center gap-2 font-semibold lg:flex">
@@ -194,17 +218,13 @@
           >
         </div>
         {#if filters.length || regulation !== 'all' || filterState.error}<Button
+            href={resolve('/')}
             variant="ghost"
-            class="min-h-11 px-2"
-            onclick={() => navigate(new URLSearchParams())}
-            >Clear filters</Button
+            class="min-h-11 px-2">Clear filters</Button
           >{/if}
       </div>
-      <div
-        id="filters-panel"
-        class={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${filtersOpen ? 'visible grid-rows-[1fr] opacity-100' : 'invisible grid-rows-[0fr] opacity-0'} lg:visible lg:grid-rows-[1fr] lg:opacity-100`}
-      >
-        <div class="min-h-0 overflow-hidden">
+      <div id="filters-panel" class="t-acc-panel">
+        <div class="t-acc-panel-inner min-h-0">
           <p class="mt-1 mb-4 text-xs leading-5 text-muted-foreground">
             Teams must include every Pokémon you select. Forms and Megas match
             exactly.
@@ -387,10 +407,7 @@
             {filterState.error ||
               'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
           </p>
-          <Button
-            variant="outline"
-            class="mt-5 min-h-11"
-            onclick={() => navigate(new URLSearchParams())}
+          <Button href={resolve('/')} variant="outline" class="mt-5 min-h-11"
             >Clear filters</Button
           >
         </div>

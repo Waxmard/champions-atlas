@@ -14,6 +14,21 @@ export interface SavedTeam {
 }
 
 export const storageKey = 'champions-atlas:teams:v1';
+export const activeTeamKey = 'champions-atlas:active-team:v1';
+
+export function resolveSavedTeamId(
+  saved: SavedTeam[],
+  requestedId: string | null,
+  activeId: string | null
+): string | null {
+  const fallbackId =
+    (activeId && saved.find((team) => team.id === activeId)?.id) ??
+    saved[0]?.id ??
+    null;
+  return requestedId && saved.some((team) => team.id === requestedId)
+    ? requestedId
+    : fallbackId;
+}
 
 export function setText(member: Member) {
   return (
@@ -373,4 +388,61 @@ export function saveTeam(
   readSavedTeams({ getItem: () => raw });
   storage.setItem(storageKey, raw);
   return next;
+}
+
+export interface CatalogSuggestion {
+  value: string;
+  currentCount: number;
+  totalCount: number;
+}
+
+export function catalogSuggestions(
+  pokemon: string,
+  teams: Team[],
+  currentRegulation: string
+) {
+  const norm = normalize(pokemon);
+  const items = new Map<string, CatalogSuggestion>();
+  const abilities = new Map<string, CatalogSuggestion>();
+  const moves = new Map<string, CatalogSuggestion>();
+  const spreads = new Map<string, CatalogSuggestion>();
+  const add = (
+    values: Map<string, CatalogSuggestion>,
+    value: string | null,
+    current: boolean
+  ) => {
+    if (!value || !normalize(value)) return;
+    const key = normalize(value);
+    const existing = values.get(key);
+    if (existing) {
+      existing.totalCount++;
+      if (current) existing.currentCount++;
+    } else {
+      values.set(key, { value, currentCount: current ? 1 : 0, totalCount: 1 });
+    }
+  };
+  const rank = (values: Map<string, CatalogSuggestion>) =>
+    [...values.values()].sort(
+      (a, b) =>
+        b.currentCount - a.currentCount ||
+        b.totalCount - a.totalCount ||
+        a.value.localeCompare(b.value)
+    );
+  for (const team of teams) {
+    for (const member of team.members) {
+      if (normalize(member.pokemon) === norm) {
+        const current = team.regulation === currentRegulation;
+        add(items, member.item, current);
+        add(abilities, member.ability, current);
+        add(spreads, member.spread, current);
+        for (const move of member.moves) add(moves, move, current);
+      }
+    }
+  }
+  return {
+    items: rank(items),
+    abilities: rank(abilities),
+    moves: rank(moves),
+    spreads: rank(spreads),
+  };
 }

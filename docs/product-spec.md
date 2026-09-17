@@ -128,8 +128,8 @@ user's edited team. Exact forms remain distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-Field-based editing for saved catalog teams and legality-aware adaptation are not
-implemented.
+Field-based editing for saved catalog teams is implemented. Legality-aware
+adaptation is not implemented.
 
 Custom import starts in **My teams** with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,

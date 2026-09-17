@@ -1,5 +1,46 @@
 import { normalize, type Member } from './catalog.ts';
 
+export const CHAMPIONS_STATS = [
+  'HP',
+  'Atk',
+  'Def',
+  'SpA',
+  'SpD',
+  'Spe',
+] as const;
+export type ChampionsStat = (typeof CHAMPIONS_STATS)[number];
+export type ChampionsSpread = Record<ChampionsStat, number>;
+
+export function parseChampionsSpread(
+  spread: string | null
+): ChampionsSpread | null {
+  const values = Object.fromEntries(
+    CHAMPIONS_STATS.map((stat) => [stat, 0])
+  ) as ChampionsSpread;
+  if (!spread?.trim()) return values;
+  const seen = new Set<ChampionsStat>();
+  for (const part of spread.split('/')) {
+    const match = /^(\d+)\s+(HP|Atk|Def|SpA|SpD|Spe)$/i.exec(part.trim());
+    const stat = CHAMPIONS_STATS.find(
+      (candidate) => candidate.toLowerCase() === match?.[2].toLowerCase()
+    );
+    const value = Number(match?.[1]);
+    if (!stat || seen.has(stat) || !Number.isInteger(value) || value > 32)
+      return null;
+    seen.add(stat);
+    values[stat] = value;
+  }
+  return values;
+}
+
+export const formatChampionsSpread = (spread: ChampionsSpread) =>
+  CHAMPIONS_STATS.filter((stat) => spread[stat] > 0)
+    .map((stat) => `${spread[stat]} ${stat}`)
+    .join(' / ');
+
+export const championsSpreadTotal = (spread: ChampionsSpread) =>
+  CHAMPIONS_STATS.reduce((total, stat) => total + spread[stat], 0);
+
 export function normalizeSpread(spread: string | null): string | null {
   if (!spread) return null;
   const parts = spread
@@ -43,47 +84,47 @@ export function normalizeSet(set: string): string {
     .join('\n');
 }
 
+export function parseSetBlock(rawSet: string): Member {
+  const set = normalizeSet(rawSet);
+  const [first, ...lines] = set.split('\n').map((line) => line.trim());
+  const [rawName, item] = first.split(' @ ');
+  if (!rawName) throw new Error('Paste set is missing a Pokémon');
+  const name = rawName.replace(/ \([MF]\)$/, '');
+  const pokemon = /\(([^)]+)\)$/.exec(name)?.[1] || name;
+  const field = (label: string) =>
+    lines.find((line) => line.startsWith(label))?.slice(label.length) || null;
+  const moves = lines
+    .filter((line) => line.startsWith('- '))
+    .map((line) => line.slice(2));
+  if (moves.length > 4) throw new Error(`${pokemon} has more than four moves`);
+  if (
+    moves.some(
+      (move, index) =>
+        moves.findIndex(
+          (candidate) => normalize(candidate) === normalize(move)
+        ) !== index
+    )
+  )
+    throw new Error(`${pokemon} has duplicate moves`);
+  return {
+    pokemon,
+    item: item || null,
+    ability: field('Ability: '),
+    moves,
+    nature:
+      lines.find((line) => line.endsWith(' Nature'))?.replace(/ Nature$/, '') ||
+      null,
+    spread: field('EVs: '),
+    set,
+  };
+}
+
 export function parsePaste(text: string): Member[] {
   if (!text || text.length > 50000) throw new Error('Invalid paste payload');
   const blocks = text.trim().split(/\r?\n\s*\r?\n/);
   if (blocks.length !== 6) throw new Error('Paste must contain six sets');
 
-  const members = blocks.map((rawSet) => {
-    const set = normalizeSet(rawSet);
-    const [first, ...lines] = set.split('\n').map((line) => line.trim());
-    const [rawName, item] = first.split(' @ ');
-    if (!rawName) throw new Error('Paste set is missing a Pokémon');
-    const name = rawName.replace(/ \([MF]\)$/, '');
-    const pokemon = /\(([^)]+)\)$/.exec(name)?.[1] || name;
-    const field = (label: string) =>
-      lines.find((line) => line.startsWith(label))?.slice(label.length) || null;
-    const moves = lines
-      .filter((line) => line.startsWith('- '))
-      .map((line) => line.slice(2));
-    if (moves.length > 4)
-      throw new Error(`${pokemon} has more than four moves`);
-    if (
-      moves.some(
-        (move, index) =>
-          moves.findIndex(
-            (candidate) => normalize(candidate) === normalize(move)
-          ) !== index
-      )
-    )
-      throw new Error(`${pokemon} has duplicate moves`);
-    return {
-      pokemon,
-      item: item || null,
-      ability: field('Ability: '),
-      moves,
-      nature:
-        lines
-          .find((line) => line.endsWith(' Nature'))
-          ?.replace(/ Nature$/, '') || null,
-      spread: field('EVs: '),
-      set,
-    };
-  });
+  const members = blocks.map(parseSetBlock);
   const species = members.map(({ pokemon }) => normalize(pokemon));
   if (species.some((pokemon, index) => species.indexOf(pokemon) !== index))
     throw new Error('Paste contains duplicate Pokémon forms');
