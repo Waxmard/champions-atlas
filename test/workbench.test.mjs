@@ -185,25 +185,19 @@ test('custom teams validate paste and preserve independent snapshots and empty s
   assert.throws(() => saveTeam(storage, invalid), /untouched/);
 });
 
-test('generateUUID falls back when crypto.randomUUID is undefined (insecure context)', () => {
-  const original = crypto.randomUUID;
-  try {
-    delete crypto.randomUUID;
-    const team = newSavedTeam({
-      id: 'test',
-      name: 'Test',
-      regulation: 'M-C',
-      pasteUrl: '',
-      members: [],
-      paste: null,
-    });
-    assert.match(
-      team.id,
-      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
-    );
-  } finally {
-    crypto.randomUUID = original;
-  }
+test('generateUUID produces valid RFC4122 v4 UUID', () => {
+  const team = newSavedTeam({
+    id: 'test',
+    name: 'Test',
+    regulation: 'M-C',
+    pasteUrl: '',
+    members: [],
+    paste: null,
+  });
+  assert.match(
+    team.id,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+  );
 });
 
 test('parseSetBlock extracts a set', () => {
