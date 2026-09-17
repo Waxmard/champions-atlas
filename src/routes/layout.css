@@ -26,14 +26,14 @@
   --ring: oklch(0.708 0 0);
   --radius: 0.625rem;
 
-  --acc-expand: 250ms;
-  --acc-collapse: 250ms;
-  --acc-chevron: 250ms;
+  --acc-expand: 300ms;
+  --acc-collapse: 300ms;
+  --acc-chevron: 300ms;
   --acc-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --panel-open-dur: 400ms;
   --panel-close-dur: 350ms;
-  --panel-translate-y: 100px;
-  --panel-blur: 2px;
+  --panel-translate-y: 8px;
+  --panel-blur: 0px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --stagger-dur: 500ms;
   --stagger-distance: 12px;

@@ -367,10 +367,10 @@
           {#each draft.members as member, index (index)}
             <section
               id={`pokemon-slot-${index}`}
-              class="min-w-0 rounded-xl border bg-card p-4 transition-[border-color,background-color] duration-200 motion-reduce:transition-none {activeEditIndex ===
+              class="min-w-0 overflow-hidden rounded-2xl border bg-card transition-all duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
               index
-                ? 'border-primary ring-1 ring-primary'
-                : 'hover:border-primary/40'}"
+                ? 'border-primary p-4 shadow-md ring-2 ring-primary/30'
+                : 'hover:border-primary/30 hover:shadow-xs'}"
               aria-label={`${member.pokemon} set`}
             >
               {#if activeEditIndex === index}

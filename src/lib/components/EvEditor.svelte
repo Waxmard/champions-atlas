@@ -50,24 +50,33 @@
 >
   <div class="grid gap-3">
     {#each CHAMPIONS_STATS as stat (stat)}
-      <div class="grid grid-cols-[3rem_4.5rem_1fr] items-center gap-2">
-        <label for={`set-${stat}-ev`} class="text-sm font-medium">{stat}</label
-        ><input
-          id={`set-${stat}-ev`}
-          aria-label={`${stat} EV`}
-          type="number"
-          min="0"
-          max="32"
-          value={values[stat]}
-          class="min-h-11 w-full rounded-lg border bg-background px-2 text-center text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          oninput={(event) => update(stat, event.currentTarget.valueAsNumber)}
-        /><input
+      <div class="space-y-1">
+        <div class="flex items-center justify-between text-xs">
+          <label for={`set-${stat}-ev`} class="font-medium text-foreground"
+            >{stat}</label
+          >
+          <div class="flex items-center gap-1.5">
+            <input
+              id={`set-${stat}-ev`}
+              aria-label={`${stat} EV`}
+              type="number"
+              min="0"
+              max="32"
+              value={values[stat]}
+              class="h-7 w-12 rounded border bg-background px-1 text-center font-mono text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              oninput={(event) =>
+                update(stat, event.currentTarget.valueAsNumber)}
+            />
+            <span class="text-muted-foreground">/ 32</span>
+          </div>
+        </div>
+        <input
           aria-label={`${stat} EV slider`}
           type="range"
           min="0"
           max="32"
           value={values[stat]}
-          class="min-h-11 w-full accent-primary"
+          class="h-6 w-full cursor-pointer accent-primary"
           oninput={(event) => update(stat, event.currentTarget.valueAsNumber)}
         />
       </div>

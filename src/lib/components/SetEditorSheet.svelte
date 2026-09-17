@@ -5,6 +5,7 @@
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import { normalize, type Member, type Team } from '$lib/catalog';
+  import { getMoveType, getTypeIcon, TYPE_COLORS } from '$lib/types';
   import {
     championsSpreadTotal,
     parseChampionsSpread,
@@ -479,12 +480,25 @@
           aria-label="Selected moves"
         >
           {#each form.moves as move, index (move)}
+            {@const type = getMoveType(move)}
+            {@const typeColor = type ? TYPE_COLORS[type] : null}
             <li
-              class="flex min-w-0 items-center justify-between gap-2 rounded-lg border px-3"
+              class="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-card px-3 py-1 shadow-2xs"
+              style={typeColor ? `border-left: 3px solid ${typeColor.bg};` : ''}
             >
-              <span class="min-w-0 wrap-break-word">{move}</span><Button
+              <div class="flex min-w-0 items-center gap-2">
+                {#if type}
+                  <img
+                    src={getTypeIcon(type)}
+                    alt={type}
+                    class="size-4 shrink-0 object-contain"
+                  />
+                {/if}
+                <span class="min-w-0 font-medium wrap-break-word">{move}</span>
+              </div>
+              <Button
                 variant="ghost"
-                class="min-h-11 min-w-11 px-2"
+                class="min-h-9 min-w-9 p-1"
                 aria-label={`Remove ${move}`}
                 onclick={() => removeMove(index)}><X /></Button
               >
@@ -514,12 +528,23 @@
           aria-label="Move suggestions"
         >
           {#each remainingMoves.slice(0, expanded ? undefined : 4) as option (option.value)}
+            {@const type = getMoveType(option.value)}
+            {@const typeColor = type ? TYPE_COLORS[type] : null}
             <Button
               variant="outline"
-              class="min-h-11 max-w-full text-left whitespace-normal"
+              class="min-h-11 max-w-full gap-2 text-left whitespace-normal"
+              style={typeColor ? `border-left: 3px solid ${typeColor.bg};` : ''}
               disabled={form.moves.length === 4}
               onclick={() => addMove(option.value)}
-              >{option.value}
+            >
+              {#if type}
+                <img
+                  src={getTypeIcon(type)}
+                  alt={type}
+                  class="size-3.5 shrink-0 object-contain"
+                />
+              {/if}
+              <span>{option.value}</span>
               <span class="text-xs opacity-70"
                 >{option.currentCount}/{option.totalCount}</span
               ></Button
