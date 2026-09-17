@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { Combobox } from 'bits-ui';
   import X from '@lucide/svelte/icons/x';
   import EvEditor from '$lib/components/EvEditor.svelte';
   import ItemIcon from '$lib/components/ItemIcon.svelte';
@@ -69,9 +68,7 @@
   let activeField = $state<
       'item' | 'ability' | 'nature' | 'spread' | 'moves' | null
     >(null),
-    expanded = $state(false),
-    natureSelection = $state(''),
-    natureOpen = $state(false);
+    expanded = $state(false);
 
   const draftMember = $derived<Member>({
     pokemon: form.pokemon.trim(),
@@ -177,7 +174,6 @@
 
   function activate(field: NonNullable<typeof activeField>) {
     activeField = field;
-    natureOpen = field === 'nature';
     expanded = false;
     if (field === 'item') itemQuery = '';
     if (field === 'ability') abilityQuery = '';
@@ -386,66 +382,59 @@
               >{/if}{/if}
         </div>
       {:else if initialField === 'nature'}
-        <div class="min-w-0">
+        <div
+          class="min-w-0"
+          onfocusout={(event) => closeOnBlur('nature', event.currentTarget)}
+        >
           <label for="set-nature-input" class="text-sm font-medium"
             >Nature</label
           >
-          <Combobox.Root
-            type="single"
-            bind:open={natureOpen}
-            value={natureSelection}
-            inputValue={form.nature}
-            onOpenChange={(open) => {
-              if (open) activate('nature');
-              else if (activeField === 'nature') activeField = null;
-            }}
-            onValueChange={(value) => {
-              if (!value) return;
-              form.nature = value;
-              natureSelection = value;
-              natureOpen = false;
-              activeField = null;
+          <input
+            id="set-nature-input"
+            class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            placeholder="Choose nature"
+            bind:value={form.nature}
+            onfocus={() => activate('nature')}
+            oninput={(event) => {
+              natureQuery = event.currentTarget.value;
               error = '';
             }}
-          >
-            <Combobox.Input
-              id="set-nature-input"
-              aria-label="Nature"
-              class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-              placeholder="Choose nature"
-              onfocus={() => activate('nature')}
-              oninput={(event) => {
-                form.nature = event.currentTarget.value;
-                natureQuery = event.currentTarget.value;
-                activeField = 'nature';
-                natureOpen = true;
-                error = '';
-              }}
-              onblur={() => {
-                const nature = exactNature(form.nature);
-                if (nature) form.nature = nature;
-              }}
-            />
-            <Combobox.Portal>
-              <Combobox.Content
-                sideOffset={6}
-                class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-xl border bg-popover p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0"
-              >
-                <Combobox.Viewport>
-                  {#each filteredNatures as nature (nature)}
-                    <Combobox.Item
-                      value={nature}
-                      label={nature}
-                      class="flex min-h-11 cursor-pointer items-center rounded-lg px-3 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
-                      >{nature}</Combobox.Item
-                    >
-                  {:else}<p class="p-3 text-sm text-muted-foreground">
-                      No matching nature.
-                    </p>{/each}
-                </Combobox.Viewport>
-              </Combobox.Content>
-            </Combobox.Portal>
-          </Combobox.Root>
+            onblur={() => {
+              const nature = exactNature(form.nature);
+              if (nature) form.nature = nature;
+            }}
+            onkeydown={(event) => {
+              if (event.key === 'Escape') activeField = null;
+            }}
+          />
+          {#if activeField === 'nature'}<div
+              class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
+              aria-label="Nature suggestions"
+            >
+              {#each filteredNatures.slice(0, expanded ? undefined : 5) as nature (nature)}
+                <Button
+                  variant={normalize(form.nature) === normalize(nature)
+                    ? 'default'
+                    : 'outline'}
+                  class="min-h-11"
+                  onclick={() => {
+                    form.nature = nature;
+                    activeField = null;
+                    error = '';
+                  }}>{nature}</Button
+                >
+              {:else}<p class="text-sm text-muted-foreground">
+                  No matching nature.
+                </p>{/each}
+            </div>
+            {#if filteredNatures.length > 5}<Button
+                variant="ghost"
+                class="mt-1 min-h-11"
+                onclick={() => (expanded = !expanded)}
+                >{expanded
+                  ? 'Show fewer natures'
+                  : `Show ${filteredNatures.length - 5} more natures`}</Button
+              >{/if}{/if}
         </div>
       {:else if initialField === 'spread'}
         <div class="min-w-0">

@@ -308,3 +308,68 @@ test('outside click applies set changes and cancel rolls back', async ({
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
 });
+
+test('lower-slot nature editing stays visible and persists on mobile', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.name !== 'mobile', 'Mobile-only regression');
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+
+  const member = peter.members.at(-1)!;
+  const card = page.getByRole('region', {
+    name: `${member.pokemon} set`,
+    exact: true,
+  });
+  const edit = card.getByRole('button', {
+    name: `Edit ${member.pokemon} nature`,
+    exact: true,
+  });
+  await edit.scrollIntoViewIfNeeded();
+  await edit.click();
+
+  const editor = page.getByRole('region', {
+    name: `Edit ${member.pokemon} set`,
+    exact: true,
+  });
+  await expect(editor).toBeInViewport();
+  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  const nature = editor.getByLabel('Nature', { exact: true });
+  const initialNature = await nature.inputValue();
+  const replacement = editor
+    .getByLabel('Nature suggestions')
+    .getByRole('button')
+    .filter({ hasNotText: initialNature })
+    .first();
+  await expect(replacement).toBeVisible();
+  const replacementNature = (await replacement.textContent())!.trim();
+  await replacement.click();
+  await editor
+    .getByRole('button', { name: 'Apply nature', exact: true })
+    .click();
+
+  await expect(card).toContainText(replacementNature);
+  const storedNature = await page.evaluate(
+    ({ key, pokemon }) => {
+      const team = JSON.parse(localStorage.getItem(key)!)[0];
+      return team.members.find(
+        (saved: { pokemon: string }) => saved.pokemon === pokemon
+      ).nature;
+    },
+    { key: storageKey, pokemon: member.pokemon }
+  );
+  expect(storedNature).toBe(replacementNature);
+  await page.getByRole('button', { name: 'Copy team text' }).click();
+  await expect(page.getByLabel('Export text')).toHaveValue(
+    new RegExp(`${replacementNature} Nature`)
+  );
+  await page.reload();
+  await expect(
+    page.getByRole('region', {
+      name: `${member.pokemon} set`,
+      exact: true,
+    })
+  ).toContainText(replacementNature);
+});
