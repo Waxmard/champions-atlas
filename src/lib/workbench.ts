@@ -390,59 +390,207 @@ export function saveTeam(
   return next;
 }
 
+export const basePokemon = (name: string) =>
+  normalize(name).replace(/mega[a-z]?$/, '');
+
 export interface CatalogSuggestion {
   value: string;
   currentCount: number;
   totalCount: number;
+  nature?: string | null;
+  score?: number;
+}
+
+export interface PokemonSuggestion {
+  pokemon: string;
+  member: Member;
+  sharedTeammates: number;
 }
 
 export function catalogSuggestions(
-  pokemon: string,
+  target: string | Member,
   teams: Team[],
-  currentRegulation: string
+  currentRegulation: string,
+  teammates: Member[] = []
 ) {
-  const norm = normalize(pokemon);
+  const isSimple = typeof target === 'string';
+  const targetMember: Member = isSimple
+    ? {
+        pokemon: target,
+        item: null,
+        ability: null,
+        moves: [],
+        nature: null,
+        spread: null,
+      }
+    : target;
+  const normTarget = normalize(targetMember.pokemon);
+  const baseTarget = basePokemon(targetMember.pokemon);
+
   const items = new Map<string, CatalogSuggestion>();
   const abilities = new Map<string, CatalogSuggestion>();
   const moves = new Map<string, CatalogSuggestion>();
   const spreads = new Map<string, CatalogSuggestion>();
+  const natures = new Map<string, CatalogSuggestion>();
+
   const add = (
     values: Map<string, CatalogSuggestion>,
     value: string | null,
-    current: boolean
+    score: number,
+    current: boolean,
+    extra?: { nature?: string | null }
   ) => {
     if (!value || !normalize(value)) return;
     const key = normalize(value);
     const existing = values.get(key);
     if (existing) {
       existing.totalCount++;
+      if (score > 0) existing.score = (existing.score || 0) + score;
       if (current) existing.currentCount++;
+      if (!isSimple && extra?.nature && !existing.nature)
+        existing.nature = extra.nature;
     } else {
-      values.set(key, { value, currentCount: current ? 1 : 0, totalCount: 1 });
+      const entry: CatalogSuggestion = {
+        value,
+        currentCount: current ? 1 : 0,
+        totalCount: 1,
+      };
+      if (score > 0) entry.score = score;
+      if (!isSimple && extra?.nature) entry.nature = extra.nature;
+      values.set(key, entry);
     }
   };
+
+  const eq = (a: string | null, b: string | null) =>
+    Boolean(a && b && normalize(a) === normalize(b));
+
+  for (const team of teams) {
+    const isCurrent = team.regulation === currentRegulation;
+    let teamSim = 0;
+    if (teammates.length) {
+      for (const t of teammates) {
+        if (team.members.some((m) => eq(m.pokemon, t.pokemon))) teamSim += 3;
+      }
+    }
+
+    for (const member of team.members) {
+      const normMember = normalize(member.pokemon);
+      const match =
+        isSimple && !teammates.length
+          ? normMember === normTarget
+          : basePokemon(member.pokemon) === baseTarget;
+      if (!match) continue;
+
+      const baseScore =
+        isSimple && !teammates.length
+          ? 0
+          : teamSim + (normMember === normTarget ? 2 : 1) + (isCurrent ? 2 : 1);
+
+      const im = eq(targetMember.item, member.item) ? 4 : 0;
+      const am = eq(targetMember.ability, member.ability) ? 2 : 0;
+      const nm = eq(targetMember.nature, member.nature) ? 2 : 0;
+      const sm = eq(targetMember.spread, member.spread) ? 3 : 0;
+      const mm =
+        (targetMember.moves?.filter((mv) =>
+          member.moves.some((om) => normalize(mv) === normalize(om))
+        ).length || 0) * 1.5;
+
+      add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
+      add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
+      add(spreads, member.spread, baseScore + im + am + mm, isCurrent, {
+        nature: member.nature,
+      });
+      add(natures, member.nature, baseScore + im + am + mm, isCurrent);
+      for (const move of member.moves) {
+        add(moves, move, baseScore + im + am + nm + sm, isCurrent);
+      }
+    }
+  }
+
   const rank = (values: Map<string, CatalogSuggestion>) =>
     [...values.values()].sort(
       (a, b) =>
+        (b.score || 0) - (a.score || 0) ||
         b.currentCount - a.currentCount ||
         b.totalCount - a.totalCount ||
         a.value.localeCompare(b.value)
     );
-  for (const team of teams) {
-    for (const member of team.members) {
-      if (normalize(member.pokemon) === norm) {
-        const current = team.regulation === currentRegulation;
-        add(items, member.item, current);
-        add(abilities, member.ability, current);
-        add(spreads, member.spread, current);
-        for (const move of member.moves) add(moves, move, current);
-      }
-    }
-  }
+
   return {
     items: rank(items),
     abilities: rank(abilities),
     moves: rank(moves),
     spreads: rank(spreads),
+    natures: rank(natures),
+    pokemon: pokemonSuggestions(
+      teammates,
+      teams,
+      currentRegulation,
+      targetMember.pokemon
+    ),
   };
+}
+
+export function pokemonSuggestions(
+  teammates: Member[],
+  teams: Team[],
+  currentRegulation: string,
+  excludePokemon?: string
+): PokemonSuggestion[] {
+  const excludeSpecies = new Set(teammates.map((t) => normalize(t.pokemon)));
+  if (excludePokemon) {
+    excludeSpecies.add(normalize(excludePokemon));
+    excludeSpecies.add(basePokemon(excludePokemon));
+  }
+
+  const rankedTeams = teams
+    .map((team) => {
+      let shared = 0,
+        details = 0;
+      for (const t of teammates) {
+        const match = team.members.find(
+          (m) => normalize(m.pokemon) === normalize(t.pokemon)
+        );
+        if (!match) continue;
+        shared++;
+        if (t.item && match.item && normalize(t.item) === normalize(match.item))
+          details++;
+        if (
+          t.ability &&
+          match.ability &&
+          normalize(t.ability) === normalize(match.ability)
+        )
+          details++;
+      }
+      return { team, shared, details };
+    })
+    .filter((t) => t.shared > 0)
+    .sort(
+      (a, b) =>
+        b.shared - a.shared ||
+        b.details - a.details ||
+        compareTeams(a.team, b.team, currentRegulation)
+    );
+  const seen = new Set<string>();
+  const suggestions: PokemonSuggestion[] = [];
+  for (const { team, shared } of rankedTeams) {
+    for (const m of team.members) {
+      const norm = normalize(m.pokemon);
+      if (
+        excludeSpecies.has(norm) ||
+        excludeSpecies.has(basePokemon(m.pokemon))
+      )
+        continue;
+      if (seen.has(norm)) continue;
+      seen.add(norm);
+      suggestions.push({
+        pokemon: m.pokemon,
+        member: m,
+        sharedTeammates: shared,
+      });
+      if (suggestions.length >= 6) break;
+    }
+    if (suggestions.length >= 6) break;
+  }
+  return suggestions;
 }

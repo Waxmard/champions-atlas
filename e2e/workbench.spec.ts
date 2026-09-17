@@ -7,7 +7,7 @@ const optionValue = (text: string) => text.replace(/\s?\d+\/\d+$/, '').trim();
 
 test('save Peter, choose one slot, compare, edit, export, and preserve other five sets', async ({
   page,
-}, testInfo) => {
+}) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.goto(`/teams/${peter.id}`);
@@ -48,75 +48,28 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   for (const move of originalWeavile.moves)
     await expect(weavile.getByText(move, { exact: true })).toBeVisible();
   await expect(weavile.locator('textarea')).toHaveCount(0);
-  const history = page.getByText('Original & source history').locator('..');
-  await history.locator('summary').click();
-  await expect(history.locator('pre')).not.toContainText('Level:');
-  await expect(history.locator('pre')).not.toContainText('Tera Type:');
-  await expect(history.locator('pre')).not.toContainText('IVs:');
-  await expect(page.getByRole('checkbox')).toHaveCount(0);
-  await expect(page.getByLabel('Candidate regulation')).toHaveCount(0);
-  await expect(
-    page.getByRole('button', { name: /^Change /, pressed: true })
-  ).toHaveCount(0);
-  const defaultRecommendations = page
-    .getByRole('region', { name: 'Similar teams', exact: true })
-    .getByRole('article');
-  await expect(defaultRecommendations.first()).toBeVisible();
-  await defaultRecommendations
-    .first()
-    .getByRole('button', { name: /^Compare / })
-    .click();
-  await expect(
-    page.getByRole('button', { name: 'Use replacement', exact: true })
-  ).toHaveCount(0);
+  await expect(page.getByText('Original & source history')).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Similar teams' })).toHaveCount(
+    0
+  );
   await weavile
     .getByRole('button', { name: 'Change Weavile', exact: true })
     .click();
-  await page
-    .getByRole('button', { name: 'Change Sinistcha', exact: true })
+  const pokemonEditor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await expect(pokemonEditor).toBeVisible();
+  const pokemonInput = pokemonEditor.getByLabel('Pokémon', { exact: true });
+  await expect(pokemonInput).toBeVisible();
+  const pokemonChoices = pokemonEditor
+    .getByLabel('Pokémon suggestions')
+    .getByRole('button');
+  await expect(pokemonChoices.first()).toBeVisible();
+  await pokemonEditor
+    .getByRole('button', { name: 'Cancel', exact: true })
     .click();
-  await expect(
-    weavile.getByRole('button', { name: 'Change Weavile', exact: true })
-  ).toHaveAttribute('aria-pressed', 'false');
-  await expect(
-    page.getByRole('button', { name: /^Change /, pressed: true })
-  ).toHaveCount(1);
-  await weavile
-    .getByRole('button', { name: 'Change Weavile', exact: true })
-    .click();
-  await weavile
-    .getByRole('button', { name: 'Change Weavile', exact: true })
-    .click();
-  await expect(
-    page.getByRole('button', { name: /^Change /, pressed: true })
-  ).toHaveCount(0);
-  await weavile
-    .getByRole('button', { name: 'Change Weavile', exact: true })
-    .click();
-  const alternatives = page
-    .getByRole('region', { name: 'Similar teams', exact: true })
-    .getByRole('article');
-  await page
-    .getByRole('region', { name: 'Your team', exact: true })
-    .screenshot({ path: testInfo.outputPath('single-slot-controls.png') });
-  await expect(alternatives.first()).toBeVisible();
-  await expect(
-    alternatives.first().locator('img[src*="/items/"]')
-  ).toBeVisible();
-  await alternatives
-    .getByRole('button', { name: 'Compare Weavile', exact: true })
-    .first()
-    .click();
-  const comparison = page.getByRole('region', { name: 'Selected comparison' });
-  await expect(comparison).toBeVisible();
-  await expect(
-    comparison.getByRole('table', { name: 'Team differences' })
-  ).toBeVisible();
-  await page.screenshot({ path: testInfo.outputPath('comparison.png') });
-  await comparison.getByRole('button', { name: 'Use replacement' }).click();
-  await expect(
-    weavile.getByRole('button', { name: 'Change Weavile', exact: true })
-  ).toHaveAttribute('aria-pressed', 'true');
+  await expect(pokemonEditor).toHaveCount(0);
   await page
     .getByLabel('Team name', { exact: true })
     .fill('My Weavile adaptation');
@@ -264,7 +217,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   );
   await expect(
     weavile.getByRole('button', { name: 'Change Weavile', exact: true })
-  ).toHaveAttribute('aria-pressed', 'true');
+  ).toBeVisible();
   await page
     .getByRole('button', { name: 'Copy team text', exact: true })
     .click();
@@ -288,7 +241,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
       (member: { pokemon: string }) => member.pokemon !== 'Weavile'
     )
   );
-  expect(stored.sources.length).toBe(2);
+  expect(stored.sources.length).toBe(1);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth

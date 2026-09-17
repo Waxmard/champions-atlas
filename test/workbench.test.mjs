@@ -373,6 +373,90 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
   );
 });
+test('hybrid suggestions link Mega forms, keep stable fields fixed, and pair nature with EV spread', () => {
+  const physicalDnite = (
+    spread = '2 HP / 32 Atk / 32 Spe',
+    nature = 'Adamant'
+  ) => ({
+    pokemon: 'Dragonite',
+    item: 'Life Orb',
+    ability: 'Inner Focus',
+    moves: ['Dragon Claw', 'Extreme Speed', 'Superpower', 'Protect'],
+    nature,
+    spread,
+  });
+  const megaDnite = (spread = '2 HP / 32 SpA / 32 Spe', nature = 'Modest') => ({
+    pokemon: 'Dragonite-Mega',
+    item: 'Dragoninite',
+    ability: 'Multiscale',
+    moves: ['Dragon Pulse', 'Heat Wave', 'Extreme Speed', 'Protect'],
+    nature,
+    spread,
+  });
+
+  const t1 = team('t1', 'M-B');
+  t1.members = [megaDnite(), member('Sneasler'), member('Kingambit')];
+  const t2 = team('t2', 'M-B');
+  t2.members = [
+    megaDnite('1 HP / 1 Def / 32 SpA / 32 Spe'),
+    member('Sneasler'),
+  ];
+  const t3 = team('t3', 'M-B');
+  t3.members = [physicalDnite(), member('Other')];
+  const t4 = team('t4', 'M-B');
+  t4.members = [physicalDnite('31 HP / 32 Atk / 3 Spe'), member('Other')];
+
+  const draftSpecial = {
+    pokemon: 'Dragonite',
+    item: 'Dragoninite',
+    ability: 'Multiscale',
+    moves: ['Dragon Pulse', 'Heat Wave', 'Extreme Speed', 'Protect'],
+    nature: 'Modest',
+    spread: '',
+  };
+  const teammates = [member('Sneasler')];
+
+  // Suggesting spreads for Mega Dragonite with teammates:
+  const suggestions = catalogSuggestions(
+    draftSpecial,
+    [t1, t2, t3, t4],
+    'M-B',
+    teammates
+  );
+  assert.ok(
+    suggestions.spreads.some(
+      (s) => s.value === '2 HP / 32 SpA / 32 Spe' && s.nature === 'Modest'
+    )
+  );
+  assert.ok(
+    suggestions.spreads.some(
+      (s) =>
+        s.value === '1 HP / 1 Def / 32 SpA / 32 Spe' && s.nature === 'Modest'
+    )
+  );
+  assert.equal(suggestions.spreads[0].nature, 'Modest');
+  assert.equal(suggestions.spreads[1].nature, 'Modest');
+
+  // Suggesting item for special Dragonite:
+  const draftNoItem = {
+    ...draftSpecial,
+    item: '',
+    spread: '2 HP / 32 SpA / 32 Spe',
+  };
+  const itemSuggestions = catalogSuggestions(
+    draftNoItem,
+    [t1, t2, t3, t4],
+    'M-B',
+    teammates
+  );
+  assert.equal(itemSuggestions.items[0].value, 'Dragoninite');
+
+  // Suggesting Pokemon replacement for slot:
+  assert.ok(suggestions.pokemon.length > 0);
+  assert.equal(suggestions.pokemon[0].pokemon, 'Kingambit');
+  assert.equal(suggestions.pokemon[0].member.pokemon, 'Kingambit');
+  assert.ok(suggestions.pokemon[0].member.moves.length > 0);
+});
 
 test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
   const teams = [team('t1'), team('t2')];

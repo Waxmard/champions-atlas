@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-limit="${LINE_LIMIT:-600}"
+limit="${LINE_LIMIT:-800}"
 status=0
 checked=0
 

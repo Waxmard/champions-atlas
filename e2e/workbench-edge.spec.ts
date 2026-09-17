@@ -26,10 +26,7 @@ test('import, edit, reload, compare, and export a custom team', async ({
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     'My custom team'
   );
-  await page.getByText('Original & source history').click();
-  await expect(
-    page.getByText('No published sources; created from your team text.')
-  ).toBeVisible();
+  await expect(page.getByText('Original & source history')).toHaveCount(0);
 
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
@@ -69,12 +66,9 @@ test('import, edit, reload, compare, and export a custom team', async ({
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     'My custom team'
   );
-  await expect(
-    page
-      .getByRole('region', { name: 'Similar teams', exact: true })
-      .getByRole('article')
-      .first()
-  ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Similar teams' })).toHaveCount(
+    0
+  );
   await page.getByRole('button', { name: 'Copy team text' }).click();
   await expect(page.getByLabel('Export text')).toHaveValue(/Custom Ability/);
   expect(
@@ -119,9 +113,11 @@ test('unknown and long card fields stay usable without phone overflow', async ({
     name: `Change ${firstPokemon}`,
     exact: true,
   });
-  await change.focus();
-  await change.press('Enter');
-  await expect(change).toHaveAttribute('aria-pressed', 'true');
+  await change.click();
+  await expect(
+    page.getByRole('region', { name: `Edit ${firstPokemon} set`, exact: true })
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   const edit = team.getByRole('button', {
     name: `Edit ${firstPokemon} item`,
     exact: true,

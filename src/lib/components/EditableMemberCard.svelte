@@ -13,20 +13,16 @@
   import FileText from '@lucide/svelte/icons/file-text';
 
   type EditableSetField =
-    'item' | 'ability' | 'nature' | 'spread' | 'moves' | 'text';
+    'pokemon' | 'item' | 'ability' | 'nature' | 'spread' | 'moves' | 'text';
 
   let {
     member,
-    changing,
     editing,
     onedit,
-    onchange,
   }: {
     member: Member;
-    changing: boolean;
     editing: boolean;
     onedit: (field: EditableSetField) => void;
-    onchange: () => void;
   } = $props();
 
   const cardStyle = $derived(getCardBackgroundStyle(member.pokemon));
@@ -60,17 +56,17 @@
     </div>
 
     <!-- Change Pokemon quick toggle -->
+    <!-- Change Pokemon button -->
     <Button
-      variant={changing ? 'default' : 'outline'}
+      variant="outline"
       size="sm"
       class="h-9 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs shadow-xs"
       aria-label={`Change ${member.pokemon}`}
-      aria-pressed={changing}
       disabled={editing}
-      onclick={onchange}
+      onclick={() => onedit('pokemon')}
     >
       <ArrowLeftRight class="size-3.5" />
-      <span>{changing ? 'Changing' : 'Change'}</span>
+      <span>Change</span>
     </Button>
   </div>
 
