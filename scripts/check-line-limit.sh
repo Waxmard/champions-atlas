@@ -10,6 +10,7 @@ while IFS= read -r file; do
   src/*.ts | src/*.svelte | src/*.css | scripts/*.mjs | e2e/*.ts | test/*.mjs) ;;
   *) continue ;;
   esac
+  [[ -f "$file" ]] || continue
 
   lines=$(wc -l <"$file")
   checked=$((checked + 1))

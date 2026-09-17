@@ -498,7 +498,7 @@
             {@const typeColor = type ? TYPE_COLORS[type] : null}
             <li
               class="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-card px-3 py-1 shadow-2xs"
-              style={typeColor ? `border-left: 3px solid ${typeColor.bg};` : ''}
+              style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
             >
               <div class="flex min-w-0 items-center gap-2">
                 {#if type}<img
@@ -545,7 +545,7 @@
             <Button
               variant="outline"
               class="min-h-11 max-w-full gap-2 text-left whitespace-normal"
-              style={typeColor ? `border-left: 3px solid ${typeColor.bg};` : ''}
+              style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
               disabled={form.moves.length === 4}
               onclick={() => addMove(option.value)}
             >
@@ -579,8 +579,11 @@
     </p>{/if}
   <div class="mt-4 flex justify-end gap-2 border-t pt-3">
     <Button variant="outline" class="min-h-11" onclick={oncancel}>Cancel</Button
-    ><Button class="min-h-11" disabled={!spreadValid} onclick={apply}
-      >Done</Button
+    ><Button
+      class="min-h-11"
+      disabled={!spreadValid}
+      onclick={apply}
+      aria-label={`Apply ${fieldLabel.toLowerCase()}`}>Done</Button
     >
   </div>
 </section>

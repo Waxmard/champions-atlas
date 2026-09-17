@@ -31,24 +31,9 @@
     'md'
       ? 'px-2.5 py-2 text-sm'
       : 'px-2 py-1.5 text-xs'} {className}"
-    style={typeColor ? `border-left: 3px solid ${typeColor.bg};` : ''}
+    style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
   >
-    {#if type}
-      <TypeBadge {type} size={size === 'md' ? 'md' : 'sm'} />
-    {:else}
-      <div
-        class="{size === 'md'
-          ? 'size-4'
-          : 'size-3.5'} shrink-0 rounded-full bg-muted"
-      ></div>
-    {/if}
-    <span
-      class="truncate font-medium {trimmedMove
-        ? 'text-foreground'
-        : 'text-muted-foreground italic'}"
-    >
-      {trimmedMove || 'Empty'}
-    </span>
+    {@render content()}
   </button>
 {:else}
   <div
@@ -56,23 +41,27 @@
     'md'
       ? 'px-2.5 py-2 text-sm'
       : 'px-2 py-1.5 text-xs'} {className}"
-    style={typeColor ? `border-left: 3px solid ${typeColor.bg};` : ''}
+    style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
   >
-    {#if type}
-      <TypeBadge {type} size={size === 'md' ? 'md' : 'sm'} />
-    {:else}
-      <div
-        class="{size === 'md'
-          ? 'size-4'
-          : 'size-3.5'} shrink-0 rounded-full bg-muted"
-      ></div>
-    {/if}
-    <span
-      class="truncate font-medium {trimmedMove
-        ? 'text-foreground'
-        : 'text-muted-foreground italic'}"
-    >
-      {trimmedMove || 'Empty'}
-    </span>
+    {@render content()}
   </div>
 {/if}
+
+{#snippet content()}
+  {#if type}
+    <TypeBadge {type} size={size === 'md' ? 'md' : 'sm'} />
+  {:else}
+    <div
+      class="{size === 'md'
+        ? 'size-4'
+        : 'size-3.5'} shrink-0 rounded-full bg-muted"
+    ></div>
+  {/if}
+  <span
+    class="truncate font-medium {trimmedMove
+      ? 'text-foreground'
+      : 'text-muted-foreground italic'}"
+  >
+    {trimmedMove || 'Empty'}
+  </span>
+{/snippet}

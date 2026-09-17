@@ -104,7 +104,6 @@
   <!-- Pills Row: Item, Ability, Nature -->
   <div class="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
     {#if editable}
-      <!-- Item Chip -->
       <button
         type="button"
         class="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary"
@@ -112,13 +111,9 @@
         data-set-field="item"
         onclick={() => onedit?.('item')}
       >
-        {#if member.item}
-          <ItemIcon item={member.item} size={16} />
-        {/if}
-        <span class="max-w-[120px] truncate">{member.item || 'Unknown'}</span>
+        {@render itemContent()}
       </button>
 
-      <!-- Ability Chip -->
       <button
         type="button"
         class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-foreground/90 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary"
@@ -126,12 +121,9 @@
         data-set-field="ability"
         onclick={() => onedit?.('ability')}
       >
-        <p class="max-w-[150px] truncate">
-          {member.ability ? `Ability: ${member.ability}` : 'Ability unknown'}
-        </p>
+        {@render abilityContent()}
       </button>
 
-      <!-- Nature Chip -->
       <button
         type="button"
         class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-muted-foreground backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary"
@@ -139,35 +131,25 @@
         data-set-field="nature"
         onclick={() => onedit?.('nature')}
       >
-        <span>{member.nature || 'Unknown'}</span>
+        {@render natureContent()}
       </button>
     {:else}
-      <!-- Item Chip static -->
       <div
         class="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium backdrop-blur-xs"
       >
-        {#if member.item}
-          <ItemIcon item={member.item} size={16} />
-        {/if}
-        <span class="max-w-[120px] truncate"
-          >{member.item || 'Item unknown'}</span
-        >
+        {@render itemContent()}
       </div>
 
-      <!-- Ability Chip static -->
       <div
         class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-foreground/90 backdrop-blur-xs"
       >
-        <p class="max-w-[150px] truncate">
-          {member.ability ? `Ability: ${member.ability}` : 'Ability unknown'}
-        </p>
+        {@render abilityContent()}
       </div>
 
-      <!-- Nature Chip static -->
       <div
         class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-muted-foreground backdrop-blur-xs"
       >
-        <span>{member.nature || 'Nature unknown'}</span>
+        {@render natureContent()}
       </div>
     {/if}
   </div>
@@ -182,21 +164,34 @@
         data-set-field="moves"
         onclick={() => onedit?.('moves')}
       >
-        {#if member.moves.length}
-          <div class="grid grid-cols-2 gap-1.5 text-xs">
-            {#each [0, 1, 2, 3] as i (i)}
-              <MovePill move={member.moves[i] || ''} />
-            {/each}
-          </div>
-        {:else}
-          <div
-            class="rounded-md border border-dashed border-border/60 bg-background/60 py-2.5 text-center text-xs text-muted-foreground italic"
-          >
-            Moves unknown
-          </div>
-        {/if}
+        {@render movesContent()}
       </button>
-    {:else if member.moves.length}
+    {:else}
+      {@render movesContent()}
+    {/if}
+  </div>
+
+  {#snippet itemContent()}
+    {#if member.item}
+      <ItemIcon item={member.item} size={16} />
+    {/if}
+    <span class="max-w-[120px] truncate"
+      >{member.item || (editable ? 'Unknown' : 'Item unknown')}</span
+    >
+  {/snippet}
+
+  {#snippet abilityContent()}
+    <p class="max-w-[150px] truncate">
+      {member.ability ? `Ability: ${member.ability}` : 'Ability unknown'}
+    </p>
+  {/snippet}
+
+  {#snippet natureContent()}
+    <span>{member.nature || (editable ? 'Unknown' : 'Nature unknown')}</span>
+  {/snippet}
+
+  {#snippet movesContent()}
+    {#if member.moves.length}
       <div class="grid grid-cols-2 gap-1.5 text-xs">
         {#each [0, 1, 2, 3] as i (i)}
           <MovePill move={member.moves[i] || ''} />
@@ -209,7 +204,7 @@
         Moves unknown
       </div>
     {/if}
-  </div>
+  {/snippet}
 
   <!-- Footer Actions: Edit set text -->
   {#if editable}

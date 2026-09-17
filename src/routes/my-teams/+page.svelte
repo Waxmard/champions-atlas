@@ -315,7 +315,8 @@
             <Button
               class="min-h-11"
               disabled={!dirty || editing}
-              onclick={saveChanges}>Apply changes</Button
+              onclick={saveChanges}
+              aria-label="Save changes">Apply changes</Button
             ><Button
               variant="outline"
               class="min-h-11"
