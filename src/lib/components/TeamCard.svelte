@@ -31,57 +31,49 @@
 </script>
 
 <article
-  class="group rounded-2xl border bg-card transition-[box-shadow,border-color] duration-200 hover:border-primary/40 hover:shadow-md"
+  class="group min-w-0 rounded-2xl border bg-card transition-[box-shadow,border-color] duration-200 hover:border-primary/40 hover:shadow-sm"
 >
   <a
     href={resolve(`/teams/${team.id}${query}`)}
     onclick={open}
-    class="block rounded-2xl p-5 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    class="block rounded-2xl p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
   >
-    <div class="mb-4 flex items-start justify-between gap-2">
-      <div class="flex flex-wrap gap-1.5">
-        <span class="rounded-md bg-secondary px-2 py-1 text-xs font-semibold"
-          >Reg {team.regulation}</span
-        >
-        {#if team.regulation === currentRegulation}<span
-            class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"
-            >Current regulation</span
-          >{/if}
-        {#if result.level <= 2}<span
-            class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"
-            >Strong evidence</span
-          >{/if}
-      </div>
-      <span class="text-xs text-muted-foreground">{team.publishedAt}</span>
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <span class="rounded-md bg-secondary px-2 py-1 text-xs font-semibold"
+        >Reg {team.regulation}</span
+      >
+      <span class="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
+        >{team.publishedAt}</span
+      >
     </div>
-    <h2
-      class="line-clamp-2 min-h-12 text-base leading-6 font-semibold tracking-tight"
-    >
+    <h2 class="line-clamp-2 text-base leading-6 font-semibold tracking-tight">
       {team.name}
     </h2>
-    <p class="mt-1 truncate text-xs text-muted-foreground">
+    <p class="mt-1 text-xs wrap-break-word text-muted-foreground">
       {team.creator || 'Creator not listed'}
     </p>
-    <ul class="my-5 grid grid-cols-3 gap-2" aria-label="Team members">
+    <ul class="my-3 grid grid-cols-3 gap-2" aria-label="Team members">
       {#each team.members as member, index (index)}
         <li
-          class="flex min-w-0 flex-col items-center rounded-lg border border-border/50 bg-secondary/40 px-2 py-2.5 text-center transition-all duration-200 hover:border-primary/40 hover:shadow-2xs"
+          class="flex min-w-0 flex-col items-center rounded-lg p-1.5 text-center"
           style={getCardBackgroundStyle(member.pokemon, true)}
         >
-          <PokemonSprite pokemon={member.pokemon} />
+          <PokemonSprite pokemon={member.pokemon} size={40} />
           <p class="mt-1 text-xs font-semibold wrap-break-word">
             {member.pokemon}
           </p>
           <p
             class="mt-1 flex items-center justify-center gap-1 text-xs wrap-break-word text-muted-foreground"
           >
-            {#if member.item}<ItemIcon item={member.item} />{/if}{member.item ||
-              'Item unknown'}
+            {#if member.item}<ItemIcon
+                item={member.item}
+                size={20}
+              />{/if}{member.item || 'Item unknown'}
           </p>
         </li>
       {/each}
     </ul>
-    <div class="flex min-h-9 items-center justify-between gap-3 border-t pt-3">
+    <div class="flex items-center justify-between gap-3 border-t pt-3">
       <div class="min-w-0">
         <p
           class:text-primary={result.level <= 2}
