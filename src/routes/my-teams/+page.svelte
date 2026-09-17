@@ -81,8 +81,7 @@
   }
   function persistIfDirty() {
     if (editing) {
-      editorRef?.apply();
-      return;
+      cancelSetEdit();
     }
     if (draft && draft.name.trim() && JSON.stringify(draft) !== baseline) {
       persist($state.snapshot(draft));
@@ -112,7 +111,7 @@
           '[data-bits-combobox-content], [role="listbox"], [role="dialog"]'
         )
       ) {
-        editorRef?.apply();
+        cancelSetEdit();
       }
     };
     window.addEventListener('beforeunload', warn);

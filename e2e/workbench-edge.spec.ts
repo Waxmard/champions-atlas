@@ -273,7 +273,7 @@ test('item edits preserve an unknown nature', async ({ page }) => {
   expect(storedWeavile.item).toBe('Focus Sash');
 });
 
-test('outside click applies set changes and cancel rolls back', async ({
+test('outside click cancels set edit and explicit apply commits', async ({
   page,
 }) => {
   await page.goto(`/teams/${peter.id}`);
@@ -284,6 +284,10 @@ test('outside click applies set changes and cancel rolls back', async ({
     name: 'Weavile set',
     exact: true,
   });
+  const originalItem = peter.members.find(
+    (m: { pokemon: string }) => m.pokemon === 'Weavile'
+  )!.item;
+
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
@@ -294,13 +298,13 @@ test('outside click applies set changes and cancel rolls back', async ({
   await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
   await page.locator('h1').click();
   await expect(editor).toHaveCount(0);
-  await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
+  await expect(weavile.getByText(originalItem, { exact: true })).toBeVisible();
 
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
-  await editor.getByLabel('Item', { exact: true }).fill('Life Orb');
-  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
+  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
 });
