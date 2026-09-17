@@ -103,12 +103,11 @@
     }
   }
   function persistIfDirty() {
-    if (
-      draft &&
-      !editing &&
-      draft.name.trim() &&
-      JSON.stringify(draft) !== baseline
-    ) {
+    if (editing) {
+      editorRef?.apply();
+      return;
+    }
+    if (draft && draft.name.trim() && JSON.stringify(draft) !== baseline) {
       persist($state.snapshot(draft));
     }
   }

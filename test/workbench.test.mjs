@@ -13,6 +13,7 @@ import {
   storageKey,
   useCandidate,
   catalogSuggestions,
+  resolveSavedTeamId,
 } from '../src/lib/workbench.ts';
 import {
   championsSpreadTotal,
@@ -371,4 +372,14 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
     [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
   );
+});
+
+test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
+  const teams = [team('t1'), team('t2')];
+  assert.equal(resolveSavedTeamId(teams, 't2', 't1'), 't2');
+  assert.equal(resolveSavedTeamId(teams, null, 't2'), 't2');
+  assert.equal(resolveSavedTeamId(teams, 'nonexistent', 't2'), 't2');
+  assert.equal(resolveSavedTeamId(teams, null, 'nonexistent'), 't1');
+  assert.equal(resolveSavedTeamId(teams, null, null), 't1');
+  assert.equal(resolveSavedTeamId([], 't1', 't1'), null);
 });
