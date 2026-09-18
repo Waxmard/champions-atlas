@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { SvelteURLSearchParams } from 'svelte/reactivity';
+  import { onMount } from 'svelte';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
@@ -40,6 +41,7 @@
   let { data }: { data: PageData } = $props();
   let storageError = $state(false);
   let typeOpen = $state(false);
+  let ready = $state(false);
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const historicalRegulations = $derived(
@@ -203,6 +205,9 @@
   }
 
   afterNavigate(restoreBrowse);
+  onMount(() => {
+    ready = true;
+  });
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(page.url.searchParams, next));
   }
@@ -472,6 +477,7 @@
           type="button"
           variant="ghost"
           class="min-h-11 px-2"
+          disabled={!ready}
           onclick={clearFilters}>Clear filters</Button
         >{/if}
     </div>
@@ -524,6 +530,7 @@
           type="button"
           variant="outline"
           class="mt-5 min-h-11"
+          disabled={!ready}
           onclick={clearFilters}>Clear filters</Button
         >
       </div>
