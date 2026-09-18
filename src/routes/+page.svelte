@@ -19,9 +19,11 @@
   } from '$lib/types';
   import {
     activeTeamKey,
+    browseStorageKey,
     readSavedTeams,
     resolveSavedTeamId,
   } from '$lib/workbench';
+  import { pushNow } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
@@ -35,7 +37,6 @@
   } from '$lib/catalog';
   import type { PageData } from './$types';
 
-  const browseStorageKey = 'champions-atlas:browse:v1';
   const browseKeys = ['member', 'regulation', 'sort', 'page', 'type'];
   const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
   let { data }: { data: PageData } = $props();
@@ -143,6 +144,7 @@
   function rememberBrowse(params: URLSearchParams) {
     try {
       localStorage.setItem(browseStorageKey, params.toString());
+      void pushNow();
     } catch {
       storageError = true;
     }

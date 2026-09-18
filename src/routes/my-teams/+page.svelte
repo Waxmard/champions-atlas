@@ -19,6 +19,7 @@
     speciesMember,
     type SavedTeam,
   } from '$lib/workbench';
+  import { pushNow } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   type EditableSetField =
@@ -80,6 +81,7 @@
       baseline = JSON.stringify(draft);
       if (entry) {
         localStorage.setItem(activeTeamKey, entry.id);
+        void pushNow();
         if (page.url.searchParams.get('team') !== entry.id) {
           void goto(resolve(`/my-teams?team=${entry.id}`), {
             replaceState: true,
@@ -161,6 +163,7 @@
     try {
       saved = saveTeam(localStorage, next);
       localStorage.setItem(activeTeamKey, next.id);
+      void pushNow();
       draft = JSON.parse(JSON.stringify(next));
       baseline = JSON.stringify(draft);
       editedSlots = new Set();

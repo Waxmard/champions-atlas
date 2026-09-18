@@ -181,6 +181,9 @@ test('invalid filters stay explicit; team deep links and missing teams work', as
   await expect(
     page.getByRole('heading', { name: 'Explore teams' })
   ).toBeVisible();
-  const response = await page.goto('/teams/not-a-team');
-  expect(response?.status()).toBe(404);
+  // A static SPA serves the same shell for every path, so a missing team is
+  // observable as the rendered 404 page rather than an HTTP status code.
+  await page.goto('/teams/not-a-team');
+  await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
+  await expect(page.getByText('Team not found in this catalog.')).toBeVisible();
 });

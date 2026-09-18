@@ -4,6 +4,8 @@
   import Compass from '@lucide/svelte/icons/compass';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import { onMount } from 'svelte';
+  import { initSync, signIn, signOut, sync } from '$lib/sync.svelte';
 
   let { children } = $props();
   const isHome = $derived(page.url.pathname === resolve('/'));
@@ -15,6 +17,8 @@
       ? resolve(`/?${page.url.searchParams}`)
       : resolve('/?browse=all')
   );
+
+  onMount(() => initSync());
 </script>
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
@@ -35,12 +39,43 @@
       ><Compass class="size-6 text-primary" aria-hidden="true" />Champion's
       Atlas</a
     >
-    <a
-      href={resolve('/my-teams')}
-      class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium transition-colors focus-visible:ring-2 {isMyTeams
-        ? 'bg-primary/10 font-semibold text-primary'
-        : 'text-primary hover:bg-secondary'}">My teams</a
-    >
+    <div class="flex items-center gap-2">
+      <a
+        href={resolve('/my-teams')}
+        class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium transition-colors focus-visible:ring-2 {isMyTeams
+          ? 'bg-primary/10 font-semibold text-primary'
+          : 'text-primary hover:bg-secondary'}">My teams</a
+      >
+      {#if sync.configured}
+        {#if sync.status === 'syncing' || sync.status === 'error'}<span
+            role="status"
+            aria-live="polite"
+            class="text-xs {sync.status === 'error'
+              ? 'text-destructive'
+              : 'text-muted-foreground'}"
+            >{sync.status === 'error' ? 'Sync failed' : 'Syncing…'}</span
+          >{/if}
+        {#if sync.user}
+          <span
+            class="hidden max-w-40 truncate text-sm text-muted-foreground sm:inline"
+            >{sync.user.displayName ?? sync.user.email}</span
+          >
+          <button
+            type="button"
+            onclick={signOut}
+            class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary focus-visible:ring-2"
+            >Sign out</button
+          >
+        {:else}
+          <button
+            type="button"
+            onclick={signIn}
+            class="inline-flex min-h-11 items-center rounded-md border border-primary/30 bg-primary/10 px-3 text-sm font-medium text-primary transition-colors hover:bg-primary/20 focus-visible:ring-2"
+            >Sign in</button
+          >
+        {/if}
+      {/if}
+    </div>
   </div>
 </header>
 {@render children()}
