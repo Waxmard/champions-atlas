@@ -37,9 +37,11 @@ wins.
 
 ## Secrets and continuous integration
 
-The workflows read five secrets from GitHub environments, never from the
-repository: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
+The Firebase workflows read five secrets from GitHub environments:
+`VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
 `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, and `FIREBASE_TOKEN`.
+release-please reads one repository secret instead, because that job declares no
+environment: `RELEASE_PLEASE_TOKEN`.
 
 | Environment  | Project                | Values                                               |
 | ------------ | ---------------------- | ---------------------------------------------------- |
@@ -50,11 +52,21 @@ Create `FIREBASE_TOKEN` with `npx firebase-tools login:ci`, using an account tha
 owns both projects. The build inlines the four `VITE_FIREBASE_*` values, so each
 environment must build with its own project's config.
 
+Create `RELEASE_PLEASE_TOKEN` as a fine-grained personal access token for this
+repository with **Contents: Read and write** and **Pull requests: Read and
+write**, then store it as a repository secret. The workflow needs a token other
+than `GITHUB_TOKEN` so that merging the release pull request triggers the
+`push`-triggered workflows.
+
 - A push to `main` runs `deploy-prod.yml`, which deploys Hosting and
   `firestore.rules` to `champions-atlas`.
 - A pull request labeled `deploy-preview` runs `deploy-preview.yml`, which
   deploys the rules and a Hosting preview channel to `champions-atlas-test`, then
   comments the channel URL on the pull request.
+- A push to `main` also runs `release-please.yml`, which opens or updates a
+  release pull request that bumps `package.json` and writes `CHANGELOG.md`. The
+  workflow merges that pull request once the required status checks pass, then
+  tags the release.
 
 Deploy by hand with:
 
