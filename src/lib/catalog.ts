@@ -123,7 +123,14 @@ export function evidence(report: Report, regulation: string, current: string) {
   return { level: strong ? 0 : 3, label: rank, platform: 'Tournament' };
 }
 
-export function bestEvidence(team: Team, current: string) {
+export interface TeamEvidence {
+  level: number;
+  label: string;
+  platform: string;
+  event: string;
+}
+
+export function bestEvidence(team: Team, current: string): TeamEvidence {
   return (
     team.reports
       .map((report) => ({
@@ -139,16 +146,72 @@ export function bestEvidence(team: Team, current: string) {
   );
 }
 
-export function compareTeams(a: Team, b: Team, current: string) {
-  const group = (team: Team) => {
-    const result = bestEvidence(team, current);
-    if (result.level <= 2) return team.regulation === current ? 0 : 1;
-    return team.regulation === current ? 2 : 3;
-  };
+const evidenceCache = new WeakMap<Team, TeamEvidence>();
+
+function evidenceOf(team: Team, current: string): TeamEvidence {
+  let cached = evidenceCache.get(team);
+  if (!cached) {
+    cached = bestEvidence(team, current);
+    evidenceCache.set(team, cached);
+  }
+  return cached;
+}
+
+export function compareTeams(a: Team, b: Team, current: string): number {
+  const ea = evidenceOf(a, current);
+  const eb = evidenceOf(b, current);
+  const ga =
+    ea.level <= 2
+      ? a.regulation === current
+        ? 0
+        : 1
+      : a.regulation === current
+        ? 2
+        : 3;
+  const gb =
+    eb.level <= 2
+      ? b.regulation === current
+        ? 0
+        : 1
+      : b.regulation === current
+        ? 2
+        : 3;
   return (
-    group(a) - group(b) ||
-    bestEvidence(a, current).level - bestEvidence(b, current).level ||
+    ga - gb ||
+    ea.level - eb.level ||
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)
   );
+}
+
+const optionsCache = new Map<string, string[]>();
+
+export function getMemberOptions(
+  teams: Team[],
+  pokemon: string,
+  field: 'item' | 'ability' | 'move'
+): string[] {
+  const key = `${normalize(pokemon)}:${field}`;
+  let result = optionsCache.get(key);
+  if (!result) {
+    result = [
+      ...new Set(
+        teams.flatMap((team) =>
+          team.members
+            .filter(
+              (member) => normalize(member.pokemon) === normalize(pokemon)
+            )
+            .flatMap((member) =>
+              field === 'move'
+                ? member.moves
+                : member[field]
+                  ? [member[field]]
+                  : []
+            )
+        )
+      ),
+    ].sort();
+    optionsCache.set(key, result);
+  }
+  return result;
 }

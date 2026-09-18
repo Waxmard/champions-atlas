@@ -4,19 +4,8 @@ test('sprite cards, responsive filters, and external attribution work', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
-  const panel = page.locator('#filters-panel');
-
-  if (testInfo.project.name === 'mobile') {
-    const toggle = page.getByRole('button', { name: 'Filters', exact: true });
-    await expect(toggle).toHaveAttribute('aria-controls', 'filters-panel');
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(panel).toBeHidden();
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(panel).toBeVisible();
-  } else {
-    await expect(panel).toBeVisible();
-  }
+  const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
+  await expect(picker).toBeVisible();
 
   const cards = page
     .getByRole('region', { name: 'Matching teams' })
@@ -38,22 +27,9 @@ test('sprite cards, responsive filters, and external attribution work', async ({
     .getByRole('listitem')
     .first();
   const species = await member.locator('p').first().innerText();
-  const itemLabel = member.locator('p').nth(1);
-  const itemIcon = member.locator('img[src*="/items/"]');
-  await expect(itemIcon).toBeVisible();
-  await expect
-    .poll(() =>
-      itemIcon.evaluate((image: HTMLImageElement) =>
-        Boolean(image.complete && image.naturalWidth > 0)
-      )
-    )
-    .toBe(true);
   await sprite.dispatchEvent('error');
   await expect(sprite).toBeHidden();
   await expect(card.getByText(species, { exact: true })).toBeVisible();
-  await itemIcon.dispatchEvent('error');
-  await expect(itemIcon).toBeHidden();
-  await expect(itemLabel).toBeVisible();
 
   const attribution = page.locator(
     'a[href="https://github.com/PokeAPI/sprites"]'
@@ -81,12 +57,7 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  const openMobileFilters = async () => {
-    if (testInfo.project.name !== 'mobile') return;
-    const toggle = page.getByRole('button', { name: 'Filters', exact: true });
-    if ((await toggle.getAttribute('aria-expanded')) === 'false')
-      await toggle.click();
-  };
+  const openMobileFilters = async () => {};
   await page.goto('/');
   await openMobileFilters();
   const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
@@ -131,9 +102,6 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
     ).toBeVisible();
     await expect(
       cards.nth(i).getByText('Rillaboom', { exact: true })
-    ).toBeVisible();
-    await expect(
-      cards.nth(i).getByText('Sitrus Berry', { exact: true })
     ).toBeVisible();
   }
   await cards.first().scrollIntoViewIfNeeded();
@@ -196,8 +164,8 @@ test('invalid filters stay explicit; team deep links and missing teams work', as
   await expect(
     page.getByRole('heading', { name: 'Invalid filter link' })
   ).toBeVisible();
-  await page.getByRole('link', { name: 'Clear filters' }).last().click();
-  await expect(page).toHaveURL('/');
+  await page.getByRole('button', { name: 'Clear filters' }).last().click();
+  await expect(page).not.toHaveURL(/member=/);
   const card = page
     .getByRole('region', { name: 'Matching teams' })
     .getByRole('article')

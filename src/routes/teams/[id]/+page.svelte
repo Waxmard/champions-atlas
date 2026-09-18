@@ -7,9 +7,9 @@
   import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import MemberCard from '$lib/components/MemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
+  import { copyText } from '$lib/clipboard';
   import { bestEvidence, evidence, type Team } from '$lib/catalog';
   import {
     activeTeamKey,
@@ -54,12 +54,10 @@
     history.back();
   }
   async function copy(text: string, label: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      copyStatus = `${label} copied.`;
-    } catch {
-      copyStatus = 'Copy unavailable. Select and copy the text below.';
-    }
+    const ok = await copyText(text);
+    copyStatus = ok
+      ? `${label} copied.`
+      : 'Copy unavailable. Select and copy the text below.';
   }
 </script>
 
@@ -163,53 +161,7 @@
     class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
   >
     {#each team.members as member, index (index)}
-      <article class="rounded-2xl border bg-card p-5">
-        <div class="flex items-center gap-3">
-          <PokemonSprite pokemon={member.pokemon} size={64} />
-          <div class="min-w-0">
-            <p class="text-xs font-medium text-muted-foreground">
-              Slot {index + 1}
-            </p>
-            <h2 class="mt-1 text-lg font-semibold wrap-break-word">
-              {member.pokemon}
-            </h2>
-            <p
-              class="mt-1 flex items-center gap-1 text-sm wrap-break-word text-primary"
-            >
-              {#if member.item}<ItemIcon
-                  item={member.item}
-                />{/if}{member.item || 'Item unknown'}
-            </p>
-          </div>
-        </div>
-        <dl
-          class="mt-4 grid grid-cols-[auto_1fr] gap-x-3 gap-y-2 border-t pt-4 text-xs"
-        >
-          <dt class="text-muted-foreground">Ability</dt>
-          <dd>{member.ability || 'Unknown'}</dd>
-          <dt class="text-muted-foreground">Nature</dt>
-          <dd>{member.nature || 'Unknown'}</dd>
-        </dl>
-        {#if member.moves.length}
-          <ul
-            class="mt-4 space-y-1.5 text-sm"
-            aria-label={`Moves for ${member.pokemon}`}
-          >
-            {#each member.moves as move (move)}<li
-                class="rounded-md bg-secondary/70 px-3 py-2"
-              >
-                {move}
-              </li>{/each}
-          </ul>
-        {:else}<p class="mt-5 text-sm text-muted-foreground">
-            Moves not loaded. Check the original paste.
-          </p>{/if}
-        <p class="mt-4 text-xs leading-5 text-muted-foreground">
-          Spread as published: <span class="text-foreground"
-            >{member.spread || 'Unknown'}</span
-          >
-        </p>
-      </article>
+      <MemberCard {member} slot={index + 1} editable={false} />
     {/each}
   </section>
 

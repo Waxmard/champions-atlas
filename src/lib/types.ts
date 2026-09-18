@@ -22,32 +22,26 @@ export type PokemonType =
   | 'steel'
   | 'fairy';
 
-export interface TypeColor {
-  bg: string;
-  text: string;
-}
-
-export const TYPE_COLORS: Record<PokemonType, TypeColor> = {
-  normal: { bg: '#A8A878', text: '#fff' },
-  fire: { bg: '#F08030', text: '#fff' },
-  water: { bg: '#6890F0', text: '#fff' },
-  electric: { bg: '#F8D030', text: '#333' },
-  grass: { bg: '#78C850', text: '#fff' },
-  ice: { bg: '#98D8D8', text: '#333' },
-  fighting: { bg: '#C03028', text: '#fff' },
-  poison: { bg: '#A040A0', text: '#fff' },
-  ground: { bg: '#E0C068', text: '#333' },
-  flying: { bg: '#A890F0', text: '#fff' },
-  psychic: { bg: '#F85888', text: '#fff' },
-  bug: { bg: '#A8B820', text: '#fff' },
-  rock: { bg: '#B8A038', text: '#fff' },
-  ghost: { bg: '#705898', text: '#fff' },
-  dragon: { bg: '#7038F8', text: '#fff' },
-  dark: { bg: '#705848', text: '#fff' },
-  steel: { bg: '#B8B8D0', text: '#333' },
-  fairy: { bg: '#EE99AC', text: '#333' },
+export const TYPE_COLORS: Record<PokemonType, string> = {
+  normal: '#A8A878',
+  fire: '#F08030',
+  water: '#6890F0',
+  electric: '#F8D030',
+  grass: '#78C850',
+  ice: '#98D8D8',
+  fighting: '#C03028',
+  poison: '#A040A0',
+  ground: '#E0C068',
+  flying: '#A890F0',
+  psychic: '#F85888',
+  bug: '#A8B820',
+  rock: '#B8A038',
+  ghost: '#705898',
+  dragon: '#7038F8',
+  dark: '#705848',
+  steel: '#B8B8D0',
+  fairy: '#EE99AC',
 };
-
 const typeData = rawData as {
   moves: Record<string, PokemonType>;
   pokemon: Record<string, PokemonType[]>;
@@ -82,16 +76,15 @@ export function getPokemonTypes(pokemon: string): PokemonType[] {
   return ['normal'];
 }
 
-export function getCardBackgroundStyle(pokemon: string): string {
+export function getCardBackgroundStyle(pokemon: string, muted = false): string {
   const types = getPokemonTypes(pokemon);
-  const opacity = 0.15;
-
+  const opacity = muted ? 0.06 : 0.15;
   if (types.length === 1) {
-    const color = TYPE_COLORS[types[0]]?.bg || '#A8A878';
+    const color = TYPE_COLORS[types[0]] || '#A8A878';
     return `background: linear-gradient(135deg, ${hexToRgba(color, opacity)} 0%, ${hexToRgba(color, opacity * 0.3)} 100%)`;
   }
 
-  const color1 = TYPE_COLORS[types[0]]?.bg || '#A8A878';
-  const color2 = TYPE_COLORS[types[1]]?.bg || color1;
+  const color1 = TYPE_COLORS[types[0]] || '#A8A878';
+  const color2 = TYPE_COLORS[types[1]] || color1;
   return `background: linear-gradient(135deg, ${hexToRgba(color1, opacity)} 0%, ${hexToRgba(color2, opacity)} 100%)`;
 }

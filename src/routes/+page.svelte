@@ -1,29 +1,55 @@
 <script lang="ts">
-  import { goto } from '$app/navigation';
+  import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { SvelteURLSearchParams } from 'svelte/reactivity';
-  import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+  import { onMount } from 'svelte';
+  import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
+  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import TeamCard from '$lib/components/TeamCard.svelte';
+  import TypeFilter from '$lib/components/TypeFilter.svelte';
+  import {
+    getCardBackgroundStyle,
+    getPokemonTypes,
+    getTypeIcon,
+    TYPE_COLORS,
+    type PokemonType,
+  } from '$lib/types';
+  import {
+    activeTeamKey,
+    readSavedTeams,
+    resolveSavedTeamId,
+  } from '$lib/workbench';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
     writeFilters,
     matchesTeam,
     compareTeams,
+    getMemberOptions,
     normalize,
     type MemberFilter,
     type Team,
   } from '$lib/catalog';
   import type { PageData } from './$types';
 
+  const browseStorageKey = 'champions-atlas:browse:v1';
+  const browseKeys = ['member', 'regulation', 'sort', 'page', 'type'];
+  const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
   let { data }: { data: PageData } = $props();
-  let filtersOpen = $state(page.url.searchParams.has('member'));
+  let storageError = $state(false);
+  let typeOpen = $state(false);
+  let ready = $state(false);
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
+  const historicalRegulations = $derived(
+    [...new Set(teams.map((team) => team.regulation))]
+      .filter((value) => value !== current)
+      .sort()
+      .reverse()
+  );
   const filterState = $derived.by(() => {
     try {
       return { filters: readFilters(page.url.searchParams), error: '' };
@@ -35,8 +61,18 @@
     }
   });
   const filters = $derived(filterState.filters);
-  const regulation = $derived(page.url.searchParams.get('regulation') || 'all');
+  const regulation = $derived(
+    page.url.searchParams.get('regulation') || current
+  );
   const sort = $derived(page.url.searchParams.get('sort') || 'priority');
+  const selectedTypes = $derived(
+    page.url.searchParams
+      .getAll('type')
+      .map((value) => value.toLowerCase())
+      .filter((value): value is PokemonType =>
+        (ALL_TYPES as string[]).includes(value)
+      )
+  );
   const allPokemon = $derived(
     [
       ...new Set(
@@ -52,6 +88,13 @@
         )
     )
   );
+  function matchesTypes(team: Team, types: PokemonType[]) {
+    if (!types.length) return true;
+    const present = new Set(
+      team.members.flatMap((member) => getPokemonTypes(member.pokemon))
+    );
+    return types.every((type) => present.has(type));
+  }
   const results = $derived(
     filterState.error
       ? []
@@ -59,7 +102,8 @@
           .filter(
             (team) =>
               (regulation === 'all' || team.regulation === regulation) &&
-              matchesTeam(team, filters)
+              matchesTeam(team, filters) &&
+              matchesTypes(team, selectedTypes)
           )
           .sort((a, b) =>
             sort === 'recent'
@@ -82,25 +126,88 @@
     results.slice((pageNumber - 1) * 24, pageNumber * 24)
   );
 
-  function revealText(node: HTMLElement) {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    node.classList.add('is-ready');
-    const frame = requestAnimationFrame(() => node.classList.add('is-shown'));
-    return { destroy: () => cancelAnimationFrame(frame) };
+  function browseParams(params: URLSearchParams) {
+    const result = writeFilters(new URLSearchParams(), readFilters(params));
+    for (const value of params.getAll('type')) {
+      const type = value.toLowerCase();
+      if ((ALL_TYPES as string[]).includes(type)) result.append('type', type);
+    }
+    result.set('regulation', params.get('regulation') || current);
+    result.set('sort', params.get('sort') === 'recent' ? 'recent' : 'priority');
+    const pageValue = params.get('page');
+    if (pageValue && /^\d+$/.test(pageValue) && Number(pageValue) > 1)
+      result.set('page', pageValue);
+    return result;
   }
 
-  function prepareAccordion(node: HTMLElement) {
-    node.dataset.motionReady = 'true';
+  function rememberBrowse(params: URLSearchParams) {
+    try {
+      localStorage.setItem(browseStorageKey, params.toString());
+    } catch {
+      storageError = true;
+    }
   }
 
   function navigate(params: URLSearchParams, noScroll = true) {
-    const query = params.toString();
-    void goto(resolve(query ? `/?${query}` : '/'), {
+    const canonical = browseParams(params);
+    rememberBrowse(canonical);
+    const query = canonical.toString();
+    void goto(resolve(`/?${query}`), {
       replaceState: true,
       noScroll,
       keepFocus: true,
     });
   }
+
+  function restoreBrowse() {
+    if (page.url.pathname !== resolve('/')) return;
+
+    if (page.url.searchParams.size === 0) {
+      try {
+        const saved = readSavedTeams(localStorage);
+        const targetId = resolveSavedTeamId(
+          saved,
+          null,
+          localStorage.getItem(activeTeamKey)
+        );
+        if (targetId) {
+          void goto(resolve(`/my-teams?team=${targetId}`), {
+            replaceState: true,
+          });
+          return;
+        }
+      } catch {
+        storageError = true;
+      }
+    }
+
+    if (browseKeys.some((key) => page.url.searchParams.has(key))) {
+      try {
+        rememberBrowse(browseParams(page.url.searchParams));
+      } catch {
+        // Invalid explicit links stay visible and do not replace saved filters.
+      }
+      return;
+    }
+
+    try {
+      const saved = localStorage.getItem(browseStorageKey);
+      if (saved !== null) {
+        const params = new URLSearchParams(saved);
+        if (!browseKeys.some((key) => params.has(key))) throw new Error();
+        navigate(params);
+        return;
+      }
+    } catch (error) {
+      if (error instanceof DOMException) storageError = true;
+    }
+    navigate(new URLSearchParams());
+  }
+
+  afterNavigate(restoreBrowse);
+  onMount(() => {
+    ready = true;
+  });
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(page.url.searchParams, next));
   }
@@ -110,7 +217,18 @@
       filters.some((filter) => normalize(filter.pokemon) === normalize(pokemon))
     )
       return;
-    changeFilters([...filters, { pokemon, item: '', ability: '', move: '' }]);
+    const items = /-Mega(?:-[A-Z])?$/i.test(pokemon)
+      ? options(pokemon, 'item')
+      : [];
+    changeFilters([
+      ...filters,
+      {
+        pokemon,
+        item: items.length === 1 ? items[0] : '',
+        ability: '',
+        move: '',
+      },
+    ]);
   }
   function updateMember(
     index: number,
@@ -124,29 +242,25 @@
     );
   }
   function options(pokemon: string, field: 'item' | 'ability' | 'move') {
-    return [
-      ...new Set(
-        teams.flatMap((team) =>
-          team.members
-            .filter(
-              (member) => normalize(member.pokemon) === normalize(pokemon)
-            )
-            .flatMap((member) =>
-              field === 'move'
-                ? member.moves
-                : member[field]
-                  ? [member[field]]
-                  : []
-            )
-        )
-      ),
-    ].sort();
+    return getMemberOptions(teams, pokemon, field);
   }
   function changeOption(key: string, value: string) {
     const params = new SvelteURLSearchParams(page.url.searchParams);
     params.set(key, value);
     if (key !== 'page') params.delete('page');
     navigate(params, key !== 'page');
+  }
+
+  function clearFilters() {
+    navigate(new URLSearchParams());
+  }
+
+  function setTypes(next: PokemonType[]) {
+    const params = new SvelteURLSearchParams(page.url.searchParams);
+    params.delete('type');
+    for (const type of next) params.append('type', type.toLowerCase());
+    params.delete('page');
+    navigate(params, true);
   }
 </script>
 
@@ -158,270 +272,278 @@
   />
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <div class="mb-8 flex flex-wrap items-end justify-between gap-5">
-    <div>
-      <p
-        class="mb-3 text-xs font-semibold tracking-[0.18em] text-primary uppercase"
-      >
-        Your next six start here
-      </p>
-      <div class="t-stagger" use:revealText>
-        <h1
-          class="t-stagger-line t-stagger-line--1 text-3xl font-semibold tracking-tight sm:text-4xl"
-        >
-          Explore teams
-        </h1>
-        <p
-          class="t-stagger-line t-stagger-line--2 mt-3 max-w-xl text-sm leading-6 text-muted-foreground"
-        >
-          Find a core you love. Compare the teams around it.
-        </p>
-      </div>
-    </div>
-    <span
-      class="rounded-full border bg-card px-3 py-1.5 text-xs text-muted-foreground"
-      >Doubles · {current} + older regulations</span
+<main id="main" class="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-8 sm:pt-6">
+  <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">
+    Explore teams
+  </h1>
+
+  {#if storageError}<p
+      role="status"
+      aria-live="polite"
+      class="mt-2 text-xs text-muted-foreground"
     >
+      Filters can't be remembered on this device.
+    </p>{/if}
+
+  <div class="mt-4">
+    <button
+      type="button"
+      aria-expanded={typeOpen}
+      onclick={() => (typeOpen = !typeOpen)}
+      class="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium transition-colors hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <Filter class="size-4 text-muted-foreground" aria-hidden="true" />
+      Filter by type
+      {#if selectedTypes.length}<span
+          class="rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary"
+          >{selectedTypes.length}</span
+        >{/if}
+    </button>
+    {#if typeOpen}
+      <div class="mt-2">
+        <TypeFilter
+          options={ALL_TYPES}
+          selected={selectedTypes}
+          onselect={setTypes}
+        />
+      </div>
+    {/if}
+    {#if selectedTypes.length}
+      <div class="mt-2 flex flex-wrap gap-1.5">
+        {#each selectedTypes as type (type)}
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+          >
+            <img src={getTypeIcon(type)} alt="" class="size-3.5" />{type}
+            <button
+              type="button"
+              aria-label={`Remove ${type} type filter`}
+              onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
+              class="-mr-1 rounded-full p-0.5 hover:bg-primary/15"
+              ><X class="size-3" aria-hidden="true" /></button
+            >
+          </span>
+        {/each}
+      </div>
+    {/if}
   </div>
 
-  <div class="grid items-start gap-7 lg:grid-cols-[280px_1fr]">
-    <aside
-      aria-label="Filters"
-      class="t-acc filters-accordion rounded-2xl border bg-card p-5 lg:sticky lg:top-6"
-      data-open={filtersOpen}
-      use:prepareAccordion
+  <div class="mt-4">
+    <span class="sr-only" aria-live="polite"
+      >{filters.length} of 6 Pokémon selected</span
     >
-      <div class="flex min-h-11 items-center gap-2">
-        <span class="sr-only" aria-live="polite"
-          >{filters.length} of 6 Pokémon selected</span
-        >
-        <button
-          type="button"
-          class="t-acc-head filters-toggle min-h-11 flex-1 cursor-pointer items-center gap-2 rounded-md font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label="Filters"
-          aria-controls="filters-panel"
-          aria-expanded={filtersOpen}
-          onclick={() => (filtersOpen = !filtersOpen)}
-          ><SlidersHorizontal class="size-4" aria-hidden="true" />Filters
-          <span class="ml-auto text-sm font-normal text-muted-foreground"
-            >{filters.length}/6</span
-          >
-          <span class="t-acc-chevron" aria-hidden="true"
-            ><ChevronDown class="size-4" /></span
-          ></button
-        >
-        <div class="hidden flex-1 items-center gap-2 font-semibold lg:flex">
-          <SlidersHorizontal class="size-4" aria-hidden="true" />Filters
-          <span class="ml-auto text-sm font-normal text-muted-foreground"
-            >{filters.length}/6</span
-          >
-        </div>
-        {#if filters.length || regulation !== 'all' || filterState.error}<Button
-            href={resolve('/')}
-            variant="ghost"
-            class="min-h-11 px-2">Clear filters</Button
-          >{/if}
-      </div>
-      <div id="filters-panel" class="t-acc-panel">
-        <div class="t-acc-panel-inner min-h-0">
-          <p class="mt-1 mb-4 text-xs leading-5 text-muted-foreground">
-            Teams must include every Pokémon you select. Forms and Megas match
-            exactly.
-          </p>
-          <PokemonPicker
-            options={availablePokemon}
-            onselect={addPokemon}
-            disabled={filters.length >= 6}
-          />
-          <div class="mt-4 space-y-3">
-            {#each filters as filter, index (filter.pokemon)}
-              <section
-                class="rounded-xl border bg-background p-3"
-                aria-label={`${filter.pokemon} constraints`}
+    <PokemonPicker
+      options={availablePokemon}
+      onselect={addPokemon}
+      disabled={filters.length >= 6}
+    />
+  </div>
+
+  {#if filters.length}
+    <div class="mt-2 divide-y border-y">
+      {#each filters as filter, index (filter.pokemon)}
+        <section class="py-4" aria-label={`${filter.pokemon} constraints`}>
+          <div class="flex items-center justify-between gap-3">
+            <div class="flex min-w-0 items-center gap-3">
+              <div
+                class="flex size-10 shrink-0 items-center justify-center rounded-lg"
+                style={getCardBackgroundStyle(filter.pokemon, true)}
               >
-                <div class="flex items-center justify-between gap-2">
-                  <h2 class="text-sm font-semibold">{filter.pokemon}</h2>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Remove ${filter.pokemon}`}
-                    onclick={() =>
-                      changeFilters(filters.filter((_, i) => i !== index))}
-                    ><X class="size-4" aria-hidden="true" /></Button
-                  >
-                </div>
-                <label
-                  for={`item-${index}`}
-                  class="mt-1 block text-xs text-muted-foreground"
-                  >Held item</label
-                >
-                <select
-                  id={`item-${index}`}
-                  class="filter-select mt-1"
-                  value={filter.item}
-                  onchange={(event) =>
-                    updateMember(index, 'item', event.currentTarget.value)}
-                >
-                  <option value="">Any item</option>
-                  {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
-                      value={filter.item}>{filter.item}</option
-                    >{/if}
-                  {#each options(filter.pokemon, 'item') as item (item)}<option
-                      value={item}>{item}</option
-                    >{/each}
-                </select>
-                <details
-                  class="mt-3"
-                  open={Boolean(filter.ability || filter.move)}
-                >
-                  <summary
-                    class="cursor-pointer py-1 text-xs text-muted-foreground"
-                    >Move & ability</summary
-                  >
-                  {#each ['move', 'ability'] as field (field)}
-                    <label
-                      for={`${field}-${index}`}
-                      class="mt-2 block text-xs text-muted-foreground capitalize"
-                      >{field}</label
-                    >
-                    <select
-                      id={`${field}-${index}`}
-                      class="filter-select mt-1"
-                      value={filter[field as 'move' | 'ability']}
-                      onchange={(event) =>
-                        updateMember(
-                          index,
-                          field as 'move' | 'ability',
-                          event.currentTarget.value
-                        )}
-                    >
-                      <option value="">Any {field}</option>
-                      {#if filter[field as 'move' | 'ability'] && !options(filter.pokemon, field as 'move' | 'ability').includes(filter[field as 'move' | 'ability'])}
-                        <option value={filter[field as 'move' | 'ability']}
-                          >{filter[field as 'move' | 'ability']}</option
-                        >
-                      {/if}
-                      {#each options(filter.pokemon, field as 'move' | 'ability') as option (option)}<option
-                          value={option}>{option}</option
-                        >{/each}
-                    </select>
-                  {/each}
-                  <p class="mt-2 text-xs leading-4 text-muted-foreground">
-                    Matches published sets only. Many teams have no set details
-                    yet.
-                  </p>
-                </details>
-              </section>
-            {/each}
+                <PokemonSprite pokemon={filter.pokemon} size={32} />
+              </div>
+              <h2 class="min-w-0 text-sm font-semibold wrap-break-word">
+                {filter.pokemon}
+              </h2>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              class="size-11 shrink-0"
+              aria-label={`Remove ${filter.pokemon}`}
+              onclick={() =>
+                changeFilters(filters.filter((_, i) => i !== index))}
+              ><X class="size-4" aria-hidden="true" /></Button
+            >
           </div>
-          <label for="regulation" class="mt-6 block text-xs font-semibold"
-            >Regulation</label
-          >
-          <select
-            id="regulation"
-            class="filter-select mt-2"
-            value={regulation}
-            onchange={(event) =>
-              changeOption('regulation', event.currentTarget.value)}
-          >
-            <option value="all">All regulations</option>
-            {#each [...new Set(teams.map((team) => team.regulation))]
-              .sort()
-              .reverse() as reg (reg)}<option value={reg}
-                >{reg}{reg === current ? ' · current' : ''}</option
-              >{/each}
-          </select>
-        </div>
-      </div>
-    </aside>
 
-    <section aria-label="Matching teams" class="min-w-0">
-      <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <p aria-live="polite" aria-atomic="true" class="text-sm">
-          <strong>{results.length}</strong> teams
-          <span class="text-muted-foreground"
-            >{filters.length || regulation !== 'all'
-              ? 'matching filters'
-              : 'in this catalog'}</span
-          >
-        </p>
-        <label class="flex items-center gap-2 text-xs text-muted-foreground"
-          >Sort
-          <select
-            aria-label="Sort teams"
-            class="filter-select w-auto"
-            value={sort}
-            onchange={(event) =>
-              changeOption('sort', event.currentTarget.value)}
-            ><option value="priority">Recommended</option><option value="recent"
-              >Newest shared</option
-            ></select
-          >
-        </label>
-      </div>
-      <p class="mb-5 text-xs leading-5 text-muted-foreground">
-        {sort === 'recent'
-          ? 'Most recently shared teams first.'
-          : 'Reported current-reg results first, then strong older results.'} Legality
-        in {current} is not yet verified.
-      </p>
-      {#if results.length}
-        <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {#each visible as team (team.id)}<TeamCard
-              {team}
-              currentRegulation={current}
-              query={page.url.search}
-            />{/each}
-        </div>
-        {#if pageCount > 1}
-          <nav
-            aria-label="Team result pages"
-            class="mt-8 flex items-center justify-center gap-4"
-          >
-            <Button
-              variant="outline"
-              class="min-h-11"
-              disabled={pageNumber === 1}
-              onclick={() => changeOption('page', String(pageNumber - 1))}
-              >Previous</Button
-            >
-            <span class="text-sm text-muted-foreground"
-              >{pageNumber} / {pageCount}</span
-            >
-            <Button
-              variant="outline"
-              class="min-h-11"
-              disabled={pageNumber === pageCount}
-              onclick={() => changeOption('page', String(pageNumber + 1))}
-              >Next</Button
-            >
-          </nav>
-        {/if}
-      {:else}
-        <div class="rounded-2xl border border-dashed p-10 text-center">
-          <h2 class="font-semibold">
-            {filterState.error ? 'Invalid filter link' : 'No matching teams'}
-          </h2>
-          <p class="mt-2 text-sm text-muted-foreground">
-            {filterState.error ||
-              'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
-          </p>
-          <Button href={resolve('/')} variant="outline" class="mt-5 min-h-11"
-            >Clear filters</Button
-          >
-        </div>
-      {/if}
-      <p class="mt-8 text-xs leading-5 text-muted-foreground">
-        Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}.
-        <a
-          class="underline underline-offset-2"
-          href={data.catalog.sources[0].url}
-          target="_blank"
-          rel="external noreferrer">Teams and result claims via VGCPastes</a
-        >. Detailed sets available for {teams.filter((team) => team.paste)
-          .length} teams.
-      </p>
-    </section>
+          <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <label for={`item-${index}`} class="min-w-0 text-xs font-medium"
+              >Held item
+              <select
+                id={`item-${index}`}
+                class="filter-select mt-1 text-base sm:text-sm"
+                value={filter.item}
+                onchange={(event) =>
+                  updateMember(index, 'item', event.currentTarget.value)}
+              >
+                <option value="">Any item</option>
+                {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
+                    value={filter.item}>{filter.item}</option
+                  >{/if}
+                {#each options(filter.pokemon, 'item') as item (item)}<option
+                    value={item}>{item}</option
+                  >{/each}
+              </select>
+            </label>
+
+            <label for={`ability-${index}`} class="min-w-0 text-xs font-medium"
+              >Ability
+              <select
+                id={`ability-${index}`}
+                class="filter-select mt-1 text-base sm:text-sm"
+                value={filter.ability}
+                onchange={(event) =>
+                  updateMember(index, 'ability', event.currentTarget.value)}
+              >
+                <option value="">Any ability</option>
+                {#if filter.ability && !options(filter.pokemon, 'ability').includes(filter.ability)}<option
+                    value={filter.ability}>{filter.ability}</option
+                  >{/if}
+                {#each options(filter.pokemon, 'ability') as ability (ability)}<option
+                    value={ability}>{ability}</option
+                  >{/each}
+              </select>
+            </label>
+
+            <label
+              for={`move-${index}`}
+              class="col-span-2 min-w-0 text-xs font-medium sm:col-span-1"
+              >Move
+              <select
+                id={`move-${index}`}
+                class="filter-select mt-1 text-base sm:text-sm"
+                value={filter.move}
+                onchange={(event) =>
+                  updateMember(index, 'move', event.currentTarget.value)}
+              >
+                <option value="">Any move</option>
+                {#if filter.move && !options(filter.pokemon, 'move').includes(filter.move)}<option
+                    value={filter.move}>{filter.move}</option
+                  >{/if}
+                {#each options(filter.pokemon, 'move') as move (move)}<option
+                    value={move}>{move}</option
+                  >{/each}
+              </select>
+            </label>
+          </div>
+        </section>
+      {/each}
+    </div>
+  {/if}
+
+  <div class="mt-4 grid grid-cols-2 gap-3">
+    <label for="regulation" class="min-w-0 text-xs font-semibold"
+      >Regulation
+      <select
+        id="regulation"
+        class="filter-select mt-1 text-base sm:text-sm"
+        value={regulation}
+        onchange={(event) =>
+          changeOption('regulation', event.currentTarget.value)}
+      >
+        <option value={current}>{current} · current</option>
+        <option value="all">All regulations</option>
+        {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
+            value={regulation}>{regulation}</option
+          >{/if}
+        {#each historicalRegulations as reg (reg)}<option value={reg}
+            >{reg}</option
+          >{/each}
+      </select>
+    </label>
+
+    <label for="sort" class="min-w-0 text-xs font-semibold"
+      >Sort
+      <select
+        id="sort"
+        aria-label="Sort teams"
+        class="filter-select mt-1 text-base sm:text-sm"
+        value={sort}
+        onchange={(event) => changeOption('sort', event.currentTarget.value)}
+      >
+        <option value="priority">Recommended</option>
+        <option value="recent">Newest shared</option>
+      </select>
+    </label>
   </div>
+
+  <section aria-label="Matching teams" class="mt-4 min-w-0">
+    <div class="mb-1 flex items-center justify-between gap-3">
+      <p aria-live="polite" aria-atomic="true" class="text-sm font-semibold">
+        {results.length} teams
+      </p>
+      {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || filterState.error}<Button
+          type="button"
+          variant="ghost"
+          class="min-h-11 px-2"
+          disabled={!ready}
+          onclick={clearFilters}>Clear filters</Button
+        >{/if}
+    </div>
+    <p class="mb-4 text-xs leading-5 text-muted-foreground">
+      Legality in {current} is not yet verified.
+    </p>
+
+    {#if results.length}
+      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        {#each visible as team (team.id)}<TeamCard
+            {team}
+            currentRegulation={current}
+            query={page.url.search}
+          />{/each}
+      </div>
+      {#if pageCount > 1}
+        <nav
+          aria-label="Team result pages"
+          class="mt-8 flex items-center justify-center gap-4"
+        >
+          <Button
+            variant="outline"
+            class="min-h-11"
+            disabled={pageNumber === 1}
+            onclick={() => changeOption('page', String(pageNumber - 1))}
+            >Previous</Button
+          >
+          <span class="text-sm text-muted-foreground"
+            >{pageNumber} / {pageCount}</span
+          >
+          <Button
+            variant="outline"
+            class="min-h-11"
+            disabled={pageNumber === pageCount}
+            onclick={() => changeOption('page', String(pageNumber + 1))}
+            >Next</Button
+          >
+        </nav>
+      {/if}
+    {:else}
+      <div class="rounded-2xl border border-dashed p-10 text-center">
+        <h2 class="font-semibold">
+          {filterState.error ? 'Invalid filter link' : 'No matching teams'}
+        </h2>
+        <p class="mt-2 text-sm text-muted-foreground">
+          {filterState.error ||
+            'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
+        </p>
+        <Button
+          type="button"
+          variant="outline"
+          class="mt-5 min-h-11"
+          disabled={!ready}
+          onclick={clearFilters}>Clear filters</Button
+        >
+      </div>
+    {/if}
+    <p class="mt-8 text-xs leading-5 text-muted-foreground">
+      Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}.
+      <a
+        class="underline underline-offset-2"
+        href={data.catalog.sources[0].url}
+        target="_blank"
+        rel="external noreferrer">Teams and result claims via VGCPastes</a
+      >. Detailed sets available for {teams.filter((team) => team.paste).length}
+      teams.
+    </p>
+  </section>
 </main>

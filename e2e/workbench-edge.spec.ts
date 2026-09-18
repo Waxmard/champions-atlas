@@ -26,10 +26,7 @@ test('import, edit, reload, compare, and export a custom team', async ({
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     'My custom team'
   );
-  await page.getByText('Original & source history').click();
-  await expect(
-    page.getByText('No published sources; created from your team text.')
-  ).toBeVisible();
+  await expect(page.getByText('Original & source history')).toHaveCount(0);
 
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
@@ -69,12 +66,9 @@ test('import, edit, reload, compare, and export a custom team', async ({
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     'My custom team'
   );
-  await expect(
-    page
-      .getByRole('region', { name: 'Similar teams', exact: true })
-      .getByRole('article')
-      .first()
-  ).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Similar teams' })).toHaveCount(
+    0
+  );
   await page.getByRole('button', { name: 'Copy team text' }).click();
   await expect(page.getByLabel('Export text')).toHaveValue(/Custom Ability/);
   expect(
@@ -119,9 +113,11 @@ test('unknown and long card fields stay usable without phone overflow', async ({
     name: `Change ${firstPokemon}`,
     exact: true,
   });
-  await change.focus();
-  await change.press('Enter');
-  await expect(change).toHaveAttribute('aria-pressed', 'true');
+  await change.click();
+  await expect(
+    page.getByRole('region', { name: `Edit ${firstPokemon} set`, exact: true })
+  ).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   const edit = team.getByRole('button', {
     name: `Edit ${firstPokemon} item`,
     exact: true,
@@ -202,7 +198,7 @@ test('corrupt storage is reported and kept; missing local IDs do not show anothe
   ).toBe('{broken');
 });
 
-test('set edit auto-persists and reopening my-teams restores active team', async ({
+test('set edit commits on save and reopening my-teams restores active team', async ({
   page,
 }) => {
   await page.goto(`/teams/${peter.id}`);
@@ -222,6 +218,7 @@ test('set edit auto-persists and reopening my-teams restores active team', async
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
@@ -266,6 +263,7 @@ test('item edits preserve an unknown nature', async ({ page }) => {
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
@@ -277,7 +275,7 @@ test('item edits preserve an unknown nature', async ({ page }) => {
   expect(storedWeavile.item).toBe('Focus Sash');
 });
 
-test('outside click applies set changes and cancel rolls back', async ({
+test('outside click cancels set edit and explicit apply commits', async ({
   page,
 }) => {
   await page.goto(`/teams/${peter.id}`);
@@ -288,6 +286,10 @@ test('outside click applies set changes and cancel rolls back', async ({
     name: 'Weavile set',
     exact: true,
   });
+  const originalItem = peter.members.find(
+    (m: { pokemon: string }) => m.pokemon === 'Weavile'
+  )!.item;
+
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
@@ -298,13 +300,13 @@ test('outside click applies set changes and cancel rolls back', async ({
   await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
   await page.locator('h1').click();
   await expect(editor).toHaveCount(0);
-  await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
+  await expect(weavile.getByText(originalItem, { exact: true })).toBeVisible();
 
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
-  await editor.getByLabel('Item', { exact: true }).fill('Life Orb');
-  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
+  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
 });
@@ -351,6 +353,7 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     .click();
 
   await expect(card).toContainText(replacementNature);
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const storedNature = await page.evaluate(
     ({ key, pokemon }) => {
       const team = JSON.parse(localStorage.getItem(key)!)[0];

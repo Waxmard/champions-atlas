@@ -374,6 +374,8 @@ test('sprite resolution keeps forms exact and covers catalog naming aliases', ()
     ['lucario-mega', 10059],
     ['lucario-mega-z', 10310],
     ['floette-mega', 10296],
+    ['meowstic-female', 10025],
+    ['pyroar-male', 668],
   ].map(([name, id]) => ({
     name,
     url: `https://pokeapi.co/api/v2/pokemon/${id}/`,
@@ -389,6 +391,12 @@ test('sprite resolution keeps forms exact and covers catalog naming aliases', ()
   assert.equal(resolveSprite('Lucario-Mega-Z', index), champions(10310));
   assert.equal(resolveSprite('Floette-Mega', index), champions(10296));
   assert.equal(resolveSprite('Floette-Eternal-Mega', index), champions(10296));
+  assert.equal(resolveSprite('Meowstic-F', index), champions(10025));
+  assert.equal(resolveSprite('Pyroar', index), champions(668));
+  assert.equal(
+    resolveSprite('Floette', index),
+    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/670.png'
+  );
   assert.equal(
     resolveSprite('Vivillon-Fancy', index),
     'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/666-fancy.png'

@@ -25,13 +25,16 @@ const spriteAliases = {
   maushold: 'maushold-family-of-four',
   mausholdfour: 'maushold-family-of-four',
   meowstic: 'meowstic-male',
+  meowsticf: 'meowstic-female',
   meowsticfmega: 'meowstic-female-mega',
   mimikyu: 'mimikyu-disguised',
   palafin: 'palafin-zero',
+  pyroar: 'pyroar-male',
   taurospaldeaaqua: 'tauros-paldea-aqua-breed',
   toxtricity: 'toxtricity-amped',
 };
 const exactSprites = {
+  floette: `${spriteRoot}/670.png`,
   sinistchamasterpiece: `${spriteRoot}/1013-masterpiece.png`,
   vivillonfancy: `${spriteRoot}/666-fancy.png`,
 };

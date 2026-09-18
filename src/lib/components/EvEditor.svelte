@@ -17,10 +17,9 @@
   }: {
     spread: string;
     suggestions: CatalogSuggestion[];
-    onspreadchange: (spread: string) => void;
+    onspreadchange: (spread: string, nature?: string | null) => void;
     ondone: () => void;
   } = $props();
-  let expanded = $state(false);
   const values = $derived(
     parseChampionsSpread(spread) ||
       ({
@@ -94,23 +93,18 @@
   </div>
 </div>
 <div class="mt-2 grid gap-2" aria-label="EV spread suggestions">
-  {#each suggestions.slice(0, expanded ? undefined : 3) as option (option.value)}
+  {#each suggestions.slice(0, 3) as option (option.value)}
     <Button
       variant={spread === option.value ? 'default' : 'outline'}
       class="h-auto min-h-11 w-full justify-between text-left whitespace-normal"
-      onclick={() => onspreadchange(option.value)}
-      ><span class="wrap-break-word">{option.value}</span><span
-        class="shrink-0 text-xs opacity-70"
-        >{option.currentCount}/{option.totalCount}</span
-      ></Button
+      onclick={() => onspreadchange(option.value, option.nature)}
     >
+      <span class="wrap-break-word">
+        {#if option.nature}
+          <span class="font-semibold text-primary">{option.nature}</span> ·
+        {/if}
+        {option.value}
+      </span>
+    </Button>
   {/each}
 </div>
-{#if suggestions.length > 3}<Button
-    variant="ghost"
-    class="mt-1 min-h-11"
-    onclick={() => (expanded = !expanded)}
-    >{expanded
-      ? 'Show fewer spreads'
-      : `Show ${suggestions.length - 3} more spreads`}</Button
-  >{/if}

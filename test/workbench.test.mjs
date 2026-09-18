@@ -3,17 +3,15 @@ import test from 'node:test';
 import {
   differences,
   exportPaste,
-  replacementMembers,
   newCustomTeam,
   newSavedTeam,
   readSavedTeams,
   saveTeam,
   setText,
-  similarTeams,
   storageKey,
-  useCandidate,
   catalogSuggestions,
   resolveSavedTeamId,
+  speciesMember,
 } from '../src/lib/workbench.ts';
 import {
   championsSpreadTotal,
@@ -43,83 +41,17 @@ const team = (id = 'original', regulation = 'M-B') => ({
   reports: [],
 });
 
-test('default recommendations keep discovery ranking; selecting one slot yields builds and replacements from similar teams', () => {
-  const saved = newSavedTeam(team());
-  assert.equal(saved.changeSlot, null);
-  const close = team('close', 'M-C');
-  close.members[5] = member('New');
-  close.members[0].item = 'Other item';
-  const less = team('less', 'M-C');
-  less.members[4] = member('Other');
-  less.members[5] = member('Another');
-  less.reports = [{ event: 'Worlds', rank: 'Champion', sourceUrl: '' }];
-  assert.deepEqual(
-    similarTeams(saved, [less, close, team()], 'M-C').map(
-      ({ team }) => team.id
-    ),
-    ['close', 'less']
-  );
-  assert.throws(
-    () => useCandidate(saved, similarTeams(saved, [close], 'M-C')[0]),
-    /replacement/
-  );
-  saved.changeSlot = 0;
-  const recommendations = similarTeams(saved, [less, close], 'M-C');
-  assert.equal(recommendations[0].team.id, 'close');
-  assert.equal(recommendations[0].member.pokemon, 'Pokemon0');
-  assert.ok(
-    recommendations.some(
-      ({ member }) =>
-        member.pokemon === 'Pokemon0' && member.item === 'Other item'
-    )
-  );
-  assert.ok(recommendations.some(({ member }) => member.pokemon === 'New'));
-  assert.ok(
-    recommendations.every(
-      ({ member }) =>
-        !saved.members
-          .slice(1)
-          .some((other) => other.pokemon === member.pokemon)
-    )
-  );
-  assert.throws(
-    () => replacementMembers(saved, saved.members[1]),
-    /another slot/
-  );
-  saved.changeSlot = 3;
-  const next = useCandidate(saved, similarTeams(saved, [close], 'M-C')[0]);
-  assert.deepEqual(
-    next.members.filter((_, i) => i !== 3),
-    saved.members.filter((_, i) => i !== 3)
-  );
-});
-
-test('replacement changes only selected slot, preserves original and raw export fields, and deduplicates suggestions', () => {
+test('saved team preserves original and raw export fields', () => {
   const source = team();
   source.members[0].set =
     'Nickname (Pokemon0) @ Item\nAbility: Ability\nIVs: 0 Atk\nEVs: 32 HP\nAdamant Nature\n- Protect\n- Fake Out';
   const saved = newSavedTeam(source);
   saved.changeSlot = 5;
   const snapshot = JSON.stringify(saved.original);
-  const candidate = team('candidate', 'M-C');
-  candidate.pasteUrl = 'https://pokepast.es/1111111111111111';
-  candidate.members[5] = member('Replacement');
-  candidate.members[1].item = 'Must not be applied';
-  const recommendations = similarTeams(
-    saved,
-    [candidate, { ...candidate, id: 'duplicate' }],
-    'M-C'
-  );
-  assert.equal(recommendations.length, 1);
-  const edited = useCandidate(saved, recommendations[0]);
+  saved.members[5] = member('Replacement');
   assert.equal(JSON.stringify(saved.original), snapshot);
-  assert.equal(JSON.stringify(edited.original), snapshot);
-  assert.deepEqual(edited.members.slice(0, 5), saved.members.slice(0, 5));
-  assert.equal(edited.members[5].pokemon, 'Replacement');
-  assert.equal(saved.members[5].pokemon, 'Pokemon5');
-  assert.equal(edited.sources.length, 2);
-  assert.equal(useCandidate(edited, recommendations[0]).sources.length, 2);
-  const paste = exportPaste(edited.members);
+  assert.equal(saved.members[5].pokemon, 'Replacement');
+  const paste = exportPaste(saved.members);
   assert.match(paste, /Nickname \(Pokemon0\)/);
   assert.doesNotMatch(paste, /IVs:/);
   assert.equal(parsePaste(paste).length, 6);
@@ -254,10 +186,29 @@ test('custom teams validate paste and preserve independent snapshots and empty s
   assert.throws(() => saveTeam(storage, invalid), /untouched/);
 });
 
+test('generateUUID produces valid RFC4122 v4 UUID', () => {
+  const team = newSavedTeam({
+    id: 'test',
+    name: 'Test',
+    regulation: 'M-C',
+    pasteUrl: '',
+    members: [],
+    paste: null,
+  });
+  assert.match(
+    team.id,
+    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+  );
+});
+
 test('generateUUID falls back when crypto.randomUUID is undefined (insecure context)', () => {
-  const original = crypto.randomUUID;
+  const descriptor = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
+  Object.defineProperty(crypto, 'randomUUID', {
+    value: undefined,
+    configurable: true,
+  });
   try {
-    delete crypto.randomUUID;
+    assert.equal(typeof crypto.randomUUID, 'undefined');
     const team = newSavedTeam({
       id: 'test',
       name: 'Test',
@@ -271,7 +222,9 @@ test('generateUUID falls back when crypto.randomUUID is undefined (insecure cont
       /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
     );
   } finally {
-    crypto.randomUUID = original;
+    if (descriptor) Object.defineProperty(crypto, 'randomUUID', descriptor);
+    else Reflect.deleteProperty(crypto, 'randomUUID');
+    assert.equal(typeof crypto.randomUUID, 'function');
   }
 });
 
@@ -373,6 +326,90 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
   );
 });
+test('hybrid suggestions link Mega forms, keep stable fields fixed, and pair nature with EV spread', () => {
+  const physicalDnite = (
+    spread = '2 HP / 32 Atk / 32 Spe',
+    nature = 'Adamant'
+  ) => ({
+    pokemon: 'Dragonite',
+    item: 'Life Orb',
+    ability: 'Inner Focus',
+    moves: ['Dragon Claw', 'Extreme Speed', 'Superpower', 'Protect'],
+    nature,
+    spread,
+  });
+  const megaDnite = (spread = '2 HP / 32 SpA / 32 Spe', nature = 'Modest') => ({
+    pokemon: 'Dragonite-Mega',
+    item: 'Dragoninite',
+    ability: 'Multiscale',
+    moves: ['Dragon Pulse', 'Heat Wave', 'Extreme Speed', 'Protect'],
+    nature,
+    spread,
+  });
+
+  const t1 = team('t1', 'M-B');
+  t1.members = [megaDnite(), member('Sneasler'), member('Kingambit')];
+  const t2 = team('t2', 'M-B');
+  t2.members = [
+    megaDnite('1 HP / 1 Def / 32 SpA / 32 Spe'),
+    member('Sneasler'),
+  ];
+  const t3 = team('t3', 'M-B');
+  t3.members = [physicalDnite(), member('Other')];
+  const t4 = team('t4', 'M-B');
+  t4.members = [physicalDnite('31 HP / 32 Atk / 3 Spe'), member('Other')];
+
+  const draftSpecial = {
+    pokemon: 'Dragonite',
+    item: 'Dragoninite',
+    ability: 'Multiscale',
+    moves: ['Dragon Pulse', 'Heat Wave', 'Extreme Speed', 'Protect'],
+    nature: 'Modest',
+    spread: '',
+  };
+  const teammates = [member('Sneasler')];
+
+  // Suggesting spreads for Mega Dragonite with teammates:
+  const suggestions = catalogSuggestions(
+    draftSpecial,
+    [t1, t2, t3, t4],
+    'M-B',
+    teammates
+  );
+  assert.ok(
+    suggestions.spreads.some(
+      (s) => s.value === '2 HP / 32 SpA / 32 Spe' && s.nature === 'Modest'
+    )
+  );
+  assert.ok(
+    suggestions.spreads.some(
+      (s) =>
+        s.value === '1 HP / 1 Def / 32 SpA / 32 Spe' && s.nature === 'Modest'
+    )
+  );
+  assert.equal(suggestions.spreads[0].nature, 'Modest');
+  assert.equal(suggestions.spreads[1].nature, 'Modest');
+
+  // Suggesting item for special Dragonite:
+  const draftNoItem = {
+    ...draftSpecial,
+    item: '',
+    spread: '2 HP / 32 SpA / 32 Spe',
+  };
+  const itemSuggestions = catalogSuggestions(
+    draftNoItem,
+    [t1, t2, t3, t4],
+    'M-B',
+    teammates
+  );
+  assert.equal(itemSuggestions.items[0].value, 'Dragoninite');
+
+  // Suggesting Pokemon replacement for slot:
+  assert.ok(suggestions.pokemon.length > 0);
+  assert.equal(suggestions.pokemon[0].pokemon, 'Kingambit');
+  assert.equal(suggestions.pokemon[0].member.pokemon, 'Kingambit');
+  assert.ok(suggestions.pokemon[0].member.moves.length > 0);
+});
 
 test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
   const teams = [team('t1'), team('t2')];
@@ -382,4 +419,41 @@ test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
   assert.equal(resolveSavedTeamId(teams, null, 'nonexistent'), 't1');
   assert.equal(resolveSavedTeamId(teams, null, null), 't1');
   assert.equal(resolveSavedTeamId([], 't1', 't1'), null);
+});
+
+test('speciesMember picks the set from the team sharing the most teammates', () => {
+  const x = team('x');
+  x.members = [
+    member('Incineroar', 'Alpha'),
+    member('Sneasler'),
+    member('Kingambit'),
+  ];
+  const y = team('y');
+  y.members = [member('Incineroar', 'Beta'), member('Sneasler')];
+  assert.equal(
+    speciesMember(
+      'Incineroar',
+      [member('Sneasler'), member('Kingambit')],
+      [x, y],
+      'M-C'
+    )?.item,
+    'Alpha'
+  );
+});
+
+test('speciesMember set depends on which teammate is swapped out', () => {
+  const x = team('x');
+  x.members = [member('Incineroar', 'Alpha'), member('Sneasler')];
+  const y = team('y');
+  y.members = [member('Incineroar', 'Beta'), member('Rillaboom')];
+  // Swapping out Sneasler leaves Rillaboom, so the Rillaboom team (Beta) wins.
+  assert.equal(
+    speciesMember('Incineroar', [member('Rillaboom')], [x, y], 'M-C')?.item,
+    'Beta'
+  );
+  // Swapping out Rillaboom leaves Sneasler, so the Sneasler team (Alpha) wins.
+  assert.equal(
+    speciesMember('Incineroar', [member('Sneasler')], [x, y], 'M-C')?.item,
+    'Alpha'
+  );
 });
