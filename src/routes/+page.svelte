@@ -19,6 +19,7 @@
     writeFilters,
     matchesTeam,
     compareTeams,
+    getMemberOptions,
     normalize,
     type MemberFilter,
     type Team,
@@ -206,23 +207,7 @@
     );
   }
   function options(pokemon: string, field: 'item' | 'ability' | 'move') {
-    return [
-      ...new Set(
-        teams.flatMap((team) =>
-          team.members
-            .filter(
-              (member) => normalize(member.pokemon) === normalize(pokemon)
-            )
-            .flatMap((member) =>
-              field === 'move'
-                ? member.moves
-                : member[field]
-                  ? [member[field]]
-                  : []
-            )
-        )
-      ),
-    ].sort();
+    return getMemberOptions(teams, pokemon, field);
   }
   function changeOption(key: string, value: string) {
     const params = new SvelteURLSearchParams(page.url.searchParams);
