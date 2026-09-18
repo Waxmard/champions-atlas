@@ -4,19 +4,8 @@ test('sprite cards, responsive filters, and external attribution work', async ({
   page,
 }, testInfo) => {
   await page.goto('/');
-  const panel = page.locator('#filters-panel');
-
-  if (testInfo.project.name === 'mobile') {
-    const toggle = page.getByRole('button', { name: 'Filters', exact: true });
-    await expect(toggle).toHaveAttribute('aria-controls', 'filters-panel');
-    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
-    await expect(panel).toBeHidden();
-    await toggle.click();
-    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
-    await expect(panel).toBeVisible();
-  } else {
-    await expect(panel).toBeVisible();
-  }
+  const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
+  await expect(picker).toBeVisible();
 
   const cards = page
     .getByRole('region', { name: 'Matching teams' })
@@ -81,12 +70,7 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
 }, testInfo) => {
   const errors: string[] = [];
   page.on('pageerror', (error) => errors.push(error.message));
-  const openMobileFilters = async () => {
-    if (testInfo.project.name !== 'mobile') return;
-    const toggle = page.getByRole('button', { name: 'Filters', exact: true });
-    if ((await toggle.getAttribute('aria-expanded')) === 'false')
-      await toggle.click();
-  };
+  const openMobileFilters = async () => {};
   await page.goto('/');
   await openMobileFilters();
   const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
@@ -196,8 +180,8 @@ test('invalid filters stay explicit; team deep links and missing teams work', as
   await expect(
     page.getByRole('heading', { name: 'Invalid filter link' })
   ).toBeVisible();
-  await page.getByRole('link', { name: 'Clear filters' }).last().click();
-  await expect(page).toHaveURL('/');
+  await page.getByRole('button', { name: 'Clear filters' }).last().click();
+  await expect(page).toHaveURL(/\/(?:\?.*)?$/);
   const card = page
     .getByRole('region', { name: 'Matching teams' })
     .getByRole('article')

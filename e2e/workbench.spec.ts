@@ -43,8 +43,8 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     weavile.getByText(originalWeavile.item!, { exact: true })
   ).toBeVisible();
   await expect(
-    weavile.locator('p', { hasText: `Ability: ${originalWeavile.ability}` })
-  ).toHaveText(`Ability: ${originalWeavile.ability}`);
+    weavile.getByText(`Ability: ${originalWeavile.ability}`, { exact: true })
+  ).toBeVisible();
   for (const move of originalWeavile.moves)
     await expect(weavile.getByText(move, { exact: true })).toBeVisible();
   await expect(weavile.locator('textarea')).toHaveCount(0);

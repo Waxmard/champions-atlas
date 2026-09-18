@@ -198,7 +198,7 @@ test('corrupt storage is reported and kept; missing local IDs do not show anothe
   ).toBe('{broken');
 });
 
-test('set edit auto-persists and reopening my-teams restores active team', async ({
+test('set edit commits on save and reopening my-teams restores active team', async ({
   page,
 }) => {
   await page.goto(`/teams/${peter.id}`);
@@ -218,6 +218,7 @@ test('set edit auto-persists and reopening my-teams restores active team', async
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
@@ -262,6 +263,7 @@ test('item edits preserve an unknown nature', async ({ page }) => {
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
@@ -351,6 +353,7 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     .click();
 
   await expect(card).toContainText(replacementNature);
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const storedNature = await page.evaluate(
     ({ key, pokemon }) => {
       const team = JSON.parse(localStorage.getItem(key)!)[0];
