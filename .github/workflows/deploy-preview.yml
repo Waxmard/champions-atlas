@@ -14,8 +14,8 @@ jobs:
     runs-on: ubuntu-24.04
     environment: preview
     steps:
-      - uses: actions/checkout@v7 # nosemgrep: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
-      - uses: jdx/mise-action@v4 # nosemgrep: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v4
       - run: npm ci
       - run: npm run build
         env:
@@ -30,7 +30,7 @@ jobs:
           output=$(npx firebase-tools hosting:channel:deploy preview --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}" --json)
           echo "$output" | jq '.result'
           echo "url=$(echo "$output" | jq -r '.result | to_entries[0].value.url')" >> "$GITHUB_OUTPUT"
-      - uses: marocchino/sticky-pull-request-comment@v3 # nosemgrep: yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+      - uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: deploy-preview
           message: |
