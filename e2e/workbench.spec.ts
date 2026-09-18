@@ -296,3 +296,92 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
     editor.getByRole('button', { name: 'Apply evs', exact: true })
   ).toBeDisabled();
 });
+
+test('two-way move swaps and species swap on a saved team', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await expect(page.getByLabel('Team name', { exact: true })).toBeVisible();
+
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+
+  // Two-way move editor: click a current move, then a suggestion replaces it.
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile moves', exact: true })
+    .click();
+  const movesEditor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  const moves = movesEditor.getByRole('list', { name: 'Selected moves' });
+  const initialMoves = await moves.getByRole('listitem').allTextContents();
+  expect(initialMoves).toHaveLength(4);
+  const moveSuggestions = movesEditor.getByLabel('Move suggestions');
+
+  await moves.getByRole('listitem').first().getByRole('button').first().click();
+  await expect(
+    movesEditor.getByText(/Replacing .+\. Choose a suggested move\./)
+  ).toBeVisible();
+  const replacement = (await moveSuggestions
+    .getByRole('button')
+    .first()
+    .textContent())!.trim();
+  await moveSuggestions.getByRole('button').first().click();
+  await expect(moves).toContainText(replacement);
+  await expect(moves).not.toContainText(initialMoves[0].trim());
+
+  // Full set: clicking a suggestion enters swap mode, then pick a move to swap out.
+  const swapIn = (await moveSuggestions
+    .getByRole('button')
+    .first()
+    .textContent())!.trim();
+  await moveSuggestions.getByRole('button').first().click();
+  await expect(
+    movesEditor.getByText(/Swap in .+\. Choose a move to replace\./)
+  ).toBeVisible();
+  const currentMoves = await moves.getByRole('listitem').allTextContents();
+  await moves.getByRole('listitem').first().getByRole('button').first().click();
+  await expect(moves).toContainText(swapIn);
+  await expect(moves).not.toContainText(currentMoves[0].trim());
+
+  await movesEditor
+    .getByRole('button', { name: 'Cancel', exact: true })
+    .click();
+  await expect(movesEditor).toHaveCount(0);
+
+  // Species swap via the "Change a Pokémon" picker.
+  const picker = page.getByRole('combobox', {
+    name: 'Change a Pokémon',
+    exact: true,
+  });
+  await picker.fill('Sneasler');
+  await page.getByRole('option', { name: 'Sneasler', exact: true }).click();
+  await expect(
+    page.getByRole('button', {
+      name: 'Replace Kingambit with Sneasler',
+      exact: true,
+    })
+  ).toBeVisible();
+  await page
+    .getByRole('button', {
+      name: 'Replace Kingambit with Sneasler',
+      exact: true,
+    })
+    .click();
+  await expect(
+    page.getByRole('region', { name: 'Sneasler set', exact: true })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('region', { name: 'Kingambit set', exact: true })
+  ).toHaveCount(0);
+  const diff = page.getByRole('table', { name: 'Team differences' });
+  await expect(diff).toContainText('Sneasler');
+  await expect(diff).toContainText('Added');
+  await expect(diff).toContainText('Removed');
+});

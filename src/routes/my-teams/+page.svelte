@@ -4,17 +4,19 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import MemberCard from '$lib/components/MemberCard.svelte';
+  import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import { copyText } from '$lib/clipboard';
-  import type { Member, Team } from '$lib/catalog';
+  import { normalize, type Member, type Team } from '$lib/catalog';
   import {
     activeTeamKey,
     exportPaste,
     readSavedTeams,
     resolveSavedTeamId,
     saveTeam,
+    speciesMember,
     type SavedTeam,
   } from '$lib/workbench';
   import type { PageData } from './$types';
@@ -38,6 +40,21 @@
     { apply: () => boolean; focus: () => void } | undefined
   >();
   let editorElement = $state<HTMLElement>();
+  let pendingSpecies = $state<string | null>(null);
+  const teams = $derived(data.catalog.teams as Team[]);
+  const allSpecies = $derived(
+    [
+      ...new Set(teams.flatMap((team) => team.members.map((m) => m.pokemon))),
+    ].sort()
+  );
+  const availableSpecies = $derived(
+    allSpecies.filter(
+      (p) =>
+        !(draft?.members ?? []).some(
+          (m) => normalize(m.pokemon) === normalize(p)
+        )
+    )
+  );
   const current = $derived(data.catalog.currentRegulation);
   const editing = $derived(activeEditIndex !== null);
   const dirty = $derived(
@@ -74,6 +91,7 @@
       originalMember = null;
       editorDirty = false;
       editedSlots = new Set();
+      pendingSpecies = null;
       message =
         id && !entry && !resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
@@ -183,6 +201,7 @@
       ?.focus();
   const openSetEditor = (index: number, field: EditableSetField) => {
     if (editing) return;
+    pendingSpecies = null;
     activeEditIndex = index;
     activeEditField = field;
     originalMember = draft
@@ -225,6 +244,32 @@
         focusSetField(targetSlot, field);
       });
     }
+  }
+  function startSpeciesSwap(pokemon: string) {
+    if (editing) return;
+    pendingSpecies = pokemon;
+  }
+  function cancelSpeciesSwap() {
+    pendingSpecies = null;
+  }
+  function applySpeciesSwap(index: number) {
+    if (!draft || !pendingSpecies) return;
+    const teammates = draft.members.filter((_, i) => i !== index);
+    draft.members[index] = speciesMember(
+      pendingSpecies,
+      teammates,
+      teams,
+      current
+    ) ?? {
+      pokemon: pendingSpecies,
+      item: null,
+      ability: null,
+      nature: null,
+      spread: null,
+      moves: [],
+    };
+    editedSlots = new Set([...editedSlots, index]);
+    pendingSpecies = null;
   }
   async function copyPaste() {
     if (!draft || editing) return;
@@ -336,6 +381,32 @@
             .original.name} · {draft.original.regulation}. Editing does not
           create a working rental code.
         </p>
+        <div class="mt-5 flex items-start gap-3">
+          <div class="min-w-0 flex-1">
+            <PokemonPicker
+              options={availableSpecies}
+              onselect={startSpeciesSwap}
+              disabled={editing}
+              label="Change a Pokémon"
+              placeholder="Choose a Pokémon to swap in…"
+              disabledPlaceholder="Finish editing first"
+            />
+          </div>
+          {#if pendingSpecies}
+            <Button
+              variant="outline"
+              class="min-h-11 shrink-0"
+              onclick={cancelSpeciesSwap}>Cancel</Button
+            >
+          {/if}
+        </div>
+        {#if pendingSpecies}
+          <p class="mt-2 text-sm text-primary" role="status">
+            Choose which Pokémon to replace with <strong
+              >{pendingSpecies}</strong
+            >.
+          </p>
+        {/if}
         <div class="mt-5 grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {#each draft.members as member, index (index)}
             <section
@@ -365,6 +436,15 @@
                   pending={editedSlots.has(index)}
                   onedit={(field) => openSetEditor(index, field)}
                 />
+                {#if pendingSpecies}
+                  <Button
+                    variant="outline"
+                    class="mt-3 min-h-11 w-full"
+                    aria-label={`Replace ${member.pokemon} with ${pendingSpecies}`}
+                    onclick={() => applySpeciesSwap(index)}
+                    >Swap in {pendingSpecies}</Button
+                  >
+                {/if}
               {/if}
             </section>
           {/each}

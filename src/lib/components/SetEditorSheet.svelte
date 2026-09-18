@@ -73,6 +73,8 @@
     'pokemon' | 'item' | 'ability' | 'nature' | 'spread' | 'moves' | null
   >(null);
   let editorElement = $state<HTMLElement>();
+  let replacingMove = $state<string | null>(null);
+  let swapInMove = $state<string | null>(null);
 
   const draftMember = $derived<Member>({
     pokemon: form.pokemon.trim(),
@@ -95,13 +97,13 @@
   const norm = (val: string, q: string) =>
     normalize(val).includes(normalize(q));
   const filteredPokemon = $derived(
-    suggestions.pokemon.filter((o) => norm(o.pokemon, pokemonQuery)).slice(0, 3)
+    suggestions.pokemon.filter((o) => norm(o.pokemon, pokemonQuery)).slice(0, 5)
   );
   const filteredItems = $derived(
-    suggestions.items.filter((o) => norm(o.value, itemQuery)).slice(0, 3)
+    suggestions.items.filter((o) => norm(o.value, itemQuery)).slice(0, 5)
   );
   const filteredAbilities = $derived(
-    suggestions.abilities.filter((o) => norm(o.value, abilityQuery)).slice(0, 3)
+    suggestions.abilities.filter((o) => norm(o.value, abilityQuery)).slice(0, 5)
   );
   const remainingMoves = $derived(
     suggestions.moves
@@ -110,16 +112,16 @@
           norm(o.value, moveInput) &&
           !form.moves.some((m) => normalize(m) === normalize(o.value))
       )
-      .slice(0, 4)
+      .slice(0, 5)
   );
   const filteredNatures = $derived(
     natureQuery.trim()
       ? NATURES.filter((n) =>
           n.toLowerCase().startsWith(natureQuery.trim().toLowerCase())
-        ).slice(0, 3)
+        ).slice(0, 5)
       : suggestions.natures.length
-        ? suggestions.natures.slice(0, 3).map((n) => n.value)
-        : NATURES.slice(0, 3)
+        ? suggestions.natures.slice(0, 5).map((n) => n.value)
+        : NATURES.slice(0, 5)
   );
   const spreadValues = $derived(
     parseChampionsSpread(form.spread) || parseChampionsSpread('')!
@@ -135,7 +137,7 @@
         const s = parseChampionsSpread(o.value);
         return s && championsSpreadTotal(s) === 66;
       })
-      .slice(0, 3)
+      .slice(0, 5)
   );
 
   $effect(() => {
@@ -216,13 +218,45 @@
     if (form.moves.some((s) => normalize(s) === normalize(move)))
       return void (error = 'A set cannot include the same move twice.');
     form.moves = [...form.moves, move];
+    replacingMove = swapInMove = null;
     moveInput = error = '';
     activeField = null;
   }
   const removeMove = (i: number) => {
     form.moves = form.moves.filter((_, idx) => idx !== i);
+    replacingMove = swapInMove = null;
     error = '';
   };
+  function clickMove(move: string) {
+    if (swapInMove) {
+      const swap = swapInMove;
+      form.moves = form.moves.map((m) =>
+        normalize(m) === normalize(move) ? swap : m
+      );
+      swapInMove = null;
+      error = '';
+      return;
+    }
+    replacingMove =
+      replacingMove !== null && normalize(replacingMove) === normalize(move)
+        ? null
+        : move;
+  }
+  function clickSuggestion(value: string) {
+    if (replacingMove) {
+      form.moves = form.moves.map((m) =>
+        normalize(m) === normalize(replacingMove!) ? value : m
+      );
+      replacingMove = null;
+      error = '';
+      return;
+    }
+    if (form.moves.length < 4) {
+      addMove(value);
+      return;
+    }
+    swapInMove = value;
+  }
   export function apply(): boolean {
     try {
       if (initialField === 'text') {
@@ -489,6 +523,19 @@
   {#if initialField === 'moves'}
     <div class="mt-4 min-w-0" onfocusout={handleBlur}>
       <h3 class="text-sm font-medium">Moves ({form.moves.length}/4)</h3>
+      {#if replacingMove}
+        <p class="mt-1 text-xs text-primary">
+          Replacing {replacingMove}. Choose a suggested move.
+        </p>
+      {:else if swapInMove}
+        <p class="mt-1 text-xs text-primary">
+          Swap in {swapInMove}. Choose a move to replace.
+        </p>
+      {:else if form.moves.length === 4}
+        <p class="mt-1 text-xs text-muted-foreground">
+          Choose a move or a suggestion to swap.
+        </p>
+      {/if}
       {#if form.moves.length}<ul
           class="mt-2 grid gap-2 sm:grid-cols-2"
           aria-label="Selected moves"
@@ -496,18 +543,30 @@
           {#each form.moves as move, index (move)}
             {@const type = getMoveType(move)}
             {@const typeColor = type ? TYPE_COLORS[type] : null}
+            {@const selected =
+              replacingMove !== null &&
+              normalize(replacingMove) === normalize(move)}
+            {@const swappable = swapInMove !== null}
             <li
-              class="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-card px-3 py-1 shadow-2xs"
+              class="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-card px-3 py-1 shadow-2xs {selected ||
+              swappable
+                ? 'border-primary ring-1 ring-primary/40'
+                : ''}"
               style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
             >
-              <div class="flex min-w-0 items-center gap-2">
+              <button
+                type="button"
+                class="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left hover:bg-background focus-visible:ring-2 focus-visible:ring-primary"
+                aria-pressed={selected || swappable}
+                onclick={() => clickMove(move)}
+              >
                 {#if type}<img
                     src={getTypeIcon(type)}
                     alt={type}
                     class="size-4 shrink-0 object-contain"
                   />{/if}
                 <span class="min-w-0 font-medium wrap-break-word">{move}</span>
-              </div>
+              </button>
               <Button
                 variant="ghost"
                 class="min-h-9 min-w-9 p-1"
@@ -535,31 +594,32 @@
         />
         <Button class="min-h-11" onclick={() => addMove()}>Add move</Button>
       </div>
-      {#if activeField === 'moves'}<div
-          class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
-          aria-label="Move suggestions"
-        >
-          {#each remainingMoves as option (option.value)}
-            {@const type = getMoveType(option.value)}
-            {@const typeColor = type ? TYPE_COLORS[type] : null}
-            <Button
-              variant="outline"
-              class="min-h-11 max-w-full gap-2 text-left whitespace-normal"
-              style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
-              disabled={form.moves.length === 4}
-              onclick={() => addMove(option.value)}
-            >
-              {#if type}
-                <img
-                  src={getTypeIcon(type)}
-                  alt={type}
-                  class="size-3.5 shrink-0 object-contain"
-                />
-              {/if}
-              <span>{option.value}</span>
-            </Button>
-          {/each}
-        </div>{/if}
+      <div
+        class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
+        aria-label="Move suggestions"
+      >
+        {#each remainingMoves as option (option.value)}
+          {@const type = getMoveType(option.value)}
+          {@const typeColor = type ? TYPE_COLORS[type] : null}
+          <Button
+            variant={normalize(swapInMove ?? '') === normalize(option.value)
+              ? 'default'
+              : 'outline'}
+            class="min-h-11 max-w-full gap-2 text-left whitespace-normal"
+            style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
+            onclick={() => clickSuggestion(option.value)}
+          >
+            {#if type}
+              <img
+                src={getTypeIcon(type)}
+                alt={type}
+                class="size-3.5 shrink-0 object-contain"
+              />
+            {/if}
+            <span>{option.value}</span>
+          </Button>
+        {/each}
+      </div>
     </div>
   {/if}
 

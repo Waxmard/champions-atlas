@@ -8,10 +8,16 @@
     options,
     onselect,
     disabled = false,
+    label = 'Add Pokémon filter',
+    placeholder = 'Find a Pokémon…',
+    disabledPlaceholder = 'Six Pokémon selected',
   }: {
     options: string[];
     onselect: (pokemon: string) => void;
     disabled?: boolean;
+    label?: string;
+    placeholder?: string;
+    disabledPlaceholder?: string;
   } = $props();
   let search = $state('');
   let selected = $state('');
@@ -43,8 +49,8 @@
       aria-hidden="true"
     />
     <Combobox.Input
-      aria-label="Add Pokémon filter"
-      placeholder={disabled ? 'Six Pokémon selected' : 'Find a Pokémon…'}
+      aria-label={label}
+      placeholder={disabled ? disabledPlaceholder : placeholder}
       oninput={(event) => {
         search = event.currentTarget.value;
         open = true;

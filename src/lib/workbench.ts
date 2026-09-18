@@ -480,3 +480,42 @@ export function pokemonSuggestions(
   }
   return suggestions;
 }
+
+export function speciesMember(
+  pokemon: string,
+  teammates: Member[],
+  teams: Team[],
+  currentRegulation: string
+): Member | null {
+  const norm = normalize(pokemon);
+  const rankedTeams = teams
+    .map((team) => {
+      let shared = 0;
+      for (const t of teammates) {
+        if (
+          team.members.some(
+            (m) => normalize(m.pokemon) === normalize(t.pokemon)
+          )
+        )
+          shared++;
+      }
+      return { team, shared };
+    })
+    .sort(
+      (a, b) =>
+        b.shared - a.shared || compareTeams(a.team, b.team, currentRegulation)
+    );
+  for (const { team } of rankedTeams) {
+    const match = team.members.find((m) => normalize(m.pokemon) === norm);
+    if (match)
+      return {
+        pokemon: match.pokemon,
+        item: match.item,
+        ability: match.ability,
+        nature: match.nature,
+        spread: match.spread,
+        moves: [...match.moves],
+      };
+  }
+  return null;
+}

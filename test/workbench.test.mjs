@@ -11,6 +11,7 @@ import {
   storageKey,
   catalogSuggestions,
   resolveSavedTeamId,
+  speciesMember,
 } from '../src/lib/workbench.ts';
 import {
   championsSpreadTotal,
@@ -418,4 +419,41 @@ test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
   assert.equal(resolveSavedTeamId(teams, null, 'nonexistent'), 't1');
   assert.equal(resolveSavedTeamId(teams, null, null), 't1');
   assert.equal(resolveSavedTeamId([], 't1', 't1'), null);
+});
+
+test('speciesMember picks the set from the team sharing the most teammates', () => {
+  const x = team('x');
+  x.members = [
+    member('Incineroar', 'Alpha'),
+    member('Sneasler'),
+    member('Kingambit'),
+  ];
+  const y = team('y');
+  y.members = [member('Incineroar', 'Beta'), member('Sneasler')];
+  assert.equal(
+    speciesMember(
+      'Incineroar',
+      [member('Sneasler'), member('Kingambit')],
+      [x, y],
+      'M-C'
+    )?.item,
+    'Alpha'
+  );
+});
+
+test('speciesMember set depends on which teammate is swapped out', () => {
+  const x = team('x');
+  x.members = [member('Incineroar', 'Alpha'), member('Sneasler')];
+  const y = team('y');
+  y.members = [member('Incineroar', 'Beta'), member('Rillaboom')];
+  // Swapping out Sneasler leaves Rillaboom, so the Rillaboom team (Beta) wins.
+  assert.equal(
+    speciesMember('Incineroar', [member('Rillaboom')], [x, y], 'M-C')?.item,
+    'Beta'
+  );
+  // Swapping out Rillaboom leaves Sneasler, so the Sneasler team (Alpha) wins.
+  assert.equal(
+    speciesMember('Incineroar', [member('Sneasler')], [x, y], 'M-C')?.item,
+    'Alpha'
+  );
 });
