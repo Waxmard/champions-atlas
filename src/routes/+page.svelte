@@ -3,10 +3,12 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import { SvelteURLSearchParams } from 'svelte/reactivity';
+  import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import TeamCard from '$lib/components/TeamCard.svelte';
+  import TypeFilter from '$lib/components/TypeFilter.svelte';
   import {
     getCardBackgroundStyle,
     getPokemonTypes,
@@ -37,6 +39,7 @@
   const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
   let { data }: { data: PageData } = $props();
   let storageError = $state(false);
+  let typeOpen = $state(false);
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const historicalRegulations = $derived(
@@ -247,17 +250,10 @@
     navigate(new URLSearchParams());
   }
 
-  function toggleType(type: PokemonType) {
+  function setTypes(next: PokemonType[]) {
     const params = new SvelteURLSearchParams(page.url.searchParams);
-    const value = type.toLowerCase();
-    const current = params.getAll('type');
-    if (current.includes(value)) {
-      params.delete('type');
-      for (const entry of current)
-        if (entry !== value) params.append('type', entry);
-    } else {
-      params.append('type', value);
-    }
+    params.delete('type');
+    for (const type of next) params.append('type', type.toLowerCase());
     params.delete('page');
     navigate(params, true);
   }
@@ -285,28 +281,46 @@
     </p>{/if}
 
   <div class="mt-4">
-    <p class="text-xs font-semibold text-muted-foreground">
-      Pokémon type
-      <span class="font-normal"
-        >(each selected type must appear on the team)</span
-      >
-    </p>
-    <div class="mt-2 flex flex-wrap gap-1.5">
-      {#each ALL_TYPES as type (type)}
-        <button
-          type="button"
-          aria-pressed={selectedTypes.includes(type)}
-          onclick={() => toggleType(type)}
-          class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors {selectedTypes.includes(
-            type
-          )
-            ? 'border-primary bg-primary/10 text-primary'
-            : 'border-border bg-background text-muted-foreground hover:text-foreground'}"
-        >
-          <img src={getTypeIcon(type)} alt="" class="size-3.5" />{type}
-        </button>
-      {/each}
-    </div>
+    <button
+      type="button"
+      aria-expanded={typeOpen}
+      onclick={() => (typeOpen = !typeOpen)}
+      class="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium transition-colors hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <Filter class="size-4 text-muted-foreground" aria-hidden="true" />
+      Filter by type
+      {#if selectedTypes.length}<span
+          class="rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary"
+          >{selectedTypes.length}</span
+        >{/if}
+    </button>
+    {#if typeOpen}
+      <div class="mt-2">
+        <TypeFilter
+          options={ALL_TYPES}
+          selected={selectedTypes}
+          onselect={setTypes}
+        />
+      </div>
+    {/if}
+    {#if selectedTypes.length}
+      <div class="mt-2 flex flex-wrap gap-1.5">
+        {#each selectedTypes as type (type)}
+          <span
+            class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+          >
+            <img src={getTypeIcon(type)} alt="" class="size-3.5" />{type}
+            <button
+              type="button"
+              aria-label={`Remove ${type} type filter`}
+              onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
+              class="-mr-1 rounded-full p-0.5 hover:bg-primary/15"
+              ><X class="size-3" aria-hidden="true" /></button
+            >
+          </span>
+        {/each}
+      </div>
+    {/if}
   </div>
 
   <div class="mt-4">

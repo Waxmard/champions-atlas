@@ -34,9 +34,6 @@ async function expectSelection(page: Page) {
     await expect(
       cards.nth(index).getByText('Rillaboom', { exact: true })
     ).toBeVisible();
-    await expect(
-      cards.nth(index).getByText('Sitrus Berry', { exact: true })
-    ).toBeVisible();
   }
 }
 

@@ -4,7 +4,6 @@
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import { bestEvidence, type Team } from '$lib/catalog';
   import { getCardBackgroundStyle } from '$lib/types';
-  import ItemIcon from './ItemIcon.svelte';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
@@ -61,14 +60,6 @@
           <PokemonSprite pokemon={member.pokemon} size={40} />
           <p class="mt-1 text-xs font-semibold wrap-break-word">
             {member.pokemon}
-          </p>
-          <p
-            class="mt-1 flex items-center justify-center gap-1 text-xs wrap-break-word text-muted-foreground"
-          >
-            {#if member.item}<ItemIcon
-                item={member.item}
-                size={20}
-              />{/if}{member.item || 'Item unknown'}
           </p>
         </li>
       {/each}

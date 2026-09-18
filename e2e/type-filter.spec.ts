@@ -28,8 +28,10 @@ const typesOf = (pokemon: string): string[] => {
 
 const teamCards = (page: Page) =>
   page.getByRole('region', { name: 'Matching teams' }).getByRole('article');
-const typeChip = (page: Page, type: string) =>
-  page.getByRole('button', { name: type, exact: true });
+const openTypeFilter = (page: Page) =>
+  page.getByRole('button', { name: /Filter by type/ }).click();
+const typeOption = (page: Page, type: string) =>
+  page.getByRole('option', { name: type, exact: true });
 
 async function openBrowse(page: Page) {
   await page.goto('/');
@@ -48,16 +50,21 @@ const visibleTeams = (page: Page) =>
     }))
   );
 
-test('type chips filter, persist across reload, and clear', async ({
+test('type filter selects, persists across reload, and clears', async ({
   page,
 }) => {
   await openBrowse(page);
-  const fire = typeChip(page, 'fire');
-  await expect(fire).toHaveAttribute('aria-pressed', 'false');
-
-  await fire.click();
+  await openTypeFilter(page);
+  await page.getByRole('combobox', { name: 'Filter by type' }).click();
+  await typeOption(page, 'fire').click();
   await expect(page).toHaveURL(/type=fire/);
-  await expect(fire).toHaveAttribute('aria-pressed', 'true');
+
+  const chip = page.getByRole('button', { name: 'Remove fire type filter' });
+  await expect(chip).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: /Filter by type/ })
+  ).toContainText('1');
+
   const filtered = await visibleTeams(page);
   expect(filtered.length, 'fire filter matched no teams').toBeGreaterThan(0);
   for (const team of filtered) {
@@ -70,11 +77,15 @@ test('type chips filter, persist across reload, and clear', async ({
 
   await page.reload();
   await expect(page).toHaveURL(/type=fire/);
-  await expect(fire).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    page.getByRole('button', { name: 'Remove fire type filter' })
+  ).toBeVisible();
 
   await page.getByRole('button', { name: 'Clear filters' }).click();
   await expect(page).not.toHaveURL(/type=/);
-  await expect(fire).toHaveAttribute('aria-pressed', 'false');
+  await expect(
+    page.getByRole('button', { name: 'Remove fire type filter' })
+  ).toBeHidden();
 });
 
 test('every selected type must appear on the team', async ({ page }) => {
@@ -88,9 +99,11 @@ test('every selected type must appear on the team', async ({ page }) => {
   ).toBeGreaterThan(1);
   const [typeA, typeB] = distinct;
 
-  await typeChip(page, typeA).click();
+  await openTypeFilter(page);
+  await page.getByRole('combobox', { name: 'Filter by type' }).click();
+  await typeOption(page, typeA).click();
   await expect(page).toHaveURL(new RegExp(`type=${typeA}\\b`));
-  await typeChip(page, typeB).click();
+  await typeOption(page, typeB).click();
   await expect(page).toHaveURL(new RegExp(`type=${typeA}\\b`));
   await expect(page).toHaveURL(new RegExp(`type=${typeB}\\b`));
 

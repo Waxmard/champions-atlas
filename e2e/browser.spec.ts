@@ -27,22 +27,9 @@ test('sprite cards, responsive filters, and external attribution work', async ({
     .getByRole('listitem')
     .first();
   const species = await member.locator('p').first().innerText();
-  const itemLabel = member.locator('p').nth(1);
-  const itemIcon = member.locator('img[src*="/items/"]');
-  await expect(itemIcon).toBeVisible();
-  await expect
-    .poll(() =>
-      itemIcon.evaluate((image: HTMLImageElement) =>
-        Boolean(image.complete && image.naturalWidth > 0)
-      )
-    )
-    .toBe(true);
   await sprite.dispatchEvent('error');
   await expect(sprite).toBeHidden();
   await expect(card.getByText(species, { exact: true })).toBeVisible();
-  await itemIcon.dispatchEvent('error');
-  await expect(itemIcon).toBeHidden();
-  await expect(itemLabel).toBeVisible();
 
   const attribution = page.locator(
     'a[href="https://github.com/PokeAPI/sprites"]'
@@ -115,9 +102,6 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
     ).toBeVisible();
     await expect(
       cards.nth(i).getByText('Rillaboom', { exact: true })
-    ).toBeVisible();
-    await expect(
-      cards.nth(i).getByText('Sitrus Berry', { exact: true })
     ).toBeVisible();
   }
   await cards.first().scrollIntoViewIfNeeded();
