@@ -50,6 +50,7 @@
         {#if sync.status === 'syncing' || sync.status === 'error'}<span
             role="status"
             aria-live="polite"
+            title={sync.error}
             class="text-xs {sync.status === 'error'
               ? 'text-destructive'
               : 'text-muted-foreground'}"

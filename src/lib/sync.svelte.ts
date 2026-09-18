@@ -5,6 +5,7 @@ import {
   getRedirectResult,
   GoogleAuthProvider,
   onAuthStateChanged,
+  signInWithPopup,
   signInWithRedirect,
   signOut as signOutOfFirebase,
   type Auth,
@@ -31,6 +32,7 @@ export const sync = $state({
   configured: false,
   user: null as User | null,
   status: 'off' as SyncStatus,
+  error: '',
 });
 
 let auth: Auth | null = null;
@@ -53,8 +55,9 @@ export function initSync(): void {
   auth = getAuth(app);
   db = getFirestore(app);
   sync.configured = true;
-  void getRedirectResult(auth).catch(() => {
+  void getRedirectResult(auth).catch((error: unknown) => {
     sync.status = 'error';
+    sync.error = error instanceof Error ? error.message : String(error);
   });
   onAuthStateChanged(auth, (user) => {
     sync.user = user;
@@ -64,10 +67,26 @@ export function initSync(): void {
 
 export async function signIn(): Promise<void> {
   if (!auth) return;
+  sync.status = 'syncing';
+  sync.error = '';
   try {
-    await signInWithRedirect(auth, new GoogleAuthProvider());
-  } catch {
-    sync.status = 'error';
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  } catch (error) {
+    // `signInWithRedirect` never settles, so a popup is the only flow that can
+    // report why sign-in failed.
+    const code =
+      error && typeof error === 'object' && 'code' in error
+        ? String(error.code)
+        : '';
+    if (
+      code === 'auth/popup-blocked' ||
+      code === 'auth/operation-not-supported-in-this-environment'
+    ) {
+      await signInWithRedirect(auth, new GoogleAuthProvider());
+    } else {
+      sync.status = code === 'auth/popup-closed-by-user' ? 'off' : 'error';
+      sync.error = error instanceof Error ? error.message : String(error);
+    }
   }
 }
 
@@ -75,8 +94,9 @@ export async function signOut(): Promise<void> {
   if (!auth) return;
   try {
     await signOutOfFirebase(auth);
-  } catch {
+  } catch (error) {
     sync.status = 'error';
+    sync.error = error instanceof Error ? error.message : String(error);
   }
 }
 
@@ -84,6 +104,7 @@ export async function pushNow(): Promise<void> {
   const user = auth?.currentUser;
   if (!db || !user) return;
   sync.status = 'syncing';
+  sync.error = '';
   try {
     await setDoc(doc(db, 'users', user.uid), {
       teams: readSavedTeams(localStorage),
@@ -92,8 +113,9 @@ export async function pushNow(): Promise<void> {
       updatedAt: serverTimestamp(),
     });
     sync.status = 'synced';
-  } catch {
+  } catch (error) {
     sync.status = 'error';
+    sync.error = error instanceof Error ? error.message : String(error);
   }
 }
 
@@ -101,6 +123,7 @@ export async function pullNow(): Promise<void> {
   const user = auth?.currentUser;
   if (!db || !user) return;
   sync.status = 'syncing';
+  sync.error = '';
   try {
     const snapshot = await getDoc(doc(db, 'users', user.uid));
     if (!snapshot.exists()) {
@@ -132,7 +155,8 @@ export async function pullNow(): Promise<void> {
     // now. Reload once to render the pulled teams/filters.
     // ponytail: full reload; upgrade to a reactive re-read if the flash matters.
     if (changed) location.reload();
-  } catch {
+  } catch (error) {
     sync.status = 'error';
+    sync.error = error instanceof Error ? error.message : String(error);
   }
 }
