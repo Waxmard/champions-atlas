@@ -200,6 +200,33 @@ test('generateUUID produces valid RFC4122 v4 UUID', () => {
   );
 });
 
+test('generateUUID falls back when crypto.randomUUID is undefined (insecure context)', () => {
+  const descriptor = Object.getOwnPropertyDescriptor(crypto, 'randomUUID');
+  Object.defineProperty(crypto, 'randomUUID', {
+    value: undefined,
+    configurable: true,
+  });
+  try {
+    assert.equal(typeof crypto.randomUUID, 'undefined');
+    const team = newSavedTeam({
+      id: 'test',
+      name: 'Test',
+      regulation: 'M-C',
+      pasteUrl: '',
+      members: [],
+      paste: null,
+    });
+    assert.match(
+      team.id,
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/
+    );
+  } finally {
+    if (descriptor) Object.defineProperty(crypto, 'randomUUID', descriptor);
+    else Reflect.deleteProperty(crypto, 'randomUUID');
+    assert.equal(typeof crypto.randomUUID, 'function');
+  }
+});
+
 test('parseSetBlock extracts a set', () => {
   const raw = `Incineroar @ Sitrus Berry
 Ability: Intimidate

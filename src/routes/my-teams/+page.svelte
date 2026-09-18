@@ -7,6 +7,7 @@
   import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
+  import { copyText } from '$lib/clipboard';
   import type { Member, Team } from '$lib/catalog';
   import {
     activeTeamKey,
@@ -228,13 +229,10 @@
   async function copyPaste() {
     if (!draft || editing) return;
     showExport = true;
-    try {
-      await navigator.clipboard.writeText(exportPaste(draft.members));
-      message =
-        'Team text copied. Unknown fields are omitted; no stats were guessed.';
-    } catch {
-      message = 'Clipboard unavailable. Select and copy the export text below.';
-    }
+    const ok = await copyText(exportPaste(draft.members));
+    message = ok
+      ? 'Team text copied. Unknown fields are omitted; no stats were guessed.'
+      : 'Clipboard unavailable. Select and copy the export text below.';
   }
 </script>
 

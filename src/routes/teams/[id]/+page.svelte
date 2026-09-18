@@ -9,6 +9,7 @@
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import MemberCard from '$lib/components/MemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
+  import { copyText } from '$lib/clipboard';
   import { bestEvidence, evidence, type Team } from '$lib/catalog';
   import {
     activeTeamKey,
@@ -53,12 +54,10 @@
     history.back();
   }
   async function copy(text: string, label: string) {
-    try {
-      await navigator.clipboard.writeText(text);
-      copyStatus = `${label} copied.`;
-    } catch {
-      copyStatus = 'Copy unavailable. Select and copy the text below.';
-    }
+    const ok = await copyText(text);
+    copyStatus = ok
+      ? `${label} copied.`
+      : 'Copy unavailable. Select and copy the text below.';
   }
 </script>
 

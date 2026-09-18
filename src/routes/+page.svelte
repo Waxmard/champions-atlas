@@ -7,7 +7,13 @@
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import TeamCard from '$lib/components/TeamCard.svelte';
-  import { getCardBackgroundStyle } from '$lib/types';
+  import {
+    getCardBackgroundStyle,
+    getPokemonTypes,
+    getTypeIcon,
+    TYPE_COLORS,
+    type PokemonType,
+  } from '$lib/types';
   import {
     activeTeamKey,
     readSavedTeams,
@@ -27,7 +33,8 @@
   import type { PageData } from './$types';
 
   const browseStorageKey = 'champions-atlas:browse:v1';
-  const browseKeys = ['member', 'regulation', 'sort', 'page'];
+  const browseKeys = ['member', 'regulation', 'sort', 'page', 'type'];
+  const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
   let { data }: { data: PageData } = $props();
   let storageError = $state(false);
   const teams: Team[] = $derived(data.catalog.teams);
@@ -53,6 +60,14 @@
     page.url.searchParams.get('regulation') || current
   );
   const sort = $derived(page.url.searchParams.get('sort') || 'priority');
+  const selectedTypes = $derived(
+    page.url.searchParams
+      .getAll('type')
+      .map((value) => value.toLowerCase())
+      .filter((value): value is PokemonType =>
+        (ALL_TYPES as string[]).includes(value)
+      )
+  );
   const allPokemon = $derived(
     [
       ...new Set(
@@ -68,6 +83,13 @@
         )
     )
   );
+  function matchesTypes(team: Team, types: PokemonType[]) {
+    if (!types.length) return true;
+    const present = new Set(
+      team.members.flatMap((member) => getPokemonTypes(member.pokemon))
+    );
+    return types.every((type) => present.has(type));
+  }
   const results = $derived(
     filterState.error
       ? []
@@ -75,7 +97,8 @@
           .filter(
             (team) =>
               (regulation === 'all' || team.regulation === regulation) &&
-              matchesTeam(team, filters)
+              matchesTeam(team, filters) &&
+              matchesTypes(team, selectedTypes)
           )
           .sort((a, b) =>
             sort === 'recent'
@@ -100,6 +123,10 @@
 
   function browseParams(params: URLSearchParams) {
     const result = writeFilters(new URLSearchParams(), readFilters(params));
+    for (const value of params.getAll('type')) {
+      const type = value.toLowerCase();
+      if ((ALL_TYPES as string[]).includes(type)) result.append('type', type);
+    }
     result.set('regulation', params.get('regulation') || current);
     result.set('sort', params.get('sort') === 'recent' ? 'recent' : 'priority');
     const pageValue = params.get('page');
@@ -219,6 +246,21 @@
   function clearFilters() {
     navigate(new URLSearchParams());
   }
+
+  function toggleType(type: PokemonType) {
+    const params = new SvelteURLSearchParams(page.url.searchParams);
+    const value = type.toLowerCase();
+    const current = params.getAll('type');
+    if (current.includes(value)) {
+      params.delete('type');
+      for (const entry of current)
+        if (entry !== value) params.append('type', entry);
+    } else {
+      params.append('type', value);
+    }
+    params.delete('page');
+    navigate(params, true);
+  }
 </script>
 
 <svelte:head>
@@ -241,6 +283,31 @@
     >
       Filters can't be remembered on this device.
     </p>{/if}
+
+  <div class="mt-4">
+    <p class="text-xs font-semibold text-muted-foreground">
+      Pokémon type
+      <span class="font-normal"
+        >(each selected type must appear on the team)</span
+      >
+    </p>
+    <div class="mt-2 flex flex-wrap gap-1.5">
+      {#each ALL_TYPES as type (type)}
+        <button
+          type="button"
+          aria-pressed={selectedTypes.includes(type)}
+          onclick={() => toggleType(type)}
+          class="inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium transition-colors {selectedTypes.includes(
+            type
+          )
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-border bg-background text-muted-foreground hover:text-foreground'}"
+        >
+          <img src={getTypeIcon(type)} alt="" class="size-3.5" />{type}
+        </button>
+      {/each}
+    </div>
+  </div>
 
   <div class="mt-4">
     <span class="sr-only" aria-live="polite"
@@ -387,7 +454,7 @@
       <p aria-live="polite" aria-atomic="true" class="text-sm font-semibold">
         {results.length} teams
       </p>
-      {#if filters.length || regulation !== current || sort !== 'priority' || filterState.error}<Button
+      {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || filterState.error}<Button
           type="button"
           variant="ghost"
           class="min-h-11 px-2"
