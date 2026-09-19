@@ -30,10 +30,13 @@ A signed-in user owns one document at `users/{uid}`:
 `firestore.rules` allows a read or write only when `request.auth.uid` matches the
 document ID.
 
-Saving pushes the whole document; opening the app pulls it. The app reloads once
-when a pull changes local storage, so rendered pages pick up the pulled teams and
-filters. There is no realtime listener and no conflict resolution: the last push
-wins.
+Saving pushes the whole document; opening the app pulls it. When a pull changes
+local storage the app reloads once per tab session, so rendered pages pick up the
+pulled teams and filters. The once-per-session bound (a `sessionStorage` flag) is
+load-bearing: Firestore does not guarantee nested-map key order, so an unbounded
+reload can re-trigger `pullNow` forever. Signing out clears the flag so a later
+sign-in can pull-and-reload again. There is no realtime listener and no conflict
+resolution: the last push wins.
 
 ## Secrets and continuous integration
 

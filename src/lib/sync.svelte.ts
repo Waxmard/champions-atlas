@@ -38,6 +38,8 @@ export const sync = $state({
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 
+const reloadedKey = 'champions-atlas:pulled-reload:v1';
+
 function firebaseConfig() {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
   const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
@@ -94,6 +96,7 @@ export async function signOut(): Promise<void> {
   if (!auth) return;
   try {
     await signOutOfFirebase(auth);
+    sessionStorage.removeItem(reloadedKey);
   } catch (error) {
     sync.status = 'error';
     sync.error = error instanceof Error ? error.message : String(error);
@@ -152,9 +155,16 @@ export async function pullNow(): Promise<void> {
     else localStorage.setItem(browseStorageKey, browse);
     sync.status = 'synced';
     // The pull settles after first paint, so pages have already read storage by
-    // now. Reload once to render the pulled teams/filters.
+    // now. Reload once to render the pulled teams/filters. A bare `if (changed)`
+    // loops forever: onAuthStateChanged re-runs pullNow on every reload, and
+    // `changed` can stay true each pass (Firestore does not guarantee nested-map
+    // key order; readSavedTeams coerces changeSlot undefined → null). Bound it
+    // to one reload per tab session.
     // ponytail: full reload; upgrade to a reactive re-read if the flash matters.
-    if (changed) location.reload();
+    if (changed && !sessionStorage.getItem(reloadedKey)) {
+      sessionStorage.setItem(reloadedKey, '1');
+      location.reload();
+    }
   } catch (error) {
     sync.status = 'error';
     sync.error = error instanceof Error ? error.message : String(error);
