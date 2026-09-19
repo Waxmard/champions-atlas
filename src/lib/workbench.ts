@@ -15,6 +15,7 @@ export interface SavedTeam {
 
 export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
+export const browseStorageKey = 'champions-atlas:browse:v1';
 
 export function resolveSavedTeamId(
   saved: SavedTeam[],

@@ -17,6 +17,7 @@
     newSavedTeam,
     saveTeam,
   } from '$lib/workbench';
+  import { pushNow } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -33,6 +34,7 @@
       const saved = newSavedTeam(team);
       saveTeam(localStorage, saved);
       localStorage.setItem(activeTeamKey, saved.id);
+      void pushNow();
       void goto(resolve(`/my-teams?team=${saved.id}`));
     } catch {
       copyStatus =

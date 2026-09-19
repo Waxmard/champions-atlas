@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { Button } from '$lib/components/ui/button';
   import { activeTeamKey, newCustomTeam, saveTeam } from '$lib/workbench';
+  import { pushNow } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -16,6 +17,7 @@
       const saved = newCustomTeam(name, data.currentRegulation, paste);
       saveTeam(localStorage, saved);
       localStorage.setItem(activeTeamKey, saved.id);
+      void pushNow();
       await goto(resolve(`/my-teams?team=${saved.id}`));
     } catch (error) {
       message =
