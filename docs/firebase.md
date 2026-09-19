@@ -1,9 +1,11 @@
 # Firebase deployment and sync
 
 Champion's Atlas builds to a static single-page application (SPA) and deploys to
-Firebase Hosting, and it syncs saved teams through Cloud Firestore. Without the
-`VITE_FIREBASE_*` variables the app runs local-only: it hides the sign-in
-controls and never initializes the Firebase SDK.
+Firebase Hosting, and it syncs saved teams through Cloud Firestore. With the
+`VITE_FIREBASE_*` variables the app requires Google sign-in: an unauthenticated
+visitor is redirected to `/login` and cannot reach the team browser until signed
+in. Without the variables it runs local-only and never initializes the Firebase
+SDK, because it cannot authenticate at all.
 
 ## Projects
 

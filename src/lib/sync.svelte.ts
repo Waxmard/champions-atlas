@@ -30,6 +30,7 @@ export type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
 
 export const sync = $state({
   configured: false,
+  authResolved: false,
   user: null as User | null,
   status: 'off' as SyncStatus,
   error: '',
@@ -63,6 +64,7 @@ export function initSync(): void {
   });
   onAuthStateChanged(auth, (user) => {
     sync.user = user;
+    sync.authResolved = true;
     if (user) void pullNow();
   });
 }
