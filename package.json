@@ -36,6 +36,8 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^24",
     "bits-ui": "^2.19.2",
+    "csv-parse": "^7.0.2",
+    "daisyui": "^5.7.37",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.23.0",
@@ -61,6 +63,9 @@
     "node": "^24.0.0"
   },
   "dependencies": {
-    "firebase": "^12.19.0"
+    "clsx": "^2.1.1",
+    "firebase": "^12.19.0",
+    "tailwind-merge": "^3.7.0",
+    "zod": "^4.6.4"
   }
 }

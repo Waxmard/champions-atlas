@@ -51,7 +51,7 @@
     {#each CHAMPIONS_STATS as stat (stat)}
       <div class="space-y-1">
         <div class="flex items-center justify-between text-xs">
-          <label for={`set-${stat}-ev`} class="font-medium text-foreground"
+          <label for={`set-${stat}-ev`} class="font-medium text-base-content"
             >{stat}</label
           >
           <div class="flex items-center gap-1.5">
@@ -62,11 +62,11 @@
               min="0"
               max="32"
               value={values[stat]}
-              class="h-7 w-12 rounded border bg-background px-1 text-center font-mono text-xs font-semibold outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              class="input h-7 w-12 px-1 text-center font-mono text-xs font-semibold"
               oninput={(event) =>
                 update(stat, event.currentTarget.valueAsNumber)}
             />
-            <span class="text-muted-foreground">/ 32</span>
+            <span class="text-base-content/70">/ 32</span>
           </div>
         </div>
         <input
@@ -75,14 +75,14 @@
           min="0"
           max="32"
           value={values[stat]}
-          class="h-6 w-full cursor-pointer accent-primary"
+          class="range w-full range-primary"
           oninput={(event) => update(stat, event.currentTarget.valueAsNumber)}
         />
       </div>
     {/each}
   </div>
   <div class="mt-3 flex min-h-11 items-center justify-between gap-3">
-    <p class:text-destructive={total !== 66} class="text-sm font-medium">
+    <p class:text-error={total !== 66} class="text-sm font-medium">
       {total}/66 · {total < 66
         ? `${66 - total} remaining`
         : total > 66

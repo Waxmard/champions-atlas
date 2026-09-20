@@ -2,29 +2,13 @@
 @import 'tw-animate-css';
 @import '@fontsource-variable/inter';
 
-@custom-variant dark (&:is(.dark *));
+@plugin 'daisyui' {
+  themes:
+    light --default,
+    dark;
+}
 
 :root {
-  --background: #f8f9fc;
-  --foreground: #1a1d2e;
-  --card: #ffffff;
-  --card-foreground: #1a1d2e;
-  --popover: #ffffff;
-  --popover-foreground: #1a1d2e;
-  --primary: #3b82f6;
-  --primary-foreground: #ffffff;
-  --secondary: #f1f3f8;
-  --secondary-foreground: #1a1d2e;
-  --muted: #f1f3f8;
-  --muted-foreground: #5a5f7a;
-  --accent: #eef4ff;
-  --accent-foreground: #1a1d2e;
-  --destructive: #ef4444;
-  --border: #e7e9f0;
-  --input: #e7e9f0;
-  --ring: #60a5fa;
-  --radius: 0.75rem;
-
   --panel-open-dur: 400ms;
   --panel-close-dur: 350ms;
   --panel-translate-y: 8px;
@@ -32,62 +16,16 @@
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.dark {
-  --background: #14161f;
-  --foreground: #e6e8f0;
-  --card: #1d2030;
-  --card-foreground: #e6e8f0;
-  --popover: #1d2030;
-  --popover-foreground: #e6e8f0;
-  --primary: #60a5fa;
-  --primary-foreground: #0f172a;
-  --secondary: #262a3d;
-  --secondary-foreground: #e6e8f0;
-  --muted: #262a3d;
-  --muted-foreground: #a5aac2;
-  --accent: #2b3a5e;
-  --accent-foreground: #e6e8f0;
-  --destructive: #f87171;
-  --border: #2e3348;
-  --input: #2e3348;
-  --ring: #3b82f6;
-}
-
 @theme inline {
   --font-sans: 'Inter Variable', sans-serif;
-  --color-ring: var(--ring);
-  --color-input: var(--input);
-  --color-border: var(--border);
-  --color-destructive: var(--destructive);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-muted: var(--muted);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-secondary: var(--secondary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-primary: var(--primary);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-popover: var(--popover);
-  --color-card-foreground: var(--card-foreground);
-  --color-card: var(--card);
-  --color-foreground: var(--foreground);
-  --color-background: var(--background);
-  --radius-sm: calc(var(--radius) * 0.6);
-  --radius-md: calc(var(--radius) * 0.8);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-base-300 outline-primary/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-base-200 text-base-content;
   }
   html {
     @apply font-sans;
@@ -105,12 +43,6 @@
   select,
   textarea {
     font-size: 16px !important;
-  }
-}
-
-@layer components {
-  .filter-select {
-    @apply min-h-11 w-full rounded-lg border bg-background px-3 text-sm transition-shadow outline-none focus-visible:ring-2 focus-visible:ring-primary;
   }
 }
 

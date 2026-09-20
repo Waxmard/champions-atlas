@@ -33,7 +33,7 @@
   <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="text-3xl font-semibold tracking-tight">Add custom team</h1>
-      <p class="mt-2 text-sm text-muted-foreground">
+      <p class="mt-2 text-sm text-base-content/70">
         Build your team in
         <a
           class="text-primary underline"
@@ -52,7 +52,7 @@
     <label class="block text-sm font-medium">
       Team name
       <input
-        class="filter-select mt-2"
+        class="input mt-2 min-h-11 w-full"
         maxlength="200"
         required
         bind:value={name}
@@ -61,14 +61,14 @@
     <label class="mt-4 block text-sm font-medium">
       Team text
       <textarea
-        class="mt-2 min-h-96 w-full rounded-lg border bg-background p-3 font-mono text-xs leading-5"
+        class="textarea mt-2 min-h-96 w-full p-3 font-mono text-xs leading-5"
         maxlength="50000"
         required
         bind:value={paste}></textarea>
     </label>
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <Button type="submit" class="min-h-11">Save custom team</Button>
-      <p class="text-xs text-muted-foreground">
+      <p class="text-xs text-base-content/70">
         Saves locally as {data.currentRegulation}; legality remains unverified.
       </p>
     </div>

@@ -64,6 +64,15 @@ test('CSV handles quoted commas/newlines/escaped quotes and rejects truncation',
   assert.throws(() => parseSheet('broken,csv', 'M-C'));
 });
 
+test('CSV accepts uneven row widths and mixed newline forms', () => {
+  assert.deepEqual(parseCsv('a,b\r\nc\nd,e,f\r,,'), [
+    ['a', 'b'],
+    ['c'],
+    ['d', 'e', 'f'],
+    ['', '', ''],
+  ]);
+});
+
 test('deduplication keeps independent evidence and repeat imports stable', () => {
   const first = {
     id: 'one',

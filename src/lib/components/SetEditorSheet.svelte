@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Combobox } from 'bits-ui';
+  import { tick } from 'svelte';
   import X from '@lucide/svelte/icons/x';
   import EvEditor from '$lib/components/EvEditor.svelte';
   import ItemIcon from '$lib/components/ItemIcon.svelte';
@@ -75,6 +77,12 @@
   let editorElement = $state<HTMLElement>();
   let replacingMove = $state<string | null>(null);
   let swapInMove = $state<string | null>(null);
+  let selectedPokemon = $state('');
+  let selectedItem = $state('');
+  let selectedAbility = $state('');
+  let selectedNature = $state('');
+  let selectedMove = $state('');
+  let moveKeyboardIntent = $state(false);
 
   const draftMember = $derived<Member>({
     pokemon: form.pokemon.trim(),
@@ -257,6 +265,84 @@
     }
     swapInMove = value;
   }
+  const NAV_KEYS = [
+    'ArrowUp',
+    'ArrowDown',
+    'Home',
+    'End',
+    'PageUp',
+    'PageDown',
+  ];
+  function onOpenChange(
+    field: 'pokemon' | 'item' | 'ability' | 'nature' | 'moves',
+    open: boolean
+  ) {
+    if (open) activeField = field;
+    else if (activeField === field) activeField = null;
+  }
+  function selectPokemon(value: string) {
+    selectedPokemon = value;
+    if (!value) return;
+    const option = filteredPokemon.find((o) => o.pokemon === value);
+    if (option) applyPreFilled(option.member);
+    error = '';
+    void tick().then(() => (selectedPokemon = ''));
+  }
+  function selectItem(value: string) {
+    selectedItem = value;
+    if (!value) return;
+    form.item = value;
+    itemQuery = value;
+    error = '';
+    activeField = null;
+    void tick().then(() => (selectedItem = ''));
+  }
+  function selectAbility(value: string) {
+    selectedAbility = value;
+    if (!value) return;
+    form.ability = value;
+    abilityQuery = value;
+    error = '';
+    activeField = null;
+    void tick().then(() => (selectedAbility = ''));
+  }
+  function selectNature(value: string) {
+    selectedNature = value;
+    if (!value) return;
+    form.nature = value;
+    natureQuery = value;
+    error = '';
+    activeField = null;
+    void tick().then(() => (selectedNature = ''));
+  }
+  function selectMove(value: string) {
+    selectedMove = value;
+    if (!value) return;
+    moveKeyboardIntent = false;
+    clickSuggestion(value);
+    void tick().then(() => {
+      selectedMove = '';
+      moveInput = '';
+    });
+  }
+  function onMoveKeydown(event: KeyboardEvent) {
+    if (NAV_KEYS.includes(event.key)) {
+      moveKeyboardIntent = true;
+      return;
+    }
+    if (event.key === 'Escape') {
+      moveKeyboardIntent = false;
+      return;
+    }
+    if (event.key === 'Enter' && !event.isComposing) {
+      const active =
+        event.currentTarget instanceof HTMLElement &&
+        !!event.currentTarget.getAttribute('aria-activedescendant');
+      if (activeField === 'moves' && moveKeyboardIntent && active) return;
+      event.preventDefault();
+      addMove();
+    }
+  }
   export function apply(): boolean {
     try {
       if (initialField === 'text') {
@@ -297,231 +383,266 @@
   class="t-panel-slide min-w-0"
   use:revealPanel
 >
+  {#snippet noMatch(text: string)}
+    <p class="p-3 text-sm text-base-content/70">{text}</p>
+  {/snippet}
   <div class="flex items-center gap-2.5">
     <PokemonSprite pokemon={form.pokemon} size={36} />
     <div class="min-w-0">
       <h2 class="font-semibold wrap-break-word">Edit {fieldLabel}</h2>
-      <p class="text-xs wrap-break-word text-muted-foreground">
+      <p class="text-xs wrap-break-word text-base-content/70">
         {form.pokemon}
       </p>
     </div>
   </div>
-  {#if initialField !== 'moves' && initialField !== 'text'}
-    <div class="mt-4" onfocusout={handleBlur}>
-      {#if initialField === 'pokemon'}
-        <div class="min-w-0">
-          <label for="set-pokemon-input" class="text-sm font-medium"
-            >Pokémon</label
+
+  {#if initialField === 'pokemon'}
+    <div class="mt-4 min-w-0">
+      <label for="set-pokemon-input" class="text-sm font-medium">Pokémon</label>
+      <Combobox.Root
+        type="single"
+        value={selectedPokemon}
+        onValueChange={selectPokemon}
+        allowDeselect={false}
+        open={activeField === 'pokemon'}
+        onOpenChange={(open) => onOpenChange('pokemon', open)}
+        inputValue={form.pokemon}
+      >
+        <Combobox.Input
+          id="set-pokemon-input"
+          placeholder="Choose Pokémon"
+          clearOnDeselect={false}
+          onfocus={() => activate('pokemon')}
+          oninput={(event) => {
+            pokemonQuery = event.currentTarget.value;
+            form.pokemon = event.currentTarget.value;
+            selectedPokemon = '';
+            error = '';
+            activeField = 'pokemon';
+          }}
+          class="input mt-2 min-h-11 w-full text-sm"
+        />
+        <Combobox.Portal>
+          <Combobox.Content
+            sideOffset={6}
+            aria-label="Pokémon suggestions"
+            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
           >
-          <input
-            id="set-pokemon-input"
-            class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            placeholder="Choose Pokémon"
-            bind:value={form.pokemon}
-            onfocus={() => activate('pokemon')}
-            oninput={(e) => {
-              pokemonQuery = e.currentTarget.value;
-              error = '';
-            }}
-            onkeydown={(e) => {
-              if (e.key === 'Escape') activeField = null;
-            }}
-          />
-          {#if activeField === 'pokemon' && filteredPokemon.length}
-            <div
-              class="mt-3 grid animate-in gap-2 duration-200 fade-in-0"
-              aria-label="Pokémon suggestions"
-            >
+            <Combobox.Viewport>
               {#each filteredPokemon as option (option.pokemon)}
-                <Button
-                  variant={normalize(form.pokemon) === normalize(option.pokemon)
-                    ? 'default'
-                    : 'outline'}
-                  class="h-auto min-h-12 w-full justify-start p-2.5 text-left whitespace-normal"
-                  onclick={() => applyPreFilled(option.member)}
+                <Combobox.Item
+                  value={option.pokemon}
+                  label={option.pokemon}
+                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
                 >
-                  <div class="flex w-full items-center gap-2.5">
-                    <PokemonSprite pokemon={option.pokemon} size={32} />
-                    <div class="min-w-0 flex-1">
-                      <div class="flex items-center justify-between gap-2">
-                        <span class="truncate text-sm font-semibold"
-                          >{option.pokemon}</span
-                        >
-                        <span class="shrink-0 text-xs opacity-70"
-                          >{option.sharedTeammates} shared</span
-                        >
-                      </div>
-                      <span
-                        class="mt-0.5 block truncate text-xs text-muted-foreground"
-                        >{[
-                          option.member.item,
-                          option.member.ability,
-                          option.member.nature,
-                        ]
-                          .filter(Boolean)
-                          .join(' · ')}</span
+                  <PokemonSprite pokemon={option.pokemon} size={32} />
+                  <div class="min-w-0 flex-1">
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="truncate text-sm font-semibold"
+                        >{option.pokemon}</span
+                      >
+                      <span class="shrink-0 text-xs opacity-70"
+                        >{option.sharedTeammates} shared</span
                       >
                     </div>
+                    <span
+                      class="mt-0.5 block truncate text-xs text-base-content/70"
+                      >{[
+                        option.member.item,
+                        option.member.ability,
+                        option.member.nature,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}</span
+                    >
                   </div>
-                </Button>
+                </Combobox.Item>
+              {:else}
+                {@render noMatch('No matching suggestions.')}
               {/each}
-            </div>
-          {/if}
+            </Combobox.Viewport>
+          </Combobox.Content>
+        </Combobox.Portal>
+      </Combobox.Root>
+    </div>
+  {:else if initialField === 'item'}
+    <div class="mt-4 min-w-0">
+      <label for="set-item-input" class="text-sm font-medium">Item</label>
+      <Combobox.Root
+        type="single"
+        value={selectedItem}
+        onValueChange={selectItem}
+        allowDeselect={false}
+        open={activeField === 'item'}
+        onOpenChange={(open) => onOpenChange('item', open)}
+        inputValue={form.item}
+      >
+        <div class="relative mt-2">
+          {#if form.item}<span class="pointer-events-none absolute top-3 left-3"
+              ><ItemIcon item={form.item} /></span
+            >{/if}
+          <Combobox.Input
+            id="set-item-input"
+            placeholder="Custom item"
+            clearOnDeselect={false}
+            onfocus={() => activate('item')}
+            oninput={(event) => {
+              itemQuery = event.currentTarget.value;
+              form.item = event.currentTarget.value;
+              selectedItem = '';
+              error = '';
+              activeField = 'item';
+            }}
+            class="input min-h-11 w-full pr-3 text-sm {form.item
+              ? 'pl-10'
+              : 'pl-3'}"
+          />
         </div>
-      {:else if initialField === 'item'}
-        <div class="min-w-0">
-          <label for="set-item-input" class="text-sm font-medium">Item</label>
-          <div class="relative mt-2">
-            {#if form.item}<span
-                class="pointer-events-none absolute top-3 left-3"
-                ><ItemIcon item={form.item} /></span
-              >{/if}
-            <input
-              id="set-item-input"
-              class="min-h-11 w-full rounded-lg border bg-background py-2 pr-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary {form.item
-                ? 'pl-10'
-                : 'pl-3'}"
-              placeholder="Custom item"
-              bind:value={form.item}
-              onfocus={() => activate('item')}
-              oninput={(e) => {
-                itemQuery = e.currentTarget.value;
-                error = '';
-              }}
-              onkeydown={(e) => {
-                if (e.key === 'Escape') activeField = null;
-              }}
-            />
-          </div>
-          {#if activeField === 'item' && filteredItems.length}<div
-              class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
-              aria-label="Item suggestions"
-            >
+        <Combobox.Portal>
+          <Combobox.Content
+            sideOffset={6}
+            aria-label="Item suggestions"
+            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+          >
+            <Combobox.Viewport>
               {#each filteredItems as option (option.value)}
-                <Button
-                  variant={normalize(form.item) === normalize(option.value)
-                    ? 'default'
-                    : 'outline'}
-                  class="min-h-11 max-w-full text-left whitespace-normal"
-                  onclick={() => {
-                    form.item = option.value;
-                    activeField = null;
-                    error = '';
-                  }}>{option.value}</Button
+                <Combobox.Item
+                  value={option.value}
+                  label={option.value}
+                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
+                  >{option.value}</Combobox.Item
                 >
+              {:else}
+                {@render noMatch('No matching suggestions.')}
               {/each}
-            </div>{/if}
-        </div>
-      {:else if initialField === 'ability'}
-        <div class="min-w-0">
-          <label for="set-ability-input" class="text-sm font-medium"
-            >Ability</label
+            </Combobox.Viewport>
+          </Combobox.Content>
+        </Combobox.Portal>
+      </Combobox.Root>
+    </div>
+  {:else if initialField === 'ability'}
+    <div class="mt-4 min-w-0">
+      <label for="set-ability-input" class="text-sm font-medium">Ability</label>
+      <Combobox.Root
+        type="single"
+        value={selectedAbility}
+        onValueChange={selectAbility}
+        allowDeselect={false}
+        open={activeField === 'ability'}
+        onOpenChange={(open) => onOpenChange('ability', open)}
+        inputValue={form.ability}
+      >
+        <Combobox.Input
+          id="set-ability-input"
+          placeholder="Custom ability"
+          clearOnDeselect={false}
+          onfocus={() => activate('ability')}
+          oninput={(event) => {
+            abilityQuery = event.currentTarget.value;
+            form.ability = event.currentTarget.value;
+            selectedAbility = '';
+            error = '';
+            activeField = 'ability';
+          }}
+          class="input mt-2 min-h-11 w-full text-sm"
+        />
+        <Combobox.Portal>
+          <Combobox.Content
+            sideOffset={6}
+            aria-label="Ability suggestions"
+            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
           >
-          <input
-            id="set-ability-input"
-            class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            placeholder="Custom ability"
-            bind:value={form.ability}
-            onfocus={() => activate('ability')}
-            oninput={(e) => {
-              abilityQuery = e.currentTarget.value;
-              error = '';
-            }}
-            onkeydown={(e) => {
-              if (e.key === 'Escape') activeField = null;
-            }}
-          />
-          {#if activeField === 'ability' && filteredAbilities.length}<div
-              class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
-              aria-label="Ability suggestions"
-            >
+            <Combobox.Viewport>
               {#each filteredAbilities as option (option.value)}
-                <Button
-                  variant={normalize(form.ability) === normalize(option.value)
-                    ? 'default'
-                    : 'outline'}
-                  class="min-h-11 max-w-full text-left whitespace-normal"
-                  onclick={() => {
-                    form.ability = option.value;
-                    activeField = null;
-                    error = '';
-                  }}>{option.value}</Button
+                <Combobox.Item
+                  value={option.value}
+                  label={option.value}
+                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
+                  >{option.value}</Combobox.Item
                 >
+              {:else}
+                {@render noMatch('No matching suggestions.')}
               {/each}
-            </div>{/if}
-        </div>
-      {:else if initialField === 'nature'}
-        <div class="min-w-0">
-          <label for="set-nature-input" class="text-sm font-medium"
-            >Nature</label
+            </Combobox.Viewport>
+          </Combobox.Content>
+        </Combobox.Portal>
+      </Combobox.Root>
+    </div>
+  {:else if initialField === 'nature'}
+    <div class="mt-4 min-w-0">
+      <label for="set-nature-input" class="text-sm font-medium">Nature</label>
+      <Combobox.Root
+        type="single"
+        value={selectedNature}
+        onValueChange={selectNature}
+        allowDeselect={false}
+        open={activeField === 'nature'}
+        onOpenChange={(open) => onOpenChange('nature', open)}
+        inputValue={form.nature}
+      >
+        <Combobox.Input
+          id="set-nature-input"
+          placeholder="Choose nature"
+          clearOnDeselect={false}
+          onfocus={() => activate('nature')}
+          oninput={(event) => {
+            natureQuery = event.currentTarget.value;
+            form.nature = event.currentTarget.value;
+            selectedNature = '';
+            error = '';
+            activeField = 'nature';
+          }}
+          onblur={() => {
+            form.nature = exactNature(form.nature) || form.nature;
+          }}
+          class="input mt-2 min-h-11 w-full text-sm"
+        />
+        <Combobox.Portal>
+          <Combobox.Content
+            sideOffset={6}
+            aria-label="Nature suggestions"
+            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
           >
-          <input
-            id="set-nature-input"
-            class="mt-2 min-h-11 w-full rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            placeholder="Choose nature"
-            bind:value={form.nature}
-            onfocus={() => activate('nature')}
-            oninput={(e) => {
-              natureQuery = e.currentTarget.value;
-              error = '';
-            }}
-            onblur={() => {
-              form.nature = exactNature(form.nature) || form.nature;
-            }}
-            onkeydown={(e) => {
-              if (e.key === 'Escape') activeField = null;
-            }}
-          />
-          {#if activeField === 'nature'}<div
-              class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
-              aria-label="Nature suggestions"
-            >
+            <Combobox.Viewport>
               {#each filteredNatures as nature (nature)}
-                <Button
-                  variant={normalize(form.nature) === normalize(nature)
-                    ? 'default'
-                    : 'outline'}
-                  class="min-h-11"
-                  onclick={() => {
-                    form.nature = nature;
-                    activeField = null;
-                    error = '';
-                  }}>{nature}</Button
+                <Combobox.Item
+                  value={nature}
+                  label={nature}
+                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
+                  >{nature}</Combobox.Item
                 >
-              {:else}<p class="text-sm text-muted-foreground">
-                  No matching nature.
-                </p>{/each}
-            </div>{/if}
-        </div>
-      {:else if initialField === 'spread'}
-        <div class="min-w-0">
-          <label for="set-evs-input" class="text-sm font-medium"
-            >EV spread</label
-          >
-          {#if activeField !== 'spread'}<Button
-              id="set-evs-input"
-              variant="outline"
-              class="mt-2 min-h-11 w-full justify-start font-mono whitespace-normal"
-              onclick={() => activate('spread')}
-              >{form.spread || 'No EVs'}</Button
-            >{:else}<EvEditor
-              spread={form.spread}
-              suggestions={spreadSuggestions}
-              onspreadchange={(spread, nature) => {
-                form.spread = spread;
-                if (nature) form.nature = nature;
-                spreadTouched = true;
-                error = '';
-              }}
-              ondone={() => (activeField = null)}
-            />{/if}
-        </div>
-      {/if}
+              {:else}
+                {@render noMatch('No matching nature.')}
+              {/each}
+            </Combobox.Viewport>
+          </Combobox.Content>
+        </Combobox.Portal>
+      </Combobox.Root>
+    </div>
+  {:else if initialField === 'spread'}
+    <div class="mt-4 min-w-0" onfocusout={handleBlur}>
+      <label for="set-evs-input" class="text-sm font-medium">EV spread</label>
+      {#if activeField !== 'spread'}<Button
+          id="set-evs-input"
+          variant="outline"
+          class="mt-2 min-h-11 w-full justify-start font-mono whitespace-normal"
+          onclick={() => activate('spread')}>{form.spread || 'No EVs'}</Button
+        >{:else}<EvEditor
+          spread={form.spread}
+          suggestions={spreadSuggestions}
+          onspreadchange={(spread, nature) => {
+            form.spread = spread;
+            if (nature) form.nature = nature;
+            spreadTouched = true;
+            error = '';
+          }}
+          ondone={() => (activeField = null)}
+        />{/if}
     </div>
   {/if}
 
   {#if initialField === 'moves'}
-    <div class="mt-4 min-w-0" onfocusout={handleBlur}>
+    <div class="mt-4 min-w-0" data-moves-editor>
       <h3 class="text-sm font-medium">Moves ({form.moves.length}/4)</h3>
       {#if replacingMove}
         <p class="mt-1 text-xs text-primary">
@@ -532,7 +653,7 @@
           Swap in {swapInMove}. Choose a move to replace.
         </p>
       {:else if form.moves.length === 4}
-        <p class="mt-1 text-xs text-muted-foreground">
+        <p class="mt-1 text-xs text-base-content/70">
           Choose a move or a suggestion to swap.
         </p>
       {/if}
@@ -548,7 +669,7 @@
               normalize(replacingMove) === normalize(move)}
             {@const swappable = swapInMove !== null}
             <li
-              class="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-card px-3 py-1 shadow-2xs {selected ||
+              class="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-base-100 px-3 py-1 shadow-2xs {selected ||
               swappable
                 ? 'border-primary ring-1 ring-primary/40'
                 : ''}"
@@ -556,7 +677,7 @@
             >
               <button
                 type="button"
-                class="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left hover:bg-background focus-visible:ring-2 focus-visible:ring-primary"
+                class="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
                 aria-pressed={selected || swappable}
                 onclick={() => clickMove(move)}
               >
@@ -577,48 +698,73 @@
           {/each}
         </ul>{/if}
       <div class="mt-2 flex gap-2">
-        <input
-          id="set-moves-input"
-          aria-label="Custom move"
-          class="min-h-11 min-w-0 flex-1 rounded-lg border bg-background px-3 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          placeholder="Custom move"
-          bind:value={moveInput}
-          onfocus={() => activate('moves')}
-          onkeydown={(event) => {
-            if (event.key === 'Enter') {
-              event.preventDefault();
-              addMove();
-            }
-            if (event.key === 'Escape') activeField = null;
-          }}
-        />
+        <Combobox.Root
+          type="single"
+          value={selectedMove}
+          onValueChange={selectMove}
+          allowDeselect={false}
+          open={activeField === 'moves'}
+          onOpenChange={(open) => onOpenChange('moves', open)}
+          inputValue={moveInput}
+        >
+          <Combobox.Input
+            id="set-moves-input"
+            aria-label="Custom move"
+            placeholder="Custom move"
+            clearOnDeselect={true}
+            onfocus={() => {
+              activate('moves');
+              moveKeyboardIntent = false;
+            }}
+            oninput={(event) => {
+              moveInput = event.currentTarget.value;
+              moveKeyboardIntent = false;
+              error = '';
+              activeField = 'moves';
+            }}
+            onkeydown={onMoveKeydown}
+            class="input min-h-11 min-w-0 flex-1 text-sm"
+          />
+          <Combobox.Portal>
+            <Combobox.Content
+              sideOffset={6}
+              aria-label="Move suggestions"
+              onInteractOutside={(e) => {
+                if (
+                  e.target instanceof Element &&
+                  e.target.closest('[data-moves-editor]')
+                )
+                  e.preventDefault();
+              }}
+              class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+            >
+              <Combobox.Viewport>
+                {#each remainingMoves as option (option.value)}
+                  {@const type = getMoveType(option.value)}
+                  {@const typeColor = type ? TYPE_COLORS[type] : null}
+                  <Combobox.Item
+                    value={option.value}
+                    label={option.value}
+                    class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
+                    style={typeColor
+                      ? `border-left: 3px solid ${typeColor};`
+                      : ''}
+                  >
+                    {#if type}<img
+                        src={getTypeIcon(type)}
+                        alt={type}
+                        class="size-3.5 shrink-0 object-contain"
+                      />{/if}
+                    <span>{option.value}</span>
+                  </Combobox.Item>
+                {:else}
+                  {@render noMatch('No matching suggestions.')}
+                {/each}
+              </Combobox.Viewport>
+            </Combobox.Content>
+          </Combobox.Portal>
+        </Combobox.Root>
         <Button class="min-h-11" onclick={() => addMove()}>Add move</Button>
-      </div>
-      <div
-        class="mt-2 flex animate-in flex-wrap gap-2 duration-200 fade-in-0"
-        aria-label="Move suggestions"
-      >
-        {#each remainingMoves as option (option.value)}
-          {@const type = getMoveType(option.value)}
-          {@const typeColor = type ? TYPE_COLORS[type] : null}
-          <Button
-            variant={normalize(swapInMove ?? '') === normalize(option.value)
-              ? 'default'
-              : 'outline'}
-            class="min-h-11 max-w-full gap-2 text-left whitespace-normal"
-            style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
-            onclick={() => clickSuggestion(option.value)}
-          >
-            {#if type}
-              <img
-                src={getTypeIcon(type)}
-                alt={type}
-                class="size-3.5 shrink-0 object-contain"
-              />
-            {/if}
-            <span>{option.value}</span>
-          </Button>
-        {/each}
       </div>
     </div>
   {/if}
@@ -629,12 +775,12 @@
     >
     <textarea
       id="set-raw-textarea"
-      class="mt-2 min-h-52 w-full resize-y rounded-lg border bg-background p-3 font-mono text-xs leading-5 outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      class="textarea mt-2 min-h-52 w-full resize-y p-3 font-mono text-xs leading-5"
       bind:value={rawText}
       oninput={() => (error = '')}></textarea>
   {/if}
 
-  {#if error}<p role="alert" class="mt-3 text-sm font-medium text-destructive">
+  {#if error}<p role="alert" class="mt-3 text-sm font-medium text-error">
       {error}
     </p>{/if}
   <div class="mt-4 flex justify-end gap-2 border-t pt-3">

@@ -124,6 +124,9 @@ test('old saved teams load without retaining obsolete locks or losing original a
     'Pokemon0 @ Item\nAbility: Ability\nLevel: 50\nTera Type: Fire\nIVs: 0 Atk\nEVs: 32 HP\nAdamant Nature\n- Protect';
   saved.original.members[0].set = saved.members[0].set;
   saved.original.paste = saved.members[0].set;
+  saved.original.cachedAt = '2026-09-01T00:00:00Z';
+  saved.members[0].flavor = 'keep-member';
+  saved.sources[0].note = 'keep-source';
   const { changeSlot, ...old } = saved;
   assert.equal(changeSlot, null);
   const raw = JSON.stringify([
@@ -135,6 +138,10 @@ test('old saved teams load without retaining obsolete locks or losing original a
   ]);
   assert.deepEqual(readSavedTeams({ getItem: () => raw }), [saved]);
   const loaded = readSavedTeams({ getItem: () => raw })[0];
+  assert.equal(loaded.original.paste, saved.original.paste);
+  assert.equal(loaded.original.cachedAt, '2026-09-01T00:00:00Z');
+  assert.equal(loaded.members[0].flavor, 'keep-member');
+  assert.equal(loaded.sources[0].note, 'keep-source');
   assert.match(loaded.original.paste, /Level: 50/);
   for (const text of [
     setText(loaded.members[0]),
@@ -146,12 +153,67 @@ test('old saved teams load without retaining obsolete locks or losing original a
     assert.match(text, /EVs: 32 HP/);
     assert.match(text, /- Protect/);
   }
+  let stored = raw;
+  const storage = {
+    getItem: (key) => (key === storageKey ? stored : null),
+    setItem: (_, next) => {
+      stored = next;
+    },
+  };
+  saveTeam(storage, loaded);
+  const reloaded = readSavedTeams(storage)[0];
+  assert.equal(reloaded.changeSlot, null);
+  assert.equal(reloaded.original.cachedAt, '2026-09-01T00:00:00Z');
+  assert.equal(reloaded.members[0].flavor, 'keep-member');
+  assert.equal(reloaded.sources[0].note, 'keep-source');
+  assert.equal(reloaded.original.paste, saved.original.paste);
   assert.throws(
     () =>
       readSavedTeams({
         getItem: () => JSON.stringify([{ ...saved, changeSlot: 6 }]),
       }),
     /untouched/
+  );
+});
+
+test('saveTeam rejects empty-normalizing and duplicate species without touching storage', () => {
+  let value = null;
+  const storage = {
+    getItem: (key) => {
+      assert.equal(key, storageKey);
+      return value;
+    },
+    setItem: (_, next) => {
+      value = next;
+    },
+  };
+  saveTeam(storage, newSavedTeam(team()));
+  const original = value;
+
+  const empty = newSavedTeam(team('empty'));
+  empty.members[0].pokemon = '!!!';
+  assert.throws(() => saveTeam(storage, empty), /untouched/);
+  assert.equal(value, original);
+
+  const duplicate = newSavedTeam(team('duplicate'));
+  duplicate.members[0].pokemon = 'Pikachu';
+  duplicate.members[1].pokemon = 'pikachu';
+  assert.throws(() => saveTeam(storage, duplicate), /untouched/);
+  assert.equal(value, original);
+});
+
+test('readSavedTeams rejects oversized and duplicate-ID storage', () => {
+  const many = JSON.stringify(
+    Array.from({ length: 51 }, (_, i) => newSavedTeam(team(`team${i}`)))
+  );
+  assert.throws(() => readSavedTeams({ getItem: () => many }), /untouched/);
+
+  const a = newSavedTeam(team());
+  const b = newSavedTeam(team());
+  b.id = a.id;
+  assert.throws(
+    () => readSavedTeams({ getItem: () => JSON.stringify([a, b]) }),
+    /Duplicate saved team IDs/
   );
 });
 

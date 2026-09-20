@@ -30,7 +30,7 @@
 </script>
 
 <article
-  class="group min-w-0 rounded-2xl border bg-card transition-[box-shadow,border-color] duration-200 hover:border-primary/40 hover:shadow-sm"
+  class="group card min-w-0 bg-base-100 transition-[box-shadow,border-color] duration-200 card-border hover:border-primary/40 hover:shadow-sm"
 >
   <a
     href={resolve(`/teams/${team.id}${query}`)}
@@ -38,17 +38,15 @@
     class="block rounded-2xl p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
   >
     <div class="mb-3 flex items-center justify-between gap-2">
-      <span class="rounded-md bg-secondary px-2 py-1 text-xs font-semibold"
-        >Reg {team.regulation}</span
-      >
-      <span class="shrink-0 text-xs whitespace-nowrap text-muted-foreground"
+      <span class="badge badge-soft">Reg {team.regulation}</span>
+      <span class="shrink-0 text-xs whitespace-nowrap text-base-content/70"
         >{team.publishedAt}</span
       >
     </div>
     <h2 class="line-clamp-2 text-base leading-6 font-semibold tracking-tight">
       {team.name}
     </h2>
-    <p class="mt-1 text-xs wrap-break-word text-muted-foreground">
+    <p class="mt-1 text-xs wrap-break-word text-base-content/70">
       {team.creator || 'Creator not listed'}
     </p>
     <ul class="my-3 grid grid-cols-3 gap-2" aria-label="Team members">
@@ -73,14 +71,14 @@
           {result.label}
         </p>
         {#if result.event}<p
-            class="mt-0.5 truncate text-xs text-muted-foreground"
+            class="mt-0.5 truncate text-xs text-base-content/70"
             title={result.event}
           >
             {result.event}
           </p>{/if}
       </div>
       <ArrowUpRight
-        class="size-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+        class="size-4 shrink-0 text-base-content/70 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
         aria-hidden="true"
       />
     </div>

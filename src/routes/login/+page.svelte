@@ -12,25 +12,25 @@
 </svelte:head>
 
 <main
-  class="flex min-h-svh flex-col items-center justify-center bg-background px-4 py-8"
+  class="flex min-h-svh flex-col items-center justify-center bg-base-200 px-4 py-8"
 >
   <div class="w-full max-w-sm">
     <div class="mb-6 flex justify-center">
       <Compass class="size-16 text-primary" aria-hidden="true" />
     </div>
-    <div class="rounded-xl border bg-card p-6 shadow-sm">
+    <div class="card bg-base-100 p-6 shadow-sm card-border">
       <h1 class="text-center text-2xl font-semibold tracking-tight">
         Champion's Atlas
       </h1>
-      <p class="mt-1 mb-5 text-center text-sm text-muted-foreground">
+      <p class="mt-1 mb-5 text-center text-sm text-base-content/70">
         Sign in to browse and sync your teams
       </p>
-      <div class="mb-5 h-px bg-border" aria-hidden="true"></div>
+      <div class="mb-5 h-px bg-base-300" aria-hidden="true"></div>
 
       {#if sync.configured}
         <Button
           variant="outline"
-          class="w-full gap-3 bg-card text-foreground"
+          class="w-full gap-3"
           onclick={signIn}
           disabled={signingIn}
         >
@@ -59,20 +59,16 @@
           Sign in with Google
         </Button>
       {:else}
-        <p class="text-center text-sm text-muted-foreground">
+        <p class="text-center text-sm text-base-content/70">
           Sign-in is not configured.
         </p>
       {/if}
 
       {#if sync.error}
-        <div
-          class="mt-4 rounded-md bg-destructive p-3 text-center text-sm text-white"
-        >
-          {sync.error}
-        </div>
+        <div class="mt-4 alert alert-error">{sync.error}</div>
       {/if}
     </div>
-    <p class="mt-6 text-center text-xs text-muted-foreground">
+    <p class="mt-6 text-center text-xs text-base-content/70">
       An independent fan project. Pokémon belongs to its respective owners.
     </p>
   </div>

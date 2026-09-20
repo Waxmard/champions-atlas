@@ -1,17 +1,6 @@
+import { z } from 'zod';
 import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
 import { normalizeSet, normalizeSpread, parseCustomPaste } from './paste.ts';
-
-export interface SavedTeam {
-  id: string;
-  name: string;
-  original: Pick<
-    Team,
-    'id' | 'name' | 'regulation' | 'pasteUrl' | 'members' | 'paste'
-  >;
-  members: Member[];
-  changeSlot: number | null;
-  sources: { name: string; pasteUrl: string }[];
-}
 
 export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
@@ -184,84 +173,64 @@ export function differences(before: Member[], after: Member[]) {
   return rows;
 }
 
-const object = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
-const text = (value: unknown): value is string =>
-  typeof value === 'string' && value.length <= 50000;
-const optionalText = (value: unknown) => value === null || text(value);
-const texts = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.length <= 4 && value.every(text);
-const source = (value: unknown) =>
-  object(value) &&
-  text(value.name) &&
-  text(value.pasteUrl) &&
-  /^https:\/\/pokepast\.es\/[a-f0-9]{16}$/.test(value.pasteUrl);
-const original = (value: unknown) =>
-  object(value) &&
-  text(value.name) &&
-  text(value.pasteUrl) &&
-  (value.pasteUrl === '' ||
-    /^https:\/\/pokepast\.es\/[a-f0-9]{16}$/.test(value.pasteUrl));
-const members = (value: unknown): value is Member[] =>
-  Array.isArray(value) &&
-  value.length === 6 &&
-  value.every(
-    (member) =>
-      object(member) &&
-      text(member.pokemon) &&
-      !!normalize(member.pokemon) &&
-      ['item', 'ability', 'nature', 'spread'].every((key) =>
-        optionalText(member[key])
-      ) &&
-      texts(member.moves) &&
-      (member.set === undefined || text(member.set))
-  ) &&
-  new Set(value.map((member) => normalize(member.pokemon))).size === 6;
+const textSchema = z.string().max(50_000);
+const pasteUrlSchema = textSchema.regex(
+  /^https:\/\/pokepast\.es\/[a-f0-9]{16}$/
+);
+const memberSchema = z.looseObject({
+  pokemon: textSchema.refine((value) => Boolean(normalize(value))),
+  item: textSchema.nullable(),
+  ability: textSchema.nullable(),
+  moves: z.array(textSchema).max(4),
+  nature: textSchema.nullable(),
+  spread: textSchema.nullable(),
+  set: textSchema.optional(),
+});
+const membersSchema = z
+  .array(memberSchema)
+  .length(6)
+  .refine(
+    (members) =>
+      new Set(members.map((member) => normalize(member.pokemon))).size === 6
+  );
+const originalSchema = z.looseObject({
+  id: textSchema,
+  name: textSchema,
+  regulation: textSchema,
+  pasteUrl: z.union([z.literal(''), pasteUrlSchema]),
+  members: membersSchema,
+  paste: textSchema.nullable(),
+});
+const sourceSchema = z.looseObject({
+  name: textSchema,
+  pasteUrl: pasteUrlSchema,
+});
+const savedTeamSchema = z.object({
+  id: textSchema,
+  name: textSchema,
+  original: originalSchema,
+  members: membersSchema,
+  changeSlot: z.number().int().min(0).max(5).nullable().default(null),
+  sources: z.array(sourceSchema).max(100),
+});
+const savedTeamsSchema = z.array(savedTeamSchema).max(50);
+export type SavedTeam = z.infer<typeof savedTeamSchema>;
 
 export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
   const raw = storage.getItem(storageKey);
   if (raw === null) return [];
   const value: unknown = JSON.parse(raw);
-  if (
-    !Array.isArray(value) ||
-    value.length > 50 ||
-    !value.every(
-      (team) =>
-        object(team) &&
-        text(team.id) &&
-        text(team.name) &&
-        object(team.original) &&
-        original(team.original) &&
-        text(team.original.id) &&
-        text(team.original.regulation) &&
-        optionalText(team.original.paste) &&
-        members(team.original.members) &&
-        members(team.members) &&
-        Array.isArray(team.sources) &&
-        team.sources.length <= 100 &&
-        team.sources.every(source) &&
-        (team.changeSlot === undefined ||
-          team.changeSlot === null ||
-          (Number.isInteger(team.changeSlot) &&
-            Number(team.changeSlot) >= 0 &&
-            Number(team.changeSlot) < 6))
-    )
-  )
+  const result = savedTeamsSchema.safeParse(value);
+  if (!result.success)
     throw new Error(
       'Saved teams could not be read. Existing data has been left untouched.'
     );
-  if (new Set(value.map((team) => team.id)).size !== value.length)
+  const teams = result.data;
+  if (new Set(teams.map((team) => team.id)).size !== teams.length)
     throw new Error(
       'Duplicate saved team IDs. Existing data has been left untouched.'
     );
-  return value.map((team) => ({
-    id: team.id,
-    name: team.name,
-    original: team.original,
-    members: team.members,
-    sources: team.sources,
-    changeSlot: team.changeSlot ?? null,
-  })) as SavedTeam[];
+  return teams;
 }
 
 export function saveTeam(

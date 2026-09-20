@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { parse as parseCsvRecords } from 'csv-parse/sync';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parsePaste } from '../src/lib/paste.ts';
@@ -16,41 +17,10 @@ export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
 export function parseCsv(text) {
-  const rows = [];
-  let row = [],
-    cell = '',
-    quoted = false,
-    closed = false;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (quoted) {
-      if (char === '"' && text[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else if (char === '"') {
-        quoted = false;
-        closed = true;
-      } else cell += char;
-    } else if (char === '"' && !cell && !closed) quoted = true;
-    else if (char === ',') {
-      row.push(cell);
-      cell = '';
-      closed = false;
-    } else if (char === '\n' || char === '\r') {
-      if (char === '\r' && text[i + 1] === '\n') i++;
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = '';
-      closed = false;
-    } else {
-      if (closed || char === '"') throw new Error('Malformed CSV quoting');
-      cell += char;
-    }
-  }
-  if (quoted) throw new Error('Unclosed CSV quote');
-  if (cell || row.length || closed) rows.push([...row, cell]);
-  return rows;
+  return parseCsvRecords(text, {
+    relax_column_count: true,
+    record_delimiter: ['\r\n', '\n', '\r'],
+  });
 }
 
 const value = (text = '') =>

@@ -289,7 +289,7 @@
   <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="text-3xl font-semibold tracking-tight">My teams</h1>
-      <p class="mt-2 text-sm text-muted-foreground">
+      <p class="mt-2 text-sm text-base-content/70">
         Keep your original. Explore changes. Save your own version.
       </p>
     </div>
@@ -302,16 +302,16 @@
       >
     </div>
   </div>
-  {#if storageError}<p role="alert" class="mt-5 rounded-xl border p-4 text-sm">
+  {#if storageError}<p role="alert" class="mt-5 alert alert-error">
       {storageError}
     </p>{/if}
-  {#if !ready}<p class="mt-8 text-muted-foreground">Loading saved teams…</p>
+  {#if !ready}<p class="mt-8 text-base-content/70">Loading saved teams…</p>
   {:else if !storageError}
     {#if saved.length}
       <label class="mt-6 block max-w-xl text-sm font-medium"
         >Saved team
         <select
-          class="filter-select mt-2"
+          class="select mt-2 min-h-11 w-full"
           value={draft?.id || ''}
           onchange={(event) => {
             void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
@@ -324,7 +324,7 @@
       </label>
     {:else}
       <p
-        class="mt-8 rounded-xl border border-dashed p-6 text-sm text-muted-foreground"
+        class="mt-8 rounded-xl border border-dashed p-6 text-sm text-base-content/70"
       >
         No saved teams yet. Open a catalog team and choose “Use this team”.
       </p>
@@ -340,12 +340,12 @@
       <section
         aria-label="Your team"
         bind:this={editorElement}
-        class="mt-4 rounded-2xl border bg-card p-5 sm:p-6"
+        class="card mt-4 bg-base-100 p-5 card-border sm:p-6"
       >
         <div class="flex flex-wrap items-end justify-between gap-4">
           <label class="block w-full max-w-xl text-sm font-medium"
             >Team name<input
-              class="filter-select mt-2"
+              class="input mt-2 min-h-11 w-full"
               maxlength="200"
               bind:value={draft.name}
             /></label
@@ -379,7 +379,7 @@
             afterLabel="With changes"
           />
         {/if}
-        <p class="mt-3 text-xs text-muted-foreground">
+        <p class="mt-3 text-xs text-base-content/70">
           {dirty ? 'Unsaved changes.' : 'Saved on this device.'} Original: {draft
             .original.name} · {draft.original.regulation}. Editing does not
           create a working rental code.
@@ -414,7 +414,7 @@
           {#each draft.members as member, index (index)}
             <section
               id={`pokemon-slot-${index}`}
-              class="min-w-0 overflow-hidden rounded-2xl border bg-card transition-all duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
+              class="min-w-0 overflow-hidden rounded-2xl border bg-base-100 transition-all duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
               index
                 ? 'border-primary p-4 shadow-md ring-2 ring-primary/30'
                 : 'hover:border-primary/30 hover:shadow-xs'}"
@@ -452,7 +452,7 @@
             </section>
           {/each}
         </div>
-        <p class="mt-4 text-xs leading-5 text-muted-foreground">
+        <p class="mt-4 text-xs leading-5 text-base-content/70">
           Team text normalizes to Pokémon Champions format (EVs out of 32, no
           IVs); unknown details stay omitted.
         </p>
@@ -461,7 +461,7 @@
             use:revealPanel
             >Export text<textarea
               readonly
-              class="mt-2 min-h-72 w-full rounded-lg border p-3 font-mono text-xs"
+              class="textarea mt-2 min-h-72 w-full p-3 font-mono text-xs"
               value={exportPaste(draft.members)}></textarea></label
           >{/if}
       </section>
