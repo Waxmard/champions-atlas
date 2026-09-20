@@ -123,12 +123,15 @@
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') persistIfDirty();
     };
-    const onPointerDown = (e: PointerEvent) => {
+    const onClick = (e: MouseEvent) => {
       if (activeEditIndex === null) return;
       const target = e.target as HTMLElement | null;
+      // A click on a dialog control that removes itself (e.g. "Remove move")
+      // detaches the target before the event reaches the window; treating it
+      // as outside the dialog would wrongly close the editor.
+      if (!target || !target.isConnected) return;
       const card = document.getElementById(`pokemon-slot-${activeEditIndex}`);
       if (
-        target &&
         card &&
         !card.contains(target) &&
         !target.closest(
@@ -141,12 +144,12 @@
     window.addEventListener('beforeunload', warn);
     window.addEventListener('pagehide', onHide);
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('click', onClick);
     return () => {
       window.removeEventListener('beforeunload', warn);
       window.removeEventListener('pagehide', onHide);
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('click', onClick);
     };
   });
   $effect(() => {
@@ -447,9 +450,9 @@
   {#if activeEditIndex !== null && draft}
     {@const editIndex = activeEditIndex!}
     <div
-      class="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/50 p-4 sm:p-8"
+      class="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/50"
     >
-      <div class="flex min-h-full items-start justify-center sm:items-center">
+      <div class="flex min-h-full items-center justify-center p-4 sm:p-8">
         <div
           role="dialog"
           aria-modal="true"

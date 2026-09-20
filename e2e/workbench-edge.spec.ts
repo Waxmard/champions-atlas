@@ -321,6 +321,31 @@ test('outside click cancels set edit and explicit apply commits', async ({
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
 });
 
+test('outside click over a nav link closes the editor without navigating', async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'desktop',
+    'Desktop-only: header is visible without scrolling'
+  );
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await page
+    .getByRole('region', { name: 'Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+
+  const browse = page.getByRole('link', { name: 'Browse teams', exact: true });
+  const box = await browse.boundingBox();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
+});
+
 test('lower-slot nature editing stays visible and persists on mobile', async ({
   page,
 }, testInfo) => {
@@ -348,6 +373,11 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     exact: true,
   });
   await expect(editor).toBeInViewport();
+  const box = await page.getByRole('dialog').boundingBox();
+  const viewportHeight = (await page.viewportSize())!.height;
+  expect(
+    Math.abs(box!.y - (viewportHeight - (box!.y + box!.height)))
+  ).toBeLessThanOrEqual(2);
   expect(await page.evaluate(() => scrollY)).toBe(before);
   const nature = editor.getByLabel('Nature', { exact: true });
   const initialNature = await nature.inputValue();
