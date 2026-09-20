@@ -2,6 +2,7 @@
   import './layout.css';
   import Compass from '@lucide/svelte/icons/compass';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
+  import { Avatar, DropdownMenu } from 'bits-ui';
   import { resolve } from '$app/paths';
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
@@ -18,6 +19,15 @@
     isHome || page.url.pathname.startsWith(resolve('/teams/'))
       ? resolve(`/?${page.url.searchParams}`)
       : resolve('/?browse=all')
+  );
+  const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
+  const userInitials = $derived(
+    userName
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]!.toUpperCase())
+      .join('') || '?'
   );
 
   onMount(() => initSync());
@@ -74,16 +84,50 @@
               >{sync.status === 'error' ? 'Sync failed' : 'Syncing…'}</span
             >{/if}
           {#if sync.user}
-            <span
-              class="hidden max-w-40 truncate text-sm text-muted-foreground sm:inline"
-              >{sync.user.displayName ?? sync.user.email}</span
-            >
-            <button
-              type="button"
-              onclick={signOut}
-              class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium text-primary transition-colors hover:bg-secondary focus-visible:ring-2"
-              >Sign out</button
-            >
+            <DropdownMenu.Root>
+              <DropdownMenu.Trigger
+                aria-label="Account menu"
+                class="inline-flex size-9 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
+              >
+                <Avatar.Root
+                  class="relative flex size-8 shrink-0 overflow-hidden rounded-full"
+                >
+                  {#if sync.user.photoURL}
+                    <Avatar.Image
+                      src={sync.user.photoURL}
+                      alt={userName}
+                      class="absolute inset-0 size-full object-cover"
+                    />
+                  {/if}
+                  <Avatar.Fallback
+                    class="flex size-full items-center justify-center bg-accent text-sm font-medium text-accent-foreground"
+                    >{userInitials}</Avatar.Fallback
+                  >
+                </Avatar.Root>
+              </DropdownMenu.Trigger>
+              <DropdownMenu.Portal>
+                <DropdownMenu.Content
+                  align="end"
+                  sideOffset={6}
+                  class="z-50 min-w-52 rounded-lg border bg-popover p-1 text-popover-foreground shadow-md"
+                >
+                  <div class="px-2 py-1.5">
+                    <p class="truncate text-sm font-medium">{userName}</p>
+                    {#if sync.user.email && sync.user.email !== userName}
+                      <p class="truncate text-xs text-muted-foreground">
+                        {sync.user.email}
+                      </p>
+                    {/if}
+                  </div>
+                  <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-border" />
+                  <DropdownMenu.Item
+                    onSelect={signOut}
+                    class="flex min-h-9 cursor-pointer items-center rounded-md px-2 text-sm outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+                    >Sign out</DropdownMenu.Item
+                  >
+                </DropdownMenu.Content>
+              </DropdownMenu.Portal>
+            </DropdownMenu.Root>
           {/if}
         {/if}
       </div>
