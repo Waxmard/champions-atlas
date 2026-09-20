@@ -179,7 +179,9 @@
         moves: '#set-moves-input',
         text: '#set-raw-textarea',
       }[initialField];
-      editorElement?.querySelector<HTMLElement>(selector)?.focus();
+      editorElement?.querySelector<HTMLElement>(selector)?.focus({
+        preventScroll: true,
+      });
     });
   }
 

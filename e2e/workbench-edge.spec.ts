@@ -131,7 +131,7 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   });
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel('Item', { exact: true })).toBeFocused();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(1);
   for (const button of await editor.getByRole('button').all()) {
     const box = await button.boundingBox();
     expect(box?.height).toBeGreaterThanOrEqual(44);
@@ -162,6 +162,11 @@ test('inline draft changes warn before navigation', async ({ page }) => {
     .getByRole('region', { name: 'Edit Weavile set', exact: true })
     .getByLabel('Item', { exact: true })
     .fill('Unsaved item');
+  await page
+    .getByRole('region', { name: 'Edit Weavile set', exact: true })
+    .getByLabel('Item', { exact: true })
+    .press('Escape');
+  await page.getByRole('button', { name: 'Apply item', exact: true }).click();
   page.once('dialog', (dialog) => dialog.dismiss());
   await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);
@@ -302,7 +307,7 @@ test('outside click cancels set edit and explicit apply commits', async ({
     exact: true,
   });
   await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
-  await page.locator('h1').click();
+  await page.locator('div.fixed.inset-0').click({ position: { x: 8, y: 8 } });
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText(originalItem, { exact: true })).toBeVisible();
 
@@ -335,6 +340,7 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     exact: true,
   });
   await edit.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => scrollY);
   await edit.click();
 
   const editor = page.getByRole('region', {
@@ -342,7 +348,7 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     exact: true,
   });
   await expect(editor).toBeInViewport();
-  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => scrollY)).toBe(before);
   const nature = editor.getByLabel('Nature', { exact: true });
   const initialNature = await nature.inputValue();
   const replacement = page

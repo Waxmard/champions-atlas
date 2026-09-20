@@ -187,21 +187,11 @@
     openSaved(draft.id);
     message = 'Changes discarded.';
   }
-  const scrollSmooth = (
-    el?: HTMLElement | null,
-    block: ScrollLogicalPosition = 'start'
-  ) =>
-    el?.scrollIntoView({
-      block,
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'instant'
-        : 'smooth',
-    });
   const focusSetField = (index: number, field: EditableSetField) =>
     document
       .getElementById(`pokemon-slot-${index}`)
       ?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`)
-      ?.focus();
+      ?.focus({ preventScroll: true });
   const openSetEditor = (index: number, field: EditableSetField) => {
     if (editing) return;
     pendingSpecies = null;
@@ -211,9 +201,13 @@
       ? structuredClone($state.snapshot(draft.members[index]))
       : null;
     editorDirty = false;
+    const savedScrollY = window.scrollY;
     void tick().then(() => {
-      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
       editorRef?.focus();
+      // The Bits combobox's initial highlight calls scrollIntoView while its
+      // floating content is still held off-page for measurement, scrolling the
+      // window to the top; restore the user's scroll position once it settles.
+      requestAnimationFrame(() => window.scrollTo(0, savedScrollY));
     });
   };
   function applySetEdit(index: number, member: Member) {
@@ -225,7 +219,6 @@
     originalMember = null;
     editorDirty = false;
     void tick().then(() => {
-      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
       focusSetField(index, field);
     });
   }
@@ -240,10 +233,6 @@
     editorDirty = false;
     if (targetSlot !== null) {
       void tick().then(() => {
-        scrollSmooth(
-          document.getElementById(`pokemon-slot-${targetSlot}`),
-          'center'
-        );
         focusSetField(targetSlot, field);
       });
     }
@@ -420,34 +409,21 @@
                 : 'hover:border-primary/30 hover:shadow-xs'}"
               aria-label={`${member.pokemon} set`}
             >
-              {#if activeEditIndex === index}
-                <SetEditorSheet
-                  bind:this={editorRef}
-                  {member}
-                  teams={data.catalog.teams as Team[]}
-                  currentRegulation={current}
-                  initialField={activeEditField}
-                  teammates={draft.members.filter((_, i) => i !== index)}
-                  onapply={(next) => applySetEdit(index, next)}
-                  oncancel={cancelSetEdit}
-                  ondirtychange={(value) => (editorDirty = value)}
-                />
-              {:else}<MemberCard
-                  {member}
-                  editable={true}
-                  {editing}
-                  pending={editedSlots.has(index)}
-                  onedit={(field) => openSetEditor(index, field)}
-                />
-                {#if pendingSpecies}
-                  <Button
-                    variant="outline"
-                    class="mt-3 min-h-11 w-full"
-                    aria-label={`Replace ${member.pokemon} with ${pendingSpecies}`}
-                    onclick={() => applySpeciesSwap(index)}
-                    >Swap in {pendingSpecies}</Button
-                  >
-                {/if}
+              <MemberCard
+                {member}
+                editable={true}
+                {editing}
+                pending={editedSlots.has(index)}
+                onedit={(field) => openSetEditor(index, field)}
+              />
+              {#if pendingSpecies}
+                <Button
+                  variant="outline"
+                  class="mt-3 min-h-11 w-full"
+                  aria-label={`Replace ${member.pokemon} with ${pendingSpecies}`}
+                  onclick={() => applySpeciesSwap(index)}
+                  >Swap in {pendingSpecies}</Button
+                >
               {/if}
             </section>
           {/each}
@@ -466,5 +442,33 @@
           >{/if}
       </section>
     {/if}
+  {/if}
+
+  {#if activeEditIndex !== null && draft}
+    {@const editIndex = activeEditIndex!}
+    <div
+      class="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/50 p-4 sm:p-8"
+    >
+      <div class="flex min-h-full items-start justify-center sm:items-center">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Edit ${draft.members[editIndex].pokemon} set`}
+          class="card w-full max-w-2xl bg-base-100 p-5 shadow-xl card-border sm:p-6"
+        >
+          <SetEditorSheet
+            bind:this={editorRef}
+            member={draft.members[editIndex]}
+            teams={data.catalog.teams as Team[]}
+            currentRegulation={current}
+            initialField={activeEditField}
+            teammates={draft.members.filter((_, i) => i !== editIndex)}
+            onapply={(next) => applySetEdit(editIndex, next)}
+            oncancel={cancelSetEdit}
+            ondirtychange={(value) => (editorDirty = value)}
+          />
+        </div>
+      </div>
+    </div>
   {/if}
 </main>
