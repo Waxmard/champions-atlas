@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test';
+import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
@@ -21,6 +21,11 @@ export default defineConfig({
         isMobile: true,
         hasTouch: true,
       },
+    },
+    {
+      name: 'mobile-webkit',
+      testMatch: ['**/workbench.spec.ts', '**/workbench-edge.spec.ts'],
+      use: { ...devices['iPhone 13'], browserName: 'webkit' },
     },
   ],
   webServer: {

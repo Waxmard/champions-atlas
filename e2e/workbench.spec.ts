@@ -1,27 +1,45 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 
 const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
-const optionValue = (text: string) => text.replace(/\s?\d+\/\d+$/, '').trim();
 
-test('save Peter, choose one slot, compare, edit, export, and preserve other five sets', async ({
-  page,
-}) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto(`/teams/${peter.id}`);
+async function expectStructuredEditor(editor: Locator) {
+  for (const label of [
+    'Pokémon',
+    'Item',
+    'Ability',
+    'Move 1',
+    'Move 2',
+    'Move 3',
+    'Move 4',
+  ]) {
+    await expect(
+      editor.getByRole('textbox', { name: label, exact: true })
+    ).toBeVisible();
+  }
   await expect(
-    page
-      .getByRole('region', { name: 'Pokémon sets' })
-      .getByText('Moves not loaded. Check the original paste.')
-  ).toHaveCount(0);
+    editor.getByRole('combobox', { name: 'Nature', exact: true })
+  ).toBeVisible();
+  await expect(editor.locator('details')).toBeVisible();
+}
+
+async function openWorkbench(page: Page) {
+  await page.goto('/teams/' + peter.id);
   await page
     .getByRole('button', { name: 'Use this team', exact: true })
     .click();
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     peter.name
   );
+}
+
+test('save Peter, choose one slot, compare, edit, export, and preserve other five sets', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await openWorkbench(page);
   const workbenchUrl = page.url();
   const original = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0].original,
@@ -31,6 +49,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   expect(
     original.members.every((member: { spread: string }) => !!member.spread)
   ).toBe(true);
+
   const weavile = page.getByRole('region', {
     name: 'Weavile set',
     exact: true,
@@ -38,203 +57,113 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   const originalWeavile = peter.members.find(
     (member) => member.pokemon === 'Weavile'
   )!;
+  const beforeStorage = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    storageKey
+  );
   await expect(weavile.locator('img[src*="/items/"]')).toBeVisible();
   await expect(
     weavile.getByText(originalWeavile.item!, { exact: true })
   ).toBeVisible();
   await expect(
-    weavile.getByText(`Ability: ${originalWeavile.ability}`, { exact: true })
+    weavile.getByText('Ability: ' + originalWeavile.ability, { exact: true })
   ).toBeVisible();
   for (const move of originalWeavile.moves)
     await expect(weavile.getByText(move, { exact: true })).toBeVisible();
-  await expect(weavile.locator('textarea')).toHaveCount(0);
-  await expect(page.getByText('Original & source history')).toHaveCount(0);
-  await expect(page.getByRole('region', { name: 'Similar teams' })).toHaveCount(
-    0
-  );
+
   await weavile
     .getByRole('button', { name: 'Change Weavile', exact: true })
     .click();
-  const pokemonEditor = page.getByRole('region', {
+  let editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expect(pokemonEditor).toBeVisible();
-  const pokemonInput = pokemonEditor.getByLabel('Pokémon', { exact: true });
-  await expect(pokemonInput).toBeVisible();
-  const pokemonChoices = page
-    .getByRole('listbox', { name: 'Pokémon suggestions', exact: true })
-    .getByRole('option');
+  await expect(editor).toBeVisible();
+  await expectStructuredEditor(editor);
+  await expect(
+    editor.getByLabel('Pokémon suggestions', { exact: true })
+  ).toHaveCount(0);
+  await editor.getByRole('textbox', { name: 'Pokémon', exact: true }).focus();
+  const pokemonChoices = editor
+    .getByLabel('Pokémon suggestions', { exact: true })
+    .getByRole('button');
   await expect(pokemonChoices.first()).toBeVisible();
-  await pokemonInput.press('Escape');
-  await pokemonEditor
-    .getByRole('button', { name: 'Cancel', exact: true })
-    .click();
-  await expect(pokemonEditor).toHaveCount(0);
-  await page
-    .getByLabel('Team name', { exact: true })
-    .fill('My Weavile adaptation');
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+
   await weavile
-    .getByRole('button', { name: 'Edit Weavile item', exact: true })
+    .getByRole('button', { name: 'Edit Weavile set', exact: true })
     .click();
-  const itemEditor = page.getByRole('region', {
-    name: 'Edit Weavile set',
+  editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
+  await expectStructuredEditor(editor);
+  const initialMoves = await Promise.all(
+    [1, 2, 3, 4].map((slot) =>
+      editor.getByLabel('Move ' + slot, { exact: true }).inputValue()
+    )
+  );
+
+  const item = editor.getByLabel('Item', { exact: true });
+  await item.fill('Staged custom item');
+  await item.press('Escape');
+  await editor.getByLabel('Nature', { exact: true }).selectOption('Timid');
+
+  const move2 = editor.getByLabel('Move 2', { exact: true });
+  await move2.fill('Test Move');
+  await move2.press('Enter');
+  await expect(move2).toHaveValue('Test Move');
+  const move1 = editor.getByLabel('Move 1', { exact: true });
+  await move1.fill('ice');
+  const moveSuggestions = editor.getByLabel('Move suggestions', {
     exact: true,
   });
-  const item = itemEditor.getByLabel('Item', { exact: true });
-  const initialItem = await item.inputValue();
-  await expect(item).toBeVisible();
-  await expect(itemEditor.getByLabel('Ability', { exact: true })).toHaveCount(
-    0
-  );
-  await expect(itemEditor.getByLabel('Nature', { exact: true })).toHaveCount(0);
-  await expect(itemEditor.getByLabel('EV editor')).toHaveCount(0);
-  await expect(itemEditor.getByLabel('Selected moves')).toHaveCount(0);
-  await expect(itemEditor.getByLabel('Showdown set text')).toHaveCount(0);
-  const itemChoices = page
-    .getByRole('listbox', { name: 'Item suggestions', exact: true })
-    .getByRole('option');
-  const replacementItem = itemChoices
-    .filter({ hasNotText: initialItem })
+  const replacement = moveSuggestions
+    .getByRole('button')
+    .filter({ hasNotText: initialMoves[0] })
     .first();
-  await expect(replacementItem).toBeVisible();
-  const itemText = await replacementItem.textContent();
-  await replacementItem.click();
-  await itemEditor
-    .getByRole('button', { name: 'Apply item', exact: true })
-    .click();
-  await expect(itemEditor).toHaveCount(0);
-  await expect(weavile).toContainText(optionValue(itemText!));
+  await expect(replacement).toBeVisible();
+  const replacementText = (await replacement.textContent())!.trim();
+  await replacement.click();
+  await expect(move1).toHaveValue(replacementText);
 
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile ability', exact: true })
+  const move3 = editor.getByLabel('Move 3', { exact: true });
+  await editor
+    .getByRole('button', { name: 'Clear move 3', exact: true })
     .click();
-  const abilityEditor = page.getByRole('region', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  const ability = abilityEditor.getByLabel('Ability', { exact: true });
-  const initialAbility = await ability.inputValue();
-  await expect(abilityEditor.getByLabel('Item', { exact: true })).toHaveCount(
-    0
-  );
-  await expect(abilityEditor.getByLabel('Nature', { exact: true })).toHaveCount(
-    0
-  );
-  const abilityChoices = page
-    .getByRole('listbox', { name: 'Ability suggestions', exact: true })
-    .getByRole('option');
-  const replacementAbility = abilityChoices
-    .filter({ hasNotText: initialAbility })
-    .first();
-  await expect(replacementAbility).toBeVisible();
-  const abilityText = await replacementAbility.textContent();
-  await replacementAbility.click();
-  await abilityEditor
-    .getByRole('button', { name: 'Apply ability', exact: true })
-    .click();
-  await expect(abilityEditor).toHaveCount(0);
-  await expect(weavile).toContainText(optionValue(abilityText!));
+  await expect(move3).toHaveValue('');
+  await expect(
+    editor.getByRole('button', { name: 'Clear move 3', exact: true })
+  ).toBeDisabled();
+  await move3.fill('Refilled Move');
+  await move3.press('Enter');
+  await expect(move3).toHaveValue('Refilled Move');
 
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile moves', exact: true })
-    .click();
-  const movesEditor = page.getByRole('region', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  const moves = movesEditor.getByRole('list', { name: 'Selected moves' });
-  const initialMoves = await moves.getByRole('listitem').allTextContents();
-  expect(initialMoves).toHaveLength(4);
-  await expect(movesEditor.getByLabel('Item', { exact: true })).toHaveCount(0);
-  await expect(movesEditor.getByLabel('Ability', { exact: true })).toHaveCount(
-    0
-  );
-  await expect(movesEditor.getByLabel('Nature', { exact: true })).toHaveCount(
-    0
-  );
-  await expect(movesEditor.getByLabel('EV editor')).toHaveCount(0);
-  await expect(movesEditor.getByLabel('Showdown set text')).toHaveCount(0);
-  await movesEditor
-    .getByRole('button', { name: 'Remove ' + initialMoves[0] })
-    .click();
-  const customMove = movesEditor.getByLabel('Custom move', { exact: true });
-  await customMove.fill('Test Move');
-  await movesEditor
-    .getByRole('button', { name: 'Add move', exact: true })
-    .click();
-  await expect(moves).toContainText('Test Move');
-  await movesEditor
-    .getByRole('button', { name: 'Cancel', exact: true })
-    .click();
-  await expect(movesEditor).toHaveCount(0);
-  await expect(weavile).toContainText(initialMoves[0]);
-
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
-    .click();
-  const textEditor = page.getByRole('region', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  const set = textEditor.getByLabel('Showdown set text', { exact: true });
-  await expect(set).toBeVisible();
-  await expect(textEditor.getByLabel('Item', { exact: true })).toHaveCount(0);
-  await expect(textEditor.getByLabel('Ability', { exact: true })).toHaveCount(
-    0
-  );
-  await expect(textEditor.getByLabel('Nature', { exact: true })).toHaveCount(0);
-  await expect(textEditor.getByLabel('EV editor')).toHaveCount(0);
-  await expect(textEditor.getByLabel('Selected moves')).toHaveCount(0);
-  const setText = await set.inputValue();
-  expect(setText).not.toMatch(/(?:IVs|Level|Tera Type):/);
-  await set.fill(`${setText}\n- Protect`);
-  await textEditor
-    .getByRole('button', { name: 'Apply set text', exact: true })
-    .click();
-  await expect(textEditor.getByRole('alert')).toContainText(
-    'more than four moves'
-  );
   expect(
-    await page.evaluate((key) => {
-      const team = JSON.parse(localStorage.getItem(key)!)[0];
-      return team.members.find(
-        (member: { pokemon: string }) => member.pokemon === 'Weavile'
-      ).spread;
-    }, storageKey)
-  ).not.toBe('32 HP / 32 Atk / 2 Spe');
-  await set.fill(setText.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe'));
-  await textEditor
-    .getByRole('button', { name: 'Apply set text', exact: true })
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(beforeStorage);
+  await editor
+    .getByRole('button', { name: 'Apply to team', exact: true })
     .click();
-  await expect(textEditor).toHaveCount(0);
+  await expect(editor).toHaveCount(0);
+  await expect(page.getByRole('status')).toContainText(
+    'Set changes applied. Save changes to keep them.'
+  );
+  await expect(weavile).toContainText('Staged custom item');
+  await expect(weavile).toContainText('Test Move');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(beforeStorage);
+
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Changes saved on this device.'
   );
-  await page.reload();
-  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    'My Weavile adaptation'
-  );
-  await expect(
-    weavile.getByRole('button', { name: 'Change Weavile', exact: true })
-  ).toBeVisible();
-  await page
-    .getByRole('button', { name: 'Copy team text', exact: true })
-    .click();
-  await expect(page.getByLabel('Export text', { exact: true })).toHaveValue(
-    /EVs: 32 HP \/ 32 Atk \/ 2 Spe/
-  );
-  await expect(page.getByLabel('Export text', { exact: true })).not.toHaveValue(
-    /(?:IVs|Level|Tera Type):/
-  );
-  const stored = await page.evaluate(
+  const storedAfterSave = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
   );
-  expect(stored.original).toEqual(original);
+  expect(storedAfterSave.original).toEqual(original);
   expect(
-    stored.members.filter(
+    storedAfterSave.members.filter(
       (member: { pokemon: string }) => member.pokemon !== 'Weavile'
     )
   ).toEqual(
@@ -242,28 +171,52 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
       (member: { pokemon: string }) => member.pokemon !== 'Weavile'
     )
   );
-  expect(stored.sources.length).toBe(1);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth
-    )
-  ).toBe(true);
+
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
+    .click();
+  editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
+  const raw = editor.getByRole('textbox', {
+    name: 'Showdown set text',
+    exact: true,
+  });
+  const rawValue = await raw.inputValue();
+  await raw.fill(rawValue + '\n- Protect');
+  await editor
+    .getByRole('button', { name: 'Apply to team', exact: true })
+    .click();
+  await expect(editor.getByRole('alert')).toContainText('more than four moves');
+  await expect(editor).toBeVisible();
+  await raw.fill(
+    rawValue.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe')
+  );
+  await editor
+    .getByRole('button', { name: 'Apply to team', exact: true })
+    .click();
+  await expect(editor).toHaveCount(0);
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await page.reload();
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    peter.name
+  );
+  await page
+    .getByRole('button', { name: 'Copy team text', exact: true })
+    .click();
+  await expect(page.getByLabel('Export text', { exact: true })).toHaveValue(
+    /EVs: 32 HP \/ 32 Atk \/ 2 Spe/
+  );
+  expect(errors).toEqual([]);
   await page.goto('/');
   await page.goto(workbenchUrl);
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    'My Weavile adaptation'
+    peter.name
   );
-  expect(errors).toEqual([]);
 });
 
 test('untouched legacy EV spread applies, but changed spread requires 66', async ({
   page,
 }) => {
-  await page.goto(`/teams/${peter.id}`);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
-  await expect(page.getByLabel('Team name', { exact: true })).toBeVisible();
+  await openWorkbench(page);
   await page.evaluate((key) => {
     const teams = JSON.parse(localStorage.getItem(key)!);
     const member = teams[0].members.find(
@@ -281,87 +234,72 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
-  let editor = page.getByRole('region', { name: 'Edit Weavile set' });
+  let editor = page.getByRole('dialog', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await expectStructuredEditor(editor);
   await editor.getByLabel('Item', { exact: true }).fill('Legacy custom item');
-  await editor.getByLabel('Item', { exact: true }).press('Escape');
-  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  await editor
+    .getByRole('button', { name: 'Apply to team', exact: true })
+    .click();
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText('Legacy custom item');
 
   await weavile
     .getByRole('button', { name: 'Edit Weavile EVs', exact: true })
     .click();
-  editor = page.getByRole('region', { name: 'Edit Weavile set' });
+  editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
+  await expectStructuredEditor(editor);
   await editor.getByLabel('HP EV', { exact: true }).fill('31');
-  await expect(editor.getByLabel('EV editor')).toContainText('31/66');
-  await expect(
-    editor.getByRole('button', { name: 'Apply evs', exact: true })
-  ).toBeDisabled();
+  await editor
+    .getByRole('button', { name: 'Apply to team', exact: true })
+    .click();
+  await expect(editor.getByRole('alert')).toContainText('must total 66');
+  await expect(editor).toBeVisible();
 });
 
-test('two-way move swaps and species swap on a saved team', async ({
-  page,
-}) => {
-  await page.goto(`/teams/${peter.id}`);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
-  await expect(page.getByLabel('Team name', { exact: true })).toBeVisible();
-
+test('direct move slots and species swap on a saved team', async ({ page }) => {
+  await openWorkbench(page);
   const weavile = page.getByRole('region', {
     name: 'Weavile set',
     exact: true,
   });
-
-  // Two-way move editor: click a current move, then a suggestion replaces it.
   await weavile
     .getByRole('button', { name: 'Edit Weavile moves', exact: true })
     .click();
-  const movesEditor = page.getByRole('region', {
+  const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
-  const moves = movesEditor.getByRole('list', { name: 'Selected moves' });
-  const initialMoves = await moves.getByRole('listitem').allTextContents();
-  expect(initialMoves).toHaveLength(4);
-  const moveSuggestions = page.getByRole('listbox', {
-    name: 'Move suggestions',
+  await expectStructuredEditor(editor);
+  const moveInputs = [1, 2, 3, 4].map((slot) =>
+    editor.getByLabel('Move ' + slot, { exact: true })
+  );
+  const initialMoves = await Promise.all(
+    moveInputs.map((input) => input.inputValue())
+  );
+  const move1Suggestions = editor.getByLabel('Move suggestions', {
     exact: true,
   });
-
-  await moves.getByRole('listitem').first().getByRole('button').first().click();
-  await expect(
-    movesEditor.getByText(/Replacing .+\. Choose a suggested move\./)
-  ).toBeVisible();
-  const replacement = (await moveSuggestions
-    .getByRole('option')
-    .first()
-    .textContent())!.trim();
-  await moveSuggestions.getByRole('option').first().click();
-  await expect(moves).toContainText(replacement);
-  await expect(moves).not.toContainText(initialMoves[0].trim());
-
-  // Full set: re-open the input, then a suggestion enters swap mode.
-  await movesEditor.getByLabel('Custom move', { exact: true }).click();
-  const swapIn = (await moveSuggestions
-    .getByRole('option')
-    .first()
-    .textContent())!.trim();
-  await moveSuggestions.getByRole('option').first().click();
-  await expect(
-    movesEditor.getByText(/Swap in .+\. Choose a move to replace\./)
-  ).toBeVisible();
-  const currentMoves = await moves.getByRole('listitem').allTextContents();
-  await moves.getByRole('listitem').first().getByRole('button').first().click();
-  await expect(moves).toContainText(swapIn);
-  await expect(moves).not.toContainText(currentMoves[0].trim());
-
-  await movesEditor
-    .getByRole('button', { name: 'Cancel', exact: true })
+  await moveInputs[0].fill('ice');
+  const replacement = move1Suggestions
+    .getByRole('button')
+    .filter({ hasNotText: initialMoves[0] })
+    .first();
+  const replacementText = (await replacement.textContent())!.trim();
+  await replacement.click();
+  await expect(moveInputs[0]).toHaveValue(replacementText);
+  await editor
+    .getByRole('button', { name: 'Clear move 2', exact: true })
     .click();
-  await expect(movesEditor).toHaveCount(0);
+  await moveInputs[1].fill('Custom move');
+  await moveInputs[1].press('Enter');
+  await expect(moveInputs[1]).toHaveValue('Custom move');
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(weavile).toContainText(initialMoves[0]);
 
-  // Species swap via the "Change a Pokémon" picker.
   const picker = page.getByRole('combobox', {
     name: 'Change a Pokémon',
     exact: true,
@@ -392,13 +330,10 @@ test('two-way move swaps and species swap on a saved team', async ({
   await expect(diff).toContainText('Removed');
 });
 
-test('item combobox keyboard selection applies and persists through reload', async ({
+test('item suggestions support Tab and Enter selection through save and reload', async ({
   page,
 }) => {
-  await page.goto(`/teams/${peter.id}`);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
+  await openWorkbench(page);
   const weavile = page.getByRole('region', {
     name: 'Weavile set',
     exact: true,
@@ -406,33 +341,33 @@ test('item combobox keyboard selection applies and persists through reload', asy
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
-  const editor = page.getByRole('region', {
+  const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
+  await expectStructuredEditor(editor);
   const item = editor.getByLabel('Item', { exact: true });
-  expect(await item.inputValue()).toBeTruthy();
   await item.fill('a');
-  const itemOptions = page
-    .getByRole('listbox', { name: 'Item suggestions', exact: true })
-    .getByRole('option');
-  await expect(itemOptions.first()).toBeVisible();
-  const options = (await itemOptions.allTextContents()).map((t) => t.trim());
-  await item.press('ArrowDown');
-  await item.press('Enter');
-  const chosen = await item.inputValue();
-  expect(options).toContain(chosen);
-  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  const suggestions = editor.getByLabel('Item suggestions', { exact: true });
+  const first = suggestions.getByRole('button').first();
+  await expect(first).toBeVisible();
+  const chosen = (await first.textContent())!.trim();
+  await item.press('Tab');
+  await expect(first).toBeFocused();
+  await first.press('Enter');
+  await expect(item).toHaveValue(chosen);
+  await editor
+    .getByRole('button', { name: 'Apply to team', exact: true })
+    .click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await page.reload();
   await expect(weavile.getByText(chosen, { exact: true })).toBeVisible();
 });
 
-test('custom ability typed value survives Escape and Tab', async ({ page }) => {
-  await page.goto(`/teams/${peter.id}`);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
+test('custom ability typed value survives Escape and Cancel', async ({
+  page,
+}) => {
+  await openWorkbench(page);
   const weavile = page.getByRole('region', {
     name: 'Weavile set',
     exact: true,
@@ -440,17 +375,17 @@ test('custom ability typed value survives Escape and Tab', async ({ page }) => {
   await weavile
     .getByRole('button', { name: 'Edit Weavile ability', exact: true })
     .click();
-  const editor = page.getByRole('region', {
+  const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
+  await expectStructuredEditor(editor);
   const ability = editor.getByLabel('Ability', { exact: true });
   await ability.fill('Glitch Drive');
   await ability.press('Escape');
-  await ability.press('Tab');
   await expect(ability).toHaveValue('Glitch Drive');
   await editor
-    .getByRole('button', { name: 'Apply ability', exact: true })
+    .getByRole('button', { name: 'Apply to team', exact: true })
     .click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   await expect(
@@ -460,10 +395,11 @@ test('custom ability typed value survives Escape and Tab', async ({ page }) => {
   await weavile
     .getByRole('button', { name: 'Edit Weavile ability', exact: true })
     .click();
-  const reopened = page.getByRole('region', {
+  const reopened = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
+  await expectStructuredEditor(reopened);
   await reopened.getByLabel('Ability', { exact: true }).fill('Another');
   await reopened.getByLabel('Ability', { exact: true }).press('Escape');
   await reopened.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -472,13 +408,10 @@ test('custom ability typed value survives Escape and Tab', async ({ page }) => {
   ).toBeVisible();
 });
 
-test('move editor distinguishes typed Enter from highlighted suggestion', async ({
+test('move Enter preserves typed value and Tab Enter selects an exact suggestion', async ({
   page,
 }) => {
-  await page.goto(`/teams/${peter.id}`);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
+  await openWorkbench(page);
   const weavile = page.getByRole('region', {
     name: 'Weavile set',
     exact: true,
@@ -486,39 +419,29 @@ test('move editor distinguishes typed Enter from highlighted suggestion', async 
   await weavile
     .getByRole('button', { name: 'Edit Weavile moves', exact: true })
     .click();
-  const editor = page.getByRole('region', {
+  const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
-  const moves = editor.getByRole('list', { name: 'Selected moves' });
-  const first = (await moves
-    .getByRole('listitem')
-    .first()
-    .textContent())!.trim();
-  await page
-    .getByRole('button', { name: `Remove ${first}`, exact: true })
-    .click();
+  await expectStructuredEditor(editor);
 
-  const customMove = editor.getByLabel('Custom move', { exact: true });
-  await customMove.fill('Pro');
-  await customMove.press('Enter');
-  await expect(moves).toContainText('Pro');
+  const move2 = editor.getByLabel('Move 2', { exact: true });
+  await move2.fill('Pro');
+  await move2.press('Enter');
+  await expect(move2).toHaveValue('Pro');
+  await expect(editor).toBeVisible();
 
-  await page.getByRole('button', { name: 'Remove Pro', exact: true }).click();
-  const before = (await moves.getByRole('listitem').allTextContents()).map(
-    (t) => t.trim()
-  );
-  await customMove.fill('Ice');
-  const moveOptions = page
-    .getByRole('listbox', { name: 'Move suggestions', exact: true })
-    .getByRole('option');
-  await expect(moveOptions.first()).toBeVisible();
-  const options = (await moveOptions.allTextContents()).map((t) => t.trim());
-  await customMove.press('ArrowDown');
-  await customMove.press('Enter');
-  const after = (await moves.getByRole('listitem').allTextContents()).map((t) =>
-    t.trim()
-  );
-  const added = after.find((t) => !before.includes(t))!;
-  expect(options).toContain(added);
+  const move1 = editor.getByLabel('Move 1', { exact: true });
+  await move1.fill('Ice');
+  const options = editor
+    .getByLabel('Move suggestions', { exact: true })
+    .getByRole('button');
+  await expect(options.first()).toBeVisible();
+  const chosen = (await options.first().textContent())!.trim();
+  await move1.press('Tab');
+  await expect(options.first()).toBeFocused();
+  await options.first().press('Enter');
+  await expect(move1).toHaveValue(chosen);
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toHaveCount(0);
 });

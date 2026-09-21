@@ -13,12 +13,10 @@
     spread,
     suggestions,
     onspreadchange,
-    ondone,
   }: {
     spread: string;
     suggestions: CatalogSuggestion[];
     onspreadchange: (spread: string, nature?: string | null) => void;
-    ondone: () => void;
   } = $props();
   const values = $derived(
     parseChampionsSpread(spread) ||
@@ -62,7 +60,7 @@
               min="0"
               max="32"
               value={values[stat]}
-              class="input h-7 w-12 px-1 text-center font-mono text-xs font-semibold"
+              class="input min-h-11 w-16 px-1 text-center font-mono text-xs font-semibold"
               oninput={(event) =>
                 update(stat, event.currentTarget.valueAsNumber)}
             />
@@ -75,13 +73,13 @@
           min="0"
           max="32"
           value={values[stat]}
-          class="range w-full range-primary"
+          class="range min-h-11 w-full range-primary"
           oninput={(event) => update(stat, event.currentTarget.valueAsNumber)}
         />
       </div>
     {/each}
   </div>
-  <div class="mt-3 flex min-h-11 items-center justify-between gap-3">
+  <div class="mt-3 flex min-h-11 items-center gap-3">
     <p class:text-error={total !== 66} class="text-sm font-medium">
       {total}/66 · {total < 66
         ? `${66 - total} remaining`
@@ -89,7 +87,6 @@
           ? `${total - 66} over`
           : 'complete'}
     </p>
-    <Button variant="outline" class="min-h-11" onclick={ondone}>Done</Button>
   </div>
 </div>
 <div class="mt-2 grid gap-2" aria-label="EV spread suggestions">
