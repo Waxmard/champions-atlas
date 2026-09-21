@@ -4,24 +4,46 @@ import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
 
-async function expectStructuredEditor(editor: Locator) {
-  for (const label of [
-    'Pokémon',
-    'Item',
-    'Ability',
-    'Move 1',
-    'Move 2',
-    'Move 3',
-    'Move 4',
-  ]) {
+async function expectOverviewHub(editor: Locator) {
+  await expect(
+    editor.getByRole('button', { name: 'Change Pokémon', exact: true })
+  ).toBeVisible();
+  await expect(
+    editor.getByRole('button', {
+      name: 'Edit item, ability, and nature',
+      exact: true,
+    })
+  ).toBeVisible();
+  await expect(
+    editor.getByRole('button', { name: 'Edit moves', exact: true })
+  ).toBeVisible();
+  await expect(
+    editor.getByRole('button', { name: 'Edit EV spread', exact: true })
+  ).toBeVisible();
+}
+
+async function expectMovesSubView(editor: Locator) {
+  for (const slot of [1, 2, 3, 4]) {
     await expect(
-      editor.getByRole('textbox', { name: label, exact: true })
+      editor.getByLabel(`Move ${slot}`, { exact: true })
     ).toBeVisible();
   }
+}
+
+async function expectDetailsSubView(editor: Locator) {
+  await expect(editor.getByLabel('Item', { exact: true })).toBeVisible();
+  await expect(editor.getByLabel('Ability', { exact: true })).toBeVisible();
+  await expect(editor.getByLabel('Nature', { exact: true })).toBeVisible();
+}
+
+async function expectPokemonSubView(editor: Locator) {
   await expect(
-    editor.getByRole('combobox', { name: 'Nature', exact: true })
+    editor.getByRole('textbox', { name: 'Pokémon', exact: true })
   ).toBeVisible();
-  await expect(editor.locator('details')).toBeVisible();
+}
+
+async function expectSpreadSubView(editor: Locator) {
+  await expect(editor.getByLabel('HP EV', { exact: true })).toBeVisible();
 }
 
 async function openWorkbench(page: Page) {
@@ -79,7 +101,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     exact: true,
   });
   await expect(editor).toBeVisible();
-  await expectStructuredEditor(editor);
+  await expectPokemonSubView(editor);
   await expect(
     editor.getByLabel('Pokémon suggestions', { exact: true })
   ).toHaveCount(0);
@@ -95,17 +117,30 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .getByRole('button', { name: 'Edit Weavile set', exact: true })
     .click();
   editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
-  await expectStructuredEditor(editor);
+  await expectOverviewHub(editor);
+  await editor
+    .getByRole('button', {
+      name: 'Edit item, ability, and nature',
+      exact: true,
+    })
+    .click();
+  await expectDetailsSubView(editor);
+  const item = editor.getByLabel('Item', { exact: true });
+  await item.fill('Staged custom item');
+  await item.press('Escape');
+  await editor.getByLabel('Nature', { exact: true }).selectOption('Timid');
+
+  await editor
+    .getByRole('button', { name: 'Back to overview', exact: true })
+    .click();
+  await expectOverviewHub(editor);
+  await editor.getByRole('button', { name: 'Edit moves', exact: true }).click();
+  await expectMovesSubView(editor);
   const initialMoves = await Promise.all(
     [1, 2, 3, 4].map((slot) =>
       editor.getByLabel('Move ' + slot, { exact: true }).inputValue()
     )
   );
-
-  const item = editor.getByLabel('Item', { exact: true });
-  await item.fill('Staged custom item');
-  await item.press('Escape');
-  await editor.getByLabel('Nature', { exact: true }).selectOption('Timid');
 
   const move2 = editor.getByLabel('Move 2', { exact: true });
   await move2.fill('Test Move');
@@ -238,7 +273,7 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expectStructuredEditor(editor);
+  await expectDetailsSubView(editor);
   await editor.getByLabel('Item', { exact: true }).fill('Legacy custom item');
   await editor
     .getByRole('button', { name: 'Apply to team', exact: true })
@@ -250,7 +285,7 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
     .getByRole('button', { name: 'Edit Weavile EVs', exact: true })
     .click();
   editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
-  await expectStructuredEditor(editor);
+  await expectSpreadSubView(editor);
   await editor.getByLabel('HP EV', { exact: true }).fill('31');
   await editor
     .getByRole('button', { name: 'Apply to team', exact: true })
@@ -272,7 +307,7 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expectStructuredEditor(editor);
+  await expectMovesSubView(editor);
   const moveInputs = [1, 2, 3, 4].map((slot) =>
     editor.getByLabel('Move ' + slot, { exact: true })
   );
@@ -345,7 +380,7 @@ test('item suggestions support Tab and Enter selection through save and reload',
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expectStructuredEditor(editor);
+  await expectDetailsSubView(editor);
   const item = editor.getByLabel('Item', { exact: true });
   await item.fill('a');
   const suggestions = editor.getByLabel('Item suggestions', { exact: true });
@@ -379,7 +414,7 @@ test('custom ability typed value survives Escape and Cancel', async ({
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expectStructuredEditor(editor);
+  await expectDetailsSubView(editor);
   const ability = editor.getByLabel('Ability', { exact: true });
   await ability.fill('Glitch Drive');
   await ability.press('Escape');
@@ -399,7 +434,7 @@ test('custom ability typed value survives Escape and Cancel', async ({
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expectStructuredEditor(reopened);
+  await expectDetailsSubView(reopened);
   await reopened.getByLabel('Ability', { exact: true }).fill('Another');
   await reopened.getByLabel('Ability', { exact: true }).press('Escape');
   await reopened.getByRole('button', { name: 'Cancel', exact: true }).click();
@@ -423,7 +458,7 @@ test('move Enter preserves typed value and Tab Enter selects an exact suggestion
     name: 'Edit Weavile set',
     exact: true,
   });
-  await expectStructuredEditor(editor);
+  await expectMovesSubView(editor);
 
   const move2 = editor.getByLabel('Move 2', { exact: true });
   await move2.fill('Pro');

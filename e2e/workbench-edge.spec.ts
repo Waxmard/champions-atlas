@@ -391,9 +391,19 @@ test('visibility changes keep move and item edits mounted', async ({
     name: 'Edit Weavile set',
     exact: true,
   });
+  await editor.getByRole('button', { name: 'Edit moves', exact: true }).click();
   const move = editor.getByLabel('Move 2', { exact: true });
-  const item = editor.getByLabel('Item', { exact: true });
   await move.fill('Test Move');
+  await editor
+    .getByRole('button', { name: 'Back to overview', exact: true })
+    .click();
+  await editor
+    .getByRole('button', {
+      name: 'Edit item, ability, and nature',
+      exact: true,
+    })
+    .click();
+  const item = editor.getByLabel('Item', { exact: true });
   await item.fill('Choice Band');
   await page.evaluate(() => {
     Object.defineProperty(document, 'visibilityState', {
@@ -408,8 +418,14 @@ test('visibility changes keep move and item edits mounted', async ({
     document.dispatchEvent(new Event('visibilitychange'));
   });
   await expect(editor).toBeVisible();
-  await expect(move).toHaveValue('Test Move');
   await expect(item).toHaveValue('Choice Band');
+  await editor
+    .getByRole('button', { name: 'Back to overview', exact: true })
+    .click();
+  await editor.getByRole('button', { name: 'Edit moves', exact: true }).click();
+  await expect(editor.getByLabel('Move 2', { exact: true })).toHaveValue(
+    'Test Move'
+  );
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
 });
 
