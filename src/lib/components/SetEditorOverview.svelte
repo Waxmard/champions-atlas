@@ -1,6 +1,8 @@
 <script lang="ts">
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import FileText from '@lucide/svelte/icons/file-text';
+  import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
+  import Sparkles from '@lucide/svelte/icons/sparkles';
   import ItemIcon from '$lib/components/ItemIcon.svelte';
   import MovePill from '$lib/components/MovePill.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -91,7 +93,7 @@
       <div
         class="flex items-center gap-1.5 rounded-lg border border-base-300/60 bg-base-200/80 px-2.5 py-1 text-xs font-medium"
       >
-        <span class="text-base-content/50">✨</span>
+        <Sparkles class="size-3.5 text-base-content/50" />
         <span class="max-w-[130px] truncate"
           >{ability || 'Ability unknown'}</span
         >
@@ -99,7 +101,7 @@
       <div
         class="flex items-center gap-1.5 rounded-lg border border-base-300/60 bg-base-200/80 px-2.5 py-1 text-xs font-medium"
       >
-        <span class="text-base-content/50">🌿</span>
+        <SlidersHorizontal class="size-3.5 text-base-content/50" />
         <span class="max-w-[130px] truncate">{nature || 'Nature unknown'}</span>
       </div>
     </div>

@@ -58,12 +58,10 @@ test('import, edit, reload, compare, and export a custom team', async ({
   await set.fill(
     (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
   );
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await weavile.getByRole('button', { name: /Apply/ }).click();
   await expect(page.getByRole('status')).toHaveText(
-    'Changes saved on this device.'
+    'Weavile changes applied and saved.'
   );
   await page.reload();
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
@@ -176,9 +174,7 @@ test('inline draft changes warn before navigation', async ({ page }) => {
     .getByRole('dialog', { name: 'Edit Weavile set', exact: true })
     .getByLabel('Item', { exact: true })
     .press('Escape');
-  await page
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
   page.once('dialog', (dialog) => dialog.dismiss());
   await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);
@@ -237,10 +233,8 @@ test('set edit commits on save and reopening my-teams restores active team', asy
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByLabel('Item', { exact: true }).press('Escape');
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await weavile.getByRole('button', { name: /Apply/ }).click();
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
@@ -285,10 +279,8 @@ test('item edits preserve an unknown nature', async ({ page }) => {
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByLabel('Item', { exact: true }).press('Escape');
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await weavile.getByRole('button', { name: /Apply/ }).click();
   const stored = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
     storageKey
@@ -337,9 +329,7 @@ test('backdrop and blank-area clicks retain set edit until explicit action', asy
     .click();
   await expect(editor).toBeVisible();
   await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
 });
@@ -466,13 +456,11 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
   const initialNature = await nature.inputValue();
   const replacementNature = initialNature === 'Adamant' ? 'Jolly' : 'Adamant';
   await nature.selectOption(replacementNature);
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(edit).toBeFocused();
   await expect(card).toContainText(replacementNature);
   expect(await page.evaluate(() => scrollY)).toBe(before);
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await card.getByRole('button', { name: /Apply/ }).click();
   const storedNature = await page.evaluate(
     ({ key, pokemon }) => {
       const team = JSON.parse(localStorage.getItem(key)!)[0];

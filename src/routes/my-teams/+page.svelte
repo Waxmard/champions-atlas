@@ -1,12 +1,12 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
+  import { SvelteSet } from 'svelte/reactivity';
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
-  import TeamDifferences from '$lib/components/TeamDifferences.svelte';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import { copyText } from '$lib/clipboard';
@@ -34,7 +34,7 @@
   let activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
     editorDirty = $state(false);
-  let editedSlots = $state(new Set<number>());
+  let editedSlots = new SvelteSet<number>();
   let editorRef = $state<
     | {
         focusInitialSection: () => void;
@@ -91,7 +91,7 @@
       showExport = false;
       activeEditIndex = null;
       editorDirty = false;
-      editedSlots = new Set();
+      editedSlots.clear();
       pendingSpecies = null;
       message =
         id && !entry && !resolveSavedTeamId(saved, null, activeId)
@@ -104,9 +104,7 @@
   }
   function persistIfDirty() {
     if (editing) return;
-    if (draft && draft.name.trim() && JSON.stringify(draft) !== baseline) {
-      persist($state.snapshot(draft));
-    }
+    saveTeamName();
   }
   onMount(() => {
     ready = true;
@@ -139,33 +137,89 @@
     if (dirty && !confirm('Discard unsaved team changes?')) cancel();
   });
 
-  function persist(next: SavedTeam) {
+  function saveTeamName() {
+    if (!draft || editing) return;
+    const trimmed = draft.name.trim();
+    if (!trimmed) {
+      message = 'Give this team a name.';
+      return;
+    }
+    const currentBase = baseline ? (JSON.parse(baseline) as SavedTeam) : null;
+    if (currentBase && draft.name === currentBase.name) return;
     try {
-      saved = saveTeam(localStorage, next);
-      localStorage.setItem(activeTeamKey, next.id);
+      const currentSaved = saved.find((t) => t.id === draft!.id);
+      const teamToSave: SavedTeam = {
+        ...(currentSaved ?? $state.snapshot(draft)),
+        name: draft.name,
+      };
+      saved = saveTeam(localStorage, teamToSave);
+      localStorage.setItem(activeTeamKey, teamToSave.id);
       void pushNow();
-      draft = JSON.parse(JSON.stringify(next));
-      baseline = JSON.stringify(draft);
-      editedSlots = new Set();
+      if (currentBase) {
+        currentBase.name = draft.name;
+        baseline = JSON.stringify(currentBase);
+      }
+      message = 'Team name saved.';
+    } catch {
+      message = 'Could not save team name.';
+    }
+  }
+
+  function applyPokemon(index: number) {
+    if (!draft) return;
+    const pokemonName = draft.members[index]?.pokemon || 'Pokémon';
+    try {
+      const currentSaved = saved.find((t) => t.id === draft!.id);
+      const baseMembers = currentSaved
+        ? currentSaved.members
+        : (JSON.parse(baseline).members as Member[]);
+      const updatedMembers = [...baseMembers];
+      updatedMembers[index] = $state.snapshot(draft.members[index]);
+
+      const teamToSave: SavedTeam = {
+        ...(currentSaved ?? $state.snapshot(draft)),
+        name: draft.name.trim() || currentSaved?.name || draft.name,
+        members: updatedMembers,
+      };
+
+      saved = saveTeam(localStorage, teamToSave);
+      localStorage.setItem(activeTeamKey, teamToSave.id);
+      void pushNow();
+
+      if (baseline) {
+        const nextBase = JSON.parse(baseline) as SavedTeam;
+        nextBase.members[index] = JSON.parse(
+          JSON.stringify(updatedMembers[index])
+        );
+        nextBase.name = teamToSave.name;
+        baseline = JSON.stringify(nextBase);
+      } else {
+        baseline = JSON.stringify(teamToSave);
+      }
+
+      editedSlots.delete(index);
+
       storageError = '';
-      message = 'Changes saved on this device.';
+      message = `${pokemonName} changes applied and saved.`;
     } catch {
       message =
         'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
     }
   }
-  function saveChanges() {
-    if (!draft || editing) return;
-    if (!draft.name.trim()) {
-      message = 'Give this team a name.';
-      return;
-    }
-    persist($state.snapshot(draft));
-  }
-  function discardChanges() {
+
+  function discardPokemon(index: number) {
     if (!draft) return;
-    openSaved(draft.id);
-    message = 'Changes discarded.';
+    const pokemonName = draft.members[index]?.pokemon || 'Pokémon';
+    try {
+      const base = JSON.parse(baseline) as SavedTeam;
+      if (base?.members?.[index]) {
+        draft.members[index] = JSON.parse(JSON.stringify(base.members[index]));
+      }
+      editedSlots.delete(index);
+      message = `${pokemonName} changes discarded.`;
+    } catch {
+      message = 'Could not discard changes.';
+    }
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -216,10 +270,10 @@
     if (!draft) return;
     const field = activeEditField;
     draft.members[index] = member;
-    editedSlots = new Set([...editedSlots, index]);
+    editedSlots.add(index);
     activeEditIndex = null;
     editorDirty = false;
-    message = 'Set changes applied. Save changes to keep them.';
+    message = 'Set changes staged. Apply on the card to save.';
     void tick().then(() => {
       focusSetField(index, field);
     });
@@ -258,8 +312,9 @@
       spread: null,
       moves: [],
     };
-    editedSlots = new Set([...editedSlots, index]);
+    editedSlots.add(index);
     pendingSpecies = null;
+    message = 'Pokémon swapped. Apply on the card to save.';
   }
   async function copyPaste() {
     if (!draft || editing) return;
@@ -334,22 +389,14 @@
               class="input mt-2 min-h-11 w-full"
               maxlength="200"
               bind:value={draft.name}
+              onblur={saveTeamName}
+              onkeydown={(e) => {
+                if (e.key === 'Enter') e.currentTarget.blur();
+              }}
             /></label
           >
           <div class="flex flex-wrap gap-2">
-            {#if dirty && !editing}
-              <Button
-                variant="outline"
-                class="min-h-11"
-                onclick={discardChanges}>Discard changes</Button
-              >
-            {/if}
             <Button
-              class="min-h-11"
-              disabled={!dirty || editing}
-              onclick={saveChanges}
-              aria-label="Save changes">Save changes</Button
-            ><Button
               variant="outline"
               class="min-h-11"
               disabled={editing}
@@ -357,14 +404,6 @@
             >
           </div>
         </div>
-        {#if dirty && !editing}
-          <TeamDifferences
-            before={JSON.parse(baseline).members}
-            after={draft.members}
-            beforeLabel="Current"
-            afterLabel="With changes"
-          />
-        {/if}
         <p class="mt-3 text-xs text-base-content/70">
           {dirty ? 'Unsaved changes.' : 'Saved on this device.'} Original: {draft
             .original.name} · {draft.original.regulation}. Editing does not
@@ -421,6 +460,34 @@
                   onclick={() => applySpeciesSwap(index)}
                   >Swap in {pendingSpecies}</Button
                 >
+              {/if}
+              {#if editedSlots.has(index)}
+                <div
+                  class="flex items-center justify-between border-t border-base-300/60 bg-base-200/40 px-3.5 py-2.5"
+                >
+                  <span class="text-xs font-medium text-primary"
+                    >Unsaved set</span
+                  >
+                  <div class="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      class="h-8 min-h-8 px-2.5 text-xs"
+                      aria-label={`Discard changes to ${member.pokemon}`}
+                      onclick={() => discardPokemon(index)}
+                    >
+                      Discard
+                    </Button>
+                    <Button
+                      size="sm"
+                      class="h-8 min-h-8 px-3 text-xs"
+                      aria-label={`Apply changes to ${member.pokemon}`}
+                      onclick={() => applyPokemon(index)}
+                    >
+                      Apply
+                    </Button>
+                  </div>
+                </div>
               {/if}
             </section>
           {/each}

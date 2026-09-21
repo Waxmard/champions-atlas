@@ -175,12 +175,10 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe(beforeStorage);
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(page.getByRole('status')).toContainText(
-    'Set changes applied. Save changes to keep them.'
+    'Set changes staged. Apply on the card to save.'
   );
   await expect(weavile).toContainText('Staged custom item');
   await expect(weavile).toContainText('Test Move');
@@ -188,9 +186,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe(beforeStorage);
 
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await weavile.getByRole('button', { name: /Apply/ }).click();
   await expect(page.getByRole('status')).toHaveText(
-    'Changes saved on this device.'
+    'Weavile changes applied and saved.'
   );
   const storedAfterSave = await page.evaluate(
     (key) => JSON.parse(localStorage.getItem(key)!)[0],
@@ -217,19 +215,15 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   });
   const rawValue = await raw.inputValue();
   await raw.fill(rawValue + '\n- Protect');
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor.getByRole('alert')).toContainText('more than four moves');
   await expect(editor).toBeVisible();
   await raw.fill(
     rawValue.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe')
   );
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await weavile.getByRole('button', { name: /Apply/ }).click();
   await page.reload();
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     peter.name
@@ -275,9 +269,7 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
   });
   await expectDetailsSubView(editor);
   await editor.getByLabel('Item', { exact: true }).fill('Legacy custom item');
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText('Legacy custom item');
 
@@ -287,9 +279,7 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
   editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
   await expectSpreadSubView(editor);
   await editor.getByLabel('HP EV', { exact: true }).fill('31');
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor.getByRole('alert')).toContainText('must total 66');
   await expect(editor).toBeVisible();
 });
@@ -359,10 +349,15 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
   await expect(
     page.getByRole('region', { name: 'Kingambit set', exact: true })
   ).toHaveCount(0);
-  const diff = page.getByRole('table', { name: 'Team differences' });
-  await expect(diff).toContainText('Sneasler');
-  await expect(diff).toContainText('Added');
-  await expect(diff).toContainText('Removed');
+  const sneasler = page.getByRole('region', {
+    name: 'Sneasler set',
+    exact: true,
+  });
+  await expect(sneasler.getByRole('button', { name: /Apply/ })).toBeVisible();
+  await sneasler.getByRole('button', { name: /Apply/ }).click();
+  await expect(page.getByRole('status')).toHaveText(
+    'Sneasler changes applied and saved.'
+  );
 });
 
 test('item suggestions support Tab and Enter selection through save and reload', async ({
@@ -391,10 +386,8 @@ test('item suggestions support Tab and Enter selection through save and reload',
   await expect(first).toBeFocused();
   await first.press('Enter');
   await expect(item).toHaveValue(chosen);
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await weavile.getByRole('button', { name: /Apply/ }).click();
   await page.reload();
   await expect(weavile.getByText(chosen, { exact: true })).toBeVisible();
 });
@@ -419,10 +412,8 @@ test('custom ability typed value survives Escape and Cancel', async ({
   await ability.fill('Glitch Drive');
   await ability.press('Escape');
   await expect(ability).toHaveValue('Glitch Drive');
-  await editor
-    .getByRole('button', { name: 'Apply to team', exact: true })
-    .click();
-  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await weavile.getByRole('button', { name: /Apply/ }).click();
   await expect(
     weavile.getByText('Ability: Glitch Drive', { exact: true })
   ).toBeVisible();

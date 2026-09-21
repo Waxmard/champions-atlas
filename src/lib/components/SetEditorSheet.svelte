@@ -726,13 +726,14 @@
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4"
   >
     <p class="mb-3 text-xs text-base-content/70">
-      Changes are staged. Save changes on the team to keep them.
+      Changes will be staged on this Pokémon's card. Apply them on the team
+      sheet to save.
     </p>
     <div class="flex justify-end gap-2">
       <Button variant="outline" class="h-11 min-h-11 px-4" onclick={oncancel}>
         Cancel
       </Button>
-      <Button class="h-11 min-h-11 px-4" onclick={apply}>Apply to team</Button>
+      <Button class="h-11 min-h-11 px-4" onclick={apply}>Done</Button>
     </div>
   </footer>
 </div>

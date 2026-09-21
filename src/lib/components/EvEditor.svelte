@@ -1,5 +1,5 @@
 <script lang="ts">
-  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
   import {
     CHAMPIONS_STATS,
     championsSpreadTotal,
@@ -49,19 +49,6 @@
       })
     );
   }
-
-  function resetEvs() {
-    onspreadchange(
-      formatChampionsSpread({
-        HP: 0,
-        Atk: 0,
-        Def: 0,
-        SpA: 0,
-        SpD: 0,
-        Spe: 0,
-      })
-    );
-  }
 </script>
 
 <div
@@ -93,16 +80,6 @@
             >{total - 66} over limit</span
           >
         {/if}
-        <button
-          type="button"
-          class="btn h-7 min-h-7 gap-1 btn-ghost px-2 text-[11px] text-base-content/70 btn-xs hover:text-base-content"
-          aria-label="Clear all EVs"
-          disabled={total === 0}
-          onclick={resetEvs}
-        >
-          <RotateCcw class="size-3" />
-          <span>Reset</span>
-        </button>
       </div>
     </div>
     <div class="h-2 w-full overflow-hidden rounded-full bg-base-300">
@@ -121,6 +98,9 @@
   <div class="grid gap-3">
     {#each CHAMPIONS_STATS as stat (stat)}
       {@const colorClass = STAT_COLORS[stat]}
+      {@const currentVal = values[stat]}
+      {@const remaining = Math.max(0, 66 - total)}
+      {@const canAdd = Math.min(32 - currentVal, remaining)}
       <div
         class="space-y-2 rounded-lg border border-base-300/40 bg-base-200/30 p-2 sm:p-2.5"
       >
@@ -148,6 +128,18 @@
                 onclick={() => update(stat, 32)}
               >
                 32
+              </button>
+              <button
+                type="button"
+                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+                disabled={canAdd <= 0}
+                aria-label={`Fill remaining EVs into ${stat}`}
+                title={canAdd > 0
+                  ? `Add remaining ${canAdd} EVs to ${stat}`
+                  : 'No remaining budget'}
+                onclick={() => update(stat, currentVal + canAdd)}
+              >
+                {canAdd > 0 ? `+${canAdd}` : 'Fill'}
               </button>
             </div>
           </div>
@@ -211,8 +203,9 @@
       <div class="flex w-full items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           {#if option.nature}
-            <span class="badge badge-sm font-semibold badge-primary">
-              🌿 {option.nature}
+            <span class="badge gap-1 badge-sm font-semibold badge-primary">
+              <SlidersHorizontal class="size-3 text-primary" />
+              <span>{option.nature}</span>
             </span>
           {/if}
           {#if option.totalCount}
