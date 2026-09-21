@@ -81,7 +81,6 @@
       baseline = JSON.stringify(draft);
       if (entry) {
         localStorage.setItem(activeTeamKey, entry.id);
-        void pushNow();
         if (page.url.searchParams.get('team') !== entry.id) {
           void goto(resolve(`/my-teams?team=${entry.id}`), {
             replaceState: true,

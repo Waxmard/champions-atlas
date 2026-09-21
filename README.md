@@ -111,7 +111,7 @@ when switching to the single-slot comparison controls.
 ## Stack
 
 - Svelte 5, SvelteKit, strict TypeScript.
-- shadcn-svelte (Vega), Tailwind CSS, locally bundled Inter font.
+- daisyUI with Tailwind CSS, bits-ui primitives, locally bundled Inter font.
 - ESLint with Svelte rules, Prettier with Svelte and Tailwind plugins, svelte-check.
 - mise, Lefthook, GitHub Actions, Dependabot following mw-kit conventions.
 

@@ -68,6 +68,7 @@ than `GITHUB_TOKEN` so that merging the release pull request triggers the
 - A pull request labeled `deploy-preview` runs `deploy-preview.yml`, which
   deploys the rules and a Hosting preview channel to `champions-atlas-test`, then
   comments the channel URL on the pull request.
+  The `deploy-preview` label must exist on the repository (`gh label create deploy-preview`); without it the job silently no-ops.
 - A push to `main` also runs `release-please.yml`, which opens or updates a
   release pull request that bumps `package.json` and writes `CHANGELOG.md`. The
   workflow merges that pull request once the required status checks pass, then

@@ -488,6 +488,7 @@
             placeholder="Custom item"
             clearOnDeselect={false}
             onfocus={() => activate('item')}
+            onclick={() => activeField !== 'item' && (activeField = 'item')}
             oninput={(event) => {
               itemQuery = event.currentTarget.value;
               form.item = event.currentTarget.value;
@@ -539,6 +540,7 @@
           placeholder="Custom ability"
           clearOnDeselect={false}
           onfocus={() => activate('ability')}
+          onclick={() => activeField !== 'ability' && (activeField = 'ability')}
           oninput={(event) => {
             abilityQuery = event.currentTarget.value;
             form.ability = event.currentTarget.value;
@@ -587,6 +589,7 @@
           placeholder="Choose nature"
           clearOnDeselect={false}
           onfocus={() => activate('nature')}
+          onclick={() => activeField !== 'nature' && (activeField = 'nature')}
           oninput={(event) => {
             natureQuery = event.currentTarget.value;
             form.nature = event.currentTarget.value;

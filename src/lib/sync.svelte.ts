@@ -40,6 +40,15 @@ let auth: Auth | null = null;
 let db: Firestore | null = null;
 
 const reloadedKey = 'champions-atlas:pulled-reload:v1';
+const lastPushKey = 'champions-atlas:last-push:v1';
+
+function localSnapshot(): string {
+  return JSON.stringify([
+    localStorage.getItem(storageKey),
+    localStorage.getItem(activeTeamKey),
+    localStorage.getItem(browseStorageKey),
+  ]);
+}
 
 function firebaseConfig() {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
@@ -86,7 +95,15 @@ export async function signIn(): Promise<void> {
       code === 'auth/popup-blocked' ||
       code === 'auth/operation-not-supported-in-this-environment'
     ) {
-      await signInWithRedirect(auth, new GoogleAuthProvider());
+      try {
+        await signInWithRedirect(auth, new GoogleAuthProvider());
+      } catch (redirectError) {
+        sync.status = 'error';
+        sync.error =
+          redirectError instanceof Error
+            ? redirectError.message
+            : String(redirectError);
+      }
     } else {
       sync.status = code === 'auth/popup-closed-by-user' ? 'off' : 'error';
       sync.error = error instanceof Error ? error.message : String(error);
@@ -99,6 +116,8 @@ export async function signOut(): Promise<void> {
   try {
     await signOutOfFirebase(auth);
     sessionStorage.removeItem(reloadedKey);
+    sync.status = 'off';
+    sync.error = '';
   } catch (error) {
     sync.status = 'error';
     sync.error = error instanceof Error ? error.message : String(error);
@@ -118,6 +137,7 @@ export async function pushNow(): Promise<void> {
       updatedAt: serverTimestamp(),
     });
     sync.status = 'synced';
+    localStorage.setItem(lastPushKey, localSnapshot());
   } catch (error) {
     sync.status = 'error';
     sync.error = error instanceof Error ? error.message : String(error);
@@ -140,6 +160,10 @@ export async function pullNow(): Promise<void> {
       activeTeamId?: unknown;
       browse?: unknown;
     };
+    if (data.teams == null) {
+      sync.status = 'synced';
+      return;
+    }
     const teams = JSON.stringify(
       readSavedTeams({ getItem: () => JSON.stringify(data.teams) })
     );
@@ -150,11 +174,21 @@ export async function pullNow(): Promise<void> {
       localStorage.getItem(storageKey) !== teams ||
       localStorage.getItem(activeTeamKey) !== activeTeamId ||
       localStorage.getItem(browseStorageKey) !== browse;
+    if (changed) {
+      const lastPush = localStorage.getItem(lastPushKey);
+      if (lastPush !== null && lastPush !== localSnapshot()) {
+        sync.status = 'error';
+        sync.error =
+          'Unsynced changes on this device — save again to sync them.';
+        return;
+      }
+    }
     localStorage.setItem(storageKey, teams);
     if (activeTeamId === null) localStorage.removeItem(activeTeamKey);
     else localStorage.setItem(activeTeamKey, activeTeamId);
     if (browse === null) localStorage.removeItem(browseStorageKey);
     else localStorage.setItem(browseStorageKey, browse);
+    localStorage.setItem(lastPushKey, localSnapshot());
     sync.status = 'synced';
     // The pull settles after first paint, so pages have already read storage by
     // now. Reload once to render the pulled teams/filters. A bare `if (changed)`
