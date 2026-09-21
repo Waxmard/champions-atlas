@@ -97,9 +97,12 @@ refresh or additional source integration is configured.
    fields remain unchanged. Unknown fields are omitted, not inferred. Edited
    teams do not receive a new rental code.
 
-Saved copies survive reload and catalog refreshes on the same browser origin.
-They do not sync across devices; clearing browser storage removes them. Saving
-requires available browser storage. Unsaved edits prompt before navigation.
+Saved copies survive reload and catalog refreshes on the same browser origin, and
+clearing browser storage removes them. Saving requires available browser storage.
+Unsaved edits prompt before navigation. When Firebase is configured, the app
+requires Google sign-in and syncs saved teams across devices through Cloud
+Firestore; without configuration it runs local-only. See
+[Firebase deployment and sync](docs/firebase.md).
 M-C labels indicate source regulation, not a legality check or a guaranteed
 upgrade. Replacement suggestions do not require the source team to match your
 other five Pokémon exactly. Existing saved teams retain their original and edits
@@ -108,7 +111,7 @@ when switching to the single-slot comparison controls.
 ## Stack
 
 - Svelte 5, SvelteKit, strict TypeScript.
-- shadcn-svelte (Vega), Tailwind CSS, locally bundled Inter font.
+- daisyUI with Tailwind CSS, bits-ui primitives, locally bundled Inter font.
 - ESLint with Svelte rules, Prettier with Svelte and Tailwind plugins, svelte-check.
 - mise, Lefthook, GitHub Actions, Dependabot following mw-kit conventions.
 
@@ -119,4 +122,5 @@ Internal links passed to Button must use SvelteKit's `resolve()` at the call sit
 TypeScript stays on 6.0.3 until svelte-check and typescript-eslint support
 TypeScript 7. Their current peer dependency ranges exclude version 7.
 
-Deployment is undecided; the scaffold retains SvelteKit's automatic adapter.
+Deployment uses `@sveltejs/adapter-static` to build a static SPA that Firebase
+Hosting serves. See [Firebase deployment and sync](docs/firebase.md).

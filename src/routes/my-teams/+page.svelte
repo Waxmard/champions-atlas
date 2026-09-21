@@ -19,6 +19,7 @@
     speciesMember,
     type SavedTeam,
   } from '$lib/workbench';
+  import { pushNow } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   type EditableSetField =
@@ -121,12 +122,15 @@
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') persistIfDirty();
     };
-    const onPointerDown = (e: PointerEvent) => {
+    const onClick = (e: MouseEvent) => {
       if (activeEditIndex === null) return;
       const target = e.target as HTMLElement | null;
+      // A click on a dialog control that removes itself (e.g. "Remove move")
+      // detaches the target before the event reaches the window; treating it
+      // as outside the dialog would wrongly close the editor.
+      if (!target || !target.isConnected) return;
       const card = document.getElementById(`pokemon-slot-${activeEditIndex}`);
       if (
-        target &&
         card &&
         !card.contains(target) &&
         !target.closest(
@@ -139,12 +143,12 @@
     window.addEventListener('beforeunload', warn);
     window.addEventListener('pagehide', onHide);
     document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('pointerdown', onPointerDown);
+    window.addEventListener('click', onClick);
     return () => {
       window.removeEventListener('beforeunload', warn);
       window.removeEventListener('pagehide', onHide);
       document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('pointerdown', onPointerDown);
+      window.removeEventListener('click', onClick);
     };
   });
   $effect(() => {
@@ -161,6 +165,7 @@
     try {
       saved = saveTeam(localStorage, next);
       localStorage.setItem(activeTeamKey, next.id);
+      void pushNow();
       draft = JSON.parse(JSON.stringify(next));
       baseline = JSON.stringify(draft);
       editedSlots = new Set();
@@ -184,21 +189,11 @@
     openSaved(draft.id);
     message = 'Changes discarded.';
   }
-  const scrollSmooth = (
-    el?: HTMLElement | null,
-    block: ScrollLogicalPosition = 'start'
-  ) =>
-    el?.scrollIntoView({
-      block,
-      behavior: matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 'instant'
-        : 'smooth',
-    });
   const focusSetField = (index: number, field: EditableSetField) =>
     document
       .getElementById(`pokemon-slot-${index}`)
       ?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`)
-      ?.focus();
+      ?.focus({ preventScroll: true });
   const openSetEditor = (index: number, field: EditableSetField) => {
     if (editing) return;
     pendingSpecies = null;
@@ -208,9 +203,13 @@
       ? structuredClone($state.snapshot(draft.members[index]))
       : null;
     editorDirty = false;
+    const savedScrollY = window.scrollY;
     void tick().then(() => {
-      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
       editorRef?.focus();
+      // The Bits combobox's initial highlight calls scrollIntoView while its
+      // floating content is still held off-page for measurement, scrolling the
+      // window to the top; restore the user's scroll position once it settles.
+      requestAnimationFrame(() => window.scrollTo(0, savedScrollY));
     });
   };
   function applySetEdit(index: number, member: Member) {
@@ -222,7 +221,6 @@
     originalMember = null;
     editorDirty = false;
     void tick().then(() => {
-      scrollSmooth(document.getElementById(`pokemon-slot-${index}`), 'center');
       focusSetField(index, field);
     });
   }
@@ -237,10 +235,6 @@
     editorDirty = false;
     if (targetSlot !== null) {
       void tick().then(() => {
-        scrollSmooth(
-          document.getElementById(`pokemon-slot-${targetSlot}`),
-          'center'
-        );
         focusSetField(targetSlot, field);
       });
     }
@@ -286,7 +280,7 @@
   <div class="flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="text-3xl font-semibold tracking-tight">My teams</h1>
-      <p class="mt-2 text-sm text-muted-foreground">
+      <p class="mt-2 text-sm text-base-content/70">
         Keep your original. Explore changes. Save your own version.
       </p>
     </div>
@@ -299,16 +293,16 @@
       >
     </div>
   </div>
-  {#if storageError}<p role="alert" class="mt-5 rounded-xl border p-4 text-sm">
+  {#if storageError}<p role="alert" class="mt-5 alert alert-error">
       {storageError}
     </p>{/if}
-  {#if !ready}<p class="mt-8 text-muted-foreground">Loading saved teams…</p>
+  {#if !ready}<p class="mt-8 text-base-content/70">Loading saved teams…</p>
   {:else if !storageError}
     {#if saved.length}
       <label class="mt-6 block max-w-xl text-sm font-medium"
         >Saved team
         <select
-          class="filter-select mt-2"
+          class="select mt-2 min-h-11 w-full"
           value={draft?.id || ''}
           onchange={(event) => {
             void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
@@ -321,7 +315,7 @@
       </label>
     {:else}
       <p
-        class="mt-8 rounded-xl border border-dashed p-6 text-sm text-muted-foreground"
+        class="mt-8 rounded-xl border border-dashed p-6 text-sm text-base-content/70"
       >
         No saved teams yet. Open a catalog team and choose “Use this team”.
       </p>
@@ -337,12 +331,12 @@
       <section
         aria-label="Your team"
         bind:this={editorElement}
-        class="mt-4 rounded-2xl border bg-card p-5 sm:p-6"
+        class="card mt-4 bg-base-100 p-5 card-border sm:p-6"
       >
         <div class="flex flex-wrap items-end justify-between gap-4">
           <label class="block w-full max-w-xl text-sm font-medium"
             >Team name<input
-              class="filter-select mt-2"
+              class="input mt-2 min-h-11 w-full"
               maxlength="200"
               bind:value={draft.name}
             /></label
@@ -376,7 +370,7 @@
             afterLabel="With changes"
           />
         {/if}
-        <p class="mt-3 text-xs text-muted-foreground">
+        <p class="mt-3 text-xs text-base-content/70">
           {dirty ? 'Unsaved changes.' : 'Saved on this device.'} Original: {draft
             .original.name} · {draft.original.regulation}. Editing does not
           create a working rental code.
@@ -411,45 +405,32 @@
           {#each draft.members as member, index (index)}
             <section
               id={`pokemon-slot-${index}`}
-              class="min-w-0 overflow-hidden rounded-2xl border bg-card transition-all duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
+              class="min-w-0 overflow-hidden rounded-2xl border bg-base-100 transition-all duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
               index
                 ? 'border-primary p-4 shadow-md ring-2 ring-primary/30'
                 : 'hover:border-primary/30 hover:shadow-xs'}"
               aria-label={`${member.pokemon} set`}
             >
-              {#if activeEditIndex === index}
-                <SetEditorSheet
-                  bind:this={editorRef}
-                  {member}
-                  teams={data.catalog.teams as Team[]}
-                  currentRegulation={current}
-                  initialField={activeEditField}
-                  teammates={draft.members.filter((_, i) => i !== index)}
-                  onapply={(next) => applySetEdit(index, next)}
-                  oncancel={cancelSetEdit}
-                  ondirtychange={(value) => (editorDirty = value)}
-                />
-              {:else}<MemberCard
-                  {member}
-                  editable={true}
-                  {editing}
-                  pending={editedSlots.has(index)}
-                  onedit={(field) => openSetEditor(index, field)}
-                />
-                {#if pendingSpecies}
-                  <Button
-                    variant="outline"
-                    class="mt-3 min-h-11 w-full"
-                    aria-label={`Replace ${member.pokemon} with ${pendingSpecies}`}
-                    onclick={() => applySpeciesSwap(index)}
-                    >Swap in {pendingSpecies}</Button
-                  >
-                {/if}
+              <MemberCard
+                {member}
+                editable={true}
+                {editing}
+                pending={editedSlots.has(index)}
+                onedit={(field) => openSetEditor(index, field)}
+              />
+              {#if pendingSpecies}
+                <Button
+                  variant="outline"
+                  class="mt-3 min-h-11 w-full"
+                  aria-label={`Replace ${member.pokemon} with ${pendingSpecies}`}
+                  onclick={() => applySpeciesSwap(index)}
+                  >Swap in {pendingSpecies}</Button
+                >
               {/if}
             </section>
           {/each}
         </div>
-        <p class="mt-4 text-xs leading-5 text-muted-foreground">
+        <p class="mt-4 text-xs leading-5 text-base-content/70">
           Team text normalizes to Pokémon Champions format (EVs out of 32, no
           IVs); unknown details stay omitted.
         </p>
@@ -458,10 +439,38 @@
             use:revealPanel
             >Export text<textarea
               readonly
-              class="mt-2 min-h-72 w-full rounded-lg border p-3 font-mono text-xs"
+              class="textarea mt-2 min-h-72 w-full p-3 font-mono text-xs"
               value={exportPaste(draft.members)}></textarea></label
           >{/if}
       </section>
     {/if}
+  {/if}
+
+  {#if activeEditIndex !== null && draft}
+    {@const editIndex = activeEditIndex!}
+    <div
+      class="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-black/50"
+    >
+      <div class="flex min-h-full items-center justify-center p-4 sm:p-8">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Edit ${draft.members[editIndex].pokemon} set`}
+          class="card w-full max-w-2xl bg-base-100 p-5 shadow-xl card-border sm:p-6"
+        >
+          <SetEditorSheet
+            bind:this={editorRef}
+            member={draft.members[editIndex]}
+            teams={data.catalog.teams as Team[]}
+            currentRegulation={current}
+            initialField={activeEditField}
+            teammates={draft.members.filter((_, i) => i !== editIndex)}
+            onapply={(next) => applySetEdit(editIndex, next)}
+            oncancel={cancelSetEdit}
+            ondirtychange={(value) => (editorDirty = value)}
+          />
+        </div>
+      </div>
+    </div>
   {/if}
 </main>

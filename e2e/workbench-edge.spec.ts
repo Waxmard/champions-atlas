@@ -117,6 +117,7 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   await expect(
     page.getByRole('region', { name: `Edit ${firstPokemon} set`, exact: true })
   ).toBeVisible();
+  await page.getByLabel('Pokémon', { exact: true }).press('Escape');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   const edit = team.getByRole('button', {
     name: `Edit ${firstPokemon} item`,
@@ -130,11 +131,12 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   });
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel('Item', { exact: true })).toBeFocused();
-  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.getByRole('dialog')).toHaveCount(1);
   for (const button of await editor.getByRole('button').all()) {
     const box = await button.boundingBox();
     expect(box?.height).toBeGreaterThanOrEqual(44);
   }
+  await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(edit).toBeFocused();
   expect(
@@ -160,6 +162,11 @@ test('inline draft changes warn before navigation', async ({ page }) => {
     .getByRole('region', { name: 'Edit Weavile set', exact: true })
     .getByLabel('Item', { exact: true })
     .fill('Unsaved item');
+  await page
+    .getByRole('region', { name: 'Edit Weavile set', exact: true })
+    .getByLabel('Item', { exact: true })
+    .press('Escape');
+  await page.getByRole('button', { name: 'Apply item', exact: true }).click();
   page.once('dialog', (dialog) => dialog.dismiss());
   await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);
@@ -217,6 +224,7 @@ test('set edit commits on save and reopening my-teams restores active team', asy
     exact: true,
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
+  await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const stored = await page.evaluate(
@@ -262,6 +270,7 @@ test('item edits preserve an unknown nature', async ({ page }) => {
     exact: true,
   });
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
+  await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   await page.getByRole('button', { name: 'Save changes', exact: true }).click();
   const stored = await page.evaluate(
@@ -298,7 +307,7 @@ test('outside click cancels set edit and explicit apply commits', async ({
     exact: true,
   });
   await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
-  await page.locator('h1').click();
+  await page.locator('div.fixed.inset-0').click({ position: { x: 8, y: 8 } });
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText(originalItem, { exact: true })).toBeVisible();
 
@@ -306,9 +315,35 @@ test('outside click cancels set edit and explicit apply commits', async ({
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
   await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
+  await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
+});
+
+test('outside click over a nav link closes the editor without navigating', async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== 'desktop',
+    'Desktop-only: header is visible without scrolling'
+  );
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await page
+    .getByRole('region', { name: 'Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
+    .click();
+  await expect(page.getByRole('dialog')).toHaveCount(1);
+
+  const browse = page.getByRole('link', { name: 'Browse teams', exact: true });
+  const box = await browse.boundingBox();
+  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
+
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
 });
 
 test('lower-slot nature editing stays visible and persists on mobile', async ({
@@ -330,6 +365,7 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     exact: true,
   });
   await edit.scrollIntoViewIfNeeded();
+  const before = await page.evaluate(() => scrollY);
   await edit.click();
 
   const editor = page.getByRole('region', {
@@ -337,12 +373,17 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     exact: true,
   });
   await expect(editor).toBeInViewport();
-  expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+  const box = await page.getByRole('dialog').boundingBox();
+  const viewportHeight = (await page.viewportSize())!.height;
+  expect(
+    Math.abs(box!.y - (viewportHeight - (box!.y + box!.height)))
+  ).toBeLessThanOrEqual(2);
+  expect(await page.evaluate(() => scrollY)).toBe(before);
   const nature = editor.getByLabel('Nature', { exact: true });
   const initialNature = await nature.inputValue();
-  const replacement = editor
-    .getByLabel('Nature suggestions')
-    .getByRole('button')
+  const replacement = page
+    .getByRole('listbox', { name: 'Nature suggestions', exact: true })
+    .getByRole('option')
     .filter({ hasNotText: initialNature })
     .first();
   await expect(replacement).toBeVisible();

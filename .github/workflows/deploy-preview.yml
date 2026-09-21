@@ -1,0 +1,48 @@
+name: Deploy Preview
+
+on:
+  pull_request:
+    types: [labeled, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  deploy-preview:
+    if: contains(github.event.pull_request.labels.*.name, 'deploy-preview')
+    runs-on: ubuntu-24.04
+    environment: preview
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v4
+        with:
+          path: |
+            .cache/catalog
+            src/lib/data/catalog.json
+            static/sprites
+            static/items
+          key: catalog-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            catalog-${{ runner.os }}-
+      - uses: jdx/mise-action@v4
+      - run: npm ci
+      - run: npm run build
+        env:
+          CHECK_SHEET: '1'
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      - run: npx firebase-tools deploy --only firestore:rules --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
+      - name: Deploy preview channel
+        id: channel
+        run: |
+          output=$(npx firebase-tools hosting:channel:deploy preview --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}" --json)
+          echo "$output" | jq '.result'
+          echo "url=$(echo "$output" | jq -r '.result | to_entries[0].value.url')" >> "$GITHUB_OUTPUT"
+      - uses: marocchino/sticky-pull-request-comment@v3
+        with:
+          header: deploy-preview
+          message: |
+            Preview deployed: ${{ steps.channel.outputs.url }}

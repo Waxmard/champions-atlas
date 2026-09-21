@@ -22,9 +22,9 @@
 
 {#if rows.length}
   <div class="mt-4 overflow-x-auto rounded-xl border">
-    <table class="w-full table-fixed text-left text-xs leading-5">
+    <table class="table w-full table-fixed table-xs text-left leading-5">
       <caption class="sr-only">Team differences</caption>
-      <thead class="bg-secondary">
+      <thead class="bg-base-200">
         <tr
           ><th class="w-1/3 p-3">Pokémon / field</th><th class="p-3"
             >{beforeLabel}</th
@@ -46,7 +46,7 @@
                       {/each}
                     {/if}
                   </div>
-                  <span class="block font-normal text-muted-foreground"
+                  <span class="block font-normal text-base-content/70"
                     >{row.field}</span
                   >
                 </div>
@@ -78,10 +78,9 @@
                   {/if}
                 {:else if row.field === 'Pokémon'}
                   <span
-                    class="inline-flex rounded px-1.5 py-0.5 text-xs font-semibold {value ===
-                      'Added' || value === 'On team'
-                      ? 'bg-primary/10 text-primary'
-                      : 'bg-muted text-muted-foreground'}"
+                    class="badge {value === 'Added' || value === 'On team'
+                      ? 'badge-primary'
+                      : 'badge-soft'}"
                   >
                     {value}
                   </span>
@@ -96,11 +95,11 @@
     </table>
   </div>
 {:else}
-  <p class="mt-4 text-sm text-muted-foreground">
+  <p class="mt-4 text-sm text-base-content/70">
     No differences in loaded fields.
   </p>
 {/if}
-<p class="mt-3 text-xs text-muted-foreground">
+<p class="mt-3 text-xs text-base-content/70">
   Unknown details cannot be compared. Matching fields do not establish legality
   or competitive strength.
 </p>

@@ -162,9 +162,11 @@ Svelte and SvelteKit are selected. Gaining more experience with Svelte is an
 explicit project goal. Use SvelteKit routing for team details and URL-based
 filter state.
 
-The confirmed component and styling stack is shadcn-svelte with Tailwind CSS,
-using Bits UI primitives for accessible interactions. Add components as needed
-and customize their source to suit the app.
+The confirmed component and styling stack is daisyUI with Tailwind CSS, using
+Bits UI primitives for accessible interactions. Maintained libraries handle CSV
+parsing (csv-parse), saved-team validation (Zod), and class merging
+(tailwind-merge and clsx). Add components as needed and customize their source
+to suit the app.
 
 Use ESLint with eslint-plugin-svelte, Prettier with its Svelte and Tailwind
 plugins, and svelte-check. This is an agreed exception to mw-kit's Biome default

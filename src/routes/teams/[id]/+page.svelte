@@ -17,6 +17,7 @@
     newSavedTeam,
     saveTeam,
   } from '$lib/workbench';
+  import { pushNow } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -33,6 +34,7 @@
       const saved = newSavedTeam(team);
       saveTeam(localStorage, saved);
       localStorage.setItem(activeTeamKey, saved.id);
+      void pushNow();
       void goto(resolve(`/my-teams?team=${saved.id}`));
     } catch {
       copyStatus =
@@ -77,18 +79,14 @@
     ><ArrowLeft class="size-4" aria-hidden="true" />Back to teams</a
   >
   <div class="flex flex-wrap items-center gap-2 text-xs">
-    <span class="rounded-md border bg-card px-2 py-1 font-semibold"
-      >Reg {team.regulation}</span
-    >
+    <span class="badge badge-soft">Reg {team.regulation}</span>
     {#if team.regulation === data.currentRegulation}<span
-        class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
-        >Current regulation</span
+        class="badge badge-primary">Current regulation</span
       >{/if}
-    {#if strongest.level <= 2}<span
-        class="rounded-md border border-primary/30 bg-primary/10 px-2 py-1 font-semibold text-primary"
+    {#if strongest.level <= 2}<span class="badge badge-primary"
         >Strong evidence</span
       >{/if}
-    <span class="text-muted-foreground"
+    <span class="text-base-content/70"
       >Shared {team.publishedAt || 'date unknown'} · Doubles</span
     >
   </div>
@@ -97,7 +95,7 @@
   >
     {team.name}
   </h1>
-  <p class="mt-3 text-muted-foreground">
+  <p class="mt-3 text-base-content/70">
     By {team.creator || 'an unlisted creator'}
   </p>
   <div class="mt-6 flex flex-wrap gap-3">
@@ -128,22 +126,16 @@
   <p role="status" aria-live="polite" class="mt-2 min-h-6 text-sm text-primary">
     {copyStatus}
   </p>
-  {#if team.replicaCode}<p class="text-sm text-muted-foreground">
-      Replica code: <code class="font-semibold text-foreground select-all"
+  {#if team.replicaCode}<p class="text-sm text-base-content/70">
+      Replica code: <code class="font-semibold text-base-content select-all"
         >{team.replicaCode}</code
       >
       · {team.replicaStatus === '✔'
         ? 'Listed as available by source; availability may change.'
         : 'Source does not list this code as available.'}
     </p>{/if}
-  <p
-    role="alert"
-    class="mt-5 flex gap-3 rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-sm leading-6"
-  >
-    <AlertTriangle
-      class="mt-1 size-4 shrink-0 text-destructive"
-      aria-hidden="true"
-    />
+  <p role="alert" class="mt-5 alert text-sm leading-6 alert-warning">
+    <AlertTriangle class="size-4 shrink-0" aria-hidden="true" />
     <span
       >Current-regulation legality is unverified. {team.regulation !==
       data.currentRegulation
@@ -152,7 +144,7 @@
       remain unknown.</span
     >
   </p>
-  {#if team.pasteError}<p class="mt-3 text-sm text-muted-foreground">
+  {#if team.pasteError}<p class="mt-3 text-sm text-base-content/70">
       Some published details could not be loaded. {team.pasteError}
     </p>{/if}
 
@@ -169,10 +161,10 @@
     <h2 id="results-heading" class="text-lg font-semibold">
       Results & sources
     </h2>
-    <p class="mt-2 text-sm text-muted-foreground">
+    <p class="mt-2 text-sm text-base-content/70">
       Claims transcribed from VGCPastes, not independently verified.
     </p>
-    <ul class="mt-4 divide-y rounded-xl border bg-card">
+    <ul class="mt-4 divide-y rounded-xl border bg-base-100">
       {#each team.reports as report, index (index)}
         {@const result = evidence(
           report,
@@ -182,7 +174,7 @@
         <li class="flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
             <p class="text-sm font-medium">{result.label}</p>
-            <p class="mt-1 text-xs text-muted-foreground">
+            <p class="mt-1 text-xs text-base-content/70">
               {report.event || 'Event not listed'} · {result.platform}
             </p>
           </div>
@@ -197,17 +189,17 @@
         </li>
       {/each}
     </ul>
-    <p class="mt-3 text-xs text-muted-foreground">
+    <p class="mt-3 text-xs text-base-content/70">
       Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
       names while the sheet lists Mega forms.
     </p>
   </section>
   {#if paste}
-    <details class="mt-8 rounded-xl border bg-card p-5">
+    <details class="mt-8 rounded-xl border bg-base-100 p-5">
       <summary class="cursor-pointer text-sm font-medium"
         >Published paste text</summary
       >
-      {#if team.pasteNotes}<p class="mt-3 text-xs text-muted-foreground">
+      {#if team.pasteNotes}<p class="mt-3 text-xs text-base-content/70">
           Paste notes (may differ from sheet regulation): {team.pasteNotes}
         </p>{/if}
       <pre class="mt-4 overflow-x-auto text-xs leading-6">{paste}</pre>

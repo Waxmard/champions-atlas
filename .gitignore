@@ -6,6 +6,8 @@ src/lib/data/catalog.json
 playwright-report/
 test-results/
 !CLAUDE.md
+mise.local.toml
+firebase-debug.log
 
 # Output
 .output

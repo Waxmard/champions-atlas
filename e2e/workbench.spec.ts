@@ -62,10 +62,11 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await expect(pokemonEditor).toBeVisible();
   const pokemonInput = pokemonEditor.getByLabel('Pokémon', { exact: true });
   await expect(pokemonInput).toBeVisible();
-  const pokemonChoices = pokemonEditor
-    .getByLabel('Pokémon suggestions')
-    .getByRole('button');
+  const pokemonChoices = page
+    .getByRole('listbox', { name: 'Pokémon suggestions', exact: true })
+    .getByRole('option');
   await expect(pokemonChoices.first()).toBeVisible();
+  await pokemonInput.press('Escape');
   await pokemonEditor
     .getByRole('button', { name: 'Cancel', exact: true })
     .click();
@@ -90,9 +91,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await expect(itemEditor.getByLabel('EV editor')).toHaveCount(0);
   await expect(itemEditor.getByLabel('Selected moves')).toHaveCount(0);
   await expect(itemEditor.getByLabel('Showdown set text')).toHaveCount(0);
-  const itemChoices = itemEditor
-    .getByLabel('Item suggestions')
-    .getByRole('button');
+  const itemChoices = page
+    .getByRole('listbox', { name: 'Item suggestions', exact: true })
+    .getByRole('option');
   const replacementItem = itemChoices
     .filter({ hasNotText: initialItem })
     .first();
@@ -120,9 +121,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await expect(abilityEditor.getByLabel('Nature', { exact: true })).toHaveCount(
     0
   );
-  const abilityChoices = abilityEditor
-    .getByLabel('Ability suggestions')
-    .getByRole('button');
+  const abilityChoices = page
+    .getByRole('listbox', { name: 'Ability suggestions', exact: true })
+    .getByRole('option');
   const replacementAbility = abilityChoices
     .filter({ hasNotText: initialAbility })
     .first();
@@ -282,6 +283,7 @@ test('untouched legacy EV spread applies, but changed spread requires 66', async
     .click();
   let editor = page.getByRole('region', { name: 'Edit Weavile set' });
   await editor.getByLabel('Item', { exact: true }).fill('Legacy custom item');
+  await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText('Legacy custom item');
@@ -322,26 +324,30 @@ test('two-way move swaps and species swap on a saved team', async ({
   const moves = movesEditor.getByRole('list', { name: 'Selected moves' });
   const initialMoves = await moves.getByRole('listitem').allTextContents();
   expect(initialMoves).toHaveLength(4);
-  const moveSuggestions = movesEditor.getByLabel('Move suggestions');
+  const moveSuggestions = page.getByRole('listbox', {
+    name: 'Move suggestions',
+    exact: true,
+  });
 
   await moves.getByRole('listitem').first().getByRole('button').first().click();
   await expect(
     movesEditor.getByText(/Replacing .+\. Choose a suggested move\./)
   ).toBeVisible();
   const replacement = (await moveSuggestions
-    .getByRole('button')
+    .getByRole('option')
     .first()
     .textContent())!.trim();
-  await moveSuggestions.getByRole('button').first().click();
+  await moveSuggestions.getByRole('option').first().click();
   await expect(moves).toContainText(replacement);
   await expect(moves).not.toContainText(initialMoves[0].trim());
 
-  // Full set: clicking a suggestion enters swap mode, then pick a move to swap out.
+  // Full set: re-open the input, then a suggestion enters swap mode.
+  await movesEditor.getByLabel('Custom move', { exact: true }).click();
   const swapIn = (await moveSuggestions
-    .getByRole('button')
+    .getByRole('option')
     .first()
     .textContent())!.trim();
-  await moveSuggestions.getByRole('button').first().click();
+  await moveSuggestions.getByRole('option').first().click();
   await expect(
     movesEditor.getByText(/Swap in .+\. Choose a move to replace\./)
   ).toBeVisible();
@@ -384,4 +390,135 @@ test('two-way move swaps and species swap on a saved team', async ({
   await expect(diff).toContainText('Sneasler');
   await expect(diff).toContainText('Added');
   await expect(diff).toContainText('Removed');
+});
+
+test('item combobox keyboard selection applies and persists through reload', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
+    .click();
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  const item = editor.getByLabel('Item', { exact: true });
+  expect(await item.inputValue()).toBeTruthy();
+  await item.fill('a');
+  const itemOptions = page
+    .getByRole('listbox', { name: 'Item suggestions', exact: true })
+    .getByRole('option');
+  await expect(itemOptions.first()).toBeVisible();
+  const options = (await itemOptions.allTextContents()).map((t) => t.trim());
+  await item.press('ArrowDown');
+  await item.press('Enter');
+  const chosen = await item.inputValue();
+  expect(options).toContain(chosen);
+  await editor.getByRole('button', { name: 'Apply item', exact: true }).click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await page.reload();
+  await expect(weavile.getByText(chosen, { exact: true })).toBeVisible();
+});
+
+test('custom ability typed value survives Escape and Tab', async ({ page }) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile ability', exact: true })
+    .click();
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  const ability = editor.getByLabel('Ability', { exact: true });
+  await ability.fill('Glitch Drive');
+  await ability.press('Escape');
+  await ability.press('Tab');
+  await expect(ability).toHaveValue('Glitch Drive');
+  await editor
+    .getByRole('button', { name: 'Apply ability', exact: true })
+    .click();
+  await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+  await expect(
+    weavile.getByText('Ability: Glitch Drive', { exact: true })
+  ).toBeVisible();
+
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile ability', exact: true })
+    .click();
+  const reopened = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await reopened.getByLabel('Ability', { exact: true }).fill('Another');
+  await reopened.getByLabel('Ability', { exact: true }).press('Escape');
+  await reopened.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    weavile.getByText('Ability: Glitch Drive', { exact: true })
+  ).toBeVisible();
+});
+
+test('move editor distinguishes typed Enter from highlighted suggestion', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${peter.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile moves', exact: true })
+    .click();
+  const editor = page.getByRole('region', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  const moves = editor.getByRole('list', { name: 'Selected moves' });
+  const first = (await moves
+    .getByRole('listitem')
+    .first()
+    .textContent())!.trim();
+  await page
+    .getByRole('button', { name: `Remove ${first}`, exact: true })
+    .click();
+
+  const customMove = editor.getByLabel('Custom move', { exact: true });
+  await customMove.fill('Pro');
+  await customMove.press('Enter');
+  await expect(moves).toContainText('Pro');
+
+  await page.getByRole('button', { name: 'Remove Pro', exact: true }).click();
+  const before = (await moves.getByRole('listitem').allTextContents()).map(
+    (t) => t.trim()
+  );
+  await customMove.fill('Ice');
+  const moveOptions = page
+    .getByRole('listbox', { name: 'Move suggestions', exact: true })
+    .getByRole('option');
+  await expect(moveOptions.first()).toBeVisible();
+  const options = (await moveOptions.allTextContents()).map((t) => t.trim());
+  await customMove.press('ArrowDown');
+  await customMove.press('Enter');
+  const after = (await moves.getByRole('listitem').allTextContents()).map((t) =>
+    t.trim()
+  );
+  const added = after.find((t) => !before.includes(t))!;
+  expect(options).toContain(added);
 });

@@ -1,4 +1,7 @@
 export interface Member {
+  // Saved-team members may retain unknown per-member metadata; the index
+  // signature keeps this catalog type assignable to zod's looseObject output.
+  [key: string]: unknown;
   set?: string;
   pokemon: string;
   item: string | null;

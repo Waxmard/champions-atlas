@@ -39,18 +39,18 @@
 <div
   class="relative flex min-w-0 flex-col transition-all duration-300 ease-out {editable
     ? 'rounded-xl p-3 sm:p-3.5'
-    : 'rounded-2xl border bg-card p-4 shadow-2xs sm:p-5'} {className}"
+    : 'rounded-2xl border bg-base-100 p-4 shadow-2xs sm:p-5'} {className}"
   style={cardStyle}
 >
   <!-- Header: Sprite + Name/Types + Slot + EV Spread + (optional) Change Action -->
   <div class="flex items-center justify-between gap-2">
     <div class="flex min-w-0 items-center gap-2.5">
-      <div class="relative shrink-0 drop-shadow-xs filter">
+      <div class="filter relative shrink-0 drop-shadow-xs">
         <PokemonSprite pokemon={member.pokemon} size={48} />
       </div>
       <div class="min-w-0">
         {#if slot !== undefined}
-          <div class="mb-0.5 text-[11px] font-medium text-muted-foreground">
+          <div class="mb-0.5 text-[11px] font-medium text-base-content/70">
             Slot {slot}
           </div>
         {/if}
@@ -68,7 +68,7 @@
         {#if editable}
           <button
             type="button"
-            class="mt-0.5 inline-flex items-center font-mono text-xs text-muted-foreground transition-colors hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
+            class="mt-0.5 inline-flex items-center font-mono text-xs text-base-content/70 transition-colors hover:text-base-content disabled:pointer-events-none disabled:opacity-50"
             aria-label={`Edit ${member.pokemon} EVs`}
             data-set-field="spread"
             disabled={editing}
@@ -78,7 +78,7 @@
           </button>
         {:else}
           <span
-            class="mt-0.5 inline-flex items-center font-mono text-xs text-muted-foreground"
+            class="mt-0.5 inline-flex items-center font-mono text-xs text-base-content/70"
           >
             {member.spread || 'No EVs'}
           </span>
@@ -107,7 +107,7 @@
     {#if editable}
       <button
         type="button"
-        class="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+        class="inline-flex items-center gap-1.5 rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} item`}
         data-set-field="item"
         disabled={editing}
@@ -118,7 +118,7 @@
 
       <button
         type="button"
-        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-foreground/90 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+        class="inline-flex items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/90 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} ability`}
         data-set-field="ability"
         disabled={editing}
@@ -129,7 +129,7 @@
 
       <button
         type="button"
-        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-muted-foreground backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+        class="inline-flex items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/70 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-base-200 hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} nature`}
         data-set-field="nature"
         disabled={editing}
@@ -139,19 +139,19 @@
       </button>
     {:else}
       <div
-        class="inline-flex items-center gap-1.5 rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium backdrop-blur-xs"
+        class="inline-flex items-center gap-1.5 rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium backdrop-blur-xs"
       >
         {@render itemContent()}
       </div>
 
       <div
-        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-foreground/90 backdrop-blur-xs"
+        class="inline-flex items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/90 backdrop-blur-xs"
       >
         {@render abilityContent()}
       </div>
 
       <div
-        class="inline-flex items-center rounded-md border border-border/60 bg-background/80 px-2 py-1 font-medium text-muted-foreground backdrop-blur-xs"
+        class="inline-flex items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/70 backdrop-blur-xs"
       >
         {@render natureContent()}
       </div>
@@ -204,7 +204,7 @@
       </div>
     {:else}
       <div
-        class="rounded-md border border-dashed border-border/60 bg-background/60 py-2.5 text-center text-xs text-muted-foreground italic"
+        class="rounded-md border border-dashed border-base-300/60 bg-base-200/60 py-2.5 text-center text-xs text-base-content/70 italic"
       >
         Moves unknown
       </div>
@@ -217,7 +217,7 @@
       <Button
         variant="ghost"
         size="sm"
-        class="h-7 gap-1 px-2 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+        class="h-7 gap-1 px-2 text-[11px] font-medium text-base-content/70 transition-colors hover:text-base-content"
         aria-label={`Edit ${member.pokemon} set text`}
         data-set-field="text"
         disabled={editing}

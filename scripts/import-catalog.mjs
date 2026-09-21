@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
+import { parse as parseCsvRecords } from 'csv-parse/sync';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parsePaste } from '../src/lib/paste.ts';
@@ -16,42 +17,14 @@ export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
 export function parseCsv(text) {
-  const rows = [];
-  let row = [],
-    cell = '',
-    quoted = false,
-    closed = false;
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-    if (quoted) {
-      if (char === '"' && text[i + 1] === '"') {
-        cell += '"';
-        i++;
-      } else if (char === '"') {
-        quoted = false;
-        closed = true;
-      } else cell += char;
-    } else if (char === '"' && !cell && !closed) quoted = true;
-    else if (char === ',') {
-      row.push(cell);
-      cell = '';
-      closed = false;
-    } else if (char === '\n' || char === '\r') {
-      if (char === '\r' && text[i + 1] === '\n') i++;
-      row.push(cell);
-      rows.push(row);
-      row = [];
-      cell = '';
-      closed = false;
-    } else {
-      if (closed || char === '"') throw new Error('Malformed CSV quoting');
-      cell += char;
-    }
-  }
-  if (quoted) throw new Error('Unclosed CSV quote');
-  if (cell || row.length || closed) rows.push([...row, cell]);
-  return rows;
+  return parseCsvRecords(text, {
+    relax_column_count: true,
+    record_delimiter: ['\r\n', '\n', '\r'],
+  });
 }
+
+const hashSources = (csvs) =>
+  createHash('sha256').update(csvs.join('\n')).digest('hex');
 
 const value = (text = '') =>
   ['-', 'None', 'N/A', 'No Tweet', 'Discord Submission'].includes(text.trim())
@@ -273,6 +246,7 @@ async function main() {
     : Infinity;
   if ((!Number.isInteger(count) && count !== Infinity) || count < 0)
     throw new Error('PASTE_LIMIT must be a non-negative integer');
+  const checkSheet = process.env.CHECK_SHEET === '1';
   await mkdir(cache, { recursive: true });
   async function fetchCached(
     name,
@@ -328,7 +302,7 @@ async function main() {
       return null;
     }
   }
-  if (process.argv.includes('--if-missing')) {
+  if (process.argv.includes('--if-missing') && !checkSheet) {
     try {
       const catalog = JSON.parse(await readFile(output, 'utf8'));
       await restoreSprites(catalog.teams || []);
@@ -339,11 +313,12 @@ async function main() {
     }
   }
   const teams = [];
+  const csvs = [];
   for (const [regulation, gid] of Object.entries(tabs)) {
     // Google CSV exports redirect to a Google-hosted download endpoint.
     const address = `${sheet}/export?format=csv&gid=${gid}`;
     let csv = null;
-    if (process.env.REFRESH !== '1') {
+    if (process.env.REFRESH !== '1' && !checkSheet) {
       try {
         csv = await readFile(resolve(cache, `${regulation}.csv`), 'utf8');
       } catch (error) {
@@ -363,14 +338,29 @@ async function main() {
       parseSheet(csv, regulation);
       await writeFile(resolve(cache, `${regulation}.csv`), csv);
     }
+    csvs.push(csv);
     teams.push(...parseSheet(csv, regulation));
   }
   const unique = deduplicate(teams);
-  let previousTeams = [];
+  const sourceHash = hashSources(csvs);
+  let priorCatalog = null;
   try {
-    previousTeams = JSON.parse(await readFile(output, 'utf8')).teams || [];
+    priorCatalog = JSON.parse(await readFile(output, 'utf8'));
   } catch (error) {
     if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
+  }
+  const previousTeams = priorCatalog?.teams || [];
+  if (
+    checkSheet &&
+    priorCatalog?.sourceHash === sourceHash &&
+    (priorCatalog?.teams?.length ?? 0) > 0
+  ) {
+    await restoreSprites(priorCatalog.teams);
+    await restoreItems(priorCatalog.teams);
+    console.log(
+      `Sheet unchanged (${sourceHash.slice(0, 8)}); reusing prior catalog of ${priorCatalog.teams.length} teams.`
+    );
+    return;
   }
   const stats = await enrichPastes(unique, {
     limit: count,
@@ -393,6 +383,7 @@ async function main() {
     updatedAt: new Date().toISOString(),
     currentRegulation: 'M-C',
     sources: [{ name: 'VGCPastes', url: `${sheet}/edit` }],
+    sourceHash,
     teams: unique,
   });
   const sprites = await restoreSprites(unique);

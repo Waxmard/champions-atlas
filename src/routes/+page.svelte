@@ -19,9 +19,11 @@
   } from '$lib/types';
   import {
     activeTeamKey,
+    browseStorageKey,
     readSavedTeams,
     resolveSavedTeamId,
   } from '$lib/workbench';
+  import { pushNow } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
@@ -35,7 +37,6 @@
   } from '$lib/catalog';
   import type { PageData } from './$types';
 
-  const browseStorageKey = 'champions-atlas:browse:v1';
   const browseKeys = ['member', 'regulation', 'sort', 'page', 'type'];
   const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
   let { data }: { data: PageData } = $props();
@@ -207,6 +208,18 @@
   afterNavigate(restoreBrowse);
   onMount(() => {
     ready = true;
+    const pushBrowse = () => {
+      void pushNow();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') pushBrowse();
+    };
+    window.addEventListener('pagehide', pushBrowse);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('pagehide', pushBrowse);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   });
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(page.url.searchParams, next));
@@ -280,7 +293,7 @@
   {#if storageError}<p
       role="status"
       aria-live="polite"
-      class="mt-2 text-xs text-muted-foreground"
+      class="mt-2 text-xs text-base-content/70"
     >
       Filters can't be remembered on this device.
     </p>{/if}
@@ -290,12 +303,11 @@
       type="button"
       aria-expanded={typeOpen}
       onclick={() => (typeOpen = !typeOpen)}
-      class="inline-flex min-h-11 items-center gap-2 rounded-xl border bg-card px-3 text-sm font-medium transition-colors hover:border-primary/40 focus-visible:ring-2 focus-visible:ring-primary"
+      class="btn min-h-11 gap-2 btn-outline"
     >
-      <Filter class="size-4 text-muted-foreground" aria-hidden="true" />
+      <Filter class="size-4 text-base-content/70" aria-hidden="true" />
       Filter by type
-      {#if selectedTypes.length}<span
-          class="rounded-full bg-primary/10 px-1.5 text-xs font-semibold text-primary"
+      {#if selectedTypes.length}<span class="badge badge-primary"
           >{selectedTypes.length}</span
         >{/if}
     </button>
@@ -372,7 +384,7 @@
               >Held item
               <select
                 id={`item-${index}`}
-                class="filter-select mt-1 text-base sm:text-sm"
+                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
                 value={filter.item}
                 onchange={(event) =>
                   updateMember(index, 'item', event.currentTarget.value)}
@@ -391,7 +403,7 @@
               >Ability
               <select
                 id={`ability-${index}`}
-                class="filter-select mt-1 text-base sm:text-sm"
+                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
                 value={filter.ability}
                 onchange={(event) =>
                   updateMember(index, 'ability', event.currentTarget.value)}
@@ -412,7 +424,7 @@
               >Move
               <select
                 id={`move-${index}`}
-                class="filter-select mt-1 text-base sm:text-sm"
+                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
                 value={filter.move}
                 onchange={(event) =>
                   updateMember(index, 'move', event.currentTarget.value)}
@@ -437,7 +449,7 @@
       >Regulation
       <select
         id="regulation"
-        class="filter-select mt-1 text-base sm:text-sm"
+        class="select mt-1 min-h-11 w-full text-base sm:text-sm"
         value={regulation}
         onchange={(event) =>
           changeOption('regulation', event.currentTarget.value)}
@@ -458,7 +470,7 @@
       <select
         id="sort"
         aria-label="Sort teams"
-        class="filter-select mt-1 text-base sm:text-sm"
+        class="select mt-1 min-h-11 w-full text-base sm:text-sm"
         value={sort}
         onchange={(event) => changeOption('sort', event.currentTarget.value)}
       >
@@ -481,7 +493,7 @@
           onclick={clearFilters}>Clear filters</Button
         >{/if}
     </div>
-    <p class="mb-4 text-xs leading-5 text-muted-foreground">
+    <p class="mb-4 text-xs leading-5 text-base-content/70">
       Legality in {current} is not yet verified.
     </p>
 
@@ -505,7 +517,7 @@
             onclick={() => changeOption('page', String(pageNumber - 1))}
             >Previous</Button
           >
-          <span class="text-sm text-muted-foreground"
+          <span class="text-sm text-base-content/70"
             >{pageNumber} / {pageCount}</span
           >
           <Button
@@ -522,7 +534,7 @@
         <h2 class="font-semibold">
           {filterState.error ? 'Invalid filter link' : 'No matching teams'}
         </h2>
-        <p class="mt-2 text-sm text-muted-foreground">
+        <p class="mt-2 text-sm text-base-content/70">
           {filterState.error ||
             'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
         </p>
@@ -535,7 +547,7 @@
         >
       </div>
     {/if}
-    <p class="mt-8 text-xs leading-5 text-muted-foreground">
+    <p class="mt-8 text-xs leading-5 text-base-content/70">
       Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}.
       <a
         class="underline underline-offset-2"
