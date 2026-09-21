@@ -447,7 +447,7 @@
 
   <div
     bind:this={contentElement}
-    class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4 sm:px-6"
+    class="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
   >
     {#if currentView === 'overview'}
       <SetEditorOverview
@@ -611,28 +611,16 @@
       />
     {:else if currentView === 'spread'}
       <!-- SPREAD SUB-VIEW -->
-      <section aria-labelledby="spread-heading" class="grid gap-4">
-        <div class="flex items-center justify-between">
-          <span
-            class="badge font-mono badge-sm {currentSpreadTotal === 66
-              ? 'badge-success'
-              : 'badge-warning'}"
-          >
-            {currentSpreadTotal}/66 points
-          </span>
-        </div>
-
-        <div class="rounded-xl border border-base-300 bg-base-100 p-3">
-          <EvEditor
-            spread={form.spread}
-            suggestions={spreadSuggestions}
-            onspreadchange={(spread, nature) => {
-              form.spread = spread;
-              if (nature) form.nature = nature;
-              clearError();
-            }}
-          />
-        </div>
+      <section aria-label="EV spread" class="grid gap-4">
+        <EvEditor
+          spread={form.spread}
+          suggestions={spreadSuggestions}
+          onspreadchange={(spread, nature) => {
+            form.spread = spread;
+            if (nature) form.nature = nature;
+            clearError();
+          }}
+        />
 
         {#if error && errorField === 'spread'}
           <p role="alert" class="text-sm font-medium text-error">

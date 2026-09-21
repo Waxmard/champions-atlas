@@ -35,10 +35,10 @@
   const MOVE_SLOTS = [0, 1, 2, 3];
 </script>
 
-<div class="grid gap-3.5">
+<div class="grid gap-3.5 pr-1 sm:pr-1.5">
   <!-- Species Tile -->
   <div
-    class="flex items-center justify-between rounded-xl border border-base-300 bg-base-100 p-3.5 shadow-2xs transition-colors hover:border-primary/40"
+    class="flex items-center justify-between rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 shadow-2xs transition-colors hover:border-primary/40 sm:p-4 sm:pr-5"
     data-editor-section="pokemon"
   >
     <div class="flex min-w-0 items-center gap-3">
@@ -66,7 +66,7 @@
   <!-- Item, Ability & Nature Tile -->
   <button
     type="button"
-    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40"
+    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40 sm:p-4 sm:pr-5"
     aria-label="Edit item, ability, and nature"
     onclick={() => onnavigate('details')}
     data-editor-section="item"
@@ -108,7 +108,7 @@
   <!-- Moves Tile (2x2 Grid) -->
   <button
     type="button"
-    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40"
+    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40 sm:p-4 sm:pr-5"
     aria-label="Edit moves"
     onclick={() => onnavigate('moves')}
     data-editor-section="moves"
@@ -148,7 +148,7 @@
   <!-- EV Spread Tile -->
   <button
     type="button"
-    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40"
+    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40 sm:p-4 sm:pr-5"
     aria-label="Edit EV spread"
     onclick={() => onnavigate('spread')}
     data-editor-section="spread"
