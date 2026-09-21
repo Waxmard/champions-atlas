@@ -514,7 +514,7 @@
       use:openSetDialog
       oncancel={handleDialogCancel}
       aria-label={`Edit ${draft.members[editIndex].pokemon} set`}
-      class="set-editor-dialog fixed inset-0 z-50 m-0 h-[100dvh] max-h-none w-full max-w-none overflow-hidden border-0 bg-base-100 p-0 text-base-content shadow-xl sm:m-auto sm:h-[calc(100dvh-4rem)] sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100%-4rem)] sm:max-w-2xl sm:rounded-2xl sm:border"
+      class="set-editor-dialog fixed inset-0 z-50 m-0 flex h-[100dvh] max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-base-100 p-0 text-base-content shadow-xl sm:top-8 sm:bottom-auto sm:mx-auto sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100%-4rem)] sm:max-w-2xl sm:rounded-2xl sm:border"
     >
       <SetEditorSheet
         bind:this={editorRef}

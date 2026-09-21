@@ -358,7 +358,7 @@
   }
 </script>
 
-<div bind:this={editorElement} class="flex h-full min-h-0 flex-col">
+<div bind:this={editorElement} class="flex min-h-0 grow flex-col">
   <header
     class="shrink-0 border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 sm:pt-5"
   >
@@ -446,7 +446,7 @@
 
   <div
     bind:this={contentElement}
-    class="min-h-0 flex-1 overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
+    class="min-h-0 flex-auto overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
   >
     {#if currentView === 'overview'}
       <SetEditorOverview
@@ -468,7 +468,7 @@
     {:else if currentView === 'moves'}
       <!-- COMPACT MOVES SUB-VIEW -->
       <section aria-label="Moves" class="grid gap-4">
-        <div class="grid gap-2">
+        <div class="grid gap-2 sm:grid-cols-2">
           {#each MOVE_SLOTS as index (index)}
             {@const move = form.moves[index]}
             {@const type = getMoveType(move)}

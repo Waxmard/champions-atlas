@@ -34,3 +34,11 @@ Read `docs/product-spec.md` before changing product behavior.
 - Add UI components only when used. Keep app state local; cloud sync is deferred.
 - Preserve filters and browsing position when introducing team navigation.
 - Never run git add, commit, or push, publish packages, or deploy automatically.
+
+## UI design and component quality gates
+
+- When creating new components in `src/lib/components/` or executing layout redesigns across existing views:
+  - Validate template markup with `xd://mcp__designer_mcp_anti_pattern_check` (`genre: "modern-minimal"`) to detect AI styling tells, overused card containers, and visual hierarchy flaws.
+  - Validate accessibility with `xd://mcp__designer_mcp_audit_accessibility` to check WCAG compliance (unlabeled inputs, missing focus rings, button text, contrast).
+  - Use `xd://mcp__designer_mcp_generate_tokens` or `build_custom_tokens` when creating new color ramps.
+- Omit these checks on minor styling tweaks, single-line bug fixes, or non-UI files (e.g. `src/lib/paste.ts`, data scripts, tests) to avoid token bloat and round-trip latency.

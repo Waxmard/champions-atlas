@@ -42,7 +42,7 @@
 </script>
 
 <section class="grid gap-5">
-  <div class="grid gap-4">
+  <div class="grid gap-4 sm:grid-cols-2">
     <!-- Item -->
     <div class="min-w-0">
       <label
@@ -179,7 +179,7 @@
     </div>
 
     <!-- Nature -->
-    <div class="min-w-0">
+    <div class="min-w-0 sm:col-span-2">
       <label
         for="set-nature-input"
         class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
@@ -197,7 +197,6 @@
           onclearerror();
         }}
       >
-        <option value="">Unknown</option>
         {#if legacyNature}
           <option value={legacyNature}>{legacyNature}</option>
         {/if}

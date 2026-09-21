@@ -277,6 +277,7 @@ test('item edits preserve an unknown nature', async ({ page }) => {
     name: 'Edit Weavile set',
     exact: true,
   });
+  await expect(editor.getByLabel('Nature', { exact: true })).toHaveValue('');
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
@@ -482,4 +483,63 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
       exact: true,
     })
   ).toContainText(replacementNature);
+});
+
+test('desktop editor hugs its content and pairs fields side by side', async ({
+  page,
+}, testInfo) => {
+  test.skip(testInfo.project.use.isMobile === true, 'Desktop-only layout');
+  await page.goto('/teams/' + peter.id);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  const card = page.getByRole('region', {
+    name: 'Whimsicott set',
+    exact: true,
+  });
+  await card
+    .getByRole('button', { name: 'Edit Whimsicott item', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Whimsicott set',
+    exact: true,
+  });
+  await expect(editor).toBeVisible();
+
+  const itemBox = (await editor
+    .getByLabel('Item', { exact: true })
+    .boundingBox())!;
+  const abilityBox = (await editor
+    .getByLabel('Ability', { exact: true })
+    .boundingBox())!;
+  expect(Math.abs(itemBox.y - abilityBox.y)).toBeLessThan(4);
+  expect(abilityBox.x).toBeGreaterThan(itemBox.x);
+
+  const viewport = (await page.viewportSize())!;
+  await expect
+    .poll(async () => (await editor.boundingBox())!.height)
+    .toBeLessThan(viewport.height - 300);
+
+  await editor
+    .getByRole('button', { name: 'Back to overview', exact: true })
+    .click();
+  await editor
+    .getByRole('button', { name: 'Edit EV spread', exact: true })
+    .click();
+  await expect(
+    editor.getByRole('heading', { name: 'EV spread', exact: true })
+  ).toBeVisible();
+  await expect
+    .poll(async () => (await editor.boundingBox())!.height)
+    .toBeCloseTo(viewport.height - 64, 0);
+
+  const scrollRegion = editor.locator('div.overflow-y-auto').first();
+  expect(
+    await scrollRegion.evaluate((el) => el.scrollHeight > el.clientHeight)
+  ).toBe(true);
+  expect(await scrollRegion.evaluate((el) => el.scrollTop)).toBe(0);
+  await editor
+    .getByLabel('Spe EV slider', { exact: true })
+    .scrollIntoViewIfNeeded();
+  expect(await scrollRegion.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });
