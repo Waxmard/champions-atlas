@@ -471,3 +471,48 @@ test('move Enter preserves typed value and Tab Enter selects an exact suggestion
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
 });
+
+test('nature chips on the EV page set the nature and mark affected stats', async ({
+  page,
+}) => {
+  await openWorkbench(page);
+  const whimsicott = page.getByRole('region', {
+    name: 'Whimsicott set',
+    exact: true,
+  });
+  await whimsicott
+    .getByRole('button', { name: 'Edit Whimsicott EVs', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Whimsicott set',
+    exact: true,
+  });
+  await expect(editor.getByLabel('HP EV', { exact: true })).toBeVisible();
+  await expect(
+    editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
+  ).toBeVisible();
+
+  const bold = editor.getByRole('button', {
+    name: 'Use Bold nature',
+    exact: true,
+  });
+  await expect(bold).toBeVisible();
+  await bold.click();
+  await expect(
+    editor.getByText('Current: Bold (+Def / -Atk)', { exact: true })
+  ).toBeVisible();
+  await expect(editor.getByTitle('Bold raises Def by 10%')).toBeVisible();
+  await expect(editor.getByTitle('Bold lowers Atk by 10%')).toBeVisible();
+  await expect(editor.getByTitle('Timid raises Spe by 10%')).toHaveCount(0);
+  await expect(editor.getByText('+10%', { exact: true })).toBeVisible();
+  await expect(editor.getByText('-10%', { exact: true })).toBeVisible();
+
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(
+    whimsicott.getByRole('button', {
+      name: 'Edit Whimsicott nature',
+      exact: true,
+    })
+  ).toContainText('Bold');
+});

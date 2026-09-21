@@ -41,6 +41,74 @@ export const formatChampionsSpread = (spread: ChampionsSpread) =>
 export const championsSpreadTotal = (spread: ChampionsSpread) =>
   CHAMPIONS_STATS.reduce((total, stat) => total + spread[stat], 0);
 
+export const NATURES = [
+  'Adamant',
+  'Bashful',
+  'Bold',
+  'Brave',
+  'Calm',
+  'Careful',
+  'Docile',
+  'Gentle',
+  'Hardy',
+  'Hasty',
+  'Impish',
+  'Jolly',
+  'Lax',
+  'Lonely',
+  'Mild',
+  'Modest',
+  'Naive',
+  'Naughty',
+  'Quiet',
+  'Quirky',
+  'Rash',
+  'Relaxed',
+  'Sassy',
+  'Serious',
+  'Timid',
+] as const;
+export type Nature = (typeof NATURES)[number];
+export type NatureEffect = { raised: ChampionsStat; lowered: ChampionsStat };
+
+const NATURE_EFFECTS: Record<Nature, NatureEffect | null> = {
+  Adamant: { raised: 'Atk', lowered: 'SpA' },
+  Bashful: null,
+  Bold: { raised: 'Def', lowered: 'Atk' },
+  Brave: { raised: 'Atk', lowered: 'Spe' },
+  Calm: { raised: 'SpD', lowered: 'Atk' },
+  Careful: { raised: 'SpD', lowered: 'SpA' },
+  Docile: null,
+  Gentle: { raised: 'SpD', lowered: 'Def' },
+  Hardy: null,
+  Hasty: { raised: 'Spe', lowered: 'Def' },
+  Impish: { raised: 'Def', lowered: 'SpA' },
+  Jolly: { raised: 'Spe', lowered: 'SpA' },
+  Lax: { raised: 'Def', lowered: 'SpD' },
+  Lonely: { raised: 'Atk', lowered: 'Def' },
+  Mild: { raised: 'SpA', lowered: 'Def' },
+  Modest: { raised: 'SpA', lowered: 'Atk' },
+  Naive: { raised: 'Spe', lowered: 'SpD' },
+  Naughty: { raised: 'Atk', lowered: 'SpD' },
+  Quiet: { raised: 'SpA', lowered: 'Spe' },
+  Quirky: null,
+  Rash: { raised: 'SpA', lowered: 'SpD' },
+  Relaxed: { raised: 'Def', lowered: 'Spe' },
+  Sassy: { raised: 'SpD', lowered: 'Spe' },
+  Serious: null,
+  Timid: { raised: 'Spe', lowered: 'Atk' },
+};
+
+/** Standard nature effect, or null for neutral and unrecognised natures. */
+export function natureEffect(
+  nature: string | null | undefined
+): NatureEffect | null {
+  const name = NATURES.find(
+    (candidate) => candidate.toLowerCase() === nature?.trim().toLowerCase()
+  );
+  return name ? NATURE_EFFECTS[name] : null;
+}
+
 export function normalizeSpread(spread: string | null): string | null {
   if (!spread) return null;
   const parts = spread

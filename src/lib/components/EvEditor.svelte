@@ -4,6 +4,7 @@
     CHAMPIONS_STATS,
     championsSpreadTotal,
     formatChampionsSpread,
+    natureEffect,
     parseChampionsSpread,
     type ChampionsSpread,
   } from '$lib/paste';
@@ -11,22 +12,19 @@
 
   let {
     spread,
-    suggestions,
+    nature,
+    spreadSuggestions,
+    natureSuggestions,
     onspreadchange,
+    onnaturechange,
   }: {
     spread: string;
-    suggestions: CatalogSuggestion[];
+    nature: string;
+    spreadSuggestions: CatalogSuggestion[];
+    natureSuggestions: CatalogSuggestion[];
     onspreadchange: (spread: string, nature?: string | null) => void;
+    onnaturechange: (nature: string) => void;
   } = $props();
-
-  const STAT_COLORS: Record<(typeof CHAMPIONS_STATS)[number], string> = {
-    HP: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
-    Atk: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30',
-    Def: 'bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border-yellow-500/30',
-    SpA: 'bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30',
-    SpD: 'bg-teal-500/15 text-teal-600 dark:text-teal-400 border-teal-500/30',
-    Spe: 'bg-pink-500/15 text-pink-600 dark:text-pink-400 border-pink-500/30',
-  };
 
   const values = $derived(
     parseChampionsSpread(spread) ||
@@ -40,6 +38,7 @@
       } satisfies ChampionsSpread)
   );
   const total = $derived(championsSpreadTotal(values));
+  const effect = $derived(natureEffect(nature));
 
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
     onspreadchange(
@@ -70,13 +69,15 @@
       </div>
       <div class="flex items-center gap-2">
         {#if total === 66}
-          <span class="badge badge-sm font-medium badge-success">Complete</span>
+          <span class="badge badge-soft badge-sm font-medium badge-success"
+            >Complete</span
+          >
         {:else if total < 66}
-          <span class="badge badge-sm font-medium badge-info"
+          <span class="badge badge-soft badge-sm font-medium badge-info"
             >{66 - total} remaining</span
           >
         {:else}
-          <span class="badge badge-sm font-medium badge-error"
+          <span class="badge badge-soft badge-sm font-medium badge-error"
             >{total - 66} over limit</span
           >
         {/if}
@@ -94,10 +95,46 @@
     </div>
   </div>
 
+  <!-- Nature modifies the stats below -->
+  <div class="mb-4 grid gap-2" aria-label="Nature suggestions">
+    <div class="flex flex-wrap items-center justify-between gap-2 px-0.5">
+      <span
+        class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
+      >
+        Nature
+      </span>
+      <span class="font-mono text-xs text-base-content/60">
+        {nature
+          ? `Current: ${nature}${effect ? ` (+${effect.raised} / -${effect.lowered})` : ''}`
+          : 'No nature'}
+      </span>
+    </div>
+    {#if natureSuggestions.length > 0}
+      <div class="flex flex-wrap gap-2">
+        {#each natureSuggestions.slice(0, 5) as option (option.value)}
+          {@const isSelected = nature === option.value}
+          <button
+            type="button"
+            class="min-h-11 rounded-lg border px-3 text-xs transition-colors {isSelected
+              ? 'border-primary bg-primary/5 font-semibold text-primary ring-1 ring-primary/30'
+              : 'border-base-300/60 bg-base-200/80 font-medium text-base-content/80 hover:border-primary/40 hover:text-base-content'}"
+            aria-label={`Use ${option.value} nature`}
+            onclick={() => onnaturechange(option.value)}
+          >
+            {option.value}
+          </button>
+        {/each}
+      </div>
+    {:else}
+      <p class="py-2 text-center text-xs text-base-content/60">
+        No catalog nature suggestions for this Pokémon.
+      </p>
+    {/if}
+  </div>
+
   <!-- Compact Stat Allocation Rows -->
   <div class="grid gap-3">
     {#each CHAMPIONS_STATS as stat (stat)}
-      {@const colorClass = STAT_COLORS[stat]}
       {@const currentVal = values[stat]}
       {@const remaining = Math.max(0, 66 - total)}
       {@const canAdd = Math.min(32 - currentVal, remaining)}
@@ -108,10 +145,27 @@
         <div class="flex items-center justify-between gap-2">
           <div class="flex items-center gap-2">
             <span
-              class="inline-flex w-12 items-center justify-center rounded-md border py-0.5 text-xs font-semibold {colorClass}"
+              class="inline-flex w-12 items-center justify-center rounded-md border border-base-300/60 bg-base-200/80 py-0.5 text-xs font-semibold text-base-content/80"
             >
               {stat}
             </span>
+            {#if effect && effect.raised === stat}
+              <span
+                class="font-mono text-[10px] font-semibold text-success"
+                aria-hidden="true"
+                title={`${nature} raises ${stat} by 10%`}
+              >
+                +10%
+              </span>
+            {:else if effect && effect.lowered === stat}
+              <span
+                class="font-mono text-[10px] font-semibold text-error"
+                aria-hidden="true"
+                title={`${nature} lowers ${stat} by 10%`}
+              >
+                -10%
+              </span>
+            {/if}
             <div class="flex items-center gap-1">
               <button
                 type="button"
@@ -166,7 +220,7 @@
           min="0"
           max="32"
           value={values[stat]}
-          class="range w-full range-primary range-xs"
+          class="range w-full range-xs"
           oninput={(event) => update(stat, event.currentTarget.valueAsNumber)}
         />
       </div>
@@ -182,14 +236,14 @@
     >
       Catalog spread suggestions
     </span>
-    {#if suggestions.length > 0}
-      <span class="badge font-mono badge-sm text-[10px] badge-neutral">
-        {Math.min(5, suggestions.length)} available
+    {#if spreadSuggestions.length > 0}
+      <span class="badge badge-soft font-mono badge-sm text-[10px]">
+        {Math.min(5, spreadSuggestions.length)} available
       </span>
     {/if}
   </div>
 
-  {#each suggestions.slice(0, 5) as option (option.value)}
+  {#each spreadSuggestions.slice(0, 5) as option (option.value)}
     {@const isSelected = spread === option.value}
     {@const parts = option.value.split(' / ').filter(Boolean)}
     <button
@@ -203,8 +257,8 @@
       <div class="flex w-full items-center justify-between gap-2">
         <div class="flex items-center gap-2">
           {#if option.nature}
-            <span class="badge gap-1 badge-sm font-semibold badge-primary">
-              <SlidersHorizontal class="size-3 text-primary" />
+            <span class="badge gap-1 badge-soft badge-sm font-semibold">
+              <SlidersHorizontal class="size-3" />
               <span>{option.nature}</span>
             </span>
           {/if}
@@ -216,7 +270,9 @@
           {/if}
         </div>
         {#if isSelected}
-          <span class="badge badge-sm text-[10px] font-medium badge-success">
+          <span
+            class="badge badge-soft badge-sm text-[10px] font-medium badge-success"
+          >
             ✓ Selected
           </span>
         {/if}

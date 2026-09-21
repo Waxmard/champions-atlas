@@ -11,6 +11,7 @@
   import { normalize, type Member, type Team } from '$lib/catalog';
   import {
     championsSpreadTotal,
+    NATURES,
     parseChampionsSpread,
     parseSetBlock,
   } from '$lib/paste';
@@ -50,10 +51,6 @@
     return field;
   }
 
-  const NATURES =
-    'Adamant Bashful Bold Brave Calm Careful Docile Gentle Hardy Hasty Impish Jolly Lax Lonely Mild Modest Naive Naughty Quiet Quirky Rash Relaxed Sassy Serious Timid'.split(
-      ' '
-    );
   const MOVE_SLOTS = [0, 1, 2, 3];
   const initialMember = (() => member)();
   const initialText = setText(initialMember);
@@ -128,7 +125,9 @@
       .slice(0, 5)
   );
   const legacyNature = $derived(
-    form.nature && !NATURES.includes(form.nature) ? form.nature : null
+    form.nature && !NATURES.some((nature) => nature === form.nature)
+      ? form.nature
+      : null
   );
 
   const parsedCurrentSpread = $derived(parseChampionsSpread(form.spread));
@@ -614,11 +613,16 @@
       <section aria-label="EV spread" class="grid gap-4">
         <EvEditor
           spread={form.spread}
-          suggestions={spreadSuggestions}
+          nature={form.nature}
+          {spreadSuggestions}
+          natureSuggestions={suggestions.natures}
           onspreadchange={(spread, nature) => {
             form.spread = spread;
             if (nature) form.nature = nature;
             clearError();
+          }}
+          onnaturechange={(value) => {
+            form.nature = value;
           }}
         />
 

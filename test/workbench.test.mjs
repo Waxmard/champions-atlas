@@ -16,6 +16,8 @@ import {
 import {
   championsSpreadTotal,
   formatChampionsSpread,
+  NATURES,
+  natureEffect,
   parseChampionsSpread,
   parseCustomPaste,
   parsePaste,
@@ -518,4 +520,44 @@ test('speciesMember set depends on which teammate is swapped out', () => {
     speciesMember('Incineroar', [member('Sneasler')], [x, y], 'M-C')?.item,
     'Alpha'
   );
+});
+
+test('every nature maps to its standard raised and lowered stat', () => {
+  const expected = {
+    Adamant: 'Atk/SpA',
+    Bashful: 'neutral',
+    Bold: 'Def/Atk',
+    Brave: 'Atk/Spe',
+    Calm: 'SpD/Atk',
+    Careful: 'SpD/SpA',
+    Docile: 'neutral',
+    Gentle: 'SpD/Def',
+    Hardy: 'neutral',
+    Hasty: 'Spe/Def',
+    Impish: 'Def/SpA',
+    Jolly: 'Spe/SpA',
+    Lax: 'Def/SpD',
+    Lonely: 'Atk/Def',
+    Mild: 'SpA/Def',
+    Modest: 'SpA/Atk',
+    Naive: 'Spe/SpD',
+    Naughty: 'Atk/SpD',
+    Quiet: 'SpA/Spe',
+    Quirky: 'neutral',
+    Rash: 'SpA/SpD',
+    Relaxed: 'Def/Spe',
+    Sassy: 'SpD/Spe',
+    Serious: 'neutral',
+    Timid: 'Spe/Atk',
+  };
+  assert.deepEqual(
+    NATURES.map((nature) => {
+      const effect = natureEffect(nature);
+      return effect ? `${effect.raised}/${effect.lowered}` : 'neutral';
+    }),
+    NATURES.map((nature) => expected[nature])
+  );
+  assert.equal(natureEffect('modest')?.raised, 'SpA');
+  assert.equal(natureEffect(null), null);
+  assert.equal(natureEffect(''), null);
 });
