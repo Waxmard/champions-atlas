@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Waxmard/champions-atlas/compare/v0.2.0...v0.3.0) (2026-09-22)
+
+
+### Features
+
+* streamline team editing with set modal and roster preview ([#9](https://github.com/Waxmard/champions-atlas/issues/9)) ([d367690](https://github.com/Waxmard/champions-atlas/commit/d367690697448d9166923fd3d8fcd91cd37ae81e))
+
 ## [0.2.0](https://github.com/Waxmard/champions-atlas/compare/v0.1.0...v0.2.0) (2026-09-21)
 
 
