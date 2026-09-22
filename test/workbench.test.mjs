@@ -13,7 +13,7 @@ import {
   storageKey,
   catalogSuggestions,
   resolveSavedTeamId,
-  speciesMember,
+  swapSuggestions,
 } from '../src/lib/workbench.ts';
 import {
   championsSpreadTotal,
@@ -497,43 +497,6 @@ test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
   assert.equal(resolveSavedTeamId([], 't1', 't1'), null);
 });
 
-test('speciesMember picks the set from the team sharing the most teammates', () => {
-  const x = team('x');
-  x.members = [
-    member('Incineroar', 'Alpha'),
-    member('Sneasler'),
-    member('Kingambit'),
-  ];
-  const y = team('y');
-  y.members = [member('Incineroar', 'Beta'), member('Sneasler')];
-  assert.equal(
-    speciesMember(
-      'Incineroar',
-      [member('Sneasler'), member('Kingambit')],
-      [x, y],
-      'M-C'
-    )?.item,
-    'Alpha'
-  );
-});
-
-test('speciesMember set depends on which teammate is swapped out', () => {
-  const x = team('x');
-  x.members = [member('Incineroar', 'Alpha'), member('Sneasler')];
-  const y = team('y');
-  y.members = [member('Incineroar', 'Beta'), member('Rillaboom')];
-  // Swapping out Sneasler leaves Rillaboom, so the Rillaboom team (Beta) wins.
-  assert.equal(
-    speciesMember('Incineroar', [member('Rillaboom')], [x, y], 'M-C')?.item,
-    'Beta'
-  );
-  // Swapping out Rillaboom leaves Sneasler, so the Sneasler team (Alpha) wins.
-  assert.equal(
-    speciesMember('Incineroar', [member('Sneasler')], [x, y], 'M-C')?.item,
-    'Alpha'
-  );
-});
-
 test('every nature maps to its standard raised and lowered stat', () => {
   const expected = {
     Adamant: 'Atk/SpA',
@@ -667,6 +630,90 @@ test('pokemonSuggestions stops offering a third Mega', () => {
   );
   assert.ok(
     oneMega.some((suggestion) => suggestion.pokemon === 'Froslass-Mega')
+  );
+});
+
+test('search filters Pokémon before the six-result limit', () => {
+  const source = team('many');
+  source.members = [
+    member('Ally'),
+    ...Array.from({ length: 7 }, (_, index) => member(`Choice${index}`)),
+  ];
+  assert.equal(
+    pokemonSuggestions(
+      [member('Ally')],
+      [source],
+      'M-C',
+      undefined,
+      undefined,
+      'Choice6'
+    )[0].pokemon,
+    'Choice6'
+  );
+});
+
+test('searched swaps rank each eligible slot and preview its winning catalog set', () => {
+  const draft = [
+    member('One', 'A'),
+    member('Two', 'B'),
+    member('Three'),
+    member('Four'),
+    member('Five'),
+    member('Six'),
+  ];
+  const one = team('one');
+  one.members = [member('One', 'A'), member('Target', 'Set One')];
+  const two = team('two');
+  two.members = [member('Two', 'B'), member('Target', 'Set Two')];
+  const both = team('both');
+  both.members = [
+    member('One', 'Other'),
+    member('Two', 'Other'),
+    member('Target', 'Set Both'),
+  ];
+  const results = swapSuggestions(draft, [one, two, both], 'M-C', 'Target');
+  assert.deepEqual(
+    results.map(({ slot }) => slot),
+    [2, 3, 4, 5, 1, 0]
+  );
+  assert.equal(results[0].member.item, 'Set Both');
+  assert.equal(results[0].source.id, 'both');
+  assert.equal(results[4].member.item, 'Set One');
+  assert.equal(results[5].member.item, 'Set Two');
+  assert.deepEqual(
+    swapSuggestions(draft, [one, two, both], 'M-C').map(
+      ({ pokemon }) => pokemon
+    ),
+    ['Target']
+  );
+});
+
+test('swaps require teammate overlap and preserve the two-Mega limit by slot', () => {
+  const source = team('mega-swap');
+  source.members = [member('Ally'), member('Froslass-Mega')];
+  const draft = [
+    member('Dragonite-Mega'),
+    member('Garchomp-Mega-Z'),
+    member('Ally'),
+    member('Other'),
+    member('Another'),
+    member('Last'),
+  ];
+  assert.deepEqual(
+    swapSuggestions(draft, [source], 'M-C', 'Froslass-Mega').map(
+      ({ slot }) => slot
+    ),
+    [0, 1]
+  );
+  assert.deepEqual(swapSuggestions(draft, [source], 'M-C', 'Missing'), []);
+  assert.deepEqual(
+    swapSuggestions(
+      draft,
+      [{ ...source, members: [member('Froslass-Mega')] }],
+      'M-C',
+      'Froslass-Mega'
+    ),
+    []
   );
 });
 

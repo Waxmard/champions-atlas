@@ -78,7 +78,9 @@
   });
   let rawText = $state(initialText);
   let textBaseline = $state(initialText);
-  let activeSuggestions = $state<string | null>(null);
+  let activeSuggestions = $state<string | null>(
+    initialView === 'pokemon' ? 'pokemon' : null
+  );
   let pokemonQuery = $state('');
   let itemQuery = $state('');
   let abilityQuery = $state('');
@@ -108,7 +110,9 @@
       teams,
       currentRegulation,
       teammates,
-      tagIndex
+      tagIndex,
+      pokemonQuery,
+      initialMember.pokemon
     )
   );
   const norm = (value: string, query: string) =>
@@ -695,10 +699,7 @@
                     type="button"
                     aria-label={`Use ${option.pokemon} set`}
                     class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-                    onclick={() => {
-                      applyPreFilled(option.member);
-                      currentView = 'overview';
-                    }}
+                    onclick={() => onapply(structuredClone(option.member))}
                   >
                     <PokemonSprite pokemon={option.pokemon} size={32} />
                     <span class="min-w-0 flex-1">
