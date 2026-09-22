@@ -9,6 +9,11 @@ Sources:
 
 - [VGCPastes M-C](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=2001945654)
 - [VGCPastes M-B](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=1458357160)
+- [Champions Battle Data](https://championsbattledata.com/api) supplies the level-50
+  stat values used for Speed. Its JSON is CORS-enabled and offered for app use,
+  and it is not used for usage percentages or result evidence. Refresh the
+  committed table by hand with `npm run sync:stats`; dev, build, and typecheck
+  never fetch it.
 - Individual PokéPaste and original report links are retained on each team.
 
 No explicit reuse license has been established for this combined source data.
@@ -64,3 +69,18 @@ An eighth-place finish is not assumed to mean top cut without explicit evidence.
 Before treating ordering as final, settle numeric ladder cutoffs and tournament
 strength/placement rules, add structured event evidence, and verify current
 regulation legality. Report labels describe source claims, not verified results.
+
+## Inferred tags
+
+`scripts/jev-enrich.mjs` asks a System One model for each catalog team's primary
+game plan, speed mode, and per-slot member posture, and writes the answers to the
+generated `src/lib/data/team-tags.json`. These tags are inference, never
+evidence: they carry no result label, never enter the ranking comparator, and
+their absence changes nothing. They are consumed only as a tiebreak between teams
+that already share the same teammates and details.
+
+Role flags used by that tiebreak are computed in code from move and ability
+names, not asked of the model, because counting and matching are what code does
+reliably. `scripts/jev-eval.mjs` scores run-to-run stability and checks
+structural invariants before the tags may be consumed; a failing evaluation
+leaves the tags empty.

@@ -18,6 +18,8 @@
     parseSetBlock,
   } from '$lib/paste';
   import { getMoveType, getPokemonTypes, TYPE_COLORS } from '$lib/types';
+  import { speedTiers, spreadNudges } from '$lib/stats';
+  import type { TeamTagsIndex } from '$lib/tags';
   import { catalogSuggestions, setText } from '$lib/workbench';
 
   type EditorView =
@@ -29,6 +31,7 @@
     currentRegulation: string;
     initialField: EditableSetField;
     teammates?: Member[];
+    tagIndex?: TeamTagsIndex;
     onapply: (member: Member) => void;
     oncancel: () => void;
     ondirtychange: (dirty: boolean) => void;
@@ -40,6 +43,7 @@
     currentRegulation,
     initialField,
     teammates = [],
+    tagIndex,
     onapply,
     oncancel,
     ondirtychange,
@@ -99,7 +103,13 @@
       fieldText !== initialStructuredText
   );
   const suggestions = $derived(
-    catalogSuggestions(draftMember, teams, currentRegulation, teammates)
+    catalogSuggestions(
+      draftMember,
+      teams,
+      currentRegulation,
+      teammates,
+      tagIndex
+    )
   );
   const norm = (value: string, query: string) =>
     normalize(value).includes(normalize(query));
@@ -119,12 +129,10 @@
       .slice(0, 5)
   );
   const spreadSuggestions = $derived(
-    suggestions.spreads
-      .filter((option) => {
-        const spread = parseChampionsSpread(option.value);
-        return spread && championsSpreadTotal(spread) === 66;
-      })
-      .slice(0, 5)
+    suggestions.spreads.filter((option) => {
+      const spread = parseChampionsSpread(option.value);
+      return spread && championsSpreadTotal(spread) === 66;
+    })
   );
   const legacyNature = $derived(
     form.nature && !NATURES.some((nature) => nature === form.nature)
@@ -135,6 +143,17 @@
   const parsedCurrentSpread = $derived(parseChampionsSpread(form.spread));
   const currentSpreadTotal = $derived(
     parsedCurrentSpread ? championsSpreadTotal(parsedCurrentSpread) : 0
+  );
+  const tiers = $derived(teams.length ? speedTiers(teams) : []);
+  const nudges = $derived(
+    parsedCurrentSpread
+      ? spreadNudges(
+          draftMember.pokemon,
+          parsedCurrentSpread,
+          form.nature || null,
+          teams
+        )
+      : []
   );
 
   const subViewTitle = $derived.by(() => {
@@ -614,6 +633,10 @@
           nature={form.nature}
           {spreadSuggestions}
           natureSuggestions={suggestions.natures}
+          pokemon={draftMember.pokemon}
+          {teams}
+          {tiers}
+          {nudges}
           onspreadchange={(spread, nature) => {
             form.spread = spread;
             if (nature) form.nature = nature;

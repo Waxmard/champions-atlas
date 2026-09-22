@@ -1,6 +1,25 @@
 import { z } from 'zod';
 import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
-import { normalizeSet, normalizeSpread, parseCustomPaste } from './paste.ts';
+import {
+  championsSpreadTotal,
+  normalizeSet,
+  normalizeSpread,
+  parseChampionsSpread,
+  parseCustomPaste,
+  spreadChangeSize,
+  spreadDeltas,
+  spreadMoved,
+  type SpreadChangeSize,
+  type SpreadDelta,
+} from './paste.ts';
+import { speedFor } from './stats.ts';
+import {
+  missingRoles,
+  postalRole,
+  roleFlags,
+  tagsForTeam,
+  type TeamTagsIndex,
+} from './tags.ts';
 
 export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
@@ -246,6 +265,10 @@ export function saveTeam(
   return next;
 }
 
+export const MAX_TEAM_MEGAS = 2;
+export const isMegaSpecies = (pokemon: string) =>
+  /-Mega(-[XYZ])?$/i.test(pokemon.trim());
+
 export const basePokemon = (name: string) =>
   normalize(name).replace(/mega[a-z]?$/, '');
 
@@ -257,17 +280,41 @@ export interface CatalogSuggestion {
   score?: number;
 }
 
+export interface SpreadSuggestion {
+  value: string;
+  currentCount: number;
+  totalCount: number;
+  nature: string | null;
+  score: number;
+  size: SpreadChangeSize;
+  moved: number;
+  deltas: SpreadDelta[];
+  speed: number | null;
+}
+
+const SPREAD_SIZE_ORDER: Record<SpreadChangeSize, number> = {
+  same: 0,
+  small: 1,
+  moderate: 2,
+  large: 3,
+  unknown: 4,
+};
+
 export interface PokemonSuggestion {
   pokemon: string;
   member: Member;
   sharedTeammates: number;
+  role: string | null;
+  roleFill: boolean;
+  archetype: string | null;
 }
 
 export function catalogSuggestions(
   target: string | Member,
   teams: Team[],
   currentRegulation: string,
-  teammates: Member[] = []
+  teammates: Member[] = [],
+  tags?: TeamTagsIndex
 ) {
   const isSimple = typeof target === 'string';
   const targetMember: Member = isSimple
@@ -372,17 +419,52 @@ export function catalogSuggestions(
         a.value.localeCompare(b.value)
     );
 
+  const parsedTargetSpread = targetMember.spread?.trim()
+    ? parseChampionsSpread(targetMember.spread)
+    : null;
+  const currentSpread =
+    parsedTargetSpread && championsSpreadTotal(parsedTargetSpread) > 0
+      ? parsedTargetSpread
+      : null;
+  const spreadSuggestions = rank(spreads).map((entry): SpreadSuggestion => {
+    const candidate = parseChampionsSpread(entry.value);
+    const comparable = currentSpread !== null && candidate !== null;
+    const deltas = comparable ? spreadDeltas(currentSpread, candidate) : [];
+    const moved = comparable ? spreadMoved(deltas) : 0;
+    return {
+      value: entry.value,
+      currentCount: entry.currentCount,
+      totalCount: entry.totalCount,
+      nature: entry.nature ?? null,
+      score: entry.score ?? 0,
+      size: comparable ? spreadChangeSize(moved) : 'unknown',
+      moved,
+      deltas,
+      speed: speedFor(targetMember.pokemon, candidate, entry.nature ?? null),
+    };
+  });
+  spreadSuggestions.sort(
+    (a, b) =>
+      SPREAD_SIZE_ORDER[a.size] - SPREAD_SIZE_ORDER[b.size] ||
+      a.moved - b.moved ||
+      b.score - a.score ||
+      b.currentCount - a.currentCount ||
+      b.totalCount - a.totalCount ||
+      a.value.localeCompare(b.value)
+  );
+
   return {
     items: rank(items),
     abilities: rank(abilities),
     moves: rank(moves),
-    spreads: rank(spreads),
+    spreads: spreadSuggestions,
     natures: rank(natures),
     pokemon: pokemonSuggestions(
       teammates,
       teams,
       currentRegulation,
-      targetMember.pokemon
+      targetMember.pokemon,
+      tags
     ),
   };
 }
@@ -391,13 +473,16 @@ export function pokemonSuggestions(
   teammates: Member[],
   teams: Team[],
   currentRegulation: string,
-  excludePokemon?: string
+  excludePokemon?: string,
+  tags?: TeamTagsIndex
 ): PokemonSuggestion[] {
   const excludeSpecies = new Set(teammates.map((t) => normalize(t.pokemon)));
   if (excludePokemon) {
     excludeSpecies.add(normalize(excludePokemon));
     excludeSpecies.add(basePokemon(excludePokemon));
   }
+  const megaCount = teammates.filter((t) => isMegaSpecies(t.pokemon)).length;
+  const missing = tags ? missingRoles(teammates, teams, tags) : [];
 
   const rankedTeams = teams
     .map((team) => {
@@ -418,13 +503,19 @@ export function pokemonSuggestions(
         )
           details++;
       }
-      return { team, shared, details };
+      const roleBonus = missing.some((role) =>
+        team.members.some((member) => roleFlags(member).includes(role))
+      )
+        ? 1
+        : 0;
+      return { team, shared, details, roleBonus };
     })
     .filter((t) => t.shared > 0)
     .sort(
       (a, b) =>
         b.shared - a.shared ||
         b.details - a.details ||
+        b.roleBonus - a.roleBonus ||
         compareTeams(a.team, b.team, currentRegulation)
     );
   const seen = new Set<string>();
@@ -437,12 +528,16 @@ export function pokemonSuggestions(
         excludeSpecies.has(basePokemon(m.pokemon))
       )
         continue;
+      if (megaCount >= MAX_TEAM_MEGAS && isMegaSpecies(m.pokemon)) continue;
       if (seen.has(norm)) continue;
       seen.add(norm);
       suggestions.push({
         pokemon: m.pokemon,
         member: m,
         sharedTeammates: shared,
+        role: postalRole(m.pokemon, teams, tags),
+        roleFill: missing.some((role) => roleFlags(m).includes(role)),
+        archetype: tagsForTeam(tags, team.id)?.archetype ?? null,
       });
       if (suggestions.length >= 6) break;
     }

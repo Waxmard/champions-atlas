@@ -3,8 +3,10 @@ import test from 'node:test';
 import {
   differences,
   exportPaste,
+  isMegaSpecies,
   newCustomTeam,
   newSavedTeam,
+  pokemonSuggestions,
   readSavedTeams,
   saveTeam,
   setText,
@@ -383,7 +385,17 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     { value: 'Flare Blitz', currentCount: 1, totalCount: 1 },
   ]);
   assert.deepEqual(suggestions.spreads, [
-    { value: '32 HP', currentCount: 3, totalCount: 6 },
+    {
+      value: '32 HP',
+      currentCount: 3,
+      totalCount: 6,
+      nature: null,
+      score: 0,
+      size: 'unknown',
+      moved: 0,
+      deltas: [],
+      speed: 80,
+    },
   ]);
   assert.deepEqual(
     catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
@@ -560,4 +572,78 @@ test('every nature maps to its standard raised and lowered stat', () => {
   assert.equal(natureEffect('modest')?.raised, 'SpA');
   assert.equal(natureEffect(null), null);
   assert.equal(natureEffect(''), null);
+});
+
+test('isMegaSpecies matches named Mega forms and not similar species', () => {
+  assert.equal(isMegaSpecies('Meganium'), false);
+  assert.equal(isMegaSpecies('Garchomp-Mega-Z'), true);
+  assert.equal(isMegaSpecies('Froslass-Mega'), true);
+});
+
+test('pokemonSuggestions stops offering a third Mega', () => {
+  const megaTeam = team('mega', 'M-C');
+  megaTeam.members = [
+    member('Dragonite-Mega'),
+    member('Garchomp-Mega-Z'),
+    member('Froslass-Mega'),
+    member('Incineroar'),
+    member('Sneasler'),
+    member('Kingambit'),
+  ];
+  const twoMegas = pokemonSuggestions(
+    [member('Dragonite-Mega'), member('Garchomp-Mega-Z')],
+    [megaTeam],
+    'M-C'
+  );
+  assert.ok(twoMegas.length > 0);
+  assert.ok(twoMegas.every((suggestion) => !isMegaSpecies(suggestion.pokemon)));
+
+  const oneMega = pokemonSuggestions(
+    [member('Dragonite-Mega')],
+    [megaTeam],
+    'M-C'
+  );
+  assert.ok(
+    oneMega.some((suggestion) => suggestion.pokemon === 'Froslass-Mega')
+  );
+});
+
+test('catalogSuggestions classifies each spread by how far it moves from the draft', () => {
+  const target = (spread) => ({
+    pokemon: 'Kingambit',
+    item: null,
+    ability: null,
+    moves: [],
+    nature: null,
+    spread,
+  });
+  const near = team('near', 'M-C');
+  near.members = [
+    { ...member('Kingambit'), spread: '20 HP / 28 Spe' },
+    { ...member('Kingambit'), spread: '24 HP / 15 Atk / 14 SpD / 13 Spe' },
+  ];
+  const options = catalogSuggestions(
+    target('16 HP / 32 Spe'),
+    [near],
+    'M-C'
+  ).spreads;
+  assert.deepEqual(
+    options.map((option) => option.size),
+    ['small', 'large']
+  );
+  const [smallOption, largeOption] = options;
+  assert.equal(smallOption.moved, 8);
+  assert.deepEqual(smallOption.deltas, [
+    { stat: 'HP', from: 16, to: 20, delta: 4 },
+    { stat: 'Spe', from: 32, to: 28, delta: -4 },
+  ]);
+  assert.equal(largeOption.moved, 56);
+
+  // A blank or zero-total draft is not comparable, so nothing is scored as a change.
+  for (const spread of ['', '0 HP']) {
+    const sizes = catalogSuggestions(target(spread), [near], 'M-C').spreads.map(
+      (option) => option.size
+    );
+    assert.deepEqual(sizes, ['unknown', 'unknown']);
+  }
 });

@@ -4,27 +4,75 @@
     CHAMPIONS_STATS,
     championsSpreadTotal,
     formatChampionsSpread,
+    formatSpreadDelta,
     natureEffect,
     parseChampionsSpread,
     type ChampionsSpread,
+    type SpreadChangeSize,
   } from '$lib/paste';
-  import type { CatalogSuggestion } from '$lib/workbench';
+  import type { Team } from '$lib/catalog';
+  import {
+    speedBenchmark,
+    speedFor,
+    type SpeedTier,
+    type SpreadNudge,
+  } from '$lib/stats';
+  import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
 
   let {
     spread,
     nature,
     spreadSuggestions,
     natureSuggestions,
+    pokemon,
+    teams = [],
+    tiers = [],
+    nudges = [],
     onspreadchange,
     onnaturechange,
   }: {
     spread: string;
     nature: string;
-    spreadSuggestions: CatalogSuggestion[];
+    spreadSuggestions: SpreadSuggestion[];
     natureSuggestions: CatalogSuggestion[];
+    pokemon?: string;
+    teams?: Team[];
+    tiers?: SpeedTier[];
+    nudges?: SpreadNudge[];
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
   } = $props();
+
+  const SPREAD_GROUPS: { size: SpreadChangeSize; label: string }[] = [
+    { size: 'same', label: 'Already selected' },
+    { size: 'small', label: 'Small change' },
+    { size: 'moderate', label: 'Moderate change' },
+    { size: 'large', label: 'Rebuild' },
+    { size: 'unknown', label: 'Change unknown' },
+  ];
+  const groups = $derived(
+    SPREAD_GROUPS.map((group) => ({
+      ...group,
+      nudges: group.size === 'small' ? nudges : [],
+      options: spreadSuggestions
+        .filter((option) => option.size === group.size)
+        .slice(0, 5),
+    })).filter((group) => group.options.length > 0 || group.nudges.length > 0)
+  );
+  const currentSpeed = $derived.by(() => {
+    const parsed = parseChampionsSpread(spread);
+    if (!pokemon || !parsed || championsSpreadTotal(parsed) === 0) return null;
+    return speedFor(pokemon, parsed, nature || null);
+  });
+  const benchmarkOf = (option: SpreadSuggestion) =>
+    pokemon && teams.length
+      ? speedBenchmark(
+          pokemon,
+          parseChampionsSpread(option.value),
+          option.nature,
+          teams
+        )
+      : null;
 
   const values = $derived(
     parseChampionsSpread(spread) ||
@@ -206,62 +254,119 @@
   </div>
 </div>
 
-<!-- Rich Suggestions List (up to 5 options) -->
+{#snippet chips(value: string)}
+  <div class="flex flex-wrap items-center gap-1.5">
+    {#each value.split(' / ').filter(Boolean) as part (part)}
+      <span
+        class="value inline-flex items-center rounded-[var(--radius-selector)] border border-base-300 px-2 py-0.5 font-mono"
+      >
+        {part}
+      </span>
+    {/each}
+  </div>
+{/snippet}
+
+<!-- Rich Suggestions List, grouped by distance from the current spread -->
 <div class="plate mt-4 grid divide-y" aria-label="EV spread suggestions">
   <div class="flex items-baseline justify-between gap-3 px-3 py-2.5">
     <span class="term">Catalog spread suggestions</span>
-    {#if spreadSuggestions.length > 0}
-      <span class="provenance"
-        >{Math.min(5, spreadSuggestions.length)} available</span
-      >
-    {/if}
   </div>
 
-  {#each spreadSuggestions.slice(0, 5) as option (option.value)}
-    {@const isSelected = spread === option.value}
-    {@const parts = option.value.split(' / ').filter(Boolean)}
-    <button
-      type="button"
-      class="group flex min-h-11 flex-col gap-2 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {isSelected
-        ? 'font-semibold'
-        : ''}"
-      onclick={() => onspreadchange(option.value, option.nature)}
+  {#each groups as group (group.size)}
+    <div
+      class="flex items-baseline justify-between gap-3 bg-base-200/50 px-3 py-1.5"
     >
-      <!-- Header Line -->
-      <div class="flex w-full items-baseline justify-between gap-3">
-        <div class="flex items-baseline gap-3">
-          {#if option.nature}
-            <span class="term inline-flex items-center gap-1">
-              <SlidersHorizontal class="size-3" />
-              <span>{option.nature}</span>
-            </span>
-          {/if}
-          {#if option.totalCount}
-            <span class="value text-base-content/70">
-              {option.totalCount}
-              {option.totalCount === 1 ? 'team' : 'teams'}
-            </span>
+      <span class="term">{group.label}</span>
+      <span class="provenance"
+        >{group.options.length + group.nudges.length}</span
+      >
+    </div>
+
+    {#each group.nudges as nudge (nudge.value)}
+      <button
+        type="button"
+        class="group flex min-h-11 flex-col gap-2 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+        onclick={() => onspreadchange(nudge.value, nature)}
+      >
+        <div class="flex w-full items-baseline justify-between gap-3">
+          <span class="term">Nudge</span>
+          <span class="provenance">to outspeed {nudge.target}</span>
+        </div>
+        {@render chips(nudge.value)}
+        <div class="flex flex-wrap items-baseline justify-between gap-3">
+          <span class="value">{formatSpreadDelta(nudge.deltas)}</span>
+          <span class="provenance">Speed {nudge.speed}</span>
+        </div>
+      </button>
+    {/each}
+
+    {#each group.options as option (option.value)}
+      {@const isSelected = spread === option.value}
+      {@const beaten = benchmarkOf(option)}
+      <button
+        type="button"
+        class="group flex min-h-11 flex-col gap-2 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {isSelected
+          ? 'font-semibold'
+          : ''}"
+        onclick={() => onspreadchange(option.value, option.nature)}
+      >
+        <div class="flex w-full items-baseline justify-between gap-3">
+          <div class="flex items-baseline gap-3">
+            {#if option.nature}
+              <span class="term inline-flex items-center gap-1">
+                <SlidersHorizontal class="size-3" />
+                <span>{option.nature}</span>
+              </span>
+            {/if}
+            {#if option.totalCount}
+              <span class="value text-base-content/70">
+                {option.totalCount}
+                {option.totalCount === 1 ? 'team' : 'teams'}
+              </span>
+            {/if}
+          </div>
+          {#if isSelected}
+            <span class="term">✓ Selected</span>
           {/if}
         </div>
-        {#if isSelected}
-          <span class="term">✓ Selected</span>
-        {/if}
-      </div>
 
-      <!-- Breakdown Line -->
-      <div class="flex flex-wrap items-center gap-1.5">
-        {#each parts as part (part)}
-          <span
-            class="value inline-flex items-center rounded-[var(--radius-selector)] border border-base-300 px-2 py-0.5 font-mono"
-          >
-            {part}
+        {@render chips(option.value)}
+
+        {#if option.size !== 'unknown' && option.deltas.length > 0}
+          <span class="value">{formatSpreadDelta(option.deltas)}</span>
+        {/if}
+        {#if option.speed !== null}
+          <span class="provenance">
+            Speed {option.speed}{beaten
+              ? ` · beats ${beaten.beatPercent}% of the catalog`
+              : ''}
           </span>
-        {/each}
-      </div>
-    </button>
+        {/if}
+      </button>
+    {/each}
   {:else}
     <p class="provenance px-3 py-2.5 text-center">
       No catalog spread suggestions available for this Pokémon.
     </p>
   {/each}
+
+  {#if tiers.length > 0 && currentSpeed !== null}
+    <details class="px-3 py-2.5">
+      <summary class="term min-h-11 cursor-pointer content-center">
+        Speed tiers
+      </summary>
+      <ul class="mt-2 grid gap-1">
+        {#each tiers as tier (tier.pokemon)}
+          <li class="flex items-baseline justify-between gap-3">
+            <span class="value">{tier.pokemon} · {tier.medianSpeed}</span>
+            {#if currentSpeed > tier.medianSpeed}
+              <span class="term" title="Current build outspeeds this tier"
+                >✓</span
+              >
+            {/if}
+          </li>
+        {/each}
+      </ul>
+    </details>
+  {/if}
 </div>

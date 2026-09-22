@@ -131,6 +131,19 @@ user's edited team. Exact forms remain distinct.
 Field-based editing for saved catalog teams is implemented. Legality-aware
 adaptation is not implemented.
 
+Spread suggestions are implemented too: they enforce the two-Mega suggestion
+limit, group catalog spreads by how far they move from the current spread, and
+report each spread's Speed against the catalog.
+
+- Never offer a Mega species once the other five slots already hold two.
+- Group suggested spreads as same, small, moderate, large, or unknown, and order
+  the smallest change first.
+- Show a spread's Speed, the share of catalog builds it outspeeds, and the
+  catalog Speed tiers a spread does not reach.
+
+Inferred archetype and role tags are enrichment, never evidence: they carry no
+result label, never affect ranking, and their absence changes nothing.
+
 Custom import starts in **My teams** with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
 ability, nature, EVs, and four unique moves. Team building happens in
@@ -148,7 +161,6 @@ spreads. Any borrowed or inferred spread must remain separate from sourced data.
 ## Version 2 and later
 
 - AI integration and separately verified subscription/API billing options.
-- Spread suggestions and calculator-assisted optimization.
 - Screenshot and team-ID import.
 - Cross-device sync.
 - Native iOS app.

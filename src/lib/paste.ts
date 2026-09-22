@@ -41,6 +41,50 @@ export const formatChampionsSpread = (spread: ChampionsSpread) =>
 export const championsSpreadTotal = (spread: ChampionsSpread) =>
   CHAMPIONS_STATS.reduce((total, stat) => total + spread[stat], 0);
 
+export const SPREAD_DELTA_SMALL = 8;
+export const SPREAD_DELTA_MODERATE = 16;
+export type SpreadChangeSize =
+  'same' | 'small' | 'moderate' | 'large' | 'unknown';
+
+export interface SpreadDelta {
+  stat: ChampionsStat;
+  from: number;
+  to: number;
+  delta: number;
+}
+
+export function spreadDeltas(
+  from: ChampionsSpread | null,
+  to: ChampionsSpread | null
+): SpreadDelta[] {
+  if (!from || !to) return [];
+  return CHAMPIONS_STATS.map((stat) => ({
+    stat,
+    from: from[stat],
+    to: to[stat],
+    delta: to[stat] - from[stat],
+  })).filter((entry) => entry.delta !== 0);
+}
+
+export const spreadMoved = (deltas: SpreadDelta[]) =>
+  deltas.reduce((total, entry) => total + Math.abs(entry.delta), 0);
+
+export function spreadChangeSize(moved: number | null): SpreadChangeSize {
+  if (moved === null) return 'unknown';
+  if (moved === 0) return 'same';
+  if (moved <= SPREAD_DELTA_SMALL) return 'small';
+  if (moved <= SPREAD_DELTA_MODERATE) return 'moderate';
+  return 'large';
+}
+
+export const formatSpreadDelta = (deltas: SpreadDelta[]) =>
+  deltas
+    .map(
+      (entry) =>
+        `${entry.delta > 0 ? '+' : '-'}${Math.abs(entry.delta)} ${entry.stat}`
+    )
+    .join(' ');
+
 export const NATURES = [
   'Adamant',
   'Bashful',

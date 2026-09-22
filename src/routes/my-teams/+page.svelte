@@ -19,9 +19,12 @@
     type Team,
   } from '$lib/catalog';
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
+  import type { TeamTagsIndex } from '$lib/tags';
   import {
     activeTeamKey,
     exportPaste,
+    isMegaSpecies,
+    MAX_TEAM_MEGAS,
     readSavedTeams,
     resolveSavedTeamId,
     saveTeam,
@@ -62,6 +65,11 @@
       (p) =>
         !(draft?.members ?? []).some(
           (m) => normalize(m.pokemon) === normalize(p)
+        ) &&
+        !(
+          isMegaSpecies(p) &&
+          (draft?.members ?? []).filter((m) => isMegaSpecies(m.pokemon))
+            .length >= MAX_TEAM_MEGAS
         )
     )
   );
@@ -598,6 +606,7 @@
         currentRegulation={current}
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
+        tagIndex={data.tags as TeamTagsIndex}
         onapply={(next) => applySetEdit(editIndex, next)}
         oncancel={cancelSetEdit}
         ondirtychange={(value) => (editorDirty = value)}
