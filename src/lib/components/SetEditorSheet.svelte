@@ -6,7 +6,9 @@
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '$lib/components/SetEditorDetails.svelte';
   import SetEditorOverview from '$lib/components/SetEditorOverview.svelte';
+  import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
   import TypeBadge from '$lib/components/TypeBadge.svelte';
+  import TypeMark from '$lib/components/TypeMark.svelte';
   import { Button } from '$lib/components/ui/button';
   import { normalize, type Member, type Team } from '$lib/catalog';
   import {
@@ -365,10 +367,15 @@
     {#if currentView === 'overview'}
       <div class="flex items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-3">
-          <div class="relative shrink-0 border border-base-300 p-1">
+          <div
+            class="roster-sprite shrink-0"
+            style="--type-color: {TYPE_COLORS[
+              getPokemonTypes(form.pokemon || initialMember.pokemon)[0]
+            ]}"
+          >
             <PokemonSprite
               pokemon={form.pokemon || initialMember.pokemon}
-              size={44}
+              size={40}
             />
           </div>
           <div class="min-w-0">
@@ -376,7 +383,7 @@
               <!-- svelte-ignore a11y_autofocus -->
               <h2
                 bind:this={editorHeading}
-                class="text-[1.375rem] leading-tight font-semibold wrap-break-word"
+                class="text-[1.375rem] leading-tight font-extrabold wrap-break-word"
                 tabindex="-1"
                 autofocus
                 data-editor-section="set"
@@ -389,10 +396,12 @@
                 {/each}
               </div>
               {#if dirty}
-                <span class="term">Unsaved edits</span>
+                <span
+                  class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+                  >Unsaved edits</span
+                >
               {/if}
             </div>
-            <p class="provenance">Choose a section to edit.</p>
           </div>
         </div>
       </div>
@@ -424,15 +433,13 @@
           </h2>
         </div>
         <div
-          class="flex shrink-0 items-center gap-1.5 border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+          class="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
         >
-          <PokemonSprite
+          <SpeciesLabel
             pokemon={form.pokemon || initialMember.pokemon}
-            size={20}
+            spriteSize={20}
+            textClass="max-w-[120px] truncate text-xs font-medium"
           />
-          <span class="max-w-[120px] truncate font-medium"
-            >{form.pokemon || initialMember.pokemon}</span
-          >
         </div>
       </div>
     {/if}
@@ -477,11 +484,7 @@
               <span class="value w-4 text-center text-base-content/60"
                 >{index + 1}</span
               >
-              {#if type}
-                <TypeBadge {type} size="md" />
-              {:else}
-                <div class="size-4 shrink-0 rounded-full bg-base-300"></div>
-              {/if}
+              <TypeMark {type} size="md" />
               <input
                 id={`set-move-${index + 1}`}
                 aria-label={`Move ${index + 1}`}
@@ -547,11 +550,7 @@
                   : ''}
                 onclick={() => chooseMove(activeMoveSlot, option.value)}
               >
-                {#if optionType}
-                  <TypeBadge type={optionType} size="md" />
-                {:else}
-                  <div class="size-4 shrink-0 rounded-full bg-base-300"></div>
-                {/if}
+                <TypeMark type={optionType} size="md" />
                 <span class="value">{option.value}</span>
               </button>
             {:else}

@@ -6,6 +6,7 @@
   import ItemIcon from '$lib/components/ItemIcon.svelte';
   import MovePill from '$lib/components/MovePill.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import UnknownValue from '$lib/components/UnknownValue.svelte';
   import { Button } from '$lib/components/ui/button';
 
   interface Props {
@@ -47,7 +48,7 @@
       <PokemonSprite {pokemon} size={36} />
       <div class="min-w-0">
         <div class="term">Species</div>
-        <div class="truncate text-[1.0625rem] leading-tight font-semibold">
+        <div class="truncate text-lg leading-tight font-extrabold">
           {pokemon}
         </div>
       </div>
@@ -86,7 +87,7 @@
             <span class="truncate">{item}</span>
           </span>
         {:else}
-          <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+          <UnknownValue />
         {/if}
       </div>
       <div class="flex min-w-0 items-baseline gap-3 border-b px-0.5 pb-0.5">
@@ -97,7 +98,7 @@
             <span class="truncate">{ability}</span>
           </span>
         {:else}
-          <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+          <UnknownValue />
         {/if}
       </div>
       <div class="flex min-w-0 items-baseline gap-3 px-0.5">
@@ -108,7 +109,7 @@
             <span class="truncate">{nature}</span>
           </span>
         {:else}
-          <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+          <UnknownValue />
         {/if}
       </div>
     </div>
@@ -176,7 +177,7 @@
       {#if spread}
         <span class="value truncate">{spread}</span>
       {:else}
-        <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+        <UnknownValue />
       {/if}
       <div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-base-300">
         <div

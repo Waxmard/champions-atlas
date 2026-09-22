@@ -103,16 +103,16 @@ test('unknown and long card fields stay usable without phone overflow', async ({
 
   const firstPokemon = peter.members[0].pokemon;
   const team = page.getByRole('region', { name: 'Your team', exact: true });
-  await expect(
-    team
-      .getByRole('button', {
-        name: `Edit ${firstPokemon} ability`,
-        exact: true,
-      })
-      .getByText('Unknown', { exact: true })
-  ).toBeVisible();
-  await expect(team.getByText('Moves unknown', { exact: true })).toBeVisible();
-  await expect(team.getByText(longName, { exact: true })).toBeVisible();
+  const slot = page.getByRole('region', {
+    name: `${firstPokemon} set`,
+    exact: true,
+  });
+  await expect(slot.getByText('Unknown', { exact: true })).toHaveCount(2);
+  const longSlot = page.getByRole('region', {
+    name: `${longName} set`,
+    exact: true,
+  });
+  await expect(longSlot.getByText(longName, { exact: true })).toBeVisible();
   await expect(team.locator('textarea')).toHaveCount(0);
 
   const change = team.getByRole('button', {

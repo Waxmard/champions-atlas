@@ -2,7 +2,7 @@
   import { Combobox } from 'bits-ui';
   import Search from '@lucide/svelte/icons/search';
   import { normalize } from '$lib/catalog';
-  import PokemonSprite from './PokemonSprite.svelte';
+  import SpeciesLabel from './SpeciesLabel.svelte';
 
   let {
     options,
@@ -45,7 +45,7 @@
 >
   <div class="relative">
     <Search
-      class="pointer-events-none absolute top-3.5 left-3.5 size-5 text-base-content/70"
+      class="pointer-events-none absolute top-3.5 left-3.5 z-10 size-5 text-base-content/70"
       aria-hidden="true"
     />
     <Combobox.Input
@@ -61,7 +61,7 @@
   <Combobox.Portal>
     <Combobox.Content
       sideOffset={6}
-      class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-sm border border-base-300 bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+      class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
     >
       <Combobox.Viewport>
         {#each filtered as pokemon (pokemon)}
@@ -69,7 +69,7 @@
             value={pokemon}
             label={pokemon}
             class="flex min-h-11 cursor-pointer items-center gap-2 border-b border-base-300 px-3 text-sm outline-none last:border-b-0 data-highlighted:bg-base-200 data-highlighted:text-base-content"
-            ><PokemonSprite {pokemon} size={32} />{pokemon}</Combobox.Item
+            ><SpeciesLabel {pokemon} spriteSize={32} /></Combobox.Item
           >
         {:else}
           <p class="p-3 text-sm text-base-content/70">

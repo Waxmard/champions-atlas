@@ -179,9 +179,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   ).toBe(beforeStorage);
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
-  await expect(page.getByRole('status')).toContainText(
-    'Set changes staged. Apply on the card to save.'
-  );
+  await expect(page.getByRole('status')).toContainText('Set changes staged.');
   await expect(weavile).toContainText('Staged custom item');
   await expect(weavile).toContainText('Test Move');
   expect(

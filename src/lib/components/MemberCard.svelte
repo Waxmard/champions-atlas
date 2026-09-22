@@ -3,6 +3,7 @@
   import MovePill from '$lib/components/MovePill.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import TypeBadge from '$lib/components/TypeBadge.svelte';
+  import UnknownValue from '$lib/components/UnknownValue.svelte';
   import { Button } from '$lib/components/ui/button';
   import type { Member } from '$lib/catalog';
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
@@ -110,9 +111,6 @@
   <div class="mt-2 border-t pt-2">
     <div class="flex items-baseline justify-between gap-3 px-1.5">
       <span class="term">Moves</span>
-      {#if !editable && member.moves.length === 0}<span class="term"
-          >not published</span
-        >{/if}
     </div>
     <div class="mt-1">
       {#if editable}
@@ -170,7 +168,7 @@
 )}
   {#snippet valueView()}
     {#if value === null}
-      <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+      <UnknownValue />
     {:else if item !== undefined}
       <span class="value inline-flex min-w-0 items-center gap-1.5">
         <ItemIcon {item} size={16} />
@@ -208,8 +206,6 @@
       {/each}
     </div>
   {:else}
-    <p class="unknown rounded-xs py-3 text-center text-[0.8125rem]">
-      Moves unknown
-    </p>
+    <p class="unknown py-3 text-center text-[0.8125rem]">Unknown</p>
   {/if}
 {/snippet}

@@ -7,7 +7,7 @@
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
   import TeamCard from '$lib/components/TeamCard.svelte';
   import TypeFilter from '$lib/components/TypeFilter.svelte';
   import {
@@ -280,7 +280,7 @@
   <title>Champion's Atlas — Find your next team</title>
   <meta
     name="description"
-    content="Find Pokémon Champions doubles teams with persistent Pokémon and item filters, result evidence, and regulation-aware ordering."
+    content="Find Pokémon Champions teams with persistent Pokémon and item filters, result evidence, and regulation-aware ordering."
   />
 </svelte:head>
 
@@ -294,7 +294,7 @@
     <p
       class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
     >
-      Find a doubles team for the Pokémon you want to use.
+      Find a team for the Pokémon you want to use.
     </p>
   </header>
 
@@ -370,11 +370,10 @@
         >
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
-              <PokemonSprite pokemon={filter.pokemon} size={36} />
               <h2
-                class="min-w-0 text-[1.0625rem] leading-tight font-semibold wrap-break-word"
+                class="min-w-0 text-lg leading-tight font-extrabold wrap-break-word"
               >
-                {filter.pokemon}
+                <SpeciesLabel pokemon={filter.pokemon} spriteSize={36} />
               </h2>
             </div>
             <Button
@@ -507,15 +506,12 @@
           onclick={clearFilters}>Clear filters</Button
         >{/if}
     </div>
-    <p class="provenance mt-1.5 mb-4">
-      Legality in {current} is not yet verified.
-    </p>
-
     {#if results.length}
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {#each visible as team (team.id)}<TeamCard
             {team}
             currentRegulation={current}
+            showRegulation={regulation === 'all'}
             query={page.url.search}
           />{/each}
       </div>

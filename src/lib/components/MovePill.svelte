@@ -1,5 +1,5 @@
 <script lang="ts">
-  import TypeBadge from '$lib/components/TypeBadge.svelte';
+  import TypeMark from '$lib/components/TypeMark.svelte';
   import { getMoveType, TYPE_COLORS } from '$lib/types';
 
   interface Props {
@@ -28,11 +28,7 @@
 </script>
 
 {#snippet content()}
-  {#if type}
-    <TypeBadge {type} size={size === 'md' ? 'md' : 'sm'} />
-  {:else}
-    <div class="size-3.5 shrink-0 rounded-full bg-base-300"></div>
-  {/if}
+  <TypeMark {type} size={size === 'md' ? 'md' : 'sm'} />
   <span class="truncate {trimmedMove ? '' : 'text-[color:var(--color-muted)]'}">
     {trimmedMove || 'Empty'}
   </span>

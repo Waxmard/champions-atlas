@@ -4,13 +4,22 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import Compass from '@lucide/svelte/icons/compass';
   import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
+  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import { copyText } from '$lib/clipboard';
-  import { normalize, type Member, type Team } from '$lib/catalog';
+  import {
+    bestEvidence,
+    evidenceGrade,
+    normalize,
+    type Member,
+    type Team,
+  } from '$lib/catalog';
+  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import {
     activeTeamKey,
     exportPaste,
@@ -273,7 +282,7 @@
     editedSlots.add(index);
     activeEditIndex = null;
     editorDirty = false;
-    message = 'Set changes staged. Apply on the card to save.';
+    message = 'Set changes staged.';
     void tick().then(() => {
       focusSetField(index, field);
     });
@@ -314,7 +323,7 @@
     };
     editedSlots.add(index);
     pendingSpecies = null;
-    message = 'Pokémon swapped. Apply on the card to save.';
+    message = 'Pokémon swapped.';
   }
   async function copyPaste() {
     if (!draft || editing) return;
@@ -389,7 +398,66 @@
       {message}
     </p>
     {#if draft}
+      {@const originalId = draft.original.id}
+      {@const catalogOriginal = teams.find((t) => t.id === originalId)}
+      {@const originalResult = catalogOriginal
+        ? bestEvidence(catalogOriginal, current)
+        : null}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
+        <header class="flex items-start gap-3 border-b pb-4">
+          <span
+            class="grid size-10 shrink-0 place-items-center rounded-[var(--radius-field)] bg-secondary text-[#172b4d]"
+            aria-hidden="true"
+          >
+            <Compass class="size-6" />
+          </span>
+          <div class="min-w-0">
+            <h2 class="text-lg leading-tight font-extrabold wrap-break-word">
+              {draft.name}
+            </h2>
+            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span
+                class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+                >Reg {draft.original.regulation}</span
+              >
+              {#if originalResult}
+                <span
+                  class="stamp"
+                  data-grade={evidenceGrade(originalResult.level)}
+                  >{originalResult.label}</span
+                >
+              {/if}
+            </div>
+          </div>
+        </header>
+        <ul
+          class="mt-4 grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6"
+          aria-label="Team roster"
+        >
+          {#each draft.members as member, index (index)}
+            <li class="flex min-w-0 flex-col items-center text-center">
+              <a
+                href={`#pokemon-slot-${index}`}
+                class="rounded-[var(--radius-selector)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                aria-label={`Go to ${member.pokemon}`}
+              >
+                <span
+                  class="roster-sprite"
+                  style="--type-color: {TYPE_COLORS[
+                    getPokemonTypes(member.pokemon)[0]
+                  ]}"
+                >
+                  <PokemonSprite pokemon={member.pokemon} size={40} />
+                </span>
+              </a>
+              <p
+                class="mt-1 w-full text-[0.8125rem] leading-tight wrap-break-word"
+              >
+                {member.pokemon}
+              </p>
+            </li>
+          {/each}
+        </ul>
         <div class="flex flex-wrap items-end justify-between gap-4">
           <label class="term block w-full max-w-xl"
             >Team name<input
@@ -415,8 +483,9 @@
           <p class="provenance">
             {dirty ? 'Unsaved changes.' : 'Saved on this device.'}
           </p>
-          <p class="provenance">Original: {draft.original.name}</p>
-          <p class="provenance">Reg {draft.original.regulation}</p>
+          {#if draft.name !== draft.original.name}
+            <p class="provenance">Original: {draft.original.name}</p>
+          {/if}
         </div>
         <p class="provenance mt-1.5">
           Editing does not create a working rental code.
@@ -447,7 +516,7 @@
             >.
           </p>
         {/if}
-        <div class="mt-5 grid items-start gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div class="mt-5 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           {#each draft.members as member, index (index)}
             <section
               id={`pokemon-slot-${index}`}
@@ -481,7 +550,7 @@
                     <Button
                       variant="outline"
                       size="sm"
-                      class="h-8 min-h-8 px-2.5 text-xs"
+                      class="h-11 min-h-11 px-2.5 text-xs"
                       aria-label={`Discard changes to ${member.pokemon}`}
                       onclick={() => discardPokemon(index)}
                     >
@@ -489,7 +558,7 @@
                     </Button>
                     <Button
                       size="sm"
-                      class="h-8 min-h-8 px-3 text-xs"
+                      class="h-11 min-h-11 px-3 text-xs"
                       aria-label={`Apply changes to ${member.pokemon}`}
                       onclick={() => applyPokemon(index)}
                     >

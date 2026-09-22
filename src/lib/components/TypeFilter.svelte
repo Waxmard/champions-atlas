@@ -28,7 +28,7 @@
 >
   <div class="relative">
     <Search
-      class="pointer-events-none absolute top-3.5 left-3.5 size-5 text-base-content/70"
+      class="pointer-events-none absolute top-3.5 left-3.5 z-10 size-5 text-base-content/70"
       aria-hidden="true"
     />
     <Combobox.Input
@@ -45,7 +45,7 @@
   <Combobox.Portal>
     <Combobox.Content
       sideOffset={6}
-      class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-sm border border-base-300 bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+      class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
     >
       <Combobox.Viewport>
         {#each filtered as type (type)}

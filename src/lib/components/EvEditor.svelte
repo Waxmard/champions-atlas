@@ -90,7 +90,7 @@
       <span class="value text-base-content/70">
         {nature
           ? `Current: ${nature}${effect ? ` (+${effect.raised} / -${effect.lowered})` : ''}`
-          : 'No nature'}
+          : 'Unknown'}
       </span>
     </div>
     {#if natureSuggestions.length > 0}
@@ -99,7 +99,7 @@
           {@const isSelected = nature === option.value}
           <button
             type="button"
-            class="min-h-11 border px-3 text-[0.8125rem] transition-colors {isSelected
+            class="min-h-11 rounded-[var(--radius-selector)] border px-3 text-[0.8125rem] transition-colors {isSelected
               ? 'border-primary font-semibold'
               : 'border-base-300 hover:bg-base-200/70'}"
             aria-label={`Use ${option.value} nature`}
@@ -252,7 +252,7 @@
       <div class="flex flex-wrap items-center gap-1.5">
         {#each parts as part (part)}
           <span
-            class="value inline-flex items-center border border-base-300 px-2 py-0.5 font-mono"
+            class="value inline-flex items-center rounded-[var(--radius-selector)] border border-base-300 px-2 py-0.5 font-mono"
           >
             {part}
           </span>

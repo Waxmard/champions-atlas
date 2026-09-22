@@ -4,7 +4,6 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-  import AlertTriangle from '@lucide/svelte/icons/triangle-alert';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import MemberCard from '$lib/components/MemberCard.svelte';
@@ -72,7 +71,7 @@
   <title>{team.name} — Champion's Atlas</title>
   <meta
     name="description"
-    content={`${team.regulation} doubles team by ${team.creator}. View published team members, items, and result sources.`}
+    content={`${team.regulation} team by ${team.creator || 'an unlisted creator'}. View published team members, items, and result sources.`}
   />
 </svelte:head>
 
@@ -89,15 +88,11 @@
       class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
       >Reg {team.regulation}</span
     >
-    {#if team.regulation === data.currentRegulation}<span class="term"
-        >current regulation</span
-      >{/if}
     <span class="stamp" data-grade={evidenceGrade(strongest.level)}
       >{strongest.label}</span
     >
     {#if strongest.event}<span class="provenance">{strongest.event}</span>{/if}
     <span class="provenance">Shared {team.publishedAt || 'date unknown'}</span>
-    <span class="provenance">Doubles format</span>
   </div>
 
   <h1
@@ -145,19 +140,6 @@
         : 'The source does not list this code as available.'}
     </p>{/if}
 
-  <div
-    role="alert"
-    class="mt-5 alert items-start gap-2.5 text-[0.9375rem] leading-relaxed alert-warning"
-  >
-    <AlertTriangle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-    <p class="max-w-[68ch]">
-      Current-regulation legality is unverified. {team.regulation !==
-      data.currentRegulation
-        ? `This team was shared for ${team.regulation}; check it against ${data.currentRegulation} before using it.`
-        : 'The regulation label comes from the source sheet.'} Missing set details
-      remain unknown.
-    </p>
-  </div>
   {#if team.pasteError}<p class="provenance mt-3">
       Some published details could not be loaded. {team.pasteError}
     </p>{/if}
@@ -180,9 +162,6 @@
     >
       Results & sources
     </h2>
-    <p class="provenance mt-2">
-      Claims transcribed from VGCPastes, not independently verified.
-    </p>
     <ul class="plate mt-4 divide-y">
       {#each team.reports as report, index (index)}
         {@const result = evidence(
@@ -192,9 +171,10 @@
         )}
         <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div class="min-w-0">
-            <span class="stamp" data-grade={evidenceGrade(result.level)}
-              >{result.label}</span
-            >
+            {#if team.reports.length > 1}<span
+                class="stamp"
+                data-grade={evidenceGrade(result.level)}>{result.label}</span
+              >{/if}
             <div class="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
               <p class="value">
                 {report.event || 'Event not listed'}

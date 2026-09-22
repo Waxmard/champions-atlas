@@ -27,6 +27,7 @@ async function expectSelection(page: Page) {
     .getByRole('region', { name: 'Matching teams' })
     .getByRole('article');
   await expect(cards.first()).toBeVisible();
+  await expect(cards.first().getByText(/^Reg /)).toBeVisible();
   for (let index = 0; index < (await cards.count()); index++) {
     await expect(
       cards.nth(index).getByText('Incineroar', { exact: true })
@@ -107,9 +108,8 @@ test('browse selections persist across navigation, reload, and reopen', async ({
     await expect(
       reopenedPage
         .getByRole('region', { name: 'Matching teams' })
-        .getByText('Reg M-B', { exact: true })
-        .first()
-    ).toBeVisible();
+        .getByText(/^Reg /)
+    ).toHaveCount(0);
 
     await reopenedPage.getByRole('link', { name: 'My teams' }).click();
     await reopenedPage.getByRole('link', { name: 'Browse teams' }).click();

@@ -9,8 +9,14 @@
   let {
     team,
     currentRegulation,
+    showRegulation,
     query,
-  }: { team: Team; currentRegulation: string; query: string } = $props();
+  }: {
+    team: Team;
+    currentRegulation: string;
+    showRegulation: boolean;
+    query: string;
+  } = $props();
   const result = $derived(bestEvidence(team, currentRegulation));
   const grade = $derived(evidenceGrade(result.level));
 
@@ -39,15 +45,12 @@
     class="block rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
   >
     <div class="flex items-baseline justify-between gap-3">
-      <span class="term">Reg {team.regulation}</span>
-      <span class="provenance shrink-0">{team.publishedAt}</span>
+      {#if showRegulation}<span class="term">Reg {team.regulation}</span>{/if}
+      <span class="provenance ml-auto shrink-0">{team.publishedAt}</span>
     </div>
     <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
       {team.name}
     </h2>
-    <p class="provenance mt-1 wrap-break-word">
-      {team.creator || 'Creator not listed'}
-    </p>
     <ul
       class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3"
       aria-label="Team members"
@@ -71,9 +74,6 @@
     <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
       <div class="min-w-0">
         <span class="stamp" data-grade={grade}>{result.label}</span>
-        {#if result.event}<p class="provenance mt-1 line-clamp-1">
-            {result.event}
-          </p>{/if}
       </div>
       <ArrowUpRight
         class="mt-0.5 size-4 shrink-0 text-base-content/60"
