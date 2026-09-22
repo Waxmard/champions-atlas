@@ -4,7 +4,6 @@
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import Compass from '@lucide/svelte/icons/compass';
   import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
@@ -405,12 +404,6 @@
         : null}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <header class="flex items-start gap-3 border-b pb-4">
-          <span
-            class="grid size-10 shrink-0 place-items-center rounded-[var(--radius-field)] bg-secondary text-[#172b4d]"
-            aria-hidden="true"
-          >
-            <Compass class="size-6" />
-          </span>
           <div class="min-w-0">
             <h2 class="text-lg leading-tight font-extrabold wrap-break-word">
               {draft.name}

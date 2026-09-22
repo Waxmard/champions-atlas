@@ -17,11 +17,7 @@
 >
   <div class="w-full max-w-sm">
     <div class="mb-5 flex justify-center">
-      <span
-        class="grid size-16 place-items-center rounded-[var(--radius-box)] bg-secondary text-[#172b4d]"
-      >
-        <Compass class="size-10" aria-hidden="true" />
-      </span>
+      <Compass class="size-14 text-base-content" aria-hidden="true" />
     </div>
     <div class="plate p-6">
       <h1

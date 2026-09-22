@@ -1,6 +1,5 @@
 <script lang="ts">
   import './layout.css';
-  import Compass from '@lucide/svelte/icons/compass';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import { Avatar, DropdownMenu } from 'bits-ui';
   import { resolve } from '$app/paths';
@@ -64,11 +63,6 @@
           ? 'bg-info text-info-content'
           : 'text-base-content hover:bg-base-200'}"
       >
-        <span
-          class="grid size-8 shrink-0 place-items-center rounded-[var(--radius-field)] bg-secondary text-[#172b4d]"
-        >
-          <Compass class="size-5" aria-hidden="true" />
-        </span>
         <span
           class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
           >Champion's Atlas</span
