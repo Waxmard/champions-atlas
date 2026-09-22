@@ -482,7 +482,11 @@ export function pokemonSuggestions(
     excludeSpecies.add(basePokemon(excludePokemon));
   }
   const megaCount = teammates.filter((t) => isMegaSpecies(t.pokemon)).length;
-  const missing = tags ? missingRoles(teammates, teams, tags) : [];
+  /* An empty stub carries no tags, so the inferred half stays off entirely. */
+  const missing =
+    Object.keys(tags?.teams ?? {}).length > 0
+      ? missingRoles(teammates, teams, tags)
+      : [];
 
   const rankedTeams = teams
     .map((team) => {

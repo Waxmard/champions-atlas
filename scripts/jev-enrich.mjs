@@ -184,11 +184,14 @@ async function main() {
   const teams = {};
   const tokens = {};
   const failures = {};
+  let requested = 0;
+  let fetched = 0;
   let model = stub.model;
 
   await pooled(catalog.teams, 4, async (team) => {
     const cachePath = resolve(cacheDir, `${team.id}.json`);
     let answer = null;
+    let fresh = false;
     try {
       answer = JSON.parse(await readFile(cachePath, 'utf8'));
     } catch (error) {
@@ -196,6 +199,7 @@ async function main() {
         throw error;
     }
     if (!answer) {
+      requested++;
       try {
         answer = await post(key, {
           state: stateOf(team),
@@ -203,6 +207,7 @@ async function main() {
           questions: questionsFor(team.members),
         });
         await writeFile(cachePath, JSON.stringify(answer));
+        fresh = true;
       } catch (error) {
         failures[team.id] = error.message;
         return;
@@ -213,6 +218,7 @@ async function main() {
       failures[team.id] = 'incomplete answers';
       return;
     }
+    if (fresh) fetched++;
     if (answer.model) model = answer.model;
     if (answer.usage?.input_tokens) tokens[team.id] = answer.usage.input_tokens;
     teams[team.id] = tag;
@@ -234,11 +240,24 @@ async function main() {
     resolve(cacheDir, 'failed.json'),
     JSON.stringify(failures, null, 2) + '\n'
   );
+  const tagged = Object.keys(teams).length;
+  const failed = Object.keys(failures).length;
   console.log(
-    `Tagged ${Object.keys(teams).length}/${catalog.teams.length} teams, ${
-      Object.keys(failures).length
-    } failed. ${total} input tokens (~$${((total * pricePerMtok) / 1_000_000).toFixed(4)}).`
+    `Tagged ${tagged}/${catalog.teams.length} teams, ${failed} failed, ${requested} requested. ${total} input tokens (~$${((total * pricePerMtok) / 1_000_000).toFixed(4)}).`
   );
+  /* Never ship silently when the credential or API produced nothing at all. */
+  const verdict = !tagged
+    ? 'no teams were tagged'
+    : requested > 0 && !fetched
+      ? `all ${requested} requests failed`
+      : null;
+  if (verdict) {
+    const [firstId, firstReason] = Object.entries(failures)[0] ?? [];
+    console.error(
+      `Refusing to ship team tags: ${verdict}${firstReason ? ` (${firstId}: ${firstReason})` : ''}.`
+    );
+    process.exitCode = 1;
+  }
 }
 
 if (

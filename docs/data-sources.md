@@ -75,10 +75,21 @@ regulation legality. Report labels describe source claims, not verified results.
 `scripts/jev-enrich.mjs` asks a System One model for each catalog team's primary
 game plan, speed mode, and per-slot member posture, and writes the answers to the
 generated `src/lib/data/team-tags.json`. These tags are inference, never
-evidence: they carry no result label, never outrank a sourced result, and their
-absence changes nothing. They only order teams that already share the same
-teammates and set details _and_ are equally proven; publication date and team ID
-settle whatever remains.
+evidence: they carry no result label and never outrank a sourced result. They only
+order teams that already share the same teammates and set details _and_ are
+equally proven; publication date and team ID settle whatever remains.
+
+The tiebreak has two halves: keyword role flags computed in code, and the
+inferred postures carried by the tags. An empty stub disables the whole
+tiebreak, so an untagged build is identical to the pre-feature baseline. With
+generated tags, the tiebreak reorders about 9% of suggestion lists.
+
+Both deploy workflows require `TYPESAFE_API_KEY` and refuse to deploy untagged.
+Dev, CI, and typecheck still write the stub when no credential is present, so
+those paths stay hermetic. `npm run enrich:tags` reuses `.cache/jev`, so a warm
+cache performs no requests at all; it fails when a run tags nothing, or when
+every team it had to fetch came back unusable, so a dead credential or a changed
+response shape cannot ship silently.
 
 Role flags used by that tiebreak are computed in code from move and ability
 names, not asked of the model, because counting and matching are what code does

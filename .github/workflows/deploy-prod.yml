@@ -17,6 +17,7 @@ jobs:
         with:
           path: |
             .cache/catalog
+            .cache/jev
             src/lib/data/catalog.json
             static/sprites
             static/items
@@ -25,6 +26,17 @@ jobs:
             catalog-${{ runner.os }}-
       - uses: jdx/mise-action@v4
       - run: npm ci
+      - name: Enrich team tags
+        run: |
+          node scripts/import-catalog.mjs --if-missing
+          if [ -z "$TYPESAFE_API_KEY" ]; then
+            echo '::error::TYPESAFE_API_KEY is not configured; refusing to deploy untagged.'
+            exit 1
+          fi
+          npm run enrich:tags
+        env:
+          CHECK_SHEET: '1'
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
       - run: npm run build
         env:
           CHECK_SHEET: '1'
