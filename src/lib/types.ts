@@ -47,13 +47,6 @@ const typeData = rawData as {
   pokemon: Record<string, PokemonType[]>;
 };
 
-export function hexToRgba(hex: string, alpha: number): string {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-}
-
 export function getTypeIcon(type: string): string {
   return `${base}/types/${type.toLowerCase()}.svg`;
 }
@@ -74,17 +67,4 @@ export function getPokemonTypes(pokemon: string): PokemonType[] {
   if (typeData.pokemon[baseKey]) return typeData.pokemon[baseKey];
 
   return ['normal'];
-}
-
-export function getCardBackgroundStyle(pokemon: string, muted = false): string {
-  const types = getPokemonTypes(pokemon);
-  const opacity = muted ? 0.06 : 0.15;
-  if (types.length === 1) {
-    const color = TYPE_COLORS[types[0]] || '#A8A878';
-    return `background: linear-gradient(135deg, ${hexToRgba(color, opacity)} 0%, ${hexToRgba(color, opacity * 0.3)} 100%)`;
-  }
-
-  const color1 = TYPE_COLORS[types[0]] || '#A8A878';
-  const color2 = TYPE_COLORS[types[1]] || color1;
-  return `background: linear-gradient(135deg, ${hexToRgba(color1, opacity)} 0%, ${hexToRgba(color2, opacity)} 100%)`;
 }

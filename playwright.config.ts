@@ -24,7 +24,11 @@ export default defineConfig({
     },
     {
       name: 'mobile-webkit',
-      testMatch: ['**/workbench.spec.ts', '**/workbench-edge.spec.ts'],
+      testMatch: [
+        '**/workbench.spec.ts',
+        '**/workbench-edge.spec.ts',
+        '**/browser.spec.ts',
+      ],
       use: { ...devices['iPhone 13'], browserName: 'webkit' },
     },
   ],

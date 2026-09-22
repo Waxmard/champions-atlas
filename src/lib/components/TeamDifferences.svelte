@@ -21,52 +21,55 @@
 </script>
 
 {#if rows.length}
-  <div class="mt-4 overflow-x-auto rounded-xl border">
+  <div class="plate mt-4 overflow-x-auto">
     <table class="table w-full table-fixed table-xs text-left leading-5">
       <caption class="sr-only">Team differences</caption>
-      <thead class="bg-base-200">
+      <thead>
         <tr
-          ><th class="w-1/3 p-3">Pokémon / field</th><th class="p-3"
-            >{beforeLabel}</th
-          ><th class="p-3">{afterLabel}</th></tr
+          ><th class="w-1/3 p-3"><span class="term">Pokémon / field</span></th
+          ><th class="p-3"><span class="term">{beforeLabel}</span></th><th
+            class="p-3"><span class="term">{afterLabel}</span></th
+          ></tr
         >
       </thead>
       <tbody class="divide-y">
         {#each rows as row, index (index)}
           <tr class="align-top">
-            <th scope="row" class="p-3 font-medium wrap-break-word">
+            <th scope="row" class="p-3 wrap-break-word">
               <div class="flex items-center gap-2">
                 <PokemonSprite pokemon={row.pokemon} size={28} />
                 <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-1">
-                    <span>{row.pokemon}</span>
+                  <div class="flex flex-wrap items-baseline gap-x-1.5">
+                    <span class="value font-semibold">{row.pokemon}</span>
                     {#if row.field === 'Pokémon'}
                       {#each getPokemonTypes(row.pokemon) as type (type)}
                         <TypeBadge {type} size="sm" />
                       {/each}
                     {/if}
                   </div>
-                  <span class="block font-normal text-base-content/70"
-                    >{row.field}</span
-                  >
+                  <span class="term block">{row.field}</span>
                 </div>
               </div>
             </th>
             {#each [row.before, row.after] as value, side (side)}
               <td class="p-3 wrap-break-word">
-                {#if row.field === 'Full set'}
+                {#if value === 'Unknown'}
+                  <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+                {:else if row.field === 'Full set'}
                   <details>
-                    <summary class="cursor-pointer py-1 text-primary"
-                      >Show set</summary
-                    >
-                    <p class="mt-2 whitespace-pre-wrap">{value}</p>
+                    <summary class="term cursor-pointer py-1">Show set</summary>
+                    <p class="value mt-2 whitespace-pre-wrap">{value}</p>
                   </details>
-                {:else if row.field === 'Item' && value !== 'Unknown'}
-                  <span class="flex items-center gap-1">
+                {:else if row.field === 'Item'}
+                  <span
+                    class="value inline-flex items-center gap-1.5 {side === 1
+                      ? 'font-semibold'
+                      : ''}"
+                  >
                     <ItemIcon item={value} />
-                    <span>{value}</span>
+                    <span class="truncate">{value}</span>
                   </span>
-                {:else if (row.field === 'Moves' || row.field.startsWith('Move')) && value !== 'Unknown'}
+                {:else if row.field === 'Moves' || row.field.startsWith('Move')}
                   {#if value.includes(', ')}
                     <div class="flex flex-col gap-1">
                       {#each value.split(', ') as move (move)}
@@ -78,14 +81,14 @@
                   {/if}
                 {:else if row.field === 'Pokémon'}
                   <span
-                    class="badge {value === 'Added' || value === 'On team'
-                      ? 'badge-primary'
-                      : 'badge-soft'}"
+                    class="value {value === 'Added' || value === 'Removed'
+                      ? 'font-semibold'
+                      : 'text-base-content/70'}">{value}</span
                   >
-                    {value}
-                  </span>
                 {:else}
-                  {value}
+                  <span class="value {side === 1 ? 'font-semibold' : ''}"
+                    >{value}</span
+                  >
                 {/if}
               </td>
             {/each}
@@ -95,11 +98,11 @@
     </table>
   </div>
 {:else}
-  <p class="mt-4 text-sm text-base-content/70">
+  <p class="plate mt-4 px-4 py-3 text-[0.9375rem] leading-relaxed">
     No differences in loaded fields.
   </p>
 {/if}
-<p class="mt-3 text-xs text-base-content/70">
+<p class="provenance mt-3 max-w-[68ch]">
   Unknown details cannot be compared. Matching fields do not establish legality
   or competitive strength.
 </p>

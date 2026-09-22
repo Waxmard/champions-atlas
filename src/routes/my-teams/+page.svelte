@@ -328,32 +328,44 @@
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <div class="flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h1 class="text-3xl font-semibold tracking-tight">My teams</h1>
-      <p class="mt-2 text-sm text-base-content/70">
-        Keep your original. Explore changes. Save your own version.
-      </p>
-    </div>
-    <div class="flex flex-wrap gap-2">
-      <Button href={resolve('/my-teams/new')} class="min-h-11"
-        >Add custom team</Button
-      >
-      <Button href={resolve('/?browse=all')} variant="outline" class="min-h-11"
-        >Browse teams</Button
-      >
-    </div>
+  <header>
+    <h1
+      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+    >
+      My teams
+    </h1>
+    <p
+      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+    >
+      Keep your original. Explore changes. Save your own version.
+    </p>
+  </header>
+  <div class="mt-4 flex flex-wrap gap-2.5">
+    <Button href={resolve('/my-teams/new')} class="min-h-11 px-4"
+      >Add custom team</Button
+    >
+    <Button
+      href={resolve('/?browse=all')}
+      variant="outline"
+      class="min-h-11 px-4">Browse teams</Button
+    >
   </div>
-  {#if storageError}<p role="alert" class="mt-5 alert alert-error">
+  {#if storageError}<p
+      role="alert"
+      class="plate mt-5 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
       {storageError}
     </p>{/if}
-  {#if !ready}<p class="mt-8 text-base-content/70">Loading saved teams…</p>
+  {#if !ready}<p class="mt-8 text-[0.9375rem] text-base-content/70">
+      Loading saved teams…
+    </p>
   {:else if !storageError}
     {#if saved.length}
-      <label class="mt-6 block max-w-xl text-sm font-medium"
+      <label class="term mt-6 block max-w-xl"
         >Saved team
         <select
-          class="select mt-2 min-h-11 w-full"
+          class="select mt-2 min-h-11 w-full sm:text-sm"
           value={draft?.id || ''}
           onchange={(event) => {
             void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
@@ -365,28 +377,23 @@
         </select>
       </label>
     {:else}
-      <p
-        class="mt-8 rounded-xl border border-dashed p-6 text-sm text-base-content/70"
-      >
+      <p class="plate mt-8 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
         No saved teams yet. Open a catalog team and choose “Use this team”.
       </p>
     {/if}
     <p
       role="status"
       aria-live="polite"
-      class="mt-4 min-h-6 text-sm text-primary"
+      class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70"
     >
       {message}
     </p>
     {#if draft}
-      <section
-        aria-label="Your team"
-        class="card mt-4 bg-base-100 p-5 card-border sm:p-6"
-      >
+      <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <div class="flex flex-wrap items-end justify-between gap-4">
-          <label class="block w-full max-w-xl text-sm font-medium"
+          <label class="term block w-full max-w-xl"
             >Team name<input
-              class="input mt-2 min-h-11 w-full"
+              class="input mt-2 min-h-11 w-full sm:text-sm"
               maxlength="200"
               bind:value={draft.name}
               onblur={saveTeamName}
@@ -404,10 +411,15 @@
             >
           </div>
         </div>
-        <p class="mt-3 text-xs text-base-content/70">
-          {dirty ? 'Unsaved changes.' : 'Saved on this device.'} Original: {draft
-            .original.name} · {draft.original.regulation}. Editing does not
-          create a working rental code.
+        <div class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+          <p class="provenance">
+            {dirty ? 'Unsaved changes.' : 'Saved on this device.'}
+          </p>
+          <p class="provenance">Original: {draft.original.name}</p>
+          <p class="provenance">Reg {draft.original.regulation}</p>
+        </div>
+        <p class="provenance mt-1.5">
+          Editing does not create a working rental code.
         </p>
         <div class="mt-5 flex items-start gap-3">
           <div class="min-w-0 flex-1">
@@ -429,7 +441,7 @@
           {/if}
         </div>
         {#if pendingSpecies}
-          <p class="mt-2 text-sm text-primary" role="status">
+          <p class="mt-2 text-[0.9375rem] text-base-content/70" role="status">
             Choose which Pokémon to replace with <strong
               >{pendingSpecies}</strong
             >.
@@ -439,17 +451,16 @@
           {#each draft.members as member, index (index)}
             <section
               id={`pokemon-slot-${index}`}
-              class="min-w-0 overflow-hidden rounded-2xl border bg-base-100 transition-all duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
+              class="plate min-w-0 overflow-hidden transition-colors duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
               index
-                ? 'border-primary p-4 shadow-md ring-2 ring-primary/30'
-                : 'hover:border-primary/30 hover:shadow-xs'}"
+                ? 'border-primary'
+                : 'hover:border-primary/40'}"
               aria-label={`${member.pokemon} set`}
             >
               <MemberCard
                 {member}
                 editable={true}
                 {editing}
-                pending={editedSlots.has(index)}
                 onedit={(field) => openSetEditor(index, field)}
               />
               {#if pendingSpecies}
@@ -463,11 +474,9 @@
               {/if}
               {#if editedSlots.has(index)}
                 <div
-                  class="flex items-center justify-between border-t border-base-300/60 bg-base-200/40 px-3.5 py-2.5"
+                  class="flex items-center justify-between gap-3 border-t px-3.5 py-2.5"
                 >
-                  <span class="text-xs font-medium text-primary"
-                    >Unsaved set</span
-                  >
+                  <span class="term">Unsaved set</span>
                   <div class="flex items-center gap-2">
                     <Button
                       variant="outline"
@@ -492,12 +501,12 @@
             </section>
           {/each}
         </div>
-        <p class="mt-4 text-xs leading-5 text-base-content/70">
+        <p class="provenance mt-4 max-w-[68ch]">
           Team text normalizes to Pokémon Champions format (EVs out of 32, no
           IVs); unknown details stay omitted.
         </p>
         {#if showExport}<label
-            class="t-panel-slide mt-4 block text-sm font-medium"
+            class="t-panel-slide term mt-4 block"
             use:revealPanel
             >Export text<textarea
               readonly
@@ -514,7 +523,7 @@
       use:openSetDialog
       oncancel={handleDialogCancel}
       aria-label={`Edit ${draft.members[editIndex].pokemon} set`}
-      class="set-editor-dialog fixed inset-0 z-50 m-0 flex h-[100dvh] max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-base-100 p-0 text-base-content shadow-xl sm:top-8 sm:bottom-auto sm:mx-auto sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100%-4rem)] sm:max-w-2xl sm:rounded-2xl sm:border"
+      class="set-editor-dialog fixed inset-0 z-50 m-0 flex h-[100dvh] max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-base-100 p-0 text-base-content shadow-xl sm:top-8 sm:bottom-auto sm:mx-auto sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100%-4rem)] sm:max-w-2xl sm:rounded-box sm:border"
     >
       <SetEditorSheet
         bind:this={editorRef}

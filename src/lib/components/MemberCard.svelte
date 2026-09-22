@@ -5,7 +5,7 @@
   import TypeBadge from '$lib/components/TypeBadge.svelte';
   import { Button } from '$lib/components/ui/button';
   import type { Member } from '$lib/catalog';
-  import { getCardBackgroundStyle, getPokemonTypes } from '$lib/types';
+  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import FileText from '@lucide/svelte/icons/file-text';
 
@@ -24,7 +24,6 @@
     slot?: number;
     editable?: boolean;
     editing?: boolean;
-    pending?: boolean;
     class?: string;
     onedit?: (field: EditableSetField) => void;
   }
@@ -34,71 +33,47 @@
     slot,
     editable = false,
     editing = false,
-    pending = false,
     class: className = '',
     onedit,
   }: Props = $props();
 
-  const cardStyle = $derived(getCardBackgroundStyle(member.pokemon, pending));
   const types = $derived(getPokemonTypes(member.pokemon));
+  const rowClass =
+    'flex min-h-11 w-full items-baseline justify-between gap-3 rounded-[var(--radius-field)] px-1.5 py-1 text-left';
 </script>
 
 <div
-  class="relative flex min-w-0 flex-col transition-all duration-300 ease-out {editable
-    ? 'rounded-xl p-3 sm:p-3.5'
-    : 'rounded-2xl border bg-base-100 p-4 shadow-2xs sm:p-5'} {className}"
-  style={cardStyle}
+  class="relative flex min-w-0 flex-col {editable
+    ? 'px-2.5 pt-2 pb-1.5'
+    : 'px-4 pt-3 pb-4'} {className}"
+  style="--type-color: {TYPE_COLORS[getPokemonTypes(member.pokemon)[0]]}"
 >
-  <!-- Header: Sprite + Name/Types + Slot + EV Spread + (optional) Change Action -->
-  <div class="flex items-center justify-between gap-2">
-    <div class="flex min-w-0 items-center gap-2.5">
-      <div class="filter relative shrink-0 drop-shadow-xs">
-        <PokemonSprite pokemon={member.pokemon} size={48} />
+  <div class="flex items-start justify-between gap-2">
+    <div class="flex min-w-0 items-start gap-2.5">
+      <div class="roster-sprite shrink-0">
+        <PokemonSprite pokemon={member.pokemon} size={editable ? 44 : 52} />
       </div>
-      <div class="min-w-0">
+      <div class="min-w-0 pt-0.5">
         {#if slot !== undefined}
-          <div class="mb-0.5 text-[11px] font-medium text-base-content/70">
-            Slot {slot}
-          </div>
+          <p class="term leading-none">Slot {slot}</p>
         {/if}
-        <div class="flex flex-wrap items-center gap-1.5">
-          <h2 class="truncate text-base font-semibold tracking-tight">
-            {member.pokemon}
-          </h2>
-          <div class="flex items-center gap-1">
-            {#each types as type (type)}
-              <TypeBadge {type} size="sm" />
-            {/each}
-          </div>
+        <p class="mt-1 text-lg leading-tight font-extrabold wrap-break-word">
+          {member.pokemon}
+        </p>
+        <div class="mt-1 flex items-center gap-1.5">
+          {#each types as type (type)}
+            <span aria-hidden="true"><TypeBadge {type} size="sm" /></span>
+            <span class="term leading-none">{type}</span>
+          {/each}
         </div>
-        <!-- EV compact badge -->
-        {#if editable}
-          <button
-            type="button"
-            class="mt-0.5 inline-flex min-h-11 items-center font-mono text-xs text-base-content/70 transition-colors hover:text-base-content disabled:pointer-events-none disabled:opacity-50"
-            aria-label={`Edit ${member.pokemon} EVs`}
-            data-set-field="spread"
-            disabled={editing}
-            onclick={() => onedit?.('spread')}
-          >
-            {member.spread || 'No EVs'}
-          </button>
-        {:else}
-          <span
-            class="mt-0.5 inline-flex items-center font-mono text-xs text-base-content/70"
-          >
-            {member.spread || 'No EVs'}
-          </span>
-        {/if}
       </div>
     </div>
 
     {#if editable}
-      <!-- Change Pokemon button -->
       <Button
         variant="outline"
         size="sm"
-        class="min-h-11 shrink-0 gap-1.5 rounded-lg px-2.5 text-xs shadow-xs"
+        class="min-h-11 shrink-0 gap-1.5 px-2.5 text-xs"
         aria-label={`Change ${member.pokemon}`}
         data-set-field="pokemon"
         disabled={editing}
@@ -110,122 +85,59 @@
     {/if}
   </div>
 
-  <!-- Pills Row: Item, Ability, Nature -->
-  <div class="mt-2.5 flex flex-wrap items-center gap-1.5 text-xs">
-    {#if editable}
-      <button
-        type="button"
-        class="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
-        aria-label={`Edit ${member.pokemon} item`}
-        data-set-field="item"
-        disabled={editing}
-        onclick={() => onedit?.('item')}
-      >
-        {@render itemContent()}
-      </button>
+  {@render row(
+    'Held item',
+    member.item,
+    'item',
+    `Edit ${member.pokemon} item`,
+    member.item ?? undefined
+  )}
+  {@render row(
+    'Ability',
+    member.ability,
+    'ability',
+    `Edit ${member.pokemon} ability`
+  )}
+  {@render row(
+    'Nature',
+    member.nature,
+    'nature',
+    `Edit ${member.pokemon} nature`
+  )}
+  {@render row('Spread', member.spread, 'spread', `Edit ${member.pokemon} EVs`)}
 
-      <button
-        type="button"
-        class="inline-flex min-h-11 items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/90 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
-        aria-label={`Edit ${member.pokemon} ability`}
-        data-set-field="ability"
-        disabled={editing}
-        onclick={() => onedit?.('ability')}
-      >
-        {@render abilityContent()}
-      </button>
-
-      <button
-        type="button"
-        class="inline-flex min-h-11 items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/70 backdrop-blur-xs transition-colors hover:border-primary/50 hover:bg-base-200 hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
-        aria-label={`Edit ${member.pokemon} nature`}
-        data-set-field="nature"
-        disabled={editing}
-        onclick={() => onedit?.('nature')}
-      >
-        {@render natureContent()}
-      </button>
-    {:else}
-      <div
-        class="inline-flex min-h-11 items-center gap-1.5 rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium backdrop-blur-xs"
-      >
-        {@render itemContent()}
-      </div>
-
-      <div
-        class="inline-flex min-h-11 items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/90 backdrop-blur-xs"
-      >
-        {@render abilityContent()}
-      </div>
-
-      <div
-        class="inline-flex min-h-11 items-center rounded-md border border-base-300/60 bg-base-200/80 px-2 py-1 font-medium text-base-content/70 backdrop-blur-xs"
-      >
-        {@render natureContent()}
-      </div>
-    {/if}
+  <!-- Moves -->
+  <div class="mt-2 border-t pt-2">
+    <div class="flex items-baseline justify-between gap-3 px-1.5">
+      <span class="term">Moves</span>
+      {#if !editable && member.moves.length === 0}<span class="term"
+          >not published</span
+        >{/if}
+    </div>
+    <div class="mt-1">
+      {#if editable}
+        <button
+          type="button"
+          class="w-full rounded-sm p-0.5 text-left focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Edit ${member.pokemon} moves`}
+          data-set-field="moves"
+          disabled={editing}
+          onclick={() => onedit?.('moves')}
+        >
+          {@render moves()}
+        </button>
+      {:else}
+        {@render moves()}
+      {/if}
+    </div>
   </div>
 
-  <!-- Moves: 2x2 grid of MovePills -->
-  <div class="mt-2.5">
-    {#if editable}
-      <button
-        type="button"
-        class="w-full rounded-lg p-0.5 text-left transition-colors focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
-        aria-label={`Edit ${member.pokemon} moves`}
-        data-set-field="moves"
-        disabled={editing}
-        onclick={() => onedit?.('moves')}
-      >
-        {@render movesContent()}
-      </button>
-    {:else}
-      {@render movesContent()}
-    {/if}
-  </div>
-
-  {#snippet itemContent()}
-    {#if member.item}
-      <ItemIcon item={member.item} size={16} />
-    {/if}
-    <span class="max-w-[120px] truncate"
-      >{member.item || (editable ? 'Unknown' : 'Item unknown')}</span
-    >
-  {/snippet}
-
-  {#snippet abilityContent()}
-    <span class="max-w-[150px] truncate">
-      {member.ability ? `Ability: ${member.ability}` : 'Ability unknown'}
-    </span>
-  {/snippet}
-
-  {#snippet natureContent()}
-    <span>{member.nature || (editable ? 'Unknown' : 'Nature unknown')}</span>
-  {/snippet}
-
-  {#snippet movesContent()}
-    {#if member.moves.length}
-      <div class="grid grid-cols-2 gap-1.5 text-xs">
-        {#each [0, 1, 2, 3] as i (i)}
-          <MovePill move={member.moves[i] || ''} />
-        {/each}
-      </div>
-    {:else}
-      <div
-        class="rounded-md border border-dashed border-base-300/60 bg-base-200/60 py-2.5 text-center text-xs text-base-content/70 italic"
-      >
-        Moves unknown
-      </div>
-    {/if}
-  {/snippet}
-
-  <!-- Footer Actions -->
   {#if editable}
-    <div class="mt-2.5 flex flex-wrap justify-end gap-1">
+    <div class="mt-2 flex flex-wrap justify-end gap-1 border-t pt-1.5">
       <Button
         variant="ghost"
         size="sm"
-        class="min-h-11 gap-1 px-2 text-[11px] font-medium"
+        class="min-h-11 gap-1 px-2 text-xs"
         aria-label={`Edit ${member.pokemon} set`}
         data-set-field="set"
         disabled={editing}
@@ -236,7 +148,7 @@
       <Button
         variant="ghost"
         size="sm"
-        class="min-h-11 gap-1 px-2 text-[11px] font-medium text-base-content/70 transition-colors hover:text-base-content"
+        class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
         aria-label={`Edit ${member.pokemon} set text`}
         data-set-field="text"
         disabled={editing}
@@ -248,3 +160,56 @@
     </div>
   {/if}
 </div>
+
+{#snippet row(
+  term: string,
+  value: string | null,
+  field: EditableSetField,
+  label: string,
+  item?: string
+)}
+  {#snippet valueView()}
+    {#if value === null}
+      <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+    {:else if item !== undefined}
+      <span class="value inline-flex min-w-0 items-center gap-1.5">
+        <ItemIcon {item} size={16} />
+        <span class="truncate">{value}</span>
+      </span>
+    {:else}
+      <span class="value min-w-0 truncate">{value}</span>
+    {/if}
+  {/snippet}
+  {#if editable}
+    <button
+      type="button"
+      class="{rowClass} hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+      aria-label={label}
+      data-set-field={field}
+      disabled={editing}
+      onclick={() => onedit?.(field)}
+    >
+      <span class="term shrink-0">{term}</span>
+      {@render valueView()}
+    </button>
+  {:else}
+    <div class={rowClass}>
+      <span class="term shrink-0">{term}</span>
+      {@render valueView()}
+    </div>
+  {/if}
+{/snippet}
+
+{#snippet moves()}
+  {#if member.moves.length}
+    <div class="grid grid-cols-2 gap-x-2 gap-y-1">
+      {#each [0, 1, 2, 3] as i (i)}
+        <MovePill move={member.moves[i] || ''} />
+      {/each}
+    </div>
+  {:else}
+    <p class="unknown rounded-xs py-3 text-center text-[0.8125rem]">
+      Moves unknown
+    </p>
+  {/if}
+{/snippet}

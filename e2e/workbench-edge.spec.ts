@@ -101,15 +101,20 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   );
   await page.reload();
 
+  const firstPokemon = peter.members[0].pokemon;
   const team = page.getByRole('region', { name: 'Your team', exact: true });
   await expect(
-    team.getByText('Ability unknown', { exact: true })
+    team
+      .getByRole('button', {
+        name: `Edit ${firstPokemon} ability`,
+        exact: true,
+      })
+      .getByText('Unknown', { exact: true })
   ).toBeVisible();
   await expect(team.getByText('Moves unknown', { exact: true })).toBeVisible();
   await expect(team.getByText(longName, { exact: true })).toBeVisible();
   await expect(team.locator('textarea')).toHaveCount(0);
 
-  const firstPokemon = peter.members[0].pokemon;
   const change = team.getByRole('button', {
     name: `Change ${firstPokemon}`,
     exact: true,
@@ -307,6 +312,9 @@ test('backdrop and blank-area clicks retain set edit until explicit action', asy
   const originalItem = peter.members.find(
     (m: { pokemon: string }) => m.pokemon === 'Weavile'
   )!.item;
+  const originalAbility = peter.members.find(
+    (m: { pokemon: string }) => m.pokemon === 'Weavile'
+  )!.ability;
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
@@ -315,6 +323,36 @@ test('backdrop and blank-area clicks retain set edit until explicit action', asy
     exact: true,
   });
   const item = editor.getByLabel('Item', { exact: true });
+  const ability = editor.getByLabel('Ability', { exact: true });
+
+  await editor.getByRole('button', { name: 'Clear item', exact: true }).click();
+  await expect(editor).toBeVisible();
+  await expect(item).toHaveValue('');
+  await expect(ability).toHaveValue(originalAbility);
+  await item.click();
+  const itemOption = editor
+    .getByRole('region', { name: 'Item suggestions', exact: true })
+    .getByRole('button')
+    .first();
+  const chosenItem = (await itemOption.innerText()).trim();
+  await itemOption.click();
+  await expect(item).toHaveValue(chosenItem);
+
+  await editor
+    .getByRole('button', { name: 'Clear ability', exact: true })
+    .click();
+  await expect(editor).toBeVisible();
+  await expect(ability).toHaveValue('');
+  await expect(item).toHaveValue(chosenItem);
+  await ability.click();
+  const abilityOption = editor
+    .getByRole('region', { name: 'Ability suggestions', exact: true })
+    .getByRole('button')
+    .first();
+  const chosenAbility = (await abilityOption.innerText()).trim();
+  await abilityOption.click();
+  await expect(ability).toHaveValue(chosenAbility);
+
   await item.fill('Choice Band');
   if (!testInfo.project.use.isMobile) await page.mouse.click(1, 1);
   await expect(editor).toBeVisible();
@@ -325,6 +363,9 @@ test('backdrop and blank-area clicks retain set edit until explicit action', asy
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText(originalItem, { exact: true })).toBeVisible();
+  await expect(
+    weavile.getByText(originalAbility, { exact: true })
+  ).toBeVisible();
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
@@ -538,8 +579,6 @@ test('desktop editor hugs its content and pairs fields side by side', async ({
     await scrollRegion.evaluate((el) => el.scrollHeight > el.clientHeight)
   ).toBe(true);
   expect(await scrollRegion.evaluate((el) => el.scrollTop)).toBe(0);
-  await editor
-    .getByLabel('Spe EV slider', { exact: true })
-    .scrollIntoViewIfNeeded();
+  await scrollRegion.evaluate((el) => el.scrollTo(0, el.scrollHeight));
   expect(await scrollRegion.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
 });

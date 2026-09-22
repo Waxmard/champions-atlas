@@ -151,6 +151,17 @@ export function bestEvidence(team: Team, current: string): TeamEvidence {
 
 const evidenceCache = new WeakMap<Team, TeamEvidence>();
 
+/* How strongly a result is proven, as a stamp grade. Level 4 means the source
+   sheet carried no result at all, which the guide prints as a blank. */
+export function evidenceGrade(
+  level: number
+): 'strong' | 'qualified' | 'reported' | 'none' {
+  if (level <= 1) return 'strong';
+  if (level === 2) return 'qualified';
+  if (level === 3) return 'reported';
+  return 'none';
+}
+
 function evidenceOf(team: Team, current: string): TeamEvidence {
   let cached = evidenceCache.get(team);
   if (!cached) {

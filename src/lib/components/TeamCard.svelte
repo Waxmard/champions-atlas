@@ -2,8 +2,8 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
-  import { bestEvidence, type Team } from '$lib/catalog';
-  import { getCardBackgroundStyle } from '$lib/types';
+  import { bestEvidence, evidenceGrade, type Team } from '$lib/catalog';
+  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
@@ -12,6 +12,7 @@
     query,
   }: { team: Team; currentRegulation: string; query: string } = $props();
   const result = $derived(bestEvidence(team, currentRegulation));
+  const grade = $derived(evidenceGrade(result.level));
 
   function open(event: MouseEvent) {
     if (
@@ -30,55 +31,52 @@
 </script>
 
 <article
-  class="group card min-w-0 bg-base-100 transition-[box-shadow,border-color] duration-200 card-border hover:border-primary/40 hover:shadow-sm"
+  class="plate relative min-w-0 overflow-hidden transition-colors duration-200 hover:border-primary"
 >
   <a
     href={resolve(`/teams/${team.id}${query}`)}
     onclick={open}
-    class="block rounded-2xl p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+    class="block rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
   >
-    <div class="mb-3 flex items-center justify-between gap-2">
-      <span class="badge badge-soft">Reg {team.regulation}</span>
-      <span class="shrink-0 text-xs whitespace-nowrap text-base-content/70"
-        >{team.publishedAt}</span
-      >
+    <div class="flex items-baseline justify-between gap-3">
+      <span class="term">Reg {team.regulation}</span>
+      <span class="provenance shrink-0">{team.publishedAt}</span>
     </div>
-    <h2 class="line-clamp-2 text-base leading-6 font-semibold tracking-tight">
+    <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
       {team.name}
     </h2>
-    <p class="mt-1 text-xs wrap-break-word text-base-content/70">
+    <p class="provenance mt-1 wrap-break-word">
       {team.creator || 'Creator not listed'}
     </p>
-    <ul class="my-3 grid grid-cols-3 gap-2" aria-label="Team members">
+    <ul
+      class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3"
+      aria-label="Team members"
+    >
       {#each team.members as member, index (index)}
         <li
-          class="flex min-w-0 flex-col items-center rounded-lg p-1.5 text-center"
-          style={getCardBackgroundStyle(member.pokemon, true)}
+          class="flex min-w-0 flex-col items-center px-0.5 text-center"
+          style="--type-color: {TYPE_COLORS[
+            getPokemonTypes(member.pokemon)[0]
+          ]}"
         >
-          <PokemonSprite pokemon={member.pokemon} size={40} />
-          <p class="mt-1 text-xs font-semibold wrap-break-word">
+          <div class="roster-sprite">
+            <PokemonSprite pokemon={member.pokemon} size={40} />
+          </div>
+          <p class="mt-1 text-[0.8125rem] leading-tight wrap-break-word">
             {member.pokemon}
           </p>
         </li>
       {/each}
     </ul>
-    <div class="flex items-center justify-between gap-3 border-t pt-3">
+    <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
       <div class="min-w-0">
-        <p
-          class:text-primary={result.level <= 2}
-          class="truncate text-xs font-medium"
-        >
-          {result.label}
-        </p>
-        {#if result.event}<p
-            class="mt-0.5 truncate text-xs text-base-content/70"
-            title={result.event}
-          >
+        <span class="stamp" data-grade={grade}>{result.label}</span>
+        {#if result.event}<p class="provenance mt-1 line-clamp-1">
             {result.event}
           </p>{/if}
       </div>
       <ArrowUpRight
-        class="size-4 shrink-0 text-base-content/70 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+        class="mt-0.5 size-4 shrink-0 text-base-content/60"
         aria-hidden="true"
       />
     </div>

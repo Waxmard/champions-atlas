@@ -11,7 +11,6 @@
   import TeamCard from '$lib/components/TeamCard.svelte';
   import TypeFilter from '$lib/components/TypeFilter.svelte';
   import {
-    getCardBackgroundStyle,
     getPokemonTypes,
     getTypeIcon,
     TYPE_COLORS,
@@ -285,16 +284,21 @@
   />
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-7xl px-4 pt-4 pb-8 sm:px-8 sm:pt-6">
-  <h1 class="text-2xl font-semibold tracking-tight sm:text-3xl">
-    Explore teams
-  </h1>
-
-  {#if storageError}<p
-      role="status"
-      aria-live="polite"
-      class="mt-2 text-xs text-base-content/70"
+<main id="main" class="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
+  <header>
+    <h1
+      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
     >
+      Explore teams
+    </h1>
+    <p
+      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+    >
+      Find a doubles team for the Pokémon you want to use.
+    </p>
+  </header>
+
+  {#if storageError}<p role="status" aria-live="polite" class="provenance mt-2">
       Filters can't be remembered on this device.
     </p>{/if}
 
@@ -305,7 +309,7 @@
       onclick={() => (typeOpen = !typeOpen)}
       class="btn min-h-11 gap-2 btn-outline"
     >
-      <Filter class="size-4 text-base-content/70" aria-hidden="true" />
+      <Filter class="size-4 text-base-content/60" aria-hidden="true" />
       Filter by type
       {#if selectedTypes.length}<span class="badge badge-primary"
           >{selectedTypes.length}</span
@@ -324,15 +328,18 @@
       <div class="mt-2 flex flex-wrap gap-1.5">
         {#each selectedTypes as type (type)}
           <span
-            class="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+            class="inline-flex items-center gap-1.5 border border-l-[3px] border-base-300 bg-base-100 py-1 pr-1 pl-2 text-[0.8125rem]"
+            style="border-left-color: {TYPE_COLORS[type]}"
           >
-            <img src={getTypeIcon(type)} alt="" class="size-3.5" />{type}
+            <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
+              class="font-medium">{type}</span
+            >
             <button
               type="button"
               aria-label={`Remove ${type} type filter`}
               onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
-              class="-mr-1 rounded-full p-0.5 hover:bg-primary/15"
-              ><X class="size-3" aria-hidden="true" /></button
+              class="grid size-11 place-items-center rounded-full text-base-content/60 hover:text-base-content"
+              ><X class="size-3.5" aria-hidden="true" /></button
             >
           </span>
         {/each}
@@ -352,18 +359,21 @@
   </div>
 
   {#if filters.length}
-    <div class="mt-2 divide-y border-y">
+    <div class="mt-4 grid gap-3 md:grid-cols-2">
       {#each filters as filter, index (filter.pokemon)}
-        <section class="py-4" aria-label={`${filter.pokemon} constraints`}>
+        <section
+          class="plate min-w-0 px-4 pt-3 pb-4"
+          style="border-left: 3px solid {TYPE_COLORS[
+            getPokemonTypes(filter.pokemon)[0]
+          ]}"
+          aria-label={`${filter.pokemon} constraints`}
+        >
           <div class="flex items-center justify-between gap-3">
             <div class="flex min-w-0 items-center gap-3">
-              <div
-                class="flex size-10 shrink-0 items-center justify-center rounded-lg"
-                style={getCardBackgroundStyle(filter.pokemon, true)}
+              <PokemonSprite pokemon={filter.pokemon} size={36} />
+              <h2
+                class="min-w-0 text-[1.0625rem] leading-tight font-semibold wrap-break-word"
               >
-                <PokemonSprite pokemon={filter.pokemon} size={32} />
-              </div>
-              <h2 class="min-w-0 text-sm font-semibold wrap-break-word">
                 {filter.pokemon}
               </h2>
             </div>
@@ -380,7 +390,7 @@
           </div>
 
           <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <label for={`item-${index}`} class="min-w-0 text-xs font-medium"
+            <label for={`item-${index}`} class="term min-w-0"
               >Held item
               <select
                 id={`item-${index}`}
@@ -399,7 +409,7 @@
               </select>
             </label>
 
-            <label for={`ability-${index}`} class="min-w-0 text-xs font-medium"
+            <label for={`ability-${index}`} class="term min-w-0"
               >Ability
               <select
                 id={`ability-${index}`}
@@ -420,7 +430,7 @@
 
             <label
               for={`move-${index}`}
-              class="col-span-2 min-w-0 text-xs font-medium sm:col-span-1"
+              class="term col-span-2 min-w-0 sm:col-span-1"
               >Move
               <select
                 id={`move-${index}`}
@@ -445,7 +455,7 @@
   {/if}
 
   <div class="mt-4 grid grid-cols-2 gap-3">
-    <label for="regulation" class="min-w-0 text-xs font-semibold"
+    <label for="regulation" class="term min-w-0"
       >Regulation
       <select
         id="regulation"
@@ -454,7 +464,7 @@
         onchange={(event) =>
           changeOption('regulation', event.currentTarget.value)}
       >
-        <option value={current}>{current} · current</option>
+        <option value={current}>{current} (current)</option>
         <option value="all">All regulations</option>
         {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
             value={regulation}>{regulation}</option
@@ -465,7 +475,7 @@
       </select>
     </label>
 
-    <label for="sort" class="min-w-0 text-xs font-semibold"
+    <label for="sort" class="term min-w-0"
       >Sort
       <select
         id="sort"
@@ -480,9 +490,13 @@
     </label>
   </div>
 
-  <section aria-label="Matching teams" class="mt-4 min-w-0">
-    <div class="mb-1 flex items-center justify-between gap-3">
-      <p aria-live="polite" aria-atomic="true" class="text-sm font-semibold">
+  <section aria-label="Matching teams" class="mt-5 min-w-0">
+    <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
+      <p
+        aria-live="polite"
+        aria-atomic="true"
+        class="value font-semibold tracking-wide"
+      >
         {results.length} teams
       </p>
       {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || filterState.error}<Button
@@ -493,7 +507,7 @@
           onclick={clearFilters}>Clear filters</Button
         >{/if}
     </div>
-    <p class="mb-4 text-xs leading-5 text-base-content/70">
+    <p class="provenance mt-1.5 mb-4">
       Legality in {current} is not yet verified.
     </p>
 
@@ -517,8 +531,8 @@
             onclick={() => changeOption('page', String(pageNumber - 1))}
             >Previous</Button
           >
-          <span class="text-sm text-base-content/70"
-            >{pageNumber} / {pageCount}</span
+          <span class="value text-base-content/70"
+            >Page {pageNumber} of {pageCount}</span
           >
           <Button
             variant="outline"
@@ -530,11 +544,11 @@
         </nav>
       {/if}
     {:else}
-      <div class="rounded-2xl border border-dashed p-10 text-center">
-        <h2 class="font-semibold">
+      <div class="plate px-6 py-10">
+        <h2 class="text-lg leading-tight font-extrabold">
           {filterState.error ? 'Invalid filter link' : 'No matching teams'}
         </h2>
-        <p class="mt-2 text-sm text-base-content/70">
+        <p class="mt-2 max-w-[46ch] text-[0.9375rem] leading-relaxed">
           {filterState.error ||
             'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
         </p>
@@ -547,7 +561,7 @@
         >
       </div>
     {/if}
-    <p class="mt-8 text-xs leading-5 text-base-content/70">
+    <p class="provenance mt-8 max-w-3xl">
       Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}.
       <a
         class="underline underline-offset-2"

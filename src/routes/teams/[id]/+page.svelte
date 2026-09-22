@@ -10,7 +10,12 @@
   import MemberCard from '$lib/components/MemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
   import { copyText } from '$lib/clipboard';
-  import { bestEvidence, evidence, type Team } from '$lib/catalog';
+  import {
+    bestEvidence,
+    evidence,
+    evidenceGrade,
+    type Team,
+  } from '$lib/catalog';
   import {
     activeTeamKey,
     exportPaste,
@@ -71,34 +76,38 @@
   />
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-5xl px-4 py-8 sm:px-8 sm:py-12">
+<main id="main" class="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
   <a
     href={resolve(`/?${page.url.searchParams}`)}
     onclick={back}
-    class="mb-7 inline-flex min-h-11 items-center gap-2 rounded-md text-sm text-primary outline-none hover:underline focus-visible:ring-2"
+    class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
     ><ArrowLeft class="size-4" aria-hidden="true" />Back to teams</a
   >
-  <div class="flex flex-wrap items-center gap-2 text-xs">
-    <span class="badge badge-soft">Reg {team.regulation}</span>
-    {#if team.regulation === data.currentRegulation}<span
-        class="badge badge-primary">Current regulation</span
-      >{/if}
-    {#if strongest.level <= 2}<span class="badge badge-primary"
-        >Strong evidence</span
-      >{/if}
-    <span class="text-base-content/70"
-      >Shared {team.publishedAt || 'date unknown'} · Doubles</span
+
+  <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+    <span
+      class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+      >Reg {team.regulation}</span
     >
+    {#if team.regulation === data.currentRegulation}<span class="term"
+        >current regulation</span
+      >{/if}
+    <span class="stamp" data-grade={evidenceGrade(strongest.level)}
+      >{strongest.label}</span
+    >
+    {#if strongest.event}<span class="provenance">{strongest.event}</span>{/if}
+    <span class="provenance">Shared {team.publishedAt || 'date unknown'}</span>
+    <span class="provenance">Doubles format</span>
   </div>
+
   <h1
-    class="mt-4 max-w-3xl text-3xl leading-tight font-semibold tracking-tight sm:text-4xl"
+    class="mt-4 max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-break-word sm:text-4xl"
   >
     {team.name}
   </h1>
-  <p class="mt-3 text-base-content/70">
-    By {team.creator || 'an unlisted creator'}
-  </p>
-  <div class="mt-6 flex flex-wrap gap-3">
+  <p class="provenance mt-2.5">By {team.creator || 'an unlisted creator'}</p>
+
+  <div class="mt-6 flex flex-wrap gap-2.5">
     <Button class="min-h-11 px-4" disabled={!ready} onclick={useTeam}
       >Use this team</Button
     >
@@ -123,60 +132,75 @@
         ><Copy aria-hidden="true" />Copy replica code</Button
       >{/if}
   </div>
-  <p role="status" aria-live="polite" class="mt-2 min-h-6 text-sm text-primary">
+  <p role="status" aria-live="polite" class="mt-2 min-h-6 text-[0.9375rem]">
     {copyStatus}
   </p>
-  {#if team.replicaCode}<p class="text-sm text-base-content/70">
-      Replica code: <code class="font-semibold text-base-content select-all"
+  {#if team.replicaCode}<p class="provenance">
+      Replica code:
+      <code class="font-mono text-sm text-base-content select-all"
         >{team.replicaCode}</code
       >
-      · {team.replicaStatus === '✔'
-        ? 'Listed as available by source; availability may change.'
-        : 'Source does not list this code as available.'}
+      <span class="mx-1.5"></span>{team.replicaStatus === '✔'
+        ? 'Listed as available by the source; availability may change.'
+        : 'The source does not list this code as available.'}
     </p>{/if}
-  <p role="alert" class="mt-5 alert text-sm leading-6 alert-warning">
-    <AlertTriangle class="size-4 shrink-0" aria-hidden="true" />
-    <span
-      >Current-regulation legality is unverified. {team.regulation !==
+
+  <div
+    role="alert"
+    class="mt-5 alert items-start gap-2.5 text-[0.9375rem] leading-relaxed alert-warning"
+  >
+    <AlertTriangle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+    <p class="max-w-[68ch]">
+      Current-regulation legality is unverified. {team.regulation !==
       data.currentRegulation
         ? `This team was shared for ${team.regulation}; check it against ${data.currentRegulation} before using it.`
         : 'The regulation label comes from the source sheet.'} Missing set details
-      remain unknown.</span
-    >
-  </p>
-  {#if team.pasteError}<p class="mt-3 text-sm text-base-content/70">
+      remain unknown.
+    </p>
+  </div>
+  {#if team.pasteError}<p class="provenance mt-3">
       Some published details could not be loaded. {team.pasteError}
     </p>{/if}
 
   <section
     aria-label="Pokémon sets"
-    class="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+    class="mt-8 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3"
   >
     {#each team.members as member, index (index)}
-      <MemberCard {member} slot={index + 1} editable={false} />
+      <div class="plate overflow-hidden">
+        <MemberCard {member} slot={index + 1} editable={false} />
+      </div>
     {/each}
   </section>
 
   <section aria-labelledby="results-heading" class="mt-10">
-    <h2 id="results-heading" class="text-lg font-semibold">
+    <h2
+      id="results-heading"
+      class="border-b border-base-300 pb-2 text-[1.375rem] font-extrabold wrap-break-word"
+    >
       Results & sources
     </h2>
-    <p class="mt-2 text-sm text-base-content/70">
+    <p class="provenance mt-2">
       Claims transcribed from VGCPastes, not independently verified.
     </p>
-    <ul class="mt-4 divide-y rounded-xl border bg-base-100">
+    <ul class="plate mt-4 divide-y">
       {#each team.reports as report, index (index)}
         {@const result = evidence(
           report,
           team.regulation,
           data.currentRegulation
         )}
-        <li class="flex flex-wrap items-center justify-between gap-3 p-4">
-          <div>
-            <p class="text-sm font-medium">{result.label}</p>
-            <p class="mt-1 text-xs text-base-content/70">
-              {report.event || 'Event not listed'} · {result.platform}
-            </p>
+        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div class="min-w-0">
+            <span class="stamp" data-grade={evidenceGrade(result.level)}
+              >{result.label}</span
+            >
+            <div class="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
+              <p class="value">
+                {report.event || 'Event not listed'}
+              </p>
+              <p class="term">{result.platform}</p>
+            </div>
           </div>
           {#if report.sourceUrl}<Button
               href={report.sourceUrl}
@@ -189,20 +213,21 @@
         </li>
       {/each}
     </ul>
-    <p class="mt-3 text-xs text-base-content/70">
+    <p class="provenance mt-3">
       Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
       names while the sheet lists Mega forms.
     </p>
   </section>
   {#if paste}
-    <details class="mt-8 rounded-xl border bg-base-100 p-5">
-      <summary class="cursor-pointer text-sm font-medium"
+    <details class="plate mt-8 px-5 py-4">
+      <summary class="cursor-pointer text-[0.9375rem] font-semibold"
         >Published paste text</summary
       >
-      {#if team.pasteNotes}<p class="mt-3 text-xs text-base-content/70">
-          Paste notes (may differ from sheet regulation): {team.pasteNotes}
+      {#if team.pasteNotes}<p class="term mt-3">
+          Paste notes (may differ from the sheet regulation): {team.pasteNotes}
         </p>{/if}
-      <pre class="mt-4 overflow-x-auto text-xs leading-6">{paste}</pre>
+      <pre
+        class="mt-4 overflow-x-auto font-mono text-xs leading-6">{paste}</pre>
     </details>
   {/if}
 </main>

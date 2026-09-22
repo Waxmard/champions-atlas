@@ -45,23 +45,11 @@
   <div class="grid gap-4 sm:grid-cols-2">
     <!-- Item -->
     <div class="min-w-0">
-      <label
-        for="set-item-input"
-        class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
+      <label for="set-item-input" class="term">Item</label>
+      <div
+        class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
       >
-        Item
-      </label>
-      <label
-        class="input mt-1.5 flex min-h-11 items-center gap-2 rounded-xl border border-base-300"
-      >
-        {#if item}
-          <ItemIcon {item} size={20} />
-        {:else}
-          <span
-            class="flex size-5 shrink-0 items-center justify-center text-sm opacity-40"
-            >🎒</span
-          >
-        {/if}
+        <ItemIcon {item} size={20} />
         <input
           id="set-item-input"
           aria-label="Item"
@@ -87,29 +75,27 @@
             <X class="size-4" />
           </button>
         {/if}
-      </label>
+      </div>
 
       {#if activeSuggestions === 'item'}
         <section
           aria-label="Item suggestions"
-          class="mt-2 grid max-h-60 gap-1 overflow-y-auto rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-sm"
+          class="plate mt-2 grid max-h-60 divide-y overflow-y-auto"
         >
           {#each filteredItems as opt (opt.value)}
             <button
               type="button"
-              class="flex min-h-11 items-center gap-2 rounded-lg px-3 text-left text-sm hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
+              class="flex min-h-11 items-center gap-2 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
               onclick={() => {
                 onitemchange(opt.value);
                 onclearsuggestions();
               }}
             >
               <ItemIcon item={opt.value} size={20} />
-              <span>{opt.value}</span>
+              <span class="value">{opt.value}</span>
             </button>
           {:else}
-            <p class="p-3 text-sm text-base-content/70">
-              No matching suggestions.
-            </p>
+            <p class="provenance p-3">No matching suggestions.</p>
           {/each}
         </section>
       {/if}
@@ -117,14 +103,9 @@
 
     <!-- Ability -->
     <div class="min-w-0">
-      <label
-        for="set-ability-input"
-        class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
-      >
-        Ability
-      </label>
-      <label
-        class="input mt-1.5 flex min-h-11 items-center gap-2 rounded-xl border border-base-300"
+      <label for="set-ability-input" class="term">Ability</label>
+      <div
+        class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
       >
         <input
           id="set-ability-input"
@@ -151,17 +132,17 @@
             <X class="size-4" />
           </button>
         {/if}
-      </label>
+      </div>
 
       {#if activeSuggestions === 'ability'}
         <section
           aria-label="Ability suggestions"
-          class="mt-2 grid max-h-60 gap-1 overflow-y-auto rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-sm"
+          class="plate mt-2 grid max-h-60 divide-y overflow-y-auto"
         >
           {#each filteredAbilities as opt (opt.value)}
             <button
               type="button"
-              class="min-h-11 rounded-lg px-3 text-left text-sm hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
+              class="min-h-11 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
               onclick={() => {
                 onabilitychange(opt.value);
                 onclearsuggestions();
@@ -170,9 +151,7 @@
               {opt.value}
             </button>
           {:else}
-            <p class="p-3 text-sm text-base-content/70">
-              No matching suggestions.
-            </p>
+            <p class="provenance p-3">No matching suggestions.</p>
           {/each}
         </section>
       {/if}
@@ -180,16 +159,11 @@
 
     <!-- Nature -->
     <div class="min-w-0 sm:col-span-2">
-      <label
-        for="set-nature-input"
-        class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
-      >
-        Nature
-      </label>
+      <label for="set-nature-input" class="term">Nature</label>
       <select
         id="set-nature-input"
         aria-label="Nature"
-        class="select mt-1.5 min-h-11 w-full rounded-xl border border-base-300 text-sm"
+        class="select mt-1.5 min-h-11 w-full text-sm"
         value={nature}
         onfocus={onclearsuggestions}
         onchange={(e) => {
@@ -208,7 +182,11 @@
   </div>
 
   {#if error && (errorField === 'item' || errorField === 'ability' || errorField === 'nature')}
-    <p role="alert" class="text-sm font-medium text-error">
+    <p
+      role="alert"
+      class="text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
       {error}
     </p>
   {/if}

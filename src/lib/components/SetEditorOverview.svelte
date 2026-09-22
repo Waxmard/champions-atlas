@@ -40,18 +40,16 @@
 <div class="grid gap-3.5 pr-1 sm:pr-1.5">
   <!-- Species Tile -->
   <div
-    class="flex items-center justify-between rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 shadow-2xs transition-colors hover:border-primary/40 sm:p-4 sm:pr-5"
+    class="plate flex items-center justify-between gap-3 p-3.5 pr-4.5 sm:p-4 sm:pr-5"
     data-editor-section="pokemon"
   >
     <div class="flex min-w-0 items-center gap-3">
       <PokemonSprite {pokemon} size={36} />
       <div class="min-w-0">
-        <div
-          class="text-xs font-semibold tracking-wider text-base-content/60 uppercase"
-        >
-          Species
+        <div class="term">Species</div>
+        <div class="truncate text-[1.0625rem] leading-tight font-semibold">
+          {pokemon}
         </div>
-        <div class="truncate text-base font-semibold">{pokemon}</div>
       </div>
     </div>
     <Button
@@ -68,41 +66,50 @@
   <!-- Item, Ability & Nature Tile -->
   <button
     type="button"
-    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40 sm:p-4 sm:pr-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
     aria-label="Edit item, ability, and nature"
     onclick={() => onnavigate('details')}
     data-editor-section="item"
   >
     <div class="mb-2 flex w-full items-center justify-between gap-2">
-      <span
-        class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
-      >
-        Item, ability, and nature
-      </span>
+      <span class="term">Item, ability, and nature</span>
       <ChevronRight
         class="size-4 text-base-content/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
       />
     </div>
-    <div class="flex flex-wrap items-center gap-2">
-      <div
-        class="flex items-center gap-1.5 rounded-lg border border-base-300/60 bg-base-200/80 px-2.5 py-1 text-xs font-medium"
-      >
-        <ItemIcon {item} size={18} />
-        <span class="max-w-[130px] truncate">{item || 'Item unknown'}</span>
+    <div class="grid w-full gap-1">
+      <div class="flex min-w-0 items-baseline gap-3 border-b px-0.5 pb-0.5">
+        <span class="term shrink-0">Held item</span>
+        {#if item}
+          <span class="value flex min-w-0 items-center gap-1.5">
+            <ItemIcon {item} size={18} />
+            <span class="truncate">{item}</span>
+          </span>
+        {:else}
+          <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+        {/if}
       </div>
-      <div
-        class="flex items-center gap-1.5 rounded-lg border border-base-300/60 bg-base-200/80 px-2.5 py-1 text-xs font-medium"
-      >
-        <Sparkles class="size-3.5 text-base-content/50" />
-        <span class="max-w-[130px] truncate"
-          >{ability || 'Ability unknown'}</span
-        >
+      <div class="flex min-w-0 items-baseline gap-3 border-b px-0.5 pb-0.5">
+        <span class="term shrink-0">Ability</span>
+        {#if ability}
+          <span class="value flex min-w-0 items-center gap-1.5">
+            <Sparkles class="size-3.5 shrink-0 text-base-content/50" />
+            <span class="truncate">{ability}</span>
+          </span>
+        {:else}
+          <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+        {/if}
       </div>
-      <div
-        class="flex items-center gap-1.5 rounded-lg border border-base-300/60 bg-base-200/80 px-2.5 py-1 text-xs font-medium"
-      >
-        <SlidersHorizontal class="size-3.5 text-base-content/50" />
-        <span class="max-w-[130px] truncate">{nature || 'Nature unknown'}</span>
+      <div class="flex min-w-0 items-baseline gap-3 px-0.5">
+        <span class="term shrink-0">Nature</span>
+        {#if nature}
+          <span class="value flex min-w-0 items-center gap-1.5">
+            <SlidersHorizontal class="size-3.5 shrink-0 text-base-content/50" />
+            <span class="truncate">{nature}</span>
+          </span>
+        {:else}
+          <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+        {/if}
       </div>
     </div>
   </button>
@@ -110,21 +117,17 @@
   <!-- Moves Tile (2x2 Grid) -->
   <button
     type="button"
-    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40 sm:p-4 sm:pr-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
     aria-label="Edit moves"
     onclick={() => onnavigate('moves')}
     data-editor-section="moves"
   >
     <div class="mb-2.5 flex w-full items-center justify-between gap-2">
-      <div class="flex items-center gap-2">
-        <span
-          class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
+      <div class="flex items-baseline gap-3">
+        <span class="term">Moves</span>
+        <span class="provenance"
+          >{moves.filter((m) => m.trim()).length}/4 moves</span
         >
-          Moves
-        </span>
-        <span class="badge font-mono badge-sm text-[10px] badge-neutral">
-          {moves.filter((m) => m.trim()).length}/4 moves
-        </span>
       </div>
       <ChevronRight
         class="size-4 text-base-content/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
@@ -137,10 +140,10 @@
           <MovePill {move} size="md" interactive={false} class="w-full" />
         {:else}
           <div
-            class="flex min-w-0 items-center gap-1.5 rounded-md border border-dashed border-base-300 bg-base-200/40 px-2.5 py-2 text-sm text-base-content/50"
+            class="flex min-w-0 items-center gap-1.5 border-l-2 py-1 pl-1.5 text-base-content/50"
           >
-            <div class="size-4 shrink-0 rounded-full bg-base-300/60"></div>
-            <span class="text-xs italic">Empty slot {index + 1}</span>
+            <div class="size-3.5 shrink-0 rounded-full bg-base-300"></div>
+            <span class="term">Empty slot {index + 1}</span>
           </div>
         {/if}
       {/each}
@@ -150,39 +153,34 @@
   <!-- EV Spread Tile -->
   <button
     type="button"
-    class="group flex min-h-11 flex-col rounded-xl border border-base-300 bg-base-100 p-3.5 pr-4.5 text-left shadow-2xs transition-all hover:border-primary/50 hover:bg-base-200/40 sm:p-4 sm:pr-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
     aria-label="Edit EV spread"
     onclick={() => onnavigate('spread')}
     data-editor-section="spread"
   >
     <div class="mb-2 flex w-full items-center justify-between gap-2">
-      <div class="flex items-center gap-2">
+      <div class="flex items-baseline gap-3">
+        <span class="term">EV spread</span>
         <span
-          class="text-xs font-semibold tracking-wider text-base-content/70 uppercase"
+          class="value"
+          style={currentSpreadTotal > 66
+            ? 'color: var(--color-error-content)'
+            : ''}>{currentSpreadTotal}/66 points</span
         >
-          EV spread
-        </span>
-        <span
-          class="badge font-mono badge-sm text-[10px] {currentSpreadTotal === 66
-            ? 'badge-success'
-            : 'badge-warning'}"
-        >
-          {currentSpreadTotal}/66 EVs
-        </span>
       </div>
       <ChevronRight
         class="size-4 text-base-content/50 transition-transform group-hover:translate-x-0.5 group-hover:text-primary"
       />
     </div>
     <div class="flex w-full items-center justify-between gap-3">
-      <span class="truncate font-mono text-xs font-medium text-base-content/90">
-        {spread || 'No EVs'}
-      </span>
+      {#if spread}
+        <span class="value truncate">{spread}</span>
+      {:else}
+        <span class="unknown rounded-xs px-1.5 py-px">Unknown</span>
+      {/if}
       <div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-base-300">
         <div
-          class="h-full transition-all {currentSpreadTotal === 66
-            ? 'bg-success'
-            : 'bg-warning'}"
+          class="h-full bg-primary transition-all"
           style="width: {Math.min(
             100,
             Math.round((currentSpreadTotal / 66) * 100)
@@ -207,7 +205,11 @@
   </div>
 
   {#if error}
-    <p role="alert" class="mt-2 text-sm font-medium text-error">
+    <p
+      role="alert"
+      class="text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
       {error}
     </p>
   {/if}

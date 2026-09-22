@@ -365,9 +365,7 @@
     {#if currentView === 'overview'}
       <div class="flex items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-3">
-          <div
-            class="relative shrink-0 rounded-xl border border-base-300 bg-base-200/60 p-1 shadow-2xs"
-          >
+          <div class="relative shrink-0 border border-base-300 p-1">
             <PokemonSprite
               pokemon={form.pokemon || initialMember.pokemon}
               size={44}
@@ -378,7 +376,7 @@
               <!-- svelte-ignore a11y_autofocus -->
               <h2
                 bind:this={editorHeading}
-                class="text-base font-semibold wrap-break-word sm:text-lg"
+                class="text-[1.375rem] leading-tight font-semibold wrap-break-word"
                 tabindex="-1"
                 autofocus
                 data-editor-section="set"
@@ -391,14 +389,10 @@
                 {/each}
               </div>
               {#if dirty}
-                <span class="badge badge-sm font-medium badge-warning"
-                  >Unsaved edits</span
-                >
+                <span class="term">Unsaved edits</span>
               {/if}
             </div>
-            <p class="text-xs text-base-content/70">
-              Overview — Tap any section to edit
-            </p>
+            <p class="provenance">Choose a section to edit.</p>
           </div>
         </div>
       </div>
@@ -418,7 +412,7 @@
           <div class="h-4 w-px bg-base-300"></div>
           <h2
             bind:this={editorHeading}
-            class="truncate text-base font-semibold sm:text-lg"
+            class="truncate text-[1.375rem] leading-tight font-semibold"
             tabindex="-1"
             data-editor-section={currentView === 'details'
               ? initialField === 'ability' || initialField === 'nature'
@@ -430,7 +424,7 @@
           </h2>
         </div>
         <div
-          class="flex shrink-0 items-center gap-1.5 rounded-lg border border-base-300/60 bg-base-200/80 px-2.5 py-1 text-xs text-base-content/70"
+          class="flex shrink-0 items-center gap-1.5 border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
         >
           <PokemonSprite
             pokemon={form.pokemon || initialMember.pokemon}
@@ -475,13 +469,12 @@
             {@const typeColor = type ? TYPE_COLORS[type] : null}
             {@const isActive = activeMoveSlot === index}
             <label
-              class="input flex min-h-11 items-center gap-2 rounded-xl border transition-all {isActive
-                ? 'border-primary ring-2 ring-primary/20'
-                : 'border-base-300 hover:border-base-content/30'}"
+              class="input flex min-h-11 items-center gap-2 border transition-colors {isActive
+                ? 'border-primary'
+                : 'border-base-content/55 hover:border-base-content/80'}"
               style={typeColor ? `border-left: 4px solid ${typeColor};` : ''}
             >
-              <span
-                class="w-4 text-center text-xs font-semibold text-base-content/60"
+              <span class="value w-4 text-center text-base-content/60"
                 >{index + 1}</span
               >
               {#if type}
@@ -538,19 +531,17 @@
           {@const activeOptions = moveSuggestions(activeMoveSlot)}
           <section
             aria-label="Move suggestions"
-            class="grid max-h-60 gap-1 overflow-y-auto rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-sm"
+            class="plate grid max-h-60 divide-y overflow-y-auto"
           >
-            <div
-              class="px-3 py-1.5 text-xs font-semibold tracking-wider text-base-content/60 uppercase"
-            >
-              Suggestions for Move {activeMoveSlot + 1}
+            <div class="term px-3 py-1.5">
+              Move {activeMoveSlot + 1} suggestions
             </div>
             {#each activeOptions as option (option.value)}
               {@const optionType = getMoveType(option.value)}
               {@const optionColor = optionType ? TYPE_COLORS[optionType] : null}
               <button
                 type="button"
-                class="flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-left text-sm transition-colors hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
+                class="flex min-h-11 items-center gap-2.5 px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
                 style={optionColor
                   ? `border-left: 3px solid ${optionColor};`
                   : ''}
@@ -561,18 +552,20 @@
                 {:else}
                   <div class="size-4 shrink-0 rounded-full bg-base-300"></div>
                 {/if}
-                <span class="font-medium">{option.value}</span>
+                <span class="value">{option.value}</span>
               </button>
             {:else}
-              <p class="p-3 text-sm text-base-content/70">
-                No matching move suggestions.
-              </p>
+              <p class="provenance p-3">No matching move suggestions.</p>
             {/each}
           </section>
         {/if}
 
         {#if error && errorField === 'moves'}
-          <p role="alert" class="text-sm font-medium text-error">
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
+          >
             {error}
           </p>
         {/if}
@@ -627,7 +620,11 @@
         />
 
         {#if error && errorField === 'spread'}
-          <p role="alert" class="text-sm font-medium text-error">
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
+          >
             {error}
           </p>
         {/if}
@@ -636,9 +633,7 @@
       <!-- POKEMON SUB-VIEW -->
       <section class="grid gap-4">
         <label for="set-pokemon-input" class="sr-only">Pokémon</label>
-        <label
-          class="input flex min-h-11 items-center gap-2 rounded-xl border border-base-300"
-        >
+        <label class="input flex min-h-11 items-center gap-2">
           <PokemonSprite pokemon={form.pokemon} size={28} />
           <input
             id="set-pokemon-input"
@@ -656,20 +651,20 @@
             }}
           />
         </label>
-        <p class="text-xs text-base-content/70">
+        <p class="provenance">
           Choosing a suggested Pokémon replaces this set's fields.
         </p>
 
         {#if activeSuggestions === 'pokemon'}
           <section
             aria-label="Pokémon suggestions"
-            class="grid max-h-72 gap-1 overflow-y-auto rounded-xl border border-base-300 bg-base-100 p-1.5 shadow-sm"
+            class="plate grid max-h-72 divide-y overflow-y-auto"
           >
             {#each filteredPokemon as option (option.pokemon)}
               <button
                 type="button"
                 aria-label={`Use ${option.pokemon} set`}
-                class="flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-left text-sm hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
+                class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
                 onclick={() => {
                   applyPreFilled(option.member);
                   currentView = 'overview';
@@ -677,33 +672,31 @@
               >
                 <PokemonSprite pokemon={option.pokemon} size={32} />
                 <span class="min-w-0 flex-1">
-                  <span class="flex items-center justify-between gap-2">
+                  <span class="flex items-baseline justify-between gap-2">
                     <span class="truncate font-semibold">{option.pokemon}</span>
-                    <span class="shrink-0 text-xs opacity-70"
+                    <span class="term shrink-0"
                       >{option.sharedTeammates} shared</span
                     >
                   </span>
-                  <span class="block truncate text-xs text-base-content/70">
-                    {[
-                      option.member.item,
-                      option.member.ability,
-                      option.member.nature,
-                    ]
-                      .filter(Boolean)
-                      .join(' · ')}
+                  <span class="mt-0.5 flex flex-wrap items-baseline gap-x-3">
+                    {#each [option.member.item, option.member.ability, option.member.nature].filter(Boolean) as field, fieldIndex (fieldIndex)}
+                      <span class="term truncate">{field}</span>
+                    {/each}
                   </span>
                 </span>
               </button>
             {:else}
-              <p class="p-3 text-sm text-base-content/70">
-                No matching suggestions.
-              </p>
+              <p class="provenance p-3">No matching suggestions.</p>
             {/each}
           </section>
         {/if}
 
         {#if error && errorField === 'pokemon'}
-          <p role="alert" class="text-sm font-medium text-error">
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
+          >
             {error}
           </p>
         {/if}
@@ -714,11 +707,15 @@
         <textarea
           id="set-raw-textarea"
           aria-label="Showdown set text"
-          class="textarea min-h-72 w-full resize-y rounded-xl border border-base-300 p-3 font-mono text-xs leading-5"
+          class="textarea min-h-72 w-full resize-y p-3 font-mono text-xs leading-5"
           bind:value={rawText}
           oninput={clearError}></textarea>
         {#if error && errorField === 'text'}
-          <p role="alert" class="text-sm font-medium text-error">
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
+          >
             {error}
           </p>
         {/if}
@@ -729,7 +726,7 @@
   <footer
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4"
   >
-    <p class="mb-3 text-xs text-base-content/70">
+    <p class="provenance mb-3">
       Changes will be staged on this Pokémon's card. Apply them on the team
       sheet to save.
     </p>

@@ -43,7 +43,7 @@ test('sprite cards, responsive filters, and external attribution work', async ({
   await expect(itemAttribution).toHaveAttribute('target', '_blank');
   await expect(itemAttribution).toHaveAttribute('rel', /external/);
 
-  if (testInfo.project.name === 'mobile') {
+  if (testInfo.project.use.isMobile) {
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth
@@ -107,11 +107,20 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
   await cards.first().scrollIntoViewIfNeeded();
   const scroll = await page.evaluate(() => scrollY);
   const firstName = await cards.first().getByRole('heading').innerText();
+  const detailHref = await cards.first().getByRole('link').getAttribute('href');
+  expect(detailHref).toBeTruthy();
   await page.screenshot({
     path: testInfo.outputPath('filtered-catalog.png'),
     fullPage: false,
   });
-  await cards.first().getByRole('link').click();
+  if (testInfo.project.use.isMobile) {
+    await cards.first().getByRole('link').tap();
+  } else {
+    await cards.first().getByRole('link').click();
+  }
+  await expect(page).toHaveURL(
+    new RegExp(`${detailHref!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+  );
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
   await expect(
     page.getByRole('heading', { name: 'Results & sources' })

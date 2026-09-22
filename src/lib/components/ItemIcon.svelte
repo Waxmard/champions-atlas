@@ -29,6 +29,6 @@
     />
   {/if}
   {#if !item || failed}
-    <span class="text-xs opacity-40 select-none">🎒</span>
+    <span class="block h-px w-3 bg-base-content/30" aria-hidden="true"></span>
   {/if}
 </span>

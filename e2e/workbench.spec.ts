@@ -88,7 +88,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     weavile.getByText(originalWeavile.item!, { exact: true })
   ).toBeVisible();
   await expect(
-    weavile.getByText('Ability: ' + originalWeavile.ability, { exact: true })
+    weavile
+      .getByRole('button', { name: 'Edit Weavile ability', exact: true })
+      .getByText(originalWeavile.ability!, { exact: true })
   ).toBeVisible();
   for (const move of originalWeavile.moves)
     await expect(weavile.getByText(move, { exact: true })).toBeVisible();
@@ -415,7 +417,9 @@ test('custom ability typed value survives Escape and Cancel', async ({
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await weavile.getByRole('button', { name: /Apply/ }).click();
   await expect(
-    weavile.getByText('Ability: Glitch Drive', { exact: true })
+    weavile
+      .getByRole('button', { name: 'Edit Weavile ability', exact: true })
+      .getByText('Glitch Drive', { exact: true })
   ).toBeVisible();
 
   await weavile
@@ -430,7 +434,9 @@ test('custom ability typed value survives Escape and Cancel', async ({
   await reopened.getByLabel('Ability', { exact: true }).press('Escape');
   await reopened.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(
-    weavile.getByText('Ability: Glitch Drive', { exact: true })
+    weavile
+      .getByRole('button', { name: 'Edit Weavile ability', exact: true })
+      .getByText('Glitch Drive', { exact: true })
   ).toBeVisible();
 });
 
