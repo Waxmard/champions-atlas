@@ -73,6 +73,7 @@
     moves: MOVE_SLOTS.map((index) => initialMember.moves[index] || ''),
   });
   let rawText = $state(initialText);
+  let textBaseline = $state(initialText);
   let activeSuggestions = $state<string | null>(null);
   let pokemonQuery = $state('');
   let itemQuery = $state('');
@@ -94,9 +95,8 @@
   });
   const fieldText = $derived(setText(draftMember));
   const dirty = $derived(
-    initialField === 'text'
-      ? rawText !== initialText
-      : fieldText !== initialStructuredText
+    (currentView === 'text' && rawText !== textBaseline) ||
+      fieldText !== initialStructuredText
   );
   const suggestions = $derived(
     catalogSuggestions(draftMember, teams, currentRegulation, teammates)
@@ -276,7 +276,7 @@
   }
 
   function backToOverview() {
-    if (currentView === 'text') {
+    if (currentView === 'text' && rawText !== textBaseline) {
       try {
         const parsed = parseSetBlock(rawText);
         applyPreFilled(parsed);
@@ -301,10 +301,7 @@
     }
 
     try {
-      if (
-        currentView === 'text' ||
-        (initialField === 'text' && currentView === 'overview')
-      ) {
+      if (currentView === 'text') {
         const parsed = parseSetBlock(rawText);
         if (!validateMember(parsed, 'text')) return;
         onapply(parsed);
@@ -460,7 +457,10 @@
         {currentSpreadTotal}
         {error}
         onnavigate={(view) => {
-          if (view === 'text') rawText = fieldText;
+          if (view === 'text') {
+            rawText = fieldText;
+            textBaseline = fieldText;
+          }
           currentView = view;
           if (view === 'pokemon') openSuggestions('pokemon');
           clearError();
@@ -534,28 +534,34 @@
           {@const activeOptions = moveSuggestions(activeMoveSlot)}
           <section
             aria-label="Move suggestions"
-            class="plate grid max-h-60 divide-y overflow-y-auto"
+            class="plate max-h-60 divide-y overflow-y-auto"
           >
             <div class="term px-3 py-1.5">
               Move {activeMoveSlot + 1} suggestions
             </div>
-            {#each activeOptions as option (option.value)}
-              {@const optionType = getMoveType(option.value)}
-              {@const optionColor = optionType ? TYPE_COLORS[optionType] : null}
-              <button
-                type="button"
-                class="flex min-h-11 items-center gap-2.5 px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-                style={optionColor
-                  ? `border-left: 3px solid ${optionColor};`
-                  : ''}
-                onclick={() => chooseMove(activeMoveSlot, option.value)}
-              >
-                <TypeMark type={optionType} size="md" />
-                <span class="value">{option.value}</span>
-              </button>
-            {:else}
-              <p class="provenance p-3">No matching move suggestions.</p>
-            {/each}
+            <ul role="list" class="divide-y">
+              {#each activeOptions as option (option.value)}
+                {@const optionType = getMoveType(option.value)}
+                {@const optionColor = optionType
+                  ? TYPE_COLORS[optionType]
+                  : null}
+                <li>
+                  <button
+                    type="button"
+                    class="flex min-h-11 items-center gap-2.5 px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                    style={optionColor
+                      ? `border-left: 3px solid ${optionColor};`
+                      : ''}
+                    onclick={() => chooseMove(activeMoveSlot, option.value)}
+                  >
+                    <TypeMark type={optionType} size="md" />
+                    <span class="value">{option.value}</span>
+                  </button>
+                </li>
+              {:else}
+                <li class="provenance p-3">No matching move suggestions.</li>
+              {/each}
+            </ul>
           </section>
         {/if}
 
@@ -572,9 +578,9 @@
     {:else if currentView === 'details'}
       <!-- DETAILS SUB-VIEW -->
       <SetEditorDetails
-        bind:item={form.item}
-        bind:ability={form.ability}
-        bind:nature={form.nature}
+        item={form.item}
+        ability={form.ability}
+        nature={form.nature}
         {activeSuggestions}
         {filteredItems}
         {filteredAbilities}
@@ -657,36 +663,44 @@
         {#if activeSuggestions === 'pokemon'}
           <section
             aria-label="Pokémon suggestions"
-            class="plate grid max-h-72 divide-y overflow-y-auto"
+            class="plate max-h-72 overflow-y-auto"
           >
-            {#each filteredPokemon as option (option.pokemon)}
-              <button
-                type="button"
-                aria-label={`Use ${option.pokemon} set`}
-                class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-                onclick={() => {
-                  applyPreFilled(option.member);
-                  currentView = 'overview';
-                }}
-              >
-                <PokemonSprite pokemon={option.pokemon} size={32} />
-                <span class="min-w-0 flex-1">
-                  <span class="flex items-baseline justify-between gap-2">
-                    <span class="truncate font-semibold">{option.pokemon}</span>
-                    <span class="term shrink-0"
-                      >{option.sharedTeammates} shared</span
-                    >
-                  </span>
-                  <span class="mt-0.5 flex flex-wrap items-baseline gap-x-3">
-                    {#each [option.member.item, option.member.ability, option.member.nature].filter(Boolean) as field, fieldIndex (fieldIndex)}
-                      <span class="term truncate">{field}</span>
-                    {/each}
-                  </span>
-                </span>
-              </button>
-            {:else}
-              <p class="provenance p-3">No matching suggestions.</p>
-            {/each}
+            <ul role="list" class="divide-y">
+              {#each filteredPokemon as option (option.pokemon)}
+                <li>
+                  <button
+                    type="button"
+                    aria-label={`Use ${option.pokemon} set`}
+                    class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                    onclick={() => {
+                      applyPreFilled(option.member);
+                      currentView = 'overview';
+                    }}
+                  >
+                    <PokemonSprite pokemon={option.pokemon} size={32} />
+                    <span class="min-w-0 flex-1">
+                      <span class="flex items-baseline justify-between gap-2">
+                        <span class="truncate font-semibold"
+                          >{option.pokemon}</span
+                        >
+                        <span class="term shrink-0"
+                          >{option.sharedTeammates} shared</span
+                        >
+                      </span>
+                      <span
+                        class="mt-0.5 flex flex-wrap items-baseline gap-x-3"
+                      >
+                        {#each [option.member.item, option.member.ability, option.member.nature].filter(Boolean) as field, fieldIndex (fieldIndex)}
+                          <span class="term truncate">{field}</span>
+                        {/each}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              {:else}
+                <li class="provenance p-3">No matching suggestions.</li>
+              {/each}
+            </ul>
           </section>
         {/if}
 
@@ -730,7 +744,13 @@
       sheet to save.
     </p>
     <div class="flex justify-end gap-2">
-      <Button variant="outline" class="h-11 min-h-11 px-4" onclick={oncancel}>
+      <Button
+        variant="outline"
+        class="h-11 min-h-11 px-4"
+        onclick={() => {
+          if (requestCancel()) oncancel();
+        }}
+      >
         Cancel
       </Button>
       <Button class="h-11 min-h-11 px-4" onclick={apply}>Done</Button>

@@ -3,21 +3,17 @@
   import { normalize } from '$lib/catalog';
 
   let { item, size = 24 }: { item: string; size?: number } = $props();
-  let failed = $state(false);
-
-  function hide(event: Event) {
-    failed = true;
-    (event.currentTarget as HTMLImageElement).hidden = true;
-  }
+  const src = $derived(item ? `${base}/items/${normalize(item)}.png` : '');
+  let failedSrc = $state('');
 </script>
 
 <span
   class="inline-flex shrink-0 items-center justify-center"
   style="width: {size}px; height: {size}px;"
 >
-  {#if item && !failed}
+  {#if src && failedSrc !== src}
     <img
-      src={`${base}/items/${normalize(item)}.png`}
+      {src}
       alt=""
       aria-hidden="true"
       loading="lazy"
@@ -25,10 +21,10 @@
       width={size}
       height={size}
       class="shrink-0 object-contain"
-      onerror={hide}
+      onerror={() => (failedSrc = src)}
     />
   {/if}
-  {#if !item || failed}
+  {#if !src || failedSrc === src}
     <span class="block h-px w-3 bg-base-content/30" aria-hidden="true"></span>
   {/if}
 </span>

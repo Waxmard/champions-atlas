@@ -47,7 +47,7 @@
   class="relative flex min-w-0 flex-col {editable
     ? 'px-2.5 pt-2 pb-1.5'
     : 'px-4 pt-3 pb-4'} {className}"
-  style="--type-color: {TYPE_COLORS[getPokemonTypes(member.pokemon)[0]]}"
+  style="--type-color: {TYPE_COLORS[types[0]]}"
 >
   <div class="flex items-start justify-between gap-2">
     <div class="flex min-w-0 items-start gap-2.5">

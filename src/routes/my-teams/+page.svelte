@@ -155,7 +155,9 @@
     const currentBase = baseline ? (JSON.parse(baseline) as SavedTeam) : null;
     if (currentBase && draft.name === currentBase.name) return;
     try {
-      const currentSaved = saved.find((t) => t.id === draft!.id);
+      const currentSaved = readSavedTeams(localStorage).find(
+        (t) => t.id === draft!.id
+      );
       const teamToSave: SavedTeam = {
         ...(currentSaved ?? $state.snapshot(draft)),
         name: draft.name,
@@ -177,7 +179,9 @@
     if (!draft) return;
     const pokemonName = draft.members[index]?.pokemon || 'Pokémon';
     try {
-      const currentSaved = saved.find((t) => t.id === draft!.id);
+      const currentSaved = readSavedTeams(localStorage).find(
+        (t) => t.id === draft!.id
+      );
       const baseMembers = currentSaved
         ? currentSaved.members
         : (JSON.parse(baseline).members as Member[]);

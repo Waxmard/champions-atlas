@@ -23,9 +23,9 @@
   }
 
   let {
-    item = $bindable(),
-    ability = $bindable(),
-    nature = $bindable(),
+    item,
+    ability,
+    nature,
     activeSuggestions,
     filteredItems,
     filteredAbilities,
@@ -53,6 +53,9 @@
         <input
           id="set-item-input"
           aria-label="Item"
+          role="combobox"
+          aria-expanded={activeSuggestions === 'item'}
+          aria-controls="set-item-suggestions"
           class="grow bg-transparent text-sm focus:outline-none"
           placeholder="Custom item"
           value={item}
@@ -79,24 +82,29 @@
 
       {#if activeSuggestions === 'item'}
         <section
+          id="set-item-suggestions"
           aria-label="Item suggestions"
-          class="plate mt-2 grid max-h-60 divide-y overflow-y-auto"
+          class="plate mt-2 max-h-60 overflow-y-auto"
         >
-          {#each filteredItems as opt (opt.value)}
-            <button
-              type="button"
-              class="flex min-h-11 items-center gap-2 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-              onclick={() => {
-                onitemchange(opt.value);
-                onclearsuggestions();
-              }}
-            >
-              <ItemIcon item={opt.value} size={20} />
-              <span class="value">{opt.value}</span>
-            </button>
-          {:else}
-            <p class="provenance p-3">No matching suggestions.</p>
-          {/each}
+          <ul role="list" class="divide-y">
+            {#each filteredItems as opt (opt.value)}
+              <li>
+                <button
+                  type="button"
+                  class="flex min-h-11 items-center gap-2 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                  onclick={() => {
+                    onitemchange(opt.value);
+                    onclearsuggestions();
+                  }}
+                >
+                  <ItemIcon item={opt.value} size={20} />
+                  <span class="value">{opt.value}</span>
+                </button>
+              </li>
+            {:else}
+              <li class="provenance p-3">No matching suggestions.</li>
+            {/each}
+          </ul>
         </section>
       {/if}
     </div>
@@ -110,6 +118,9 @@
         <input
           id="set-ability-input"
           aria-label="Ability"
+          role="combobox"
+          aria-expanded={activeSuggestions === 'ability'}
+          aria-controls="set-ability-suggestions"
           class="grow bg-transparent text-sm focus:outline-none"
           placeholder="Custom ability"
           value={ability}
@@ -136,23 +147,28 @@
 
       {#if activeSuggestions === 'ability'}
         <section
+          id="set-ability-suggestions"
           aria-label="Ability suggestions"
-          class="plate mt-2 grid max-h-60 divide-y overflow-y-auto"
+          class="plate mt-2 max-h-60 overflow-y-auto"
         >
-          {#each filteredAbilities as opt (opt.value)}
-            <button
-              type="button"
-              class="min-h-11 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-              onclick={() => {
-                onabilitychange(opt.value);
-                onclearsuggestions();
-              }}
-            >
-              {opt.value}
-            </button>
-          {:else}
-            <p class="provenance p-3">No matching suggestions.</p>
-          {/each}
+          <ul role="list" class="divide-y">
+            {#each filteredAbilities as opt (opt.value)}
+              <li>
+                <button
+                  type="button"
+                  class="min-h-11 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                  onclick={() => {
+                    onabilitychange(opt.value);
+                    onclearsuggestions();
+                  }}
+                >
+                  {opt.value}
+                </button>
+              </li>
+            {:else}
+              <li class="provenance p-3">No matching suggestions.</li>
+            {/each}
+          </ul>
         </section>
       {/if}
     </div>

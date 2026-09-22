@@ -300,7 +300,7 @@ test('item edits preserve an unknown nature', async ({ page }) => {
 
 test('backdrop and blank-area clicks retain set edit until explicit action', async ({
   page,
-}, testInfo) => {
+}) => {
   await page.goto('/teams/' + peter.id);
   await page
     .getByRole('button', { name: 'Use this team', exact: true })
@@ -354,12 +354,21 @@ test('backdrop and blank-area clicks retain set edit until explicit action', asy
   await expect(ability).toHaveValue(chosenAbility);
 
   await item.fill('Choice Band');
-  if (!testInfo.project.use.isMobile) await page.mouse.click(1, 1);
+  const viewport = page.viewportSize();
+  if (viewport && viewport.width >= 640) await page.mouse.click(1, 1);
   await expect(editor).toBeVisible();
   await expect(item).toHaveValue('Choice Band');
-  await editor.click({ position: { x: 12, y: 180 } });
+  const scrollRegion = editor.locator('div.overflow-y-auto').first();
+  await scrollRegion.click({ position: { x: 6, y: 6 } });
   await expect(editor).toBeVisible();
   await expect(item).toHaveValue('Choice Band');
+  const itemSuggestions = editor.getByLabel('Item suggestions', {
+    exact: true,
+  });
+  await expect(itemSuggestions).toBeVisible();
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(itemSuggestions).toHaveCount(0);
+  page.once('dialog', (dialog) => dialog.accept());
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText(originalItem, { exact: true })).toBeVisible();
@@ -458,6 +467,7 @@ test('visibility changes keep move and item edits mounted', async ({
   await expect(editor.getByLabel('Move 2', { exact: true })).toHaveValue(
     'Test Move'
   );
+  page.once('dialog', (dialog) => dialog.accept());
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
 });
 

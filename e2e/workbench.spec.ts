@@ -113,6 +113,8 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .getByRole('button');
   await expect(pokemonChoices.first()).toBeVisible();
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(pokemonChoices).toHaveCount(0);
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
 
   await weavile
@@ -321,6 +323,7 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
   await moveInputs[1].fill('Custom move');
   await moveInputs[1].press('Enter');
   await expect(moveInputs[1]).toHaveValue('Custom move');
+  page.once('dialog', (dialog) => dialog.accept());
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText(initialMoves[0]);
@@ -430,6 +433,7 @@ test('custom ability typed value survives Escape and Cancel', async ({
   await expectDetailsSubView(reopened);
   await reopened.getByLabel('Ability', { exact: true }).fill('Another');
   await reopened.getByLabel('Ability', { exact: true }).press('Escape');
+  page.once('dialog', (dialog) => dialog.accept());
   await reopened.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(
     weavile
@@ -472,6 +476,7 @@ test('move Enter preserves typed value and Tab Enter selects an exact suggestion
   await expect(options.first()).toBeFocused();
   await options.first().press('Enter');
   await expect(move1).toHaveValue(chosen);
+  page.once('dialog', (dialog) => dialog.accept());
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
 });
@@ -519,4 +524,92 @@ test('nature chips on the EV page set the nature and mark affected stats', async
       exact: true,
     })
   ).toContainText('Bold');
+});
+
+test('footer Cancel warns before discarding staged edits', async ({ page }) => {
+  await openWorkbench(page);
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  const item = editor.getByLabel('Item', { exact: true });
+  await item.fill('Choice Band');
+  const itemSuggestions = editor.getByLabel('Item suggestions', {
+    exact: true,
+  });
+  await expect(itemSuggestions).toBeVisible();
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(itemSuggestions).toHaveCount(0);
+
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toBeVisible();
+  await expect(item).toHaveValue('Choice Band');
+
+  page.once('dialog', (dialog) => dialog.accept());
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+});
+
+test('structured edits survive a trip through the Showdown text view', async ({
+  page,
+}) => {
+  await openWorkbench(page);
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await editor
+    .getByRole('button', { name: 'Back to overview', exact: true })
+    .click();
+  await editor
+    .getByRole('button', {
+      name: 'Edit item, ability, and nature',
+      exact: true,
+    })
+    .click();
+  await editor.getByLabel('Item', { exact: true }).fill('Choice Band');
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
+});
+
+test('leaving the Showdown text view untouched keeps the original set', async ({
+  page,
+}) => {
+  await openWorkbench(page);
+  const glimmora = page.getByRole('region', {
+    name: 'Glimmora-Mega set',
+    exact: true,
+  });
+  await glimmora
+    .getByRole('button', { name: 'Edit Glimmora-Mega set text', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Glimmora-Mega set',
+    exact: true,
+  });
+  await editor
+    .getByRole('button', { name: 'Back to overview', exact: true })
+    .click();
+  await expect(editor.getByText('Unsaved edits', { exact: true })).toHaveCount(
+    0
+  );
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(glimmora).toBeVisible();
 });
