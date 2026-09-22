@@ -171,7 +171,13 @@ function evidenceOf(team: Team, current: string): TeamEvidence {
   return cached;
 }
 
-export function compareTeams(a: Team, b: Team, current: string): number {
+/* tiebreak decides teams that are equally proven; date and id settle the rest. */
+export function compareTeams(
+  a: Team,
+  b: Team,
+  current: string,
+  tiebreak = 0
+): number {
   const ea = evidenceOf(a, current);
   const eb = evidenceOf(b, current);
   const ga =
@@ -193,6 +199,7 @@ export function compareTeams(a: Team, b: Team, current: string): number {
   return (
     ga - gb ||
     ea.level - eb.level ||
+    tiebreak ||
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)
   );

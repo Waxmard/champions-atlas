@@ -75,12 +75,15 @@ regulation legality. Report labels describe source claims, not verified results.
 `scripts/jev-enrich.mjs` asks a System One model for each catalog team's primary
 game plan, speed mode, and per-slot member posture, and writes the answers to the
 generated `src/lib/data/team-tags.json`. These tags are inference, never
-evidence: they carry no result label, never enter the ranking comparator, and
-their absence changes nothing. They are consumed only as a tiebreak between teams
-that already share the same teammates and details.
+evidence: they carry no result label, never outrank a sourced result, and their
+absence changes nothing. They only order teams that already share the same
+teammates and set details _and_ are equally proven; publication date and team ID
+settle whatever remains.
 
 Role flags used by that tiebreak are computed in code from move and ability
 names, not asked of the model, because counting and matching are what code does
 reliably. `scripts/jev-eval.mjs` scores run-to-run stability and checks
 structural invariants before the tags may be consumed; a failing evaluation
-leaves the tags empty.
+leaves the tags empty. Its setter invariants are objective (a Trick Room team
+must run Trick Room), but the `support` invariant only measures how many support
+moves its vocabulary recognizes, so read its rate as coverage, not accuracy.

@@ -64,13 +64,14 @@ test('jev state carries only the fields the questions need', () => {
   ]);
 });
 
-test('structural invariants reject unsupported rain, Trick Room, and support claims', () => {
+test('structural invariants cover setters and every kind of support trait', () => {
   const team = {
     id: 't',
     members: [
       member(['Follow Me']),
       member(['Rain Dance']),
       member(['Trick Room']),
+      member(['Helping Hand']),
       member(['Protect']),
     ],
   };
@@ -81,16 +82,15 @@ test('structural invariants reject unsupported rain, Trick Room, and support cla
   });
   assert.deepEqual(invariantViolations(team, tag('rain')), []);
   assert.deepEqual(invariantViolations(team, tag('trick_room')), []);
-  assert.deepEqual(
-    invariantViolations(team, tag('trick_room', { 1: 'support' })),
-    []
-  );
+  // Redirection, weather, speed control, and named support moves are all support.
+  for (const slot of [1, 2, 3, 4])
+    assert.deepEqual(
+      invariantViolations(team, tag('balance', { [slot]: 'support' })),
+      []
+    );
+  // A member with no support trait at all is still rejected.
   assert.equal(
-    invariantViolations(team, tag('rain', { 4: 'support' })).length,
-    1
-  );
-  assert.equal(
-    invariantViolations(team, tag('trick_room', { 3: 'support' })).length,
+    invariantViolations(team, tag('balance', { 5: 'support' })).length,
     1
   );
   assert.equal(
@@ -99,6 +99,10 @@ test('structural invariants reject unsupported rain, Trick Room, and support cla
       tag('rain')
     ).length,
     1
+  );
+  assert.equal(
+    invariantViolations(team, tag('trick_room', { 4: 'fast_attacker' })).length,
+    0
   );
 });
 

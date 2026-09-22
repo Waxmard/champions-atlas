@@ -142,7 +142,7 @@ report each spread's Speed against the catalog.
   catalog Speed tiers a spread does not reach.
 
 Inferred archetype and role tags are enrichment, never evidence: they carry no
-result label, never affect ranking, and their absence changes nothing.
+result label, never outrank a sourced result, and their absence changes nothing.
 
 Custom import starts in **My teams** with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,

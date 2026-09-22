@@ -52,6 +52,17 @@ const roleQuestion = (slot) => ({
 
 const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
+/* Node never reads .env files on its own; an exported key still wins. */
+export function loadEnvFile() {
+  try {
+    process.loadEnvFile(
+      fileURLToPath(new URL('../.env.local', import.meta.url))
+    );
+  } catch {
+    // .env.local is optional.
+  }
+}
+
 const stub = {
   generatedAt: null,
   model: 'jev-1.13.0',
@@ -161,13 +172,14 @@ async function main() {
     return;
   }
 
+  loadEnvFile();
+
   const key = process.env.TYPESAFE_API_KEY;
   if (!key) {
     console.error('TYPESAFE_API_KEY is required to enrich team tags');
     process.exitCode = 1;
     return;
   }
-
   await mkdir(cacheDir, { recursive: true });
   const teams = {};
   const tokens = {};

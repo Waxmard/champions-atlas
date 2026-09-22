@@ -515,8 +515,12 @@ export function pokemonSuggestions(
       (a, b) =>
         b.shared - a.shared ||
         b.details - a.details ||
-        b.roleBonus - a.roleBonus ||
-        compareTeams(a.team, b.team, currentRegulation)
+        compareTeams(
+          a.team,
+          b.team,
+          currentRegulation,
+          b.roleBonus - a.roleBonus
+        )
     );
   const seen = new Set<string>();
   const suggestions: PokemonSuggestion[] = [];

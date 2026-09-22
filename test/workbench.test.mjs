@@ -574,6 +574,49 @@ test('every nature maps to its standard raised and lowered stat', () => {
   assert.equal(natureEffect(''), null);
 });
 
+test('the role tiebreak never outranks a sourced result', () => {
+  const tags = {
+    teams: { role: { archetype: 'balance', speedMode: 'faster', roles: {} } },
+  };
+  const teammates = [member('Sneasler')];
+
+  // Poor evidence, but the team fills a job the draft lacks via Tailwind.
+  const fillsRole = team('role', 'M-C');
+  fillsRole.members = [
+    member('Sneasler'),
+    { ...member('Incineroar'), moves: ['Tailwind', 'Fake Out'] },
+  ];
+
+  // Better evidence, no role fill beyond what the teammate already covers.
+  const proven = team('evidence', 'M-C');
+  proven.members = [member('Sneasler'), member('Rillaboom')];
+  proven.reports = [{ event: 'Worlds', rank: 'Champion', sourceUrl: '' }];
+
+  const ranked = pokemonSuggestions(
+    teammates,
+    [fillsRole, proven],
+    'M-C',
+    undefined,
+    tags
+  );
+  assert.deepEqual(
+    ranked.map((suggestion) => suggestion.pokemon),
+    ['Rillaboom', 'Incineroar']
+  );
+
+  // With evidence equal, the role fill wins again.
+  const unproven = team('evidence-tied', 'M-C');
+  unproven.members = [member('Sneasler'), member('Rillaboom')];
+  const tied = pokemonSuggestions(
+    teammates,
+    [fillsRole, unproven],
+    'M-C',
+    undefined,
+    tags
+  );
+  assert.equal(tied[0].member.pokemon, 'Incineroar');
+});
+
 test('isMegaSpecies matches named Mega forms and not similar species', () => {
   assert.equal(isMegaSpecies('Meganium'), false);
   assert.equal(isMegaSpecies('Garchomp-Mega-Z'), true);
