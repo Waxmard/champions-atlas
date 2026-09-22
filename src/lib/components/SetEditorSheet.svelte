@@ -1,42 +1,39 @@
 <script lang="ts">
-  import { Combobox } from 'bits-ui';
-  import { tick } from 'svelte';
+  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import X from '@lucide/svelte/icons/x';
   import EvEditor from '$lib/components/EvEditor.svelte';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
+  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import SetEditorDetails from '$lib/components/SetEditorDetails.svelte';
+  import SetEditorOverview from '$lib/components/SetEditorOverview.svelte';
+  import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
+  import TypeBadge from '$lib/components/TypeBadge.svelte';
+  import TypeMark from '$lib/components/TypeMark.svelte';
   import { Button } from '$lib/components/ui/button';
   import { normalize, type Member, type Team } from '$lib/catalog';
-  import { getMoveType, getTypeIcon, TYPE_COLORS } from '$lib/types';
   import {
     championsSpreadTotal,
+    NATURES,
     parseChampionsSpread,
     parseSetBlock,
   } from '$lib/paste';
+  import { getMoveType, getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import { catalogSuggestions, setText } from '$lib/workbench';
 
-  type EditField =
-    'pokemon' | 'item' | 'ability' | 'nature' | 'spread' | 'moves' | 'text';
+  type EditorView =
+    'overview' | 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
 
-  const FIELD_LABELS: Record<EditField, string> = {
-    pokemon: 'Pokémon',
-    item: 'Item',
-    ability: 'Ability',
-    nature: 'Nature',
-    spread: 'EVs',
-    moves: 'Moves',
-    text: 'Set text',
-  };
   interface Props {
     member: Member;
     teams: Team[];
     currentRegulation: string;
-    initialField: EditField;
+    initialField: EditableSetField;
     teammates?: Member[];
     onapply: (member: Member) => void;
     oncancel: () => void;
     ondirtychange: (dirty: boolean) => void;
   }
+
   let {
     member,
     teams,
@@ -48,41 +45,45 @@
     ondirtychange,
   }: Props = $props();
 
-  const NATURES =
-    'Adamant Bashful Bold Brave Calm Careful Docile Gentle Hardy Hasty Impish Jolly Lax Lonely Mild Modest Naive Naughty Quiet Quirky Rash Relaxed Sassy Serious Timid'.split(
-      ' '
-    );
-  let initialText = $state(''),
-    initialSpread = $state(''),
-    rawText = $state(''),
-    error = $state(''),
-    moveInput = $state(''),
-    itemQuery = $state(''),
-    abilityQuery = $state(''),
-    natureQuery = $state(''),
-    pokemonQuery = $state('');
-  let initialized = $state(false),
-    spreadTouched = $state(false);
+  function getInitialView(field: EditableSetField): EditorView {
+    if (field === 'set') return 'overview';
+    if (field === 'item' || field === 'ability' || field === 'nature') {
+      return 'details';
+    }
+    return field;
+  }
+
+  const MOVE_SLOTS = [0, 1, 2, 3];
+  const initialMember = (() => member)();
+  const initialText = setText(initialMember);
+  const initialStructuredText = setText({ ...initialMember, set: undefined });
+  const initialNature = initialMember.nature || '';
+  const initialSpread = initialMember.spread || '';
+
+  const initialView = (() => getInitialView(initialField))();
+  let currentView = $state<EditorView>(initialView);
+  let activeMoveSlot = $state(0);
+
   let form = $state({
-    pokemon: '',
-    item: '',
-    ability: '',
-    nature: '',
-    spread: '',
-    moves: [] as string[],
+    pokemon: initialMember.pokemon,
+    item: initialMember.item || '',
+    ability: initialMember.ability || '',
+    nature: initialMember.nature || '',
+    spread: initialMember.spread || '',
+    moves: MOVE_SLOTS.map((index) => initialMember.moves[index] || ''),
   });
-  let activeField = $state<
-    'pokemon' | 'item' | 'ability' | 'nature' | 'spread' | 'moves' | null
-  >(null);
+  let rawText = $state(initialText);
+  let textBaseline = $state(initialText);
+  let activeSuggestions = $state<string | null>(null);
+  let pokemonQuery = $state('');
+  let itemQuery = $state('');
+  let abilityQuery = $state('');
+  let moveQueries = $state(['', '', '', '']);
+  let error = $state('');
+  let errorField = $state<EditableSetField | null>(null);
   let editorElement = $state<HTMLElement>();
-  let replacingMove = $state<string | null>(null);
-  let swapInMove = $state<string | null>(null);
-  let selectedPokemon = $state('');
-  let selectedItem = $state('');
-  let selectedAbility = $state('');
-  let selectedNature = $state('');
-  let selectedMove = $state('');
-  let moveKeyboardIntent = $state(false);
+  let contentElement = $state<HTMLElement>();
+  let editorHeading = $state<HTMLElement>();
 
   const draftMember = $derived<Member>({
     pokemon: form.pokemon.trim(),
@@ -93,708 +94,666 @@
     moves: form.moves.map((move) => move.trim()).filter(Boolean),
   });
   const fieldText = $derived(setText(draftMember));
-  const fieldLabel = $derived(FIELD_LABELS[initialField]);
   const dirty = $derived(
-    initialField === 'text'
-      ? rawText !== initialText
-      : fieldText !== initialText
+    (currentView === 'text' && rawText !== textBaseline) ||
+      fieldText !== initialStructuredText
   );
   const suggestions = $derived(
     catalogSuggestions(draftMember, teams, currentRegulation, teammates)
   );
-  const norm = (val: string, q: string) =>
-    normalize(val).includes(normalize(q));
+  const norm = (value: string, query: string) =>
+    normalize(value).includes(normalize(query));
   const filteredPokemon = $derived(
-    suggestions.pokemon.filter((o) => norm(o.pokemon, pokemonQuery)).slice(0, 5)
-  );
-  const filteredItems = $derived(
-    suggestions.items.filter((o) => norm(o.value, itemQuery)).slice(0, 5)
-  );
-  const filteredAbilities = $derived(
-    suggestions.abilities.filter((o) => norm(o.value, abilityQuery)).slice(0, 5)
-  );
-  const remainingMoves = $derived(
-    suggestions.moves
-      .filter(
-        (o) =>
-          norm(o.value, moveInput) &&
-          !form.moves.some((m) => normalize(m) === normalize(o.value))
-      )
+    suggestions.pokemon
+      .filter((option) => norm(option.pokemon, pokemonQuery))
       .slice(0, 5)
   );
-  const filteredNatures = $derived(
-    natureQuery.trim()
-      ? NATURES.filter((n) =>
-          n.toLowerCase().startsWith(natureQuery.trim().toLowerCase())
-        ).slice(0, 5)
-      : suggestions.natures.length
-        ? suggestions.natures.slice(0, 5).map((n) => n.value)
-        : NATURES.slice(0, 5)
+  const filteredItems = $derived(
+    suggestions.items
+      .filter((option) => norm(option.value, itemQuery))
+      .slice(0, 5)
   );
-  const spreadValues = $derived(
-    parseChampionsSpread(form.spread) || parseChampionsSpread('')!
-  );
-  const spreadTotal = $derived(championsSpreadTotal(spreadValues));
-  const spreadValid = $derived(
-    !spreadTouched ||
-      (parseChampionsSpread(form.spread) !== null && spreadTotal === 66)
+  const filteredAbilities = $derived(
+    suggestions.abilities
+      .filter((option) => norm(option.value, abilityQuery))
+      .slice(0, 5)
   );
   const spreadSuggestions = $derived(
     suggestions.spreads
-      .filter((o) => {
-        const s = parseChampionsSpread(o.value);
-        return s && championsSpreadTotal(s) === 66;
+      .filter((option) => {
+        const spread = parseChampionsSpread(option.value);
+        return spread && championsSpreadTotal(spread) === 66;
       })
       .slice(0, 5)
   );
+  const legacyNature = $derived(
+    form.nature && !NATURES.some((nature) => nature === form.nature)
+      ? form.nature
+      : null
+  );
 
-  $effect(() => {
-    if (!initialized) {
-      form = {
-        pokemon: member.pokemon,
-        item: member.item || '',
-        ability: member.ability || '',
-        nature: member.nature || '',
-        spread: member.spread || '',
-        moves: [...member.moves],
-      };
-      initialText = setText({ ...member, set: undefined });
-      initialSpread = member.spread || '';
-      rawText = initialText;
-      initialized = true;
-      if (initialField !== 'text') activate(initialField);
-      return;
+  const parsedCurrentSpread = $derived(parseChampionsSpread(form.spread));
+  const currentSpreadTotal = $derived(
+    parsedCurrentSpread ? championsSpreadTotal(parsedCurrentSpread) : 0
+  );
+
+  const subViewTitle = $derived.by(() => {
+    switch (currentView) {
+      case 'pokemon':
+        return 'Pokémon';
+      case 'details':
+        return 'Item, ability, and nature';
+      case 'moves':
+        return 'Moves';
+      case 'spread':
+        return 'EV spread';
+      case 'text':
+        return 'Showdown set text';
+      default:
+        return 'Overview';
     }
-    ondirtychange(dirty);
   });
 
-  export function focus() {
-    requestAnimationFrame(() => {
-      const selector = {
-        pokemon: '#set-pokemon-input',
-        item: '#set-item-input',
-        ability: '#set-ability-input',
-        nature: '#set-nature-input',
-        spread: '#set-HP-ev',
-        moves: '#set-moves-input',
-        text: '#set-raw-textarea',
-      }[initialField];
-      editorElement?.querySelector<HTMLElement>(selector)?.focus({
-        preventScroll: true,
-      });
-    });
+  $effect(() => ondirtychange(dirty));
+
+  function clearError() {
+    error = '';
+    errorField = null;
   }
 
-  function revealPanel(node: HTMLElement) {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    node.dataset.motionReady = 'true';
-    node.dataset.open = 'false';
-    const frame = requestAnimationFrame(() => (node.dataset.open = 'true'));
-    return { destroy: () => cancelAnimationFrame(frame) };
+  function showError(field: EditableSetField, message: string) {
+    errorField = field;
+    error = message;
   }
-  const handleBlur = (e: FocusEvent) => {
-    const el = e.currentTarget as HTMLElement | null;
-    requestAnimationFrame(() => {
-      if (
-        document.activeElement &&
-        el &&
-        !el.contains(document.activeElement)
-      ) {
-        activeField = null;
-      }
-    });
-  };
-  function activate(field: NonNullable<typeof activeField>) {
-    activeField = field;
-    pokemonQuery = itemQuery = abilityQuery = natureQuery = error = '';
-  }
-  const exactNature = (val: string) =>
-    NATURES.find((n) => n.toLowerCase() === val.trim().toLowerCase());
-  function applyPreFilled(m: Member) {
-    form.pokemon = m.pokemon;
-    form.item = m.item || '';
-    form.ability = m.ability || '';
-    form.nature = m.nature || '';
-    form.spread = m.spread || '';
-    form.moves = [...m.moves];
-    activeField = null;
-    error = '';
-  }
-  function addMove(value = moveInput) {
-    const move = value.trim();
-    if (!move) return;
-    if (form.moves.length === 4)
-      return void (error = 'A set can have at most four moves.');
-    if (form.moves.some((s) => normalize(s) === normalize(move)))
-      return void (error = 'A set cannot include the same move twice.');
-    form.moves = [...form.moves, move];
-    replacingMove = swapInMove = null;
-    moveInput = error = '';
-    activeField = null;
-  }
-  const removeMove = (i: number) => {
-    form.moves = form.moves.filter((_, idx) => idx !== i);
-    replacingMove = swapInMove = null;
-    error = '';
-  };
-  function clickMove(move: string) {
-    if (swapInMove) {
-      const swap = swapInMove;
-      form.moves = form.moves.map((m) =>
-        normalize(m) === normalize(move) ? swap : m
-      );
-      swapInMove = null;
-      error = '';
-      return;
+
+  function openSuggestions(field: string) {
+    activeSuggestions = field;
+    clearError();
+    if (field === 'pokemon') pokemonQuery = '';
+    else if (field === 'item') itemQuery = '';
+    else if (field === 'ability') abilityQuery = '';
+    else if (field.startsWith('move-')) {
+      const index = Number(field.slice(5));
+      moveQueries[index] = '';
     }
-    replacingMove =
-      replacingMove !== null && normalize(replacingMove) === normalize(move)
-        ? null
-        : move;
   }
-  function clickSuggestion(value: string) {
-    if (replacingMove) {
-      form.moves = form.moves.map((m) =>
-        normalize(m) === normalize(replacingMove!) ? value : m
-      );
-      replacingMove = null;
-      error = '';
-      return;
-    }
-    if (form.moves.length < 4) {
-      addMove(value);
-      return;
-    }
-    swapInMove = value;
+
+  function applyPreFilled(next: Member) {
+    form = {
+      pokemon: next.pokemon,
+      item: next.item || '',
+      ability: next.ability || '',
+      nature: next.nature || '',
+      spread: next.spread || '',
+      moves: MOVE_SLOTS.map((index) => next.moves[index] || ''),
+    };
+    activeSuggestions = null;
+    clearError();
   }
-  const NAV_KEYS = [
-    'ArrowUp',
-    'ArrowDown',
-    'Home',
-    'End',
-    'PageUp',
-    'PageDown',
-  ];
-  function onOpenChange(
-    field: 'pokemon' | 'item' | 'ability' | 'nature' | 'moves',
-    open: boolean
-  ) {
-    if (open) activeField = field;
-    else if (activeField === field) activeField = null;
+
+  function chooseMove(index: number, value: string) {
+    form.moves[index] = value;
+    activeSuggestions = null;
+    clearError();
   }
-  function selectPokemon(value: string) {
-    selectedPokemon = value;
-    if (!value) return;
-    const option = filteredPokemon.find((o) => o.pokemon === value);
-    if (option) applyPreFilled(option.member);
-    error = '';
-    void tick().then(() => (selectedPokemon = ''));
+
+  function clearMove(index: number) {
+    form.moves[index] = '';
+    if (activeSuggestions === `move-${index}`) activeSuggestions = null;
+    clearError();
   }
-  function selectItem(value: string) {
-    selectedItem = value;
-    if (!value) return;
-    form.item = value;
-    itemQuery = value;
-    error = '';
-    activeField = null;
-    void tick().then(() => (selectedItem = ''));
+
+  function moveSuggestions(index: number) {
+    return suggestions.moves
+      .filter(
+        (option) =>
+          norm(option.value, moveQueries[index]) &&
+          !form.moves.some(
+            (move, otherIndex) =>
+              otherIndex !== index &&
+              move &&
+              normalize(move) === normalize(option.value)
+          )
+      )
+      .slice(0, 5);
   }
-  function selectAbility(value: string) {
-    selectedAbility = value;
-    if (!value) return;
-    form.ability = value;
-    abilityQuery = value;
-    error = '';
-    activeField = null;
-    void tick().then(() => (selectedAbility = ''));
-  }
-  function selectNature(value: string) {
-    selectedNature = value;
-    if (!value) return;
-    form.nature = value;
-    natureQuery = value;
-    error = '';
-    activeField = null;
-    void tick().then(() => (selectedNature = ''));
-  }
-  function selectMove(value: string) {
-    selectedMove = value;
-    if (!value) return;
-    moveKeyboardIntent = false;
-    clickSuggestion(value);
-    void tick().then(() => {
-      selectedMove = '';
-      moveInput = '';
-    });
-  }
+
   function onMoveKeydown(event: KeyboardEvent) {
-    if (NAV_KEYS.includes(event.key)) {
-      moveKeyboardIntent = true;
-      return;
-    }
-    if (event.key === 'Escape') {
-      moveKeyboardIntent = false;
-      return;
-    }
-    if (event.key === 'Enter' && !event.isComposing) {
-      const active =
-        event.currentTarget instanceof HTMLElement &&
-        !!event.currentTarget.getAttribute('aria-activedescendant');
-      if (activeField === 'moves' && moveKeyboardIntent && active) return;
-      event.preventDefault();
-      addMove();
-    }
+    if (event.key !== 'Enter' || event.isComposing) return;
+    event.preventDefault();
+    activeSuggestions = null;
   }
-  export function apply(): boolean {
-    try {
-      if (initialField === 'text') {
-        const parsed = parseSetBlock(rawText);
-        const sp =
-          (parsed.spread || '') !== initialSpread
-            ? parseChampionsSpread(parsed.spread || '')
-            : null;
-        if (sp && championsSpreadTotal(sp) !== 66) {
-          error = `Changed EV spreads must total 66 points (currently ${championsSpreadTotal(sp)}).`;
-          return false;
-        }
-        onapply(parsed);
-        return true;
-      }
-      const nature = form.nature.trim() ? exactNature(form.nature) : null;
-      if (form.nature.trim() && !nature) {
-        error = 'Choose a standard nature.';
-        return false;
-      }
-      if (nature) form.nature = nature;
-      if (!spreadValid) {
-        error = `Changed EV spreads must total 66 points (currently ${spreadTotal}).`;
-        return false;
-      }
-      onapply(parseSetBlock(fieldText));
-      return true;
-    } catch (err) {
-      error = err instanceof Error ? err.message : 'Invalid set format.';
+
+  const exactNature = (value: string) =>
+    NATURES.find(
+      (nature) => nature.toLowerCase() === value.trim().toLowerCase()
+    );
+
+  function validateSpread(spread: string | null, field: EditableSetField) {
+    const value = spread?.trim() || '';
+    if (value === initialSpread || !value) return true;
+    const parsed = parseChampionsSpread(value);
+    if (!parsed) {
+      showError(field, 'Enter a valid EV spread totaling 66 points.');
       return false;
     }
+    const total = championsSpreadTotal(parsed);
+    if (total !== 66) {
+      showError(
+        field,
+        `Changed EV spreads must total 66 points (currently ${total}).`
+      );
+      return false;
+    }
+    return true;
+  }
+
+  function validateMember(next: Member, mode: 'structured' | 'text') {
+    const field = mode === 'text' ? 'text' : 'pokemon';
+    if (
+      teammates.some(
+        (teammate) => normalize(teammate.pokemon) === normalize(next.pokemon)
+      )
+    ) {
+      showError(field, 'This Pokémon is already on the team.');
+      return false;
+    }
+
+    const nature = next.nature?.trim() || '';
+    if (nature && nature !== initialNature) {
+      const standardNature = exactNature(nature);
+      if (!standardNature) {
+        showError(
+          mode === 'text' ? 'text' : 'nature',
+          'Choose a standard nature.'
+        );
+        return false;
+      }
+      next.nature = standardNature;
+    }
+
+    return validateSpread(next.spread, mode === 'text' ? 'text' : 'spread');
+  }
+
+  function backToOverview() {
+    if (currentView === 'text' && rawText !== textBaseline) {
+      try {
+        const parsed = parseSetBlock(rawText);
+        applyPreFilled(parsed);
+      } catch (err) {
+        showError(
+          'text',
+          err instanceof Error ? err.message : 'Invalid set format.'
+        );
+        return;
+      }
+    }
+    currentView = 'overview';
+    activeSuggestions = null;
+    clearError();
+  }
+
+  function apply() {
+    clearError();
+    if (!dirty) {
+      onapply(initialMember);
+      return;
+    }
+
+    try {
+      if (currentView === 'text') {
+        const parsed = parseSetBlock(rawText);
+        if (!validateMember(parsed, 'text')) return;
+        onapply(parsed);
+        return;
+      }
+
+      const moves = form.moves.map((move) => move.trim()).filter(Boolean);
+      if (
+        moves.some(
+          (move, index) =>
+            moves.findIndex(
+              (candidate) => normalize(candidate) === normalize(move)
+            ) !== index
+        )
+      ) {
+        showError('moves', 'A set cannot include the same move twice.');
+        return;
+      }
+
+      const parsed = parseSetBlock(fieldText);
+      if (!validateMember(parsed, 'structured')) return;
+      onapply(parsed);
+    } catch (caught) {
+      showError(
+        currentView === 'text' ? 'text' : 'set',
+        caught instanceof Error ? caught.message : 'Invalid set format.'
+      );
+    }
+  }
+
+  export function requestCancel() {
+    if (activeSuggestions) {
+      activeSuggestions = null;
+      return false;
+    }
+    return !dirty || confirm('Discard set changes?');
+  }
+
+  export function focusInitialSection() {
+    requestAnimationFrame(() => {
+      const field = initialField === 'set' ? 'set' : initialField;
+      const target = editorElement?.querySelector<HTMLElement>(
+        `[data-editor-section="${field}"]`
+      );
+      if (target && contentElement && target !== editorHeading) {
+        contentElement.scrollTop = Math.max(
+          0,
+          target.offsetTop - contentElement.offsetTop - 8
+        );
+      }
+      (target || editorHeading)?.focus({ preventScroll: true });
+    });
   }
 </script>
 
-<section
-  bind:this={editorElement}
-  aria-label={`Edit ${form.pokemon} set`}
-  class="t-panel-slide min-w-0"
-  use:revealPanel
->
-  {#snippet noMatch(text: string)}
-    <p class="p-3 text-sm text-base-content/70">{text}</p>
-  {/snippet}
-  <div class="flex items-center gap-2.5">
-    <PokemonSprite pokemon={form.pokemon} size={36} />
-    <div class="min-w-0">
-      <h2 class="font-semibold wrap-break-word">Edit {fieldLabel}</h2>
-      <p class="text-xs wrap-break-word text-base-content/70">
-        {form.pokemon}
-      </p>
-    </div>
-  </div>
-
-  {#if initialField === 'pokemon'}
-    <div class="mt-4 min-w-0">
-      <label for="set-pokemon-input" class="text-sm font-medium">Pokémon</label>
-      <Combobox.Root
-        type="single"
-        value={selectedPokemon}
-        onValueChange={selectPokemon}
-        allowDeselect={false}
-        open={activeField === 'pokemon'}
-        onOpenChange={(open) => onOpenChange('pokemon', open)}
-        inputValue={form.pokemon}
-      >
-        <Combobox.Input
-          id="set-pokemon-input"
-          placeholder="Choose Pokémon"
-          clearOnDeselect={false}
-          onfocus={() => activate('pokemon')}
-          oninput={(event) => {
-            pokemonQuery = event.currentTarget.value;
-            form.pokemon = event.currentTarget.value;
-            selectedPokemon = '';
-            error = '';
-            activeField = 'pokemon';
-          }}
-          class="input mt-2 min-h-11 w-full text-sm"
-        />
-        <Combobox.Portal>
-          <Combobox.Content
-            sideOffset={6}
-            aria-label="Pokémon suggestions"
-            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+<div bind:this={editorElement} class="flex min-h-0 grow flex-col">
+  <header
+    class="shrink-0 border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 sm:pt-5"
+  >
+    {#if currentView === 'overview'}
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-3">
+          <div
+            class="roster-sprite shrink-0"
+            style="--type-color: {TYPE_COLORS[
+              getPokemonTypes(form.pokemon || initialMember.pokemon)[0]
+            ]}"
           >
-            <Combobox.Viewport>
-              {#each filteredPokemon as option (option.pokemon)}
-                <Combobox.Item
-                  value={option.pokemon}
-                  label={option.pokemon}
-                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
+            <PokemonSprite
+              pokemon={form.pokemon || initialMember.pokemon}
+              size={40}
+            />
+          </div>
+          <div class="min-w-0">
+            <div class="flex flex-wrap items-center gap-2">
+              <!-- svelte-ignore a11y_autofocus -->
+              <h2
+                bind:this={editorHeading}
+                class="text-[1.375rem] leading-tight font-extrabold wrap-break-word"
+                tabindex="-1"
+                autofocus
+                data-editor-section="set"
+              >
+                Edit {initialMember.pokemon} set
+              </h2>
+              <div class="flex items-center gap-1">
+                {#each getPokemonTypes(form.pokemon || initialMember.pokemon) as type (type)}
+                  <TypeBadge {type} size="md" />
+                {/each}
+              </div>
+              {#if dirty}
+                <span
+                  class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+                  >Unsaved edits</span
                 >
-                  <PokemonSprite pokemon={option.pokemon} size={32} />
-                  <div class="min-w-0 flex-1">
-                    <div class="flex items-center justify-between gap-2">
-                      <span class="truncate text-sm font-semibold"
-                        >{option.pokemon}</span
-                      >
-                      <span class="shrink-0 text-xs opacity-70"
-                        >{option.sharedTeammates} shared</span
-                      >
-                    </div>
-                    <span
-                      class="mt-0.5 block truncate text-xs text-base-content/70"
-                      >{[
-                        option.member.item,
-                        option.member.ability,
-                        option.member.nature,
-                      ]
-                        .filter(Boolean)
-                        .join(' · ')}</span
-                    >
-                  </div>
-                </Combobox.Item>
-              {:else}
-                {@render noMatch('No matching suggestions.')}
-              {/each}
-            </Combobox.Viewport>
-          </Combobox.Content>
-        </Combobox.Portal>
-      </Combobox.Root>
-    </div>
-  {:else if initialField === 'item'}
-    <div class="mt-4 min-w-0">
-      <label for="set-item-input" class="text-sm font-medium">Item</label>
-      <Combobox.Root
-        type="single"
-        value={selectedItem}
-        onValueChange={selectItem}
-        allowDeselect={false}
-        open={activeField === 'item'}
-        onOpenChange={(open) => onOpenChange('item', open)}
-        inputValue={form.item}
-      >
-        <div class="relative mt-2">
-          {#if form.item}<span class="pointer-events-none absolute top-3 left-3"
-              ><ItemIcon item={form.item} /></span
-            >{/if}
-          <Combobox.Input
-            id="set-item-input"
-            placeholder="Custom item"
-            clearOnDeselect={false}
-            onfocus={() => activate('item')}
-            onclick={() => activeField !== 'item' && (activeField = 'item')}
-            oninput={(event) => {
-              itemQuery = event.currentTarget.value;
-              form.item = event.currentTarget.value;
-              selectedItem = '';
-              error = '';
-              activeField = 'item';
-            }}
-            class="input min-h-11 w-full pr-3 text-sm {form.item
-              ? 'pl-10'
-              : 'pl-3'}"
+              {/if}
+            </div>
+          </div>
+        </div>
+      </div>
+    {:else}
+      <div class="flex items-center justify-between gap-3">
+        <div class="flex min-w-0 items-center gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="h-11 min-h-11 gap-1 px-2.5 font-medium"
+            onclick={backToOverview}
+            aria-label="Back to overview"
+          >
+            <ArrowLeft class="size-4" />
+            <span>Overview</span>
+          </Button>
+          <div class="h-4 w-px bg-base-300"></div>
+          <h2
+            bind:this={editorHeading}
+            class="truncate text-[1.375rem] leading-tight font-semibold"
+            tabindex="-1"
+            data-editor-section={currentView === 'details'
+              ? initialField === 'ability' || initialField === 'nature'
+                ? initialField
+                : 'item'
+              : currentView}
+          >
+            {subViewTitle}
+          </h2>
+        </div>
+        <div
+          class="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+        >
+          <SpeciesLabel
+            pokemon={form.pokemon || initialMember.pokemon}
+            spriteSize={20}
+            textClass="max-w-[120px] truncate text-xs font-medium"
           />
         </div>
-        <Combobox.Portal>
-          <Combobox.Content
-            sideOffset={6}
-            aria-label="Item suggestions"
-            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+      </div>
+    {/if}
+  </header>
+
+  <div
+    bind:this={contentElement}
+    class="min-h-0 flex-auto overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
+  >
+    {#if currentView === 'overview'}
+      <SetEditorOverview
+        pokemon={form.pokemon || initialMember.pokemon}
+        item={form.item}
+        ability={form.ability}
+        nature={form.nature}
+        spread={form.spread}
+        moves={form.moves}
+        {currentSpreadTotal}
+        {error}
+        onnavigate={(view) => {
+          if (view === 'text') {
+            rawText = fieldText;
+            textBaseline = fieldText;
+          }
+          currentView = view;
+          if (view === 'pokemon') openSuggestions('pokemon');
+          clearError();
+        }}
+      />
+    {:else if currentView === 'moves'}
+      <!-- COMPACT MOVES SUB-VIEW -->
+      <section aria-label="Moves" class="grid gap-4">
+        <div class="grid gap-2 sm:grid-cols-2">
+          {#each MOVE_SLOTS as index (index)}
+            {@const move = form.moves[index]}
+            {@const type = getMoveType(move)}
+            {@const typeColor = type ? TYPE_COLORS[type] : null}
+            {@const isActive = activeMoveSlot === index}
+            <label
+              class="input flex min-h-11 items-center gap-2 border transition-colors {isActive
+                ? 'border-primary'
+                : 'border-base-content/55 hover:border-base-content/80'}"
+              style={typeColor ? `border-left: 4px solid ${typeColor};` : ''}
+            >
+              <span class="value w-4 text-center text-base-content/60"
+                >{index + 1}</span
+              >
+              <TypeMark {type} size="md" />
+              <input
+                id={`set-move-${index + 1}`}
+                aria-label={`Move ${index + 1}`}
+                type="text"
+                tabindex={activeSuggestions !== null && activeMoveSlot !== index
+                  ? -1
+                  : 0}
+                class="grow bg-transparent text-sm focus:outline-none"
+                placeholder={`Move ${index + 1}`}
+                bind:value={form.moves[index]}
+                onfocus={() => {
+                  activeMoveSlot = index;
+                  openSuggestions(`move-${index}`);
+                }}
+                onclick={() => {
+                  activeMoveSlot = index;
+                  openSuggestions(`move-${index}`);
+                }}
+                oninput={(event) => {
+                  activeMoveSlot = index;
+                  moveQueries[index] = event.currentTarget.value;
+                  form.moves[index] = event.currentTarget.value;
+                  activeSuggestions = `move-${index}`;
+                  clearError();
+                }}
+                onkeydown={onMoveKeydown}
+              />
+              <button
+                type="button"
+                class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+                aria-label={`Clear move ${index + 1}`}
+                tabindex={activeSuggestions !== null ? -1 : 0}
+                disabled={!move}
+                onclick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  clearMove(index);
+                }}
+              >
+                <X class="size-4" />
+              </button>
+            </label>
+          {/each}
+        </div>
+
+        {#if activeSuggestions === `move-${activeMoveSlot}`}
+          {@const activeOptions = moveSuggestions(activeMoveSlot)}
+          <section
+            aria-label="Move suggestions"
+            class="plate max-h-60 divide-y overflow-y-auto"
           >
-            <Combobox.Viewport>
-              {#each filteredItems as option (option.value)}
-                <Combobox.Item
-                  value={option.value}
-                  label={option.value}
-                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
-                  >{option.value}</Combobox.Item
-                >
+            <div class="term px-3 py-1.5">
+              Move {activeMoveSlot + 1} suggestions
+            </div>
+            <ul role="list" class="divide-y">
+              {#each activeOptions as option (option.value)}
+                {@const optionType = getMoveType(option.value)}
+                {@const optionColor = optionType
+                  ? TYPE_COLORS[optionType]
+                  : null}
+                <li>
+                  <button
+                    type="button"
+                    class="flex min-h-11 items-center gap-2.5 px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                    style={optionColor
+                      ? `border-left: 3px solid ${optionColor};`
+                      : ''}
+                    onclick={() => chooseMove(activeMoveSlot, option.value)}
+                  >
+                    <TypeMark type={optionType} size="md" />
+                    <span class="value">{option.value}</span>
+                  </button>
+                </li>
               {:else}
-                {@render noMatch('No matching suggestions.')}
+                <li class="provenance p-3">No matching move suggestions.</li>
               {/each}
-            </Combobox.Viewport>
-          </Combobox.Content>
-        </Combobox.Portal>
-      </Combobox.Root>
-    </div>
-  {:else if initialField === 'ability'}
-    <div class="mt-4 min-w-0">
-      <label for="set-ability-input" class="text-sm font-medium">Ability</label>
-      <Combobox.Root
-        type="single"
-        value={selectedAbility}
-        onValueChange={selectAbility}
-        allowDeselect={false}
-        open={activeField === 'ability'}
-        onOpenChange={(open) => onOpenChange('ability', open)}
-        inputValue={form.ability}
-      >
-        <Combobox.Input
-          id="set-ability-input"
-          placeholder="Custom ability"
-          clearOnDeselect={false}
-          onfocus={() => activate('ability')}
-          onclick={() => activeField !== 'ability' && (activeField = 'ability')}
-          oninput={(event) => {
-            abilityQuery = event.currentTarget.value;
-            form.ability = event.currentTarget.value;
-            selectedAbility = '';
-            error = '';
-            activeField = 'ability';
-          }}
-          class="input mt-2 min-h-11 w-full text-sm"
-        />
-        <Combobox.Portal>
-          <Combobox.Content
-            sideOffset={6}
-            aria-label="Ability suggestions"
-            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
+            </ul>
+          </section>
+        {/if}
+
+        {#if error && errorField === 'moves'}
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
           >
-            <Combobox.Viewport>
-              {#each filteredAbilities as option (option.value)}
-                <Combobox.Item
-                  value={option.value}
-                  label={option.value}
-                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
-                  >{option.value}</Combobox.Item
-                >
-              {:else}
-                {@render noMatch('No matching suggestions.')}
-              {/each}
-            </Combobox.Viewport>
-          </Combobox.Content>
-        </Combobox.Portal>
-      </Combobox.Root>
-    </div>
-  {:else if initialField === 'nature'}
-    <div class="mt-4 min-w-0">
-      <label for="set-nature-input" class="text-sm font-medium">Nature</label>
-      <Combobox.Root
-        type="single"
-        value={selectedNature}
-        onValueChange={selectNature}
-        allowDeselect={false}
-        open={activeField === 'nature'}
-        onOpenChange={(open) => onOpenChange('nature', open)}
-        inputValue={form.nature}
-      >
-        <Combobox.Input
-          id="set-nature-input"
-          placeholder="Choose nature"
-          clearOnDeselect={false}
-          onfocus={() => activate('nature')}
-          onclick={() => activeField !== 'nature' && (activeField = 'nature')}
-          oninput={(event) => {
-            natureQuery = event.currentTarget.value;
-            form.nature = event.currentTarget.value;
-            selectedNature = '';
-            error = '';
-            activeField = 'nature';
-          }}
-          onblur={() => {
-            form.nature = exactNature(form.nature) || form.nature;
-          }}
-          class="input mt-2 min-h-11 w-full text-sm"
-        />
-        <Combobox.Portal>
-          <Combobox.Content
-            sideOffset={6}
-            aria-label="Nature suggestions"
-            class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
-          >
-            <Combobox.Viewport>
-              {#each filteredNatures as nature (nature)}
-                <Combobox.Item
-                  value={nature}
-                  label={nature}
-                  class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
-                  >{nature}</Combobox.Item
-                >
-              {:else}
-                {@render noMatch('No matching nature.')}
-              {/each}
-            </Combobox.Viewport>
-          </Combobox.Content>
-        </Combobox.Portal>
-      </Combobox.Root>
-    </div>
-  {:else if initialField === 'spread'}
-    <div class="mt-4 min-w-0" onfocusout={handleBlur}>
-      <label for="set-evs-input" class="text-sm font-medium">EV spread</label>
-      {#if activeField !== 'spread'}<Button
-          id="set-evs-input"
-          variant="outline"
-          class="mt-2 min-h-11 w-full justify-start font-mono whitespace-normal"
-          onclick={() => activate('spread')}>{form.spread || 'No EVs'}</Button
-        >{:else}<EvEditor
+            {error}
+          </p>
+        {/if}
+      </section>
+    {:else if currentView === 'details'}
+      <!-- DETAILS SUB-VIEW -->
+      <SetEditorDetails
+        item={form.item}
+        ability={form.ability}
+        nature={form.nature}
+        {activeSuggestions}
+        {filteredItems}
+        {filteredAbilities}
+        {legacyNature}
+        {error}
+        {errorField}
+        onitemchange={(val) => {
+          itemQuery = val;
+          form.item = val;
+          activeSuggestions = 'item';
+          clearError();
+        }}
+        onabilitychange={(val) => {
+          abilityQuery = val;
+          form.ability = val;
+          activeSuggestions = 'ability';
+          clearError();
+        }}
+        onnaturechange={(val) => {
+          form.nature = val;
+        }}
+        onopensuggestions={openSuggestions}
+        onclearsuggestions={() => (activeSuggestions = null)}
+        onclearerror={clearError}
+      />
+    {:else if currentView === 'spread'}
+      <!-- SPREAD SUB-VIEW -->
+      <section aria-label="EV spread" class="grid gap-4">
+        <EvEditor
           spread={form.spread}
-          suggestions={spreadSuggestions}
+          nature={form.nature}
+          {spreadSuggestions}
+          natureSuggestions={suggestions.natures}
           onspreadchange={(spread, nature) => {
             form.spread = spread;
             if (nature) form.nature = nature;
-            spreadTouched = true;
-            error = '';
+            clearError();
           }}
-          ondone={() => (activeField = null)}
-        />{/if}
-    </div>
-  {/if}
+          onnaturechange={(value) => {
+            form.nature = value;
+          }}
+        />
 
-  {#if initialField === 'moves'}
-    <div class="mt-4 min-w-0" data-moves-editor>
-      <h3 class="text-sm font-medium">Moves ({form.moves.length}/4)</h3>
-      {#if replacingMove}
-        <p class="mt-1 text-xs text-primary">
-          Replacing {replacingMove}. Choose a suggested move.
-        </p>
-      {:else if swapInMove}
-        <p class="mt-1 text-xs text-primary">
-          Swap in {swapInMove}. Choose a move to replace.
-        </p>
-      {:else if form.moves.length === 4}
-        <p class="mt-1 text-xs text-base-content/70">
-          Choose a move or a suggestion to swap.
-        </p>
-      {/if}
-      {#if form.moves.length}<ul
-          class="mt-2 grid gap-2 sm:grid-cols-2"
-          aria-label="Selected moves"
-        >
-          {#each form.moves as move, index (move)}
-            {@const type = getMoveType(move)}
-            {@const typeColor = type ? TYPE_COLORS[type] : null}
-            {@const selected =
-              replacingMove !== null &&
-              normalize(replacingMove) === normalize(move)}
-            {@const swappable = swapInMove !== null}
-            <li
-              class="flex min-w-0 items-center justify-between gap-2 rounded-lg border bg-base-100 px-3 py-1 shadow-2xs {selected ||
-              swappable
-                ? 'border-primary ring-1 ring-primary/40'
-                : ''}"
-              style={typeColor ? `border-left: 3px solid ${typeColor};` : ''}
-            >
-              <button
-                type="button"
-                class="flex min-h-9 min-w-0 flex-1 items-center gap-2 rounded-md px-1.5 text-left hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
-                aria-pressed={selected || swappable}
-                onclick={() => clickMove(move)}
-              >
-                {#if type}<img
-                    src={getTypeIcon(type)}
-                    alt={type}
-                    class="size-4 shrink-0 object-contain"
-                  />{/if}
-                <span class="min-w-0 font-medium wrap-break-word">{move}</span>
-              </button>
-              <Button
-                variant="ghost"
-                class="min-h-9 min-w-9 p-1"
-                aria-label={`Remove ${move}`}
-                onclick={() => removeMove(index)}><X /></Button
-              >
-            </li>
-          {/each}
-        </ul>{/if}
-      <div class="mt-2 flex gap-2">
-        <Combobox.Root
-          type="single"
-          value={selectedMove}
-          onValueChange={selectMove}
-          allowDeselect={false}
-          open={activeField === 'moves'}
-          onOpenChange={(open) => onOpenChange('moves', open)}
-          inputValue={moveInput}
-        >
-          <Combobox.Input
-            id="set-moves-input"
-            aria-label="Custom move"
-            placeholder="Custom move"
-            clearOnDeselect={true}
-            onfocus={() => {
-              activate('moves');
-              moveKeyboardIntent = false;
-            }}
+        {#if error && errorField === 'spread'}
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
+          >
+            {error}
+          </p>
+        {/if}
+      </section>
+    {:else if currentView === 'pokemon'}
+      <!-- POKEMON SUB-VIEW -->
+      <section class="grid gap-4">
+        <label for="set-pokemon-input" class="sr-only">Pokémon</label>
+        <label class="input flex min-h-11 items-center gap-2">
+          <PokemonSprite pokemon={form.pokemon} size={28} />
+          <input
+            id="set-pokemon-input"
+            aria-label="Pokémon"
+            class="grow bg-transparent text-sm focus:outline-none"
+            placeholder="Pokémon"
+            bind:value={form.pokemon}
+            onfocus={() => openSuggestions('pokemon')}
+            onclick={() => openSuggestions('pokemon')}
             oninput={(event) => {
-              moveInput = event.currentTarget.value;
-              moveKeyboardIntent = false;
-              error = '';
-              activeField = 'moves';
+              pokemonQuery = event.currentTarget.value;
+              form.pokemon = event.currentTarget.value;
+              activeSuggestions = 'pokemon';
+              clearError();
             }}
-            onkeydown={onMoveKeydown}
-            class="input min-h-11 min-w-0 flex-1 text-sm"
           />
-          <Combobox.Portal>
-            <Combobox.Content
-              sideOffset={6}
-              aria-label="Move suggestions"
-              onInteractOutside={(e) => {
-                if (
-                  e.target instanceof Element &&
-                  e.target.closest('[data-moves-editor]')
-                )
-                  e.preventDefault();
-              }}
-              class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-box border border-base-300 bg-base-100 p-1 shadow-lg"
-            >
-              <Combobox.Viewport>
-                {#each remainingMoves as option (option.value)}
-                  {@const type = getMoveType(option.value)}
-                  {@const typeColor = type ? TYPE_COLORS[type] : null}
-                  <Combobox.Item
-                    value={option.value}
-                    label={option.value}
-                    class="flex min-h-11 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
-                    style={typeColor
-                      ? `border-left: 3px solid ${typeColor};`
-                      : ''}
+        </label>
+        <p class="provenance">
+          Choosing a suggested Pokémon replaces this set's fields.
+        </p>
+
+        {#if activeSuggestions === 'pokemon'}
+          <section
+            aria-label="Pokémon suggestions"
+            class="plate max-h-72 overflow-y-auto"
+          >
+            <ul role="list" class="divide-y">
+              {#each filteredPokemon as option (option.pokemon)}
+                <li>
+                  <button
+                    type="button"
+                    aria-label={`Use ${option.pokemon} set`}
+                    class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                    onclick={() => {
+                      applyPreFilled(option.member);
+                      currentView = 'overview';
+                    }}
                   >
-                    {#if type}<img
-                        src={getTypeIcon(type)}
-                        alt={type}
-                        class="size-3.5 shrink-0 object-contain"
-                      />{/if}
-                    <span>{option.value}</span>
-                  </Combobox.Item>
-                {:else}
-                  {@render noMatch('No matching suggestions.')}
-                {/each}
-              </Combobox.Viewport>
-            </Combobox.Content>
-          </Combobox.Portal>
-        </Combobox.Root>
-        <Button class="min-h-11" onclick={() => addMove()}>Add move</Button>
-      </div>
-    </div>
-  {/if}
+                    <PokemonSprite pokemon={option.pokemon} size={32} />
+                    <span class="min-w-0 flex-1">
+                      <span class="flex items-baseline justify-between gap-2">
+                        <span class="truncate font-semibold"
+                          >{option.pokemon}</span
+                        >
+                        <span class="term shrink-0"
+                          >{option.sharedTeammates} shared</span
+                        >
+                      </span>
+                      <span
+                        class="mt-0.5 flex flex-wrap items-baseline gap-x-3"
+                      >
+                        {#each [option.member.item, option.member.ability, option.member.nature].filter(Boolean) as field, fieldIndex (fieldIndex)}
+                          <span class="term truncate">{field}</span>
+                        {/each}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              {:else}
+                <li class="provenance p-3">No matching suggestions.</li>
+              {/each}
+            </ul>
+          </section>
+        {/if}
 
-  {#if initialField === 'text'}
-    <label for="set-raw-textarea" class="mt-4 block text-sm font-medium"
-      >Showdown set text</label
-    >
-    <textarea
-      id="set-raw-textarea"
-      class="textarea mt-2 min-h-52 w-full resize-y p-3 font-mono text-xs leading-5"
-      bind:value={rawText}
-      oninput={() => (error = '')}></textarea>
-  {/if}
-
-  {#if error}<p role="alert" class="mt-3 text-sm font-medium text-error">
-      {error}
-    </p>{/if}
-  <div class="mt-4 flex justify-end gap-2 border-t pt-3">
-    <Button variant="outline" class="min-h-11" onclick={oncancel}>Cancel</Button
-    ><Button
-      class="min-h-11"
-      disabled={!spreadValid}
-      onclick={apply}
-      aria-label={`Apply ${fieldLabel.toLowerCase()}`}>Done</Button
-    >
+        {#if error && errorField === 'pokemon'}
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
+          >
+            {error}
+          </p>
+        {/if}
+      </section>
+    {:else if currentView === 'text'}
+      <!-- TEXT SUB-VIEW -->
+      <section aria-label="Showdown set text" class="grid gap-3">
+        <textarea
+          id="set-raw-textarea"
+          aria-label="Showdown set text"
+          class="textarea min-h-72 w-full resize-y p-3 font-mono text-xs leading-5"
+          bind:value={rawText}
+          oninput={clearError}></textarea>
+        {#if error && errorField === 'text'}
+          <p
+            role="alert"
+            class="text-[0.9375rem] leading-relaxed"
+            style="color: var(--color-error-content)"
+          >
+            {error}
+          </p>
+        {/if}
+      </section>
+    {/if}
   </div>
-</section>
+
+  <footer
+    class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4"
+  >
+    <p class="provenance mb-3">
+      Changes will be staged on this Pokémon's card. Apply them on the team
+      sheet to save.
+    </p>
+    <div class="flex justify-end gap-2">
+      <Button
+        variant="outline"
+        class="h-11 min-h-11 px-4"
+        onclick={() => {
+          if (requestCancel()) oncancel();
+        }}
+      >
+        Cancel
+      </Button>
+      <Button class="h-11 min-h-11 px-4" onclick={apply}>Done</Button>
+    </div>
+  </footer>
+</div>

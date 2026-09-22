@@ -1,6 +1,5 @@
 <script lang="ts">
   import './layout.css';
-  import Compass from '@lucide/svelte/icons/compass';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import { Avatar, DropdownMenu } from 'bits-ui';
   import { resolve } from '$app/paths';
@@ -41,56 +40,62 @@
 
 <a
   href="#main"
-  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-md focus:bg-base-100 focus:p-3 focus:outline-2"
+  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:border focus:bg-base-100 focus:p-3"
   >Skip to content</a
 >
 {#if isLogin}
   {@render children()}
 {:else if sync.configured && (!sync.authResolved || !sync.user)}
-  <main class="flex min-h-svh items-center justify-center">
+  <main id="main" class="flex min-h-svh items-center justify-center">
     <LoaderCircle
-      class="size-6 animate-spin text-base-content/70"
+      class="size-6 animate-spin text-base-content/60"
       aria-label="Loading"
     />
   </main>
 {:else}
-  <header class="border-b bg-base-100 shadow-xs">
+  <header class="border-b border-base-300 bg-base-100">
     <div
-      class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-8"
+      class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-8"
     >
       <a
         href={brandHref}
-        class="flex min-h-11 items-center gap-3 rounded-md px-2 font-semibold tracking-tight transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary {isHome
-          ? 'bg-primary/10 text-primary'
-          : 'hover:bg-base-200'}"
-        ><Compass class="size-6 text-primary" aria-hidden="true" />Champion's
-        Atlas</a
+        class="flex min-h-11 items-center gap-2.5 rounded-[var(--radius-field)] px-2 outline-none focus-visible:ring-2 focus-visible:ring-primary {isHome
+          ? 'bg-info text-info-content'
+          : 'text-base-content hover:bg-base-200'}"
       >
-      <div class="flex items-center gap-2">
+        <span
+          class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
+          >Champion's Atlas</span
+        >
+      </a>
+      <nav aria-label="Main" class="flex items-center gap-1">
         <a
           href={resolve('/my-teams')}
-          class="inline-flex min-h-11 items-center rounded-md px-2 text-sm font-medium transition-colors focus-visible:ring-2 {isMyTeams
-            ? 'bg-primary/10 font-semibold text-primary'
-            : 'text-primary hover:bg-base-200'}">My teams</a
+          class="inline-flex min-h-11 items-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isMyTeams
+            ? 'bg-info text-info-content'
+            : 'text-primary hover:bg-info'}">My teams</a
         >
         {#if sync.configured}
           {#if sync.status === 'syncing' || sync.status === 'error'}<span
               role="status"
               aria-live="polite"
               title={sync.error}
-              class="text-xs {sync.status === 'error'
-                ? 'text-error'
-                : 'text-base-content/70'}"
+              class="provenance px-1 {sync.status === 'error'
+                ? 'font-semibold'
+                : ''}"
+              style={sync.status === 'error'
+                ? 'color: var(--color-error-content)'
+                : ''}
               >{sync.status === 'error' ? 'Sync failed' : 'Syncing…'}</span
             >{/if}
           {#if sync.user}
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
                 aria-label="Account menu"
-                class="inline-flex size-9 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                class="inline-flex size-11 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Avatar.Root
-                  class="relative flex size-8 shrink-0 overflow-hidden rounded-full"
+                  class="relative flex size-7 shrink-0 overflow-hidden rounded-full border"
                 >
                   {#if sync.user.photoURL}
                     <Avatar.Image
@@ -100,7 +105,7 @@
                     />
                   {/if}
                   <Avatar.Fallback
-                    class="flex size-full items-center justify-center bg-base-200 text-sm font-medium text-base-content"
+                    class="flex size-full items-center justify-center bg-base-200 text-xs font-medium"
                     >{userInitials}</Avatar.Fallback
                   >
                 </Avatar.Root>
@@ -109,20 +114,18 @@
                 <DropdownMenu.Content
                   align="end"
                   sideOffset={6}
-                  class="z-50 min-w-52 rounded-box border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
+                  class="z-50 min-w-56 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
                 >
                   <div class="px-2 py-1.5">
-                    <p class="truncate text-sm font-medium">{userName}</p>
+                    <p class="truncate text-sm font-semibold">{userName}</p>
                     {#if sync.user.email && sync.user.email !== userName}
-                      <p class="truncate text-xs text-base-content/70">
-                        {sync.user.email}
-                      </p>
+                      <p class="provenance truncate">{sync.user.email}</p>
                     {/if}
                   </div>
                   <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-base-300" />
                   <DropdownMenu.Item
                     onSelect={signOut}
-                    class="flex min-h-9 cursor-pointer items-center rounded-md px-2 text-sm outline-none data-highlighted:bg-base-200 data-highlighted:text-base-content"
+                    class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-base-200"
                     >Sign out</DropdownMenu.Item
                   >
                 </DropdownMenu.Content>
@@ -130,34 +133,36 @@
             </DropdownMenu.Root>
           {/if}
         {/if}
-      </div>
+      </nav>
     </div>
   </header>
   {@render children()}
   <footer
-    class="mx-auto mt-6 max-w-7xl border-t px-4 py-6 text-xs leading-5 text-base-content/70 sm:px-8"
+    class="mx-auto mt-10 max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
   >
-    An independent fan project. Pokémon belongs to its respective owners. Team
-    sources credited in each entry. Champions Pokémon sprites from
-    <a
-      class="underline underline-offset-2"
-      href="https://github.com/PokeAPI/sprites"
-      target="_blank"
-      rel="external noreferrer">PokéAPI sprites</a
-    >; see
-    <a
-      class="underline underline-offset-2"
-      href="https://github.com/PokeAPI/sprites/blob/master/LICENCE.txt"
-      target="_blank"
-      rel="external noreferrer">license notice</a
-    >. Champions sprite set and image rights belong to The Pokémon Company. Item
-    icons from
-    <a
-      class="underline underline-offset-2"
-      href="https://github.com/smogon/sprites"
-      target="_blank"
-      rel="external noreferrer">Smogon sprites</a
-    >. Item image rights belong to Nintendo, Game Freak, and The Pokémon
-    Company.
+    <p class="provenance max-w-4xl">
+      An independent fan project. Pokémon belongs to its respective owners. Team
+      sources credited in each entry. Champions Pokémon sprites from
+      <a
+        class="underline underline-offset-2"
+        href="https://github.com/PokeAPI/sprites"
+        target="_blank"
+        rel="external noreferrer">PokéAPI sprites</a
+      >; see
+      <a
+        class="underline underline-offset-2"
+        href="https://github.com/PokeAPI/sprites/blob/master/LICENCE.txt"
+        target="_blank"
+        rel="external noreferrer">license notice</a
+      >. Champions sprite set and image rights belong to The Pokémon Company.
+      Item icons from
+      <a
+        class="underline underline-offset-2"
+        href="https://github.com/smogon/sprites"
+        target="_blank"
+        rel="external noreferrer">Smogon sprites</a
+      >. Item image rights belong to Nintendo, Game Freak, and The Pokémon
+      Company.
+    </p>
   </footer>
 {/if}

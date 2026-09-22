@@ -30,10 +30,18 @@
 
 <svelte:head><title>Add custom team — Champion's Atlas</title></svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <div class="flex flex-wrap items-center justify-between gap-4">
+  <header
+    class="flex flex-wrap items-center justify-between gap-4 border-b pb-4"
+  >
     <div>
-      <h1 class="text-3xl font-semibold tracking-tight">Add custom team</h1>
-      <p class="mt-2 text-sm text-base-content/70">
+      <h1
+        class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+      >
+        Add custom team
+      </h1>
+      <p
+        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+      >
         Build your team in
         <a
           class="text-primary underline"
@@ -46,10 +54,10 @@
     <Button href={resolve('/my-teams')} variant="outline" class="min-h-11">
       Back to My teams
     </Button>
-  </div>
+  </header>
 
   <form aria-label="Custom team import" class="mt-6 max-w-3xl" onsubmit={save}>
-    <label class="block text-sm font-medium">
+    <label class="term block">
       Team name
       <input
         class="input mt-2 min-h-11 w-full"
@@ -58,17 +66,19 @@
         bind:value={name}
       />
     </label>
-    <label class="mt-4 block text-sm font-medium">
+    <label class="term mt-6 block">
       Team text
-      <textarea
-        class="textarea mt-2 min-h-96 w-full p-3 font-mono text-xs leading-5"
-        maxlength="50000"
-        required
-        bind:value={paste}></textarea>
+      <span class="plate mt-2 block border-base-content/55">
+        <textarea
+          class="textarea min-h-96 w-full border-0 p-3 font-mono text-xs leading-5"
+          maxlength="50000"
+          required
+          bind:value={paste}></textarea>
+      </span>
     </label>
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <Button type="submit" class="min-h-11">Save custom team</Button>
-      <p class="text-xs text-base-content/70">
+      <p class="provenance">
         Saves locally as {data.currentRegulation}; legality remains unverified.
       </p>
     </div>
