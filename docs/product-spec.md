@@ -128,18 +128,17 @@ user's edited team. Exact forms remain distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-Field-based editing for saved catalog teams is implemented. Legality-aware
-adaptation is not implemented.
+Field-based editing for saved catalog teams is implemented. Full legality-aware
+adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
+suggestions.
 
-Spread suggestions are implemented too: they enforce the two-Mega suggestion
-limit, group catalog spreads by how far they move from the current spread, and
-report each spread's Speed against the catalog.
-
-- Never offer a Mega species once the other five slots already hold two.
-- Group suggested spreads as same, small, moderate, large, or unknown, and order
-  the smallest change first.
-- Show a spread's Speed, the share of catalog builds it outspeeds, and the
-  catalog Speed tiers a spread does not reach.
+EV spread suggestions start from a complete 66-point draft with a known nature.
+They propose small reallocations against common recorded current-regulation sets
+that newly guarantee survival, a one-hit KO, or an unmodified Speed tier. Each
+suggestion reports gained and lost thresholds, with damage based on one landed
+attack at full HP and the Pokémon's resolved battle form, actual item, and
+deterministic field-setting abilities. Speed tiers use unmodified level-50 Speed,
+not weather- or item-adjusted turn order.
 
 Inferred archetype and role tags are enrichment, never evidence: they carry no
 result label and never outrank a sourced result. They break ties among teams that

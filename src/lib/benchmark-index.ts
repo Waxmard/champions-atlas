@@ -42,8 +42,8 @@ function indexedMember(member: Member, form: BattleForm) {
     !member.spread?.trim() ||
     !member.item?.trim() ||
     !normalize(member.item) ||
-    !member.ability?.trim() ||
-    !normalize(member.ability)
+    !form.ability?.trim() ||
+    !normalize(form.ability)
   )
     return null;
   const spread = parseChampionsSpread(member.spread);
@@ -57,8 +57,7 @@ function indexedMember(member: Member, form: BattleForm) {
     return null;
   const canonicalNature = nature(member.nature);
   const item = generation.items.get(normalize(member.item) as ID);
-  const ability = generation.abilities.get(normalize(member.ability) as ID);
-  if (!canonicalNature || !item || !ability) return null;
+  if (!canonicalNature || !item) return null;
   const species = form.error ? null : battleSpecies(form.pokemon);
   if (!species || !form.ability) return null;
   const effectiveAbility = generation.abilities.get(

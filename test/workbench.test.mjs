@@ -384,25 +384,12 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     { value: 'Fake Out', currentCount: 2, totalCount: 5 },
     { value: 'Flare Blitz', currentCount: 1, totalCount: 1 },
   ]);
-  assert.deepEqual(suggestions.spreads, [
-    {
-      value: '32 HP',
-      currentCount: 3,
-      totalCount: 6,
-      nature: null,
-      score: 0,
-      size: 'unknown',
-      moved: 0,
-      deltas: [],
-      speed: 80,
-    },
-  ]);
   assert.deepEqual(
     catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
     [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
   );
 });
-test('hybrid suggestions link Mega forms, keep stable fields fixed, and pair nature with EV spread', () => {
+test('hybrid suggestions link Mega forms and keep stable fields fixed', () => {
   const physicalDnite = (
     spread = '2 HP / 32 Atk / 32 Spe',
     nature = 'Adamant'
@@ -445,26 +432,13 @@ test('hybrid suggestions link Mega forms, keep stable fields fixed, and pair nat
   };
   const teammates = [member('Sneasler')];
 
-  // Suggesting spreads for Mega Dragonite with teammates:
   const suggestions = catalogSuggestions(
     draftSpecial,
     [t1, t2, t3, t4],
     'M-B',
     teammates
   );
-  assert.ok(
-    suggestions.spreads.some(
-      (s) => s.value === '2 HP / 32 SpA / 32 Spe' && s.nature === 'Modest'
-    )
-  );
-  assert.ok(
-    suggestions.spreads.some(
-      (s) =>
-        s.value === '1 HP / 1 Def / 32 SpA / 32 Spe' && s.nature === 'Modest'
-    )
-  );
-  assert.equal(suggestions.spreads[0].nature, 'Modest');
-  assert.equal(suggestions.spreads[1].nature, 'Modest');
+  assert.equal(suggestions.natures[0].value, 'Modest');
 
   // Suggesting item for special Dragonite:
   const draftNoItem = {
@@ -715,44 +689,4 @@ test('swaps require teammate overlap and preserve the two-Mega limit by slot', (
     ),
     []
   );
-});
-
-test('catalogSuggestions classifies each spread by how far it moves from the draft', () => {
-  const target = (spread) => ({
-    pokemon: 'Kingambit',
-    item: null,
-    ability: null,
-    moves: [],
-    nature: null,
-    spread,
-  });
-  const near = team('near', 'M-C');
-  near.members = [
-    { ...member('Kingambit'), spread: '20 HP / 28 Spe' },
-    { ...member('Kingambit'), spread: '24 HP / 15 Atk / 14 SpD / 13 Spe' },
-  ];
-  const options = catalogSuggestions(
-    target('16 HP / 32 Spe'),
-    [near],
-    'M-C'
-  ).spreads;
-  assert.deepEqual(
-    options.map((option) => option.size),
-    ['small', 'large']
-  );
-  const [smallOption, largeOption] = options;
-  assert.equal(smallOption.moved, 8);
-  assert.deepEqual(smallOption.deltas, [
-    { stat: 'HP', from: 16, to: 20, delta: 4 },
-    { stat: 'Spe', from: 32, to: 28, delta: -4 },
-  ]);
-  assert.equal(largeOption.moved, 56);
-
-  // A blank or zero-total draft is not comparable, so nothing is scored as a change.
-  for (const spread of ['', '0 HP']) {
-    const sizes = catalogSuggestions(target(spread), [near], 'M-C').spreads.map(
-      (option) => option.size
-    );
-    assert.deepEqual(sizes, ['unknown', 'unknown']);
-  }
 });

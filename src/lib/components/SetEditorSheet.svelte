@@ -131,12 +131,6 @@
       .filter((option) => norm(option.value, abilityQuery))
       .slice(0, 5)
   );
-  const spreadSuggestions = $derived(
-    suggestions.spreads.filter((option) => {
-      const spread = parseChampionsSpread(option.value);
-      return spread && championsSpreadTotal(spread) === 66;
-    })
-  );
   const legacyNature = $derived(
     form.nature && !NATURES.some((nature) => nature === form.nature)
       ? form.nature
@@ -623,7 +617,6 @@
           member={draftMember}
           {teams}
           {currentRegulation}
-          {spreadSuggestions}
           natureSuggestions={suggestions.natures}
           onspreadchange={(spread, nature) => {
             form.spread = spread;

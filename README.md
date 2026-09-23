@@ -97,15 +97,14 @@ refresh or additional source integration is configured.
    remain unchanged. Unknown fields are omitted, not inferred. Edited teams do
    not receive a new rental code.
 
-In **Edit EV spread**, review the six level-50 final stats and their total, or choose
-**Benchmark against the meta**. Compare incoming and outgoing single-hit damage
-against recorded sets from the current regulation, adjust battle conditions, and
-search for legal reallocations meeting a selected survival or OHKO chance. Each
-suggestion shows its six-stat tradeoff and changes only the draft; use **Done**
-and then **Apply** to save it. **Speed** shows unmodified current-regulation
-tiers and Speed-only nudges. Frequencies describe catalog teams, not ladder usage.
-Damage chances assume one connecting attack, not accuracy, residual effects, or
-turn sequences; unsupported mechanics and incomplete sets are shown as unavailable.
+In **Edit EV spread**, allocate 66 points and choose a nature to see **Suggested spreads**.
+Recommendations compare your current build with common recorded sets in the current
+regulation. They use its Mega form, held item, and field effects set by either Pokémon's
+ability, favoring your Pokémon when field setters conflict. Survival and one-hit KO
+reasons describe one landed attack at full HP; losses appear as tradeoffs. A suggestion
+changes only the draft. Choose **Done**, then **Apply** to save. Expand **Speed tiers**
+to compare unmodified Speed; these tiers do not account for turn order, weather, or
+items. Incomplete spreads and unsupported damage mechanics do not produce damage claims.
 
 Saved copies survive reload and catalog refreshes on the same browser origin, and
 clearing browser storage removes them. Saving requires available browser storage.

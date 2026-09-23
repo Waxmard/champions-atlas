@@ -1,19 +1,6 @@
 import { z } from 'zod';
 import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
-import {
-  championsSpreadTotal,
-  normalizeSet,
-  normalizeSpread,
-  parseChampionsSpread,
-  parseCustomPaste,
-  spreadChangeSize,
-  spreadDeltas,
-  spreadMoved,
-  type SpreadChangeSize,
-  type SpreadDelta,
-} from './paste.ts';
-import { speedFor } from './stats.ts';
-import { resolveBattleForm } from './battle-forms.ts';
+import { normalizeSet, normalizeSpread, parseCustomPaste } from './paste.ts';
 import {
   missingRoles,
   postalRole,
@@ -277,29 +264,8 @@ export interface CatalogSuggestion {
   value: string;
   currentCount: number;
   totalCount: number;
-  nature?: string | null;
   score?: number;
 }
-
-export interface SpreadSuggestion {
-  value: string;
-  currentCount: number;
-  totalCount: number;
-  nature: string | null;
-  score: number;
-  size: SpreadChangeSize;
-  moved: number;
-  deltas: SpreadDelta[];
-  speed: number | null;
-}
-
-const SPREAD_SIZE_ORDER: Record<SpreadChangeSize, number> = {
-  same: 0,
-  small: 1,
-  moderate: 2,
-  large: 3,
-  unknown: 4,
-};
 
 export interface PokemonSuggestion {
   pokemon: string;
@@ -394,15 +360,13 @@ export function catalogSuggestions(
   const items = new Map<string, CatalogSuggestion>();
   const abilities = new Map<string, CatalogSuggestion>();
   const moves = new Map<string, CatalogSuggestion>();
-  const spreads = new Map<string, CatalogSuggestion>();
   const natures = new Map<string, CatalogSuggestion>();
 
   const add = (
     values: Map<string, CatalogSuggestion>,
     value: string | null,
     score: number,
-    current: boolean,
-    extra?: { nature?: string | null }
+    current: boolean
   ) => {
     if (!value || !normalize(value)) return;
     const key = normalize(value);
@@ -411,8 +375,6 @@ export function catalogSuggestions(
       existing.totalCount++;
       if (score > 0) existing.score = (existing.score || 0) + score;
       if (current) existing.currentCount++;
-      if (!isSimple && extra?.nature && !existing.nature)
-        existing.nature = extra.nature;
     } else {
       const entry: CatalogSuggestion = {
         value,
@@ -420,7 +382,6 @@ export function catalogSuggestions(
         totalCount: 1,
       };
       if (score > 0) entry.score = score;
-      if (!isSimple && extra?.nature) entry.nature = extra.nature;
       values.set(key, entry);
     }
   };
@@ -461,9 +422,6 @@ export function catalogSuggestions(
 
       add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
       add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
-      add(spreads, member.spread, baseScore + im + am + mm, isCurrent, {
-        nature: member.nature,
-      });
       add(natures, member.nature, baseScore + im + am + mm, isCurrent);
       for (const move of member.moves) {
         add(moves, move, baseScore + im + am + nm + sm, isCurrent);
@@ -480,48 +438,10 @@ export function catalogSuggestions(
         a.value.localeCompare(b.value)
     );
 
-  const parsedTargetSpread = targetMember.spread?.trim()
-    ? parseChampionsSpread(targetMember.spread)
-    : null;
-  const currentSpread =
-    parsedTargetSpread && championsSpreadTotal(parsedTargetSpread) > 0
-      ? parsedTargetSpread
-      : null;
-  const targetForm = resolveBattleForm(targetMember);
-  const spreadSuggestions = rank(spreads).map((entry): SpreadSuggestion => {
-    const candidate = parseChampionsSpread(entry.value);
-    const comparable = currentSpread !== null && candidate !== null;
-    const deltas = comparable ? spreadDeltas(currentSpread, candidate) : [];
-    const moved = comparable ? spreadMoved(deltas) : 0;
-    return {
-      value: entry.value,
-      currentCount: entry.currentCount,
-      totalCount: entry.totalCount,
-      nature: entry.nature ?? null,
-      score: entry.score ?? 0,
-      size: comparable ? spreadChangeSize(moved) : 'unknown',
-      moved,
-      deltas,
-      speed: targetForm.error
-        ? null
-        : speedFor(targetForm.pokemon, candidate, entry.nature ?? null),
-    };
-  });
-  spreadSuggestions.sort(
-    (a, b) =>
-      SPREAD_SIZE_ORDER[a.size] - SPREAD_SIZE_ORDER[b.size] ||
-      a.moved - b.moved ||
-      b.score - a.score ||
-      b.currentCount - a.currentCount ||
-      b.totalCount - a.totalCount ||
-      a.value.localeCompare(b.value)
-  );
-
   return {
     items: rank(items),
     abilities: rank(abilities),
     moves: rank(moves),
-    spreads: spreadSuggestions,
     natures: rank(natures),
     pokemon: pokemonSuggestions(
       teammates,

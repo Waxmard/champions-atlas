@@ -67,6 +67,37 @@ export const DEFAULT_BENCHMARK_CONDITIONS: BenchmarkConditions = {
   spreadDamage: true,
   criticalHit: false,
 };
+
+export function ownSetConditions(
+  self: Member,
+  opponent: Member
+): BenchmarkConditions {
+  const conditions = structuredClone(DEFAULT_BENCHMARK_CONDITIONS);
+  const abilities = [self, opponent].map(
+    (member) =>
+      generation.abilities.get(toID(resolveBattleForm(member).ability ?? ''))
+        ?.name ?? null
+  );
+  if (abilities[0] === 'Intimidate') conditions.self.abilityOn = true;
+  if (abilities[1] === 'Intimidate') conditions.opponent.abilityOn = true;
+  const weather: Record<string, BenchmarkConditions['weather']> = {
+    Drought: 'Sun',
+    Drizzle: 'Rain',
+    'Sand Stream': 'Sand',
+    'Snow Warning': 'Snow',
+  };
+  const terrain: Record<string, BenchmarkConditions['terrain']> = {
+    'Electric Surge': 'Electric',
+    'Grassy Surge': 'Grassy',
+    'Psychic Surge': 'Psychic',
+    'Misty Surge': 'Misty',
+  };
+  conditions.weather =
+    weather[abilities[0] ?? ''] || weather[abilities[1] ?? ''] || '';
+  conditions.terrain =
+    terrain[abilities[0] ?? ''] || terrain[abilities[1] ?? ''] || '';
+  return conditions;
+}
 const generation = Generations.get(0);
 const statIds: Record<
   ChampionsStat,
@@ -124,10 +155,9 @@ function makePokemon(member: Member, conditions: CombatantConditions) {
   if (!natureName) return { error: 'Nature is unknown' } as const;
   if (!member.item || member.item === '---')
     return { error: 'Held item is unknown' } as const;
-  if (!member.ability || member.ability === '---')
-    return { error: 'Ability is unknown' } as const;
   const form = resolveBattleForm(member, conditions.form ?? undefined);
   if (form.error) return { error: form.error } as const;
+  if (!form.ability) return { error: 'Ability is unknown' } as const;
   const species = battleSpecies(form.pokemon);
   if (!species)
     return { error: `Unknown battle species: ${form.pokemon}` } as const;

@@ -5,7 +5,7 @@ const teamName = "Danyul_YT's Raichu-Y Floette Team";
 const pokemon = 'Raichu-Mega-Y';
 const storageKey = 'champions-atlas:teams:v1';
 
-async function openWorkbench(page: Page) {
+async function openEditor(page: Page) {
   await page.goto(`/teams/${teamId}`);
   await page
     .getByRole('button', { name: 'Use this team', exact: true })
@@ -13,12 +13,31 @@ async function openWorkbench(page: Page) {
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     teamName
   );
+  const card = page.getByRole('region', {
+    name: `${pokemon} set`,
+    exact: true,
+  });
+  await card
+    .getByRole('button', { name: `Edit ${pokemon} EVs`, exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: `Edit ${pokemon} set`,
+    exact: true,
+  });
+  return {
+    card,
+    editor,
+    suggestions: editor.getByRole('region', { name: 'EV spread suggestions' }),
+  };
 }
 
-test('use a benchmark spread as a draft, then apply and reload it', async ({
+test('a generated spread stages first and saves only on Apply', async ({
   page,
 }) => {
-  await openWorkbench(page);
+  await page.goto(`/teams/${teamId}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
   const before = await page.evaluate(
     (key) => localStorage.getItem(key),
     storageKey
@@ -34,103 +53,50 @@ test('use a benchmark spread as a draft, then apply and reload it', async ({
     name: `Edit ${pokemon} set`,
     exact: true,
   });
+  const suggestions = editor.getByRole('region', {
+    name: 'EV spread suggestions',
+  });
   await expect(editor.getByLabel('HP EV', { exact: true })).toHaveValue('18');
   await expect(editor.getByLabel('Def EV', { exact: true })).toHaveValue('25');
-  await expect(editor.getByLabel('Spe EV', { exact: true })).toHaveValue('23');
+  await expect(
+    editor.getByLabel('Spe EV slider', { exact: true })
+  ).toBeVisible();
   await expect(
     editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
   ).toBeVisible();
-  await expect(editor.getByLabel('Battle form', { exact: true })).toHaveValue(
-    pokemon
-  );
   await expect(
-    editor.getByText('Total stats 831', { exact: true })
-  ).toBeVisible();
-
-  await editor
-    .getByRole('button', { name: 'Benchmark against the meta', exact: true })
-    .click();
+    editor.getByRole('button', { name: 'Benchmark against the meta' })
+  ).toHaveCount(0);
+  await expect(editor.getByLabel('Battle form')).toHaveCount(0);
+  await expect(editor.getByLabel('Search all species')).toHaveCount(0);
   await expect(
-    editor.getByRole('heading', { name: 'EV benchmarks', exact: true })
-  ).toBeFocused();
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth
-    )
-  ).toBe(true);
-
-  await editor
-    .getByLabel('Search all species', { exact: true })
-    .fill('Sneasler');
-  await editor.getByRole('button', { name: /Sneasler/ }).click();
-  const matchup = editor.locator('section[aria-label="Selected matchup"]');
-  const variants = matchup.getByLabel('Recorded set variant', { exact: true });
-  const labels = await variants.locator('option').allTextContents();
-  const variant = labels.findIndex(
-    (label) =>
-      label.includes('2 HP / 32 Atk / 32 Spe') &&
-      label.includes('Adamant') &&
-      label.includes('White Herb') &&
-      label.includes('Unburden')
-  );
-  expect(variant).toBeGreaterThanOrEqual(0);
-  await variants.selectOption({ index: variant });
-  await matchup
-    .getByLabel('Opponent attack', { exact: true })
-    .selectOption('Close Combat');
-  await expect(matchup).toContainText('Survives 68.75% of damage rolls');
-
-  const conditions = editor.locator('details > summary');
-  await conditions.click();
-  const form = editor.getByLabel('Your Pokémon battle form', { exact: true });
-  await form.selectOption('Raichu');
-  await expect(form).toHaveValue('Raichu');
-  const hp = editor.getByLabel('Your Pokémon HP remaining percentage', {
-    exact: true,
+    editor.getByRole('heading', { name: 'EV benchmarks' })
+  ).toHaveCount(0);
+  await expect(suggestions).toHaveAttribute('aria-busy', 'false', {
+    timeout: 30_000,
   });
-  await hp.fill('50');
-  await expect(conditions).toContainText('Your Pokémon 50% HP');
-  await hp.fill('100');
-  await form.selectOption(pokemon);
-
-  await editor.getByRole('button', { name: 'Find EV adjustments' }).click();
-  const suggestion = editor
-    .locator('li')
-    .filter({ hasText: '18 HP / 31 Def / 17 Spe' });
-  await expect(suggestion).toContainText('survival 100%');
-  await suggestion
-    .getByRole('button', { name: 'Use spread', exact: true })
-    .click();
-  await expect(
-    editor.getByRole('button', {
-      name: 'Benchmark against the meta',
-      exact: true,
+  const option = suggestions.getByRole('button').first();
+  await expect(option).toBeVisible();
+  const chips = await option.locator('span.font-mono').allTextContents();
+  const chosen = Object.fromEntries(
+    chips.map((chip) => {
+      const match = chip.trim().match(/^(\d+) (HP|Atk|Def|SpA|SpD|Spe)$/);
+      expect(match, `spread chip: ${chip}`).not.toBeNull();
+      return [match![2], match![1]];
     })
-  ).toBeFocused();
-  await expect(editor.getByLabel('HP EV', { exact: true })).toHaveValue('18');
-  await expect(editor.getByLabel('Def EV', { exact: true })).toHaveValue('31');
-  await expect(editor.getByLabel('Spe EV', { exact: true })).toHaveValue('17');
+  );
+  expect(chips.length).toBeGreaterThan(0);
+  await option.click();
+  for (const stat of ['HP', 'Atk', 'Def', 'SpA', 'SpD', 'Spe'])
+    await expect(editor.getByLabel(`${stat} EV`, { exact: true })).toHaveValue(
+      chosen[stat] ?? '0'
+    );
   await expect(
     editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
   ).toBeVisible();
-  await expect(
-    editor.getByText('Total stats 830', { exact: true })
-  ).toBeVisible();
-  for (const stat of [
-    'HP 153',
-    'Atk 108',
-    'Def 106',
-    'SpA 180',
-    'SpD 100',
-    'Spe 183',
-  ])
-    await expect(
-      editor.getByLabel('EV editor').getByText(stat, { exact: true })
-    ).toBeVisible();
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe(before);
-
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(card.getByRole('button', { name: /Apply/ })).toBeVisible();
   expect(
@@ -140,28 +106,90 @@ test('use a benchmark spread as a draft, then apply and reload it', async ({
   await expect(page.getByRole('status')).toHaveText(
     `${pokemon} changes applied and saved.`
   );
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), storageKey)
-  ).not.toBe(before);
-
   await page.reload();
   await card
     .getByRole('button', { name: `Edit ${pokemon} EVs`, exact: true })
     .click();
-  const savedEditor = page.getByRole('dialog', {
+  const saved = page.getByRole('dialog', {
     name: `Edit ${pokemon} set`,
     exact: true,
   });
-  await expect(savedEditor.getByLabel('Def EV', { exact: true })).toHaveValue(
-    '31'
-  );
-  await expect(savedEditor.getByLabel('Spe EV', { exact: true })).toHaveValue(
-    '17'
-  );
+  for (const stat of ['HP', 'Atk', 'Def', 'SpA', 'SpD', 'Spe'])
+    await expect(saved.getByLabel(`${stat} EV`, { exact: true })).toHaveValue(
+      chosen[stat] ?? '0'
+    );
   await expect(
-    savedEditor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
+    saved.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
   ).toBeVisible();
-  await expect(
-    savedEditor.getByText('Total stats 830', { exact: true })
-  ).toBeVisible();
+});
+
+test('editing invalidates pending recommendations without moving input focus', async ({
+  page,
+}) => {
+  const { editor, suggestions } = await openEditor(page);
+  await expect(suggestions.getByRole('button').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  const input = editor.getByLabel('Def EV', { exact: true });
+  await input.fill('26');
+  await expect(input).toBeFocused();
+  await expect(suggestions).toContainText('Updating suggestions…');
+  await expect(suggestions.getByRole('button')).toHaveCount(0);
+  await expect(suggestions).toContainText(
+    'Complete a valid 66-point spread to see suggestions.'
+  );
+  await expect(suggestions.getByRole('button')).toHaveCount(0);
+  await expect(input).toBeFocused();
+  const speed = editor.getByLabel('Spe EV', { exact: true });
+  await speed.fill('22');
+  const scroller = editor.locator('.overflow-y-auto').first();
+  const scrollBefore = await scroller.evaluate((element) => element.scrollTop);
+  await expect(suggestions).toHaveAttribute('aria-busy', 'false', {
+    timeout: 30_000,
+  });
+  await expect(suggestions.getByRole('button').first()).toBeVisible();
+  await expect(speed).toBeFocused();
+  expect(await scroller.evaluate((element) => element.scrollTop)).toBe(
+    scrollBefore
+  );
+  page.once('dialog', (dialog) => dialog.dismiss());
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+});
+
+test('Speed tiers stay a compact disclosure with normal scrolling', async ({
+  page,
+}) => {
+  const { editor, suggestions } = await openEditor(page);
+  await expect(suggestions).toHaveAttribute('aria-busy', 'false', {
+    timeout: 30_000,
+  });
+  const details = suggestions.locator('details');
+  const summary = details.locator('summary');
+  await expect(details).not.toHaveAttribute('open', '');
+  await summary.click();
+  await expect(details).toHaveAttribute('open', '');
+  await expect(details).toContainText('Unmodified Speed');
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth
+    )
+  ).toBe(true);
+  expect(
+    await editor.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth
+    )
+  ).toBe(true);
+  const scroller = editor.locator('.overflow-y-auto').first();
+  await scroller.evaluate((element) => {
+    element.scrollTop = element.scrollHeight;
+  });
+  expect(
+    await scroller.evaluate((element) => element.scrollTop)
+  ).toBeGreaterThan(0);
+  await summary.click();
+  await expect(details).not.toHaveAttribute('open', '');
 });
