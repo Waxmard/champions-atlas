@@ -1,7 +1,7 @@
 <script lang="ts">
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import X from '@lucide/svelte/icons/x';
-  import EvEditor from '$lib/components/EvEditor.svelte';
+  import EvWorkbench from '$lib/components/EvWorkbench.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '$lib/components/SetEditorDetails.svelte';
@@ -18,7 +18,6 @@
     parseSetBlock,
   } from '$lib/paste';
   import { getMoveType, getPokemonTypes, TYPE_COLORS } from '$lib/types';
-  import { speedTiers, spreadNudges } from '$lib/stats';
   import type { TeamTagsIndex } from '$lib/tags';
   import { catalogSuggestions, setText } from '$lib/workbench';
 
@@ -148,18 +147,6 @@
   const currentSpreadTotal = $derived(
     parsedCurrentSpread ? championsSpreadTotal(parsedCurrentSpread) : 0
   );
-  const tiers = $derived(teams.length ? speedTiers(teams) : []);
-  const nudges = $derived(
-    parsedCurrentSpread
-      ? spreadNudges(
-          draftMember.pokemon,
-          parsedCurrentSpread,
-          form.nature || null,
-          teams
-        )
-      : []
-  );
-
   const subViewTitle = $derived.by(() => {
     switch (currentView) {
       case 'pokemon':
@@ -632,25 +619,19 @@
     {:else if currentView === 'spread'}
       <!-- SPREAD SUB-VIEW -->
       <section aria-label="EV spread" class="grid gap-4">
-        <EvEditor
-          spread={form.spread}
-          nature={form.nature}
+        <EvWorkbench
+          member={draftMember}
+          {teams}
+          {currentRegulation}
           {spreadSuggestions}
           natureSuggestions={suggestions.natures}
-          pokemon={draftMember.pokemon}
-          {teams}
-          {tiers}
-          {nudges}
           onspreadchange={(spread, nature) => {
             form.spread = spread;
             if (nature) form.nature = nature;
             clearError();
           }}
-          onnaturechange={(value) => {
-            form.nature = value;
-          }}
+          onnaturechange={(value) => (form.nature = value)}
         />
-
         {#if error && errorField === 'spread'}
           <p
             role="alert"

@@ -13,6 +13,7 @@ import {
   type SpreadDelta,
 } from './paste.ts';
 import { speedFor } from './stats.ts';
+import { resolveBattleForm } from './battle-forms.ts';
 import {
   missingRoles,
   postalRole,
@@ -486,6 +487,7 @@ export function catalogSuggestions(
     parsedTargetSpread && championsSpreadTotal(parsedTargetSpread) > 0
       ? parsedTargetSpread
       : null;
+  const targetForm = resolveBattleForm(targetMember);
   const spreadSuggestions = rank(spreads).map((entry): SpreadSuggestion => {
     const candidate = parseChampionsSpread(entry.value);
     const comparable = currentSpread !== null && candidate !== null;
@@ -500,7 +502,9 @@ export function catalogSuggestions(
       size: comparable ? spreadChangeSize(moved) : 'unknown',
       moved,
       deltas,
-      speed: speedFor(targetMember.pokemon, candidate, entry.nature ?? null),
+      speed: targetForm.error
+        ? null
+        : speedFor(targetForm.pokemon, candidate, entry.nature ?? null),
     };
   });
   spreadSuggestions.sort(

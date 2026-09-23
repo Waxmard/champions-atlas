@@ -10,35 +10,31 @@
     type ChampionsSpread,
     type SpreadChangeSize,
   } from '$lib/paste';
-  import type { Team } from '$lib/catalog';
-  import {
-    speedBenchmark,
-    speedFor,
-    type SpeedTier,
-    type SpreadNudge,
-  } from '$lib/stats';
+  import { battleFormChoices, resolveBattleForm } from '$lib/battle-forms';
+  import type { Member } from '$lib/catalog';
+  import { statsFor } from '$lib/stats';
   import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
 
   let {
+    member,
     spread,
     nature,
     spreadSuggestions,
     natureSuggestions,
-    pokemon,
-    teams = [],
-    tiers = [],
-    nudges = [],
+    form,
+    onformchange,
+    onbenchmark,
     onspreadchange,
     onnaturechange,
   }: {
+    member: Member;
     spread: string;
     nature: string;
     spreadSuggestions: SpreadSuggestion[];
     natureSuggestions: CatalogSuggestion[];
-    pokemon?: string;
-    teams?: Team[];
-    tiers?: SpeedTier[];
-    nudges?: SpreadNudge[];
+    form: string | null;
+    onformchange: (form: string | null) => void;
+    onbenchmark: () => void;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
   } = $props();
@@ -53,27 +49,11 @@
   const groups = $derived(
     SPREAD_GROUPS.map((group) => ({
       ...group,
-      nudges: group.size === 'small' ? nudges : [],
       options: spreadSuggestions
         .filter((option) => option.size === group.size)
         .slice(0, 5),
-    })).filter((group) => group.options.length > 0 || group.nudges.length > 0)
+    })).filter((group) => group.options.length > 0)
   );
-  const currentSpeed = $derived.by(() => {
-    const parsed = parseChampionsSpread(spread);
-    if (!pokemon || !parsed || championsSpreadTotal(parsed) === 0) return null;
-    return speedFor(pokemon, parsed, nature || null);
-  });
-  const benchmarkOf = (option: SpreadSuggestion) =>
-    pokemon && teams.length
-      ? speedBenchmark(
-          pokemon,
-          parseChampionsSpread(option.value),
-          option.nature,
-          teams
-        )
-      : null;
-
   const values = $derived(
     parseChampionsSpread(spread) ||
       ({
@@ -87,7 +67,18 @@
   );
   const total = $derived(championsSpreadTotal(values));
   const effect = $derived(natureEffect(nature));
-
+  const resolvedForm = $derived(resolveBattleForm(member, form ?? undefined));
+  const formChoices = $derived(battleFormChoices(member));
+  const selectedForm = $derived(form ?? resolveBattleForm(member).pokemon);
+  const finalStats = $derived(
+    resolvedForm.error
+      ? null
+      : statsFor(
+          resolvedForm.pokemon,
+          parseChampionsSpread(spread),
+          nature || null
+        )
+  );
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
     onspreadchange(
       formatChampionsSpread({
@@ -102,7 +93,33 @@
   class="plate animate-in p-3.5 duration-200 fade-in-0 sm:p-4"
   aria-label="EV editor"
 >
-  <!-- Point Budget Progress Header -->
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <button
+      data-benchmark-trigger
+      type="button"
+      class="btn min-h-11 btn-outline"
+      onclick={onbenchmark}>Benchmark against the meta</button
+    >
+    {#if formChoices.length > 1}
+      <label class="flex items-center gap-2">
+        <span class="term">Battle form</span>
+        <select
+          class="select min-h-11"
+          aria-label="Battle form"
+          value={selectedForm}
+          onchange={(event) =>
+            onformchange(
+              event.currentTarget.value === resolveBattleForm(member).pokemon
+                ? null
+                : event.currentTarget.value
+            )}
+          >{#each formChoices as choice (choice)}<option value={choice}
+              >{choice}</option
+            >{/each}</select
+        >
+      </label>
+    {/if}
+  </div>
   <div class="mb-4 space-y-2">
     <div class="flex items-baseline justify-between gap-3">
       <div class="flex items-baseline gap-3">
@@ -252,8 +269,28 @@
       </div>
     {/each}
   </div>
+  <div class="mt-4 border-t border-base-300 pt-3">
+    <p class="term mb-2">Final stats · level 50 · {resolvedForm.pokemon}</p>
+    {#if finalStats}
+      <div class="flex flex-wrap gap-x-4 gap-y-1">
+        {#each CHAMPIONS_STATS as stat (stat)}<span class="value"
+            >{stat} {finalStats[stat]}</span
+          >{/each}
+      </div>
+      <p class="value mt-2 font-semibold">
+        Total stats {Object.values(finalStats).reduce(
+          (sum, value) => sum + value,
+          0
+        )}
+      </p>
+    {:else}
+      <p class="unknown">
+        {resolvedForm.error ??
+          'Final stats unavailable for this form or nature.'}
+      </p>
+    {/if}
+  </div>
 </div>
-
 {#snippet chips(value: string)}
   <div class="flex flex-wrap items-center gap-1.5">
     {#each value.split(' / ').filter(Boolean) as part (part)}
@@ -271,38 +308,22 @@
   <div class="flex items-baseline justify-between gap-3 px-3 py-2.5">
     <span class="term">Catalog spread suggestions</span>
   </div>
-
   {#each groups as group (group.size)}
     <div
       class="flex items-baseline justify-between gap-3 bg-base-200/50 px-3 py-1.5"
     >
       <span class="term">{group.label}</span>
-      <span class="provenance"
-        >{group.options.length + group.nudges.length}</span
-      >
+      <span class="provenance">{group.options.length}</span>
     </div>
-
-    {#each group.nudges as nudge (nudge.value)}
-      <button
-        type="button"
-        class="group flex min-h-11 flex-col gap-2 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-        onclick={() => onspreadchange(nudge.value, nature)}
-      >
-        <div class="flex w-full items-baseline justify-between gap-3">
-          <span class="term">Nudge</span>
-          <span class="provenance">to outspeed {nudge.target}</span>
-        </div>
-        {@render chips(nudge.value)}
-        <div class="flex flex-wrap items-baseline justify-between gap-3">
-          <span class="value">{formatSpreadDelta(nudge.deltas)}</span>
-          <span class="provenance">Speed {nudge.speed}</span>
-        </div>
-      </button>
-    {/each}
-
     {#each group.options as option (option.value)}
       {@const isSelected = spread === option.value}
-      {@const beaten = benchmarkOf(option)}
+      {@const candidate = resolvedForm.error
+        ? null
+        : statsFor(
+            resolvedForm.pokemon,
+            parseChampionsSpread(option.value),
+            option.nature ?? nature ?? null
+          )}
       <button
         type="button"
         class="group flex min-h-11 flex-col gap-2 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {isSelected
@@ -312,36 +333,26 @@
       >
         <div class="flex w-full items-baseline justify-between gap-3">
           <div class="flex items-baseline gap-3">
-            {#if option.nature}
-              <span class="term inline-flex items-center gap-1">
-                <SlidersHorizontal class="size-3" />
-                <span>{option.nature}</span>
-              </span>
-            {/if}
-            {#if option.totalCount}
-              <span class="value text-base-content/70">
-                {option.totalCount}
-                {option.totalCount === 1 ? 'team' : 'teams'}
-              </span>
-            {/if}
+            {#if option.nature}<span class="term inline-flex items-center gap-1"
+                ><SlidersHorizontal class="size-3" /><span>{option.nature}</span
+                ></span
+              >{/if}
+            {#if option.totalCount}<span class="value text-base-content/70"
+                >{option.totalCount}
+                {option.totalCount === 1 ? 'team' : 'teams'}</span
+              >{/if}
           </div>
-          {#if isSelected}
-            <span class="term">✓ Selected</span>
-          {/if}
+          {#if isSelected}<span class="term">Selected</span>{/if}
         </div>
-
         {@render chips(option.value)}
-
-        {#if option.size !== 'unknown' && option.deltas.length > 0}
-          <span class="value">{formatSpreadDelta(option.deltas)}</span>
-        {/if}
-        {#if option.speed !== null}
-          <span class="provenance">
-            Speed {option.speed}{beaten
-              ? ` · beats ${beaten.beatPercent}% of the catalog`
-              : ''}
-          </span>
-        {/if}
+        {#if option.size !== 'unknown' && option.deltas.length > 0}<span
+            class="value">{formatSpreadDelta(option.deltas)}</span
+          >{/if}
+        {#if candidate}<div class="flex flex-wrap gap-x-3 gap-y-1">
+            {#each CHAMPIONS_STATS as stat (stat)}<span class="value"
+                >{stat} {candidate[stat]}</span
+              >{/each}
+          </div>{:else}<span class="unknown">Final stats unavailable</span>{/if}
       </button>
     {/each}
   {:else}
@@ -349,24 +360,4 @@
       No catalog spread suggestions available for this Pokémon.
     </p>
   {/each}
-
-  {#if tiers.length > 0 && currentSpeed !== null}
-    <details class="px-3 py-2.5">
-      <summary class="term min-h-11 cursor-pointer content-center">
-        Speed tiers
-      </summary>
-      <ul class="mt-2 grid gap-1">
-        {#each tiers as tier (tier.pokemon)}
-          <li class="flex items-baseline justify-between gap-3">
-            <span class="value">{tier.pokemon} · {tier.medianSpeed}</span>
-            {#if currentSpeed > tier.medianSpeed}
-              <span class="term" title="Current build outspeeds this tier"
-                >✓</span
-              >
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    </details>
-  {/if}
 </div>
