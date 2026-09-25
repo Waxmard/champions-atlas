@@ -348,6 +348,11 @@
     return !dirty || confirm('Discard set changes?');
   }
 
+  export function cancelNow() {
+    activeSuggestions = null;
+    return requestCancel();
+  }
+
   export function focusInitialSection() {
     requestAnimationFrame(() => {
       const field = initialField === 'set' ? 'set' : initialField;
@@ -752,7 +757,7 @@
         variant="outline"
         class="h-11 min-h-11 px-4"
         onclick={() => {
-          if (requestCancel()) oncancel();
+          if (cancelNow()) oncancel();
         }}
       >
         Cancel

@@ -127,6 +127,10 @@ test('unknown and long card fields stay usable without phone overflow', async ({
     page.getByRole('heading', { name: 'Pokémon', exact: true })
   ).toBeFocused();
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(
+    page.getByRole('dialog', { name: `Edit ${firstPokemon} set`, exact: true })
+  ).toHaveCount(0);
+  await expect(change).toBeFocused();
   const edit = team.getByRole('button', {
     name: `Edit ${firstPokemon} item`,
     exact: true,

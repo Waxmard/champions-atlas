@@ -109,8 +109,6 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .getByRole('button');
   await expect(pokemonChoices).toHaveCount(5);
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(pokemonChoices).toHaveCount(0);
-  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
 
   await weavile
