@@ -19,7 +19,7 @@
   } from '$lib/paste';
   import { getMoveType, getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import type { TeamTagsIndex } from '$lib/tags';
-  import { catalogSuggestions, setText } from '$lib/workbench';
+  import { catalogSuggestions, setText, type OwnTeamSet } from '$lib/workbench';
 
   type EditorView =
     'overview' | 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
@@ -31,6 +31,8 @@
     initialField: EditableSetField;
     teammates?: Member[];
     tagIndex?: TeamTagsIndex;
+    ownTeams?: OwnTeamSet[];
+    excludeOwnTeamId?: string | null;
     onapply: (member: Member) => void;
     oncancel: () => void;
     ondirtychange: (dirty: boolean) => void;
@@ -43,6 +45,8 @@
     initialField,
     teammates = [],
     tagIndex,
+    ownTeams = [],
+    excludeOwnTeamId = null,
     onapply,
     oncancel,
     ondirtychange,
@@ -617,6 +621,8 @@
           member={draftMember}
           {teams}
           {currentRegulation}
+          {ownTeams}
+          {excludeOwnTeamId}
           natureSuggestions={suggestions.natures}
           onspreadchange={(spread, nature) => {
             form.spread = spread;

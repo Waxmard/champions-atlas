@@ -132,13 +132,21 @@ Field-based editing for saved catalog teams is implemented. Full legality-aware
 adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
 suggestions.
 
-EV spread suggestions start from a complete 66-point draft with a known nature.
-They propose small reallocations against common recorded current-regulation sets
-that newly guarantee survival, a one-hit KO, or an unmodified Speed tier. Each
-suggestion reports gained and lost thresholds, with damage based on one landed
-attack at full HP and the Pokémon's resolved battle form, actual item, and
-deterministic field-setting abilities. Speed tiers use unmodified level-50 Speed,
-not weather- or item-adjusted turn order.
+EV spread suggestions list spreads that the owner's other saved teams already run
+on the same Pokémon. The owner can also ask one benchmark question: survive a
+named move from a named opponent, take a KO, or outspeed. The opponent's set is
+the most common recorded current-regulation set for that species, filtered by
+held item when one is named. An outspeed query excludes Choice Scarf targets
+unless Choice Scarf is the named item, and applies the ×1.5 multiplier to the
+target's Speed whenever the target holds it. Each answer reports the fewest moved
+points, up to six equal-cost spreads for the Pokémon's own nature, and up to six
+more when a second nature reaches the goal for fewer points. When no 66-point
+spread reaches the goal, the answer says so and names the closest achievable
+result. Damage is one landed hit at full HP with the resolved battle form, actual
+item, and deterministic field-setting abilities. Benchmark Speed is unmodified
+level-50 Speed with only the Choice Scarf ×1.5 multiplier applied, never
+weather- or ability-adjusted turn order; the Speed tiers list stays unmodified
+level-50 Speed.
 
 Inferred archetype and role tags are enrichment, never evidence: they carry no
 result label and never outrank a sourced result. They break ties among teams that

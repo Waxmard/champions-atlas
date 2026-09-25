@@ -144,3 +144,97 @@ export function buildBenchmarkIndex(
 
   return { regulation, teamCount: teamIds.size, species };
 }
+
+export type DerivedBenchmarkSet = {
+  pokemon: string;
+  member: Member;
+  teams: number;
+  spreads: number;
+  moves: string[];
+};
+
+export function damagingMoves(moves: string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const move of moves) {
+    const data = generation.moves.get(normalize(move) as ID);
+    if (!data || data.category === 'Status' || seen.has(data.name)) continue;
+    seen.add(data.name);
+    result.push(data.name);
+  }
+  return result;
+}
+
+export function deriveBenchmarkSet(
+  index: BenchmarkIndex,
+  pokemon: string,
+  options: { item?: string | null; excludeChoiceScarf?: boolean } = {}
+): DerivedBenchmarkSet | null {
+  const species = index.species.find(
+    (entry) => normalize(entry.pokemon) === normalize(pokemon)
+  );
+  if (!species) return null;
+  const wanted = options.item ? normalize(options.item) : null;
+  const variants = species.variants.filter((variant) => {
+    const item = normalize(variant.member.item ?? '');
+    if (options.excludeChoiceScarf && item === 'choicescarf') return false;
+    return !wanted || item === wanted;
+  });
+  if (!variants.length) return null;
+  const groups = new Map<
+    string,
+    { variants: BenchmarkVariant[]; teams: number }
+  >();
+  for (const variant of variants) {
+    const spread = parseChampionsSpread(variant.member.spread);
+    if (!spread) continue;
+    const key = `${normalize(variant.member.nature ?? '')}|${formatChampionsSpread(spread)}`;
+    const group = groups.get(key);
+    if (group) {
+      group.variants.push(variant);
+      group.teams += variant.teamIds.length;
+      continue;
+    }
+    groups.set(key, { variants: [variant], teams: variant.teamIds.length });
+  }
+  if (!groups.size) return null;
+  const ranked = [...groups].sort(
+    (a, b) => b[1].teams - a[1].teams || a[0].localeCompare(b[0])
+  );
+  const winner = ranked[0][1];
+  const member = [...winner.variants].sort(
+    (a, b) => b.teamIds.length - a.teamIds.length || a.key.localeCompare(b.key)
+  )[0].member;
+  return {
+    pokemon: species.pokemon,
+    member,
+    teams: winner.teams,
+    spreads: groups.size,
+    moves: damagingMoves(variants.flatMap((variant) => variant.member.moves)),
+  };
+}
+
+export function itemOptions(
+  index: BenchmarkIndex,
+  pokemon: string
+): { item: string; teams: number }[] {
+  const species = index.species.find(
+    (entry) => normalize(entry.pokemon) === normalize(pokemon)
+  );
+  if (!species) return [];
+  const options = new Map<string, { item: string; teams: number }>();
+  for (const variant of species.variants) {
+    const item = variant.member.item;
+    if (!item) continue;
+    const key = normalize(item);
+    const option = options.get(key);
+    if (option) {
+      option.teams += variant.teamIds.length;
+      continue;
+    }
+    options.set(key, { item, teams: variant.teamIds.length });
+  }
+  return [...options.values()].sort(
+    (a, b) => b.teams - a.teams || a.item.localeCompare(b.item)
+  );
+}

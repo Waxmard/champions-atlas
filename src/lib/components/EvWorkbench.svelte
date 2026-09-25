@@ -1,18 +1,20 @@
 <script lang="ts">
   import EvEditor from '$lib/components/EvEditor.svelte';
   import { buildBenchmarkIndex, type BenchmarkIndex } from '$lib/benchmarks';
-  import {
-    recommendSpreads,
-    type SpreadRecommendation,
-  } from '$lib/benchmark-suggestions';
   import type { Member, Team } from '$lib/catalog';
-  import type { CatalogSuggestion } from '$lib/workbench';
+  import {
+    ownSpreadSuggestions,
+    type CatalogSuggestion,
+    type OwnTeamSet,
+  } from '$lib/workbench';
 
   let {
     member,
     teams,
     currentRegulation,
     natureSuggestions,
+    ownTeams,
+    excludeOwnTeamId,
     onspreadchange,
     onnaturechange,
   }: {
@@ -20,14 +22,12 @@
     teams: Team[];
     currentRegulation: string;
     natureSuggestions: CatalogSuggestion[];
+    ownTeams: OwnTeamSet[];
+    excludeOwnTeamId: string | null;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
   } = $props();
 
-  let recommendations = $state<SpreadRecommendation[]>([]);
-  let recommendationMessage = $state<string | null>(null);
-  let recommendationsPending = $state(true);
-  let recommendationError = $state(false);
   let cachedTeams: Team[] | undefined;
   let cachedRegulation = '';
   let cachedIndex: BenchmarkIndex | undefined;
@@ -46,50 +46,17 @@
   const regulationTeams = $derived(
     teams.filter((team) => team.regulation === currentRegulation)
   );
-
-  $effect(() => {
-    const snapshot = { ...member, moves: [...member.moves] };
-    const benchmarkIndex = index;
-    const currentTeams = regulationTeams;
-    recommendations = [];
-    recommendationMessage = null;
-    recommendationError = false;
-    recommendationsPending = true;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      void recommendSpreads(
-        snapshot,
-        benchmarkIndex,
-        currentTeams,
-        controller.signal
-      )
-        .then((result) => {
-          if (controller.signal.aborted) return;
-          recommendations = result.suggestions;
-          recommendationMessage = result.message;
-          recommendationsPending = false;
-        })
-        .catch(() => {
-          if (controller.signal.aborted) return;
-          recommendationError = true;
-          recommendationsPending = false;
-        });
-    }, 150);
-    return () => {
-      clearTimeout(timer);
-      controller.abort();
-    };
-  });
+  const ownSpreads = $derived(
+    ownSpreadSuggestions(member, ownTeams, excludeOwnTeamId)
+  );
 </script>
 
 <EvEditor
   {member}
   spread={member.spread || ''}
   nature={member.nature || ''}
-  {recommendations}
-  {recommendationMessage}
-  {recommendationsPending}
-  {recommendationError}
+  {index}
+  {ownSpreads}
   {currentRegulation}
   teams={regulationTeams}
   {natureSuggestions}

@@ -610,6 +610,13 @@
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={data.tags as TeamTagsIndex}
+        ownTeams={saved.map(({ id, name, original, members }) => ({
+          id,
+          name,
+          regulation: original.regulation,
+          members,
+        }))}
+        excludeOwnTeamId={draft.id}
         onapply={(next) => applySetEdit(editIndex, next)}
         oncancel={cancelSetEdit}
         ondirtychange={(value) => (editorDirty = value)}

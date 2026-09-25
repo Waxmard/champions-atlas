@@ -5,13 +5,10 @@ import {
   CHAMPIONS_STATS,
   NATURES,
   championsSpreadTotal,
-  formatChampionsSpread,
   natureEffect,
   parseChampionsSpread,
-  spreadDeltas,
   type ChampionsSpread,
   type ChampionsStat,
-  type SpreadDelta,
 } from './paste.ts';
 
 export type StatRow = [number, number, number, number, number, number];
@@ -172,78 +169,4 @@ export function speedBenchmark(
     below++;
   }
   return { speed, beatPercent: Math.round((below / speeds.length) * 100) };
-}
-
-export interface SpreadNudge {
-  value: string;
-  target: string;
-  targetSpeed: number;
-  speed: number;
-  moved: number;
-  deltas: SpreadDelta[];
-}
-
-/* Points come out of the stats with the most to spare, smallest tier first. */
-export function spreadNudges(
-  pokemon: string,
-  spread: ChampionsSpread | null,
-  nature: string | null,
-  teams: Team[],
-  limit = 2
-): SpreadNudge[] {
-  const row = statRow(pokemon);
-  if (!row || !spread) return [];
-  const currentSpeed = speedFor(pokemon, spread, nature);
-  if (currentSpeed === null) return [];
-
-  const bySpeed = new Map<number, SpeedTier>();
-  for (const tier of speedTiers(teams, 12)) {
-    if (tier.medianSpeed < currentSpeed) continue;
-    if (!bySpeed.has(tier.medianSpeed)) bySpeed.set(tier.medianSpeed, tier);
-  }
-
-  const nudges: SpreadNudge[] = [];
-  for (const tier of [...bySpeed.values()].sort(
-    (a, b) => a.medianSpeed - b.medianSpeed
-  )) {
-    if (nudges.length >= limit) break;
-    let spMin = -1;
-    for (let sp = spread.Spe; sp <= 32; sp++) {
-      if (
-        finalStat(row[5], sp, natureMultiplier(nature, 'Spe')) >
-        tier.medianSpeed
-      ) {
-        spMin = sp;
-        break;
-      }
-    }
-    const deficit = spMin - spread.Spe;
-    if (spMin < 0 || deficit <= 0) continue;
-
-    const next = { ...spread };
-    let remaining = deficit;
-    const donors = CHAMPIONS_STATS.filter((stat) => stat !== 'Spe').sort(
-      (a, b) =>
-        next[b] - next[a] ||
-        CHAMPIONS_STATS.indexOf(a) - CHAMPIONS_STATS.indexOf(b)
-    );
-    for (const stat of donors) {
-      if (remaining <= 0) break;
-      const taken = Math.min(next[stat], remaining);
-      next[stat] -= taken;
-      remaining -= taken;
-    }
-    if (remaining > 0) continue;
-
-    next.Spe = spMin;
-    nudges.push({
-      value: formatChampionsSpread(next),
-      target: `median ${tier.pokemon} (${tier.medianSpeed})`,
-      targetSpeed: tier.medianSpeed,
-      speed: finalStat(row[5], spMin, natureMultiplier(nature, 'Spe')),
-      moved: deficit,
-      deltas: spreadDeltas(spread, next),
-    });
-  }
-  return nudges;
 }

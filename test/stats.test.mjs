@@ -8,7 +8,6 @@ import {
   statsFor,
   speedFor,
   speedTiers,
-  spreadNudges,
   statRow,
 } from '../src/lib/stats.ts';
 
@@ -68,31 +67,6 @@ test('speedTiers ranks species by member count and reports the lower median', ()
   assert.equal(tiers[0].count, 3);
   assert.equal(tiers[1].medianSpeed, 120);
   assert.equal(tiers[2].medianSpeed, 90);
-});
-
-test('spreadNudges reaches the next Speed tier by moving the fewest points', () => {
-  const current = parseChampionsSpread('32 Atk / 2 Spe');
-  assert.equal(speedFor('Absol', current, 'Jolly'), 106);
-
-  const nudges = spreadNudges('Absol', current, 'Jolly', [fixture]);
-  assert.equal(nudges.length, 2);
-  assert.equal(nudges[0].targetSpeed, 110);
-  assert.equal(nudges[0].target, 'median Absol (110)');
-  assert.equal(nudges[0].value, '28 Atk / 6 Spe');
-  assert.equal(nudges[0].speed, 111);
-  assert.equal(nudges[0].moved, 4);
-  assert.deepEqual(nudges[0].deltas, [
-    { stat: 'Atk', from: 32, to: 28, delta: -4 },
-    { stat: 'Spe', from: 2, to: 6, delta: 4 },
-  ]);
-  assert.ok(
-    nudges.every((nudge) => nudge.targetSpeed > 106),
-    'every nudge outspeeds the current build'
-  );
-  assert.equal(nudges[1].targetSpeed, 120);
-
-  assert.deepEqual(spreadNudges('Missingno', current, 'Jolly', [fixture]), []);
-  assert.deepEqual(spreadNudges('Absol', null, 'Jolly', [fixture]), []);
 });
 
 test('final stats use evolved form, nature, and the HP-one exception', () => {

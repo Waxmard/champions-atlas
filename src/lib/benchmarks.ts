@@ -10,11 +10,17 @@ import {
   championsSpreadTotal,
   type ChampionsStat,
 } from './paste.ts';
-export { buildBenchmarkIndex } from './benchmark-index.ts';
+export {
+  buildBenchmarkIndex,
+  damagingMoves,
+  deriveBenchmarkSet,
+  itemOptions,
+} from './benchmark-index.ts';
 export type {
   BenchmarkIndex,
   BenchmarkSpecies,
   BenchmarkVariant,
+  DerivedBenchmarkSet,
 } from './benchmark-index.ts';
 
 export type CombatantConditions = {

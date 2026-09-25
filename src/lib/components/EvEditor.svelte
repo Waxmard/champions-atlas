@@ -10,19 +10,18 @@
     type ChampionsSpread,
   } from '$lib/paste';
   import { resolveBattleForm } from '$lib/battle-forms';
+  import type { BenchmarkIndex } from '$lib/benchmarks';
   import type { Member, Team } from '$lib/catalog';
   import { speedBenchmark, speedFor, speedTiers } from '$lib/stats';
-  import type { SpreadRecommendation } from '$lib/benchmark-suggestions';
-  import type { CatalogSuggestion } from '$lib/workbench';
+  import EvBenchmarkPanel from '$lib/components/EvBenchmarkPanel.svelte';
+  import type { CatalogSuggestion, OwnSpreadSuggestion } from '$lib/workbench';
 
   let {
     member,
     spread,
     nature,
-    recommendations,
-    recommendationMessage,
-    recommendationsPending,
-    recommendationError,
+    index,
+    ownSpreads,
     currentRegulation,
     teams,
     natureSuggestions,
@@ -32,10 +31,8 @@
     member: Member;
     spread: string;
     nature: string;
-    recommendations: SpreadRecommendation[];
-    recommendationMessage: string | null;
-    recommendationsPending: boolean;
-    recommendationError: boolean;
+    index: BenchmarkIndex;
+    ownSpreads: OwnSpreadSuggestion[];
     currentRegulation: string;
     teams: Team[];
     natureSuggestions: CatalogSuggestion[];
@@ -67,22 +64,6 @@
       : null
   );
   const tiers = $derived(speedTiers(teams));
-  const fieldEffects: Record<string, string> = {
-    Drought: 'Sun',
-    Drizzle: 'Rain',
-    'Sand Stream': 'Sand',
-    'Snow Warning': 'Snow',
-    'Electric Surge': 'Electric Terrain',
-    'Grassy Surge': 'Grassy Terrain',
-    'Psychic Surge': 'Psychic Terrain',
-    'Misty Surge': 'Misty Terrain',
-  };
-  const assumptions = $derived([
-    ...(resolvedForm.pokemon !== member.pokemon ? [resolvedForm.pokemon] : []),
-    ...(fieldEffects[resolvedForm.ability ?? '']
-      ? [fieldEffects[resolvedForm.ability ?? '']]
-      : []),
-  ]);
 
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
     onspreadchange(
@@ -259,69 +240,51 @@
   </div>
 {/snippet}
 
-<section
-  class="plate mt-4 grid divide-y"
-  aria-label="EV spread suggestions"
-  aria-busy={recommendationsPending}
->
+<section class="plate mt-4 grid divide-y" aria-label="EV spread suggestions">
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Calculated against common recorded sets in {currentRegulation}; one landed
-      hit at full HP.{#if assumptions.length}
-        {assumptions.join(' · ')}{/if}
+      Spreads your own teams already run on this Pokémon.
     </p>
   </div>
-  {#if recommendationsPending}
-    <p class="provenance px-3 py-2.5">Updating suggestions…</p>
-  {:else if recommendationError}
-    <p class="provenance px-3 py-2.5" role="status">
-      Spread suggestions could not be calculated.
-    </p>
-  {:else if recommendations.length}
-    {#each recommendations as option, i (option.value)}
-      {@const speed = speedBenchmark(
-        resolvedForm.pokemon,
-        parseChampionsSpread(option.value),
-        option.nature,
-        teams
-      )}
-      {@const description = [...option.reasons, ...option.tradeoffs].join('. ')}
-      <button
-        type="button"
-        class="group flex min-h-11 flex-col gap-2 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
-        option.value
-          ? 'font-semibold'
-          : ''}"
-        aria-label={'Use ' + option.nature + ' spread ' + option.value}
-        aria-describedby={'ev-suggestion-details-' + i}
-        onclick={() => onspreadchange(option.value, option.nature)}
+  {#each ownSpreads.slice(0, 4) as option, i (option.teamName + option.spread)}
+    {@const speed = speedBenchmark(
+      resolvedForm.pokemon,
+      parseChampionsSpread(option.spread),
+      option.nature,
+      teams
+    )}
+    <button
+      type="button"
+      class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
+      option.spread
+        ? 'font-semibold'
+        : ''}"
+      aria-label={'Use ' + option.nature + ' spread ' + option.spread}
+      aria-describedby={'ev-suggestion-details-' + i}
+      onclick={() => onspreadchange(option.spread, option.nature)}
+    >
+      <span id={'ev-suggestion-details-' + i} class="sr-only"
+        >{option.teamName} · {option.regulation} · {option.movedPoints} points moved</span
       >
-        <span id={'ev-suggestion-details-' + i} class="sr-only"
-          >{description}</span
-        >
-        {@render chips(option.value)}
-        <span class="value">{formatSpreadDelta(option.deltas)}</span>
-        <span class="value"
-          >{option.reasons.slice(0, 2).join(' · ')}{option.reasons.length > 2
-            ? ` +${option.reasons.length - 2} more`
-            : ''}</span
-        >
+      {@render chips(option.spread)}
+      <span class="value"
+        >{option.nature} · {formatSpreadDelta(option.deltas)}</span
+      >
+      <span class="provenance"
+        >{option.teamName} · {option.regulation} · {option.movedPoints} points moved</span
+      >
+      {#if option.speed !== null}
         <span class="provenance"
           >Unmodified Speed {option.speed}{speed
             ? ` · ${speed.beatPercent}% raw-Speed catalog percentile`
             : ''}</span
         >
-        {#if option.tradeoffs.length}<span class="provenance"
-            >Tradeoff: {option.tradeoffs[0]}{option.tradeoffs.length > 1
-              ? ` +${option.tradeoffs.length - 1} more`
-              : ''}</span
-          >{/if}
-      </button>
-    {/each}
-  {:else if recommendationMessage}
-    <p class="provenance px-3 py-2.5">{recommendationMessage}</p>
-  {/if}
+      {/if}
+    </button>
+  {:else}
+    <p class="provenance px-3 py-2.5">No saved team runs this Pokémon yet.</p>
+  {/each}
   {#if tiers.length && currentSpeed !== null}
     <details class="px-3 py-2.5">
       <summary class="term min-h-11 cursor-pointer content-center"
@@ -342,3 +305,5 @@
     </details>
   {/if}
 </section>
+
+<EvBenchmarkPanel {member} {index} {currentRegulation} {onspreadchange} />

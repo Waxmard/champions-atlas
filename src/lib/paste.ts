@@ -41,6 +41,16 @@ export const formatChampionsSpread = (spread: ChampionsSpread) =>
 export const championsSpreadTotal = (spread: ChampionsSpread) =>
   CHAMPIONS_STATS.reduce((total, stat) => total + spread[stat], 0);
 
+export const isCompleteSpread = (
+  spread: ChampionsSpread | null
+): spread is ChampionsSpread =>
+  !!spread &&
+  championsSpreadTotal(spread) === 66 &&
+  CHAMPIONS_STATS.every(
+    (stat) =>
+      Number.isInteger(spread[stat]) && spread[stat] >= 0 && spread[stat] <= 32
+  );
+
 export const SPREAD_DELTA_SMALL = 8;
 export const SPREAD_DELTA_MODERATE = 16;
 export type SpreadChangeSize =
