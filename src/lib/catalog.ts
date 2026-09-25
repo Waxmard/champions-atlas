@@ -46,6 +46,15 @@ export const normalize = (text: string) =>
     .replace(/♂/g, 'm')
     .replace(/[^a-z0-9]/g, '');
 
+export function isPasteUrl(value: string): boolean {
+  return (
+    value === value.trim() &&
+    /^https:\/\/(?:pokepast\.es\/[a-f0-9]{16}|www\.vrpastes\.com\/[A-Za-z0-9]{8})$/.test(
+      value
+    )
+  );
+}
+
 export function readFilters(params: URLSearchParams): MemberFilter[] {
   const values = params.getAll('member');
   if (values.length > 6) throw new Error('Select at most six Pokémon.');

@@ -93,9 +93,30 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
   saveTeam(storage, first);
   const second = newSavedTeam(team('second'));
   saveTeam(storage, second);
+  const vrSource = team('vr-source');
+  vrSource.pasteUrl = 'https://www.vrpastes.com/qZK7HCqj';
+  const vr = newSavedTeam(vrSource);
+  const snapshot = structuredClone(vr.original.members);
+  saveTeam(storage, vr);
+  const reloaded = readSavedTeams(storage).find((saved) => saved.id === vr.id);
+  assert.equal(reloaded.original.pasteUrl, vrSource.pasteUrl);
+  assert.equal(reloaded.sources[0].pasteUrl, vrSource.pasteUrl);
+  assert.deepEqual(reloaded.original.members, snapshot);
+  for (const invalid of [
+    'https://fakevrpastes.com/qZK7HCqj',
+    'https://user@www.vrpastes.com/qZK7HCqj',
+    'https://www.vrpastes.com/qZK7HCqj/extra',
+    'https://www.vrpastes.com/qZK7HCqj\n',
+  ]) {
+    const bad = structuredClone(vr);
+    bad.sources[0].pasteUrl = invalid;
+    const before = value;
+    assert.throws(() => saveTeam(storage, bad), /untouched/);
+    assert.equal(value, before);
+  }
   first.name = 'Edited';
   saveTeam(storage, first);
-  assert.equal(readSavedTeams(storage).length, 2);
+  assert.equal(readSavedTeams(storage).length, 3);
   assert.equal(
     readSavedTeams(storage).find((team) => team.id === first.id).name,
     'Edited'

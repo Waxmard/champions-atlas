@@ -1,5 +1,11 @@
 import { z } from 'zod';
-import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
+import {
+  compareTeams,
+  isPasteUrl,
+  normalize,
+  type Member,
+  type Team,
+} from './catalog.ts';
 import { normalizeSet, normalizeSpread, parseCustomPaste } from './paste.ts';
 import {
   missingRoles,
@@ -181,9 +187,7 @@ export function differences(before: Member[], after: Member[]) {
 }
 
 const textSchema = z.string().max(50_000);
-const pasteUrlSchema = textSchema.regex(
-  /^https:\/\/pokepast\.es\/[a-f0-9]{16}$/
-);
+const pasteUrlSchema = textSchema.refine(isPasteUrl);
 const memberSchema = z.looseObject({
   pokemon: textSchema.refine((value) => Boolean(normalize(value))),
   item: textSchema.nullable(),

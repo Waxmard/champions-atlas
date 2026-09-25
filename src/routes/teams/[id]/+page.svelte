@@ -193,10 +193,12 @@
         </li>
       {/each}
     </ul>
-    <p class="provenance mt-3">
-      Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
-      names while the sheet lists Mega forms.
-    </p>
+    {#if team.sheetIds.length > 0}
+      <p class="provenance mt-3">
+        Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
+        names while the sheet lists Mega forms.
+      </p>
+    {/if}
   </section>
   {#if paste}
     <details class="plate mt-8 px-5 py-4">
@@ -204,7 +206,7 @@
         >Published paste text</summary
       >
       {#if team.pasteNotes}<p class="term mt-3">
-          Paste notes (may differ from the sheet regulation): {team.pasteNotes}
+          Paste notes (may differ from the listed regulation): {team.pasteNotes}
         </p>{/if}
       <pre
         class="mt-4 overflow-x-auto font-mono text-xs leading-6">{paste}</pre>
