@@ -62,6 +62,31 @@ const hardySneasler = {
   moves: ['Close Combat'],
 };
 
+const palafin = {
+  pokemon: 'Palafin',
+  item: 'Mystic Water',
+  ability: 'Zero to Hero',
+  nature: 'Adamant',
+  spread: '2 HP / 32 Atk / 32 Spe',
+  moves: ['Jet Punch'],
+};
+const highBalance = {
+  pokemon: 'Gholdengo',
+  item: 'Life Orb',
+  ability: 'Good as Gold',
+  nature: 'Modest',
+  spread: '11 HP / 11 Atk / 11 Def / 0 SpA / 11 SpD / 22 Spe',
+  moves: ['Make It Rain'],
+};
+const gardevoirMega = {
+  pokemon: 'Gardevoir-Mega',
+  item: 'Gardevoirite',
+  ability: 'Trace',
+  nature: 'Modest',
+  spread: '4 HP / 28 Def / 15 SpA / 19 Spe',
+  moves: ['Hyper Voice'],
+};
+
 /* Every legal spread with these two stats deals and takes identical damage, so
    a pinned pair stands in for its whole family. */
 const pinnedSpread = (hp, def) => {
@@ -433,6 +458,84 @@ test('solver reports already-met goals, unreachable goals and unusable questions
   );
   setTimeout(() => controller.abort(), 0);
   await assert.rejects(pending, { name: 'AbortError' });
+});
+
+test('solver reports an immune move as guaranteed survival', async () => {
+  assert.deepEqual(
+    await solveBenchmark(gholdengo, {
+      goal: 'survive',
+      opponent: sneasler,
+      move: 'Close Combat',
+      conditions: conditions(),
+    }).then((result) => [result.kind, result.certain, result.summary]),
+    ['answer', true, 'Already survives 1/1 rolls (max 0 of 179 HP)']
+  );
+});
+
+test('solver expands the winning spread family once, not per pinned assignment', async () => {
+  const start = performance.now();
+  const result = await solveBenchmark(highBalance, {
+    goal: 'ko',
+    opponent: gardevoirMega,
+    move: 'Make It Rain',
+    conditions: conditions(),
+  });
+  const elapsed = performance.now() - start;
+  assert.ok(elapsed < 500, `deferred family expansion: ${elapsed} ms`);
+  assert.equal(
+    result.summary,
+    'Your Modest spread can reach this by moving 3 points.'
+  );
+  assert.equal(result.current.solutions[0].movedPoints, 3);
+});
+
+test('solver honours condition form overrides for both combatants', async () => {
+  const base = await solveBenchmark(palafin, {
+    goal: 'ko',
+    opponent: gholdengo,
+    move: 'Jet Punch',
+    conditions: conditions(),
+  });
+  const heroConditions = conditions();
+  heroConditions.self.form = 'Palafin-Hero';
+  const hero = await solveBenchmark(palafin, {
+    goal: 'ko',
+    opponent: gholdengo,
+    move: 'Jet Punch',
+    conditions: heroConditions,
+  });
+  assert.equal(base.best.stats.Atk, 134);
+  assert.deepEqual(hero.best.stats, {
+    HP: 177,
+    Atk: 233,
+    Def: 117,
+    SpA: 113,
+    SpD: 107,
+    Spe: 152,
+  });
+
+  const invalid = conditions();
+  invalid.self.form = 'Palafin-Hero';
+  const invalidResult = await solveBenchmark(raichu, {
+    goal: 'ko',
+    opponent: sneasler,
+    move: 'Close Combat',
+    conditions: invalid,
+  });
+  assert.equal(invalidResult.kind, 'error');
+  assert.match(invalidResult.message, /Invalid battle form/);
+});
+
+test('solver surfaces an unresolvable opponent form as an error on every goal', async () => {
+  assert.deepEqual(
+    await solveBenchmark(raichu, {
+      goal: 'outspeed',
+      opponent: { ...sneasler, pokemon: 'NotAPokemon' },
+      move: null,
+      conditions: conditions(),
+    }),
+    { kind: 'error', message: 'Unknown battle species: NotAPokemon' }
+  );
 });
 
 test('derived sets filter by item, exclude Choice Scarf and aggregate team counts', () => {

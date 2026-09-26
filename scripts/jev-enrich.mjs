@@ -63,7 +63,7 @@ export function loadEnvFile() {
   }
 }
 
-const stub = {
+export const stub = {
   generatedAt: null,
   model: 'jev-1.13.0',
   provenance: 'jev',

@@ -47,6 +47,8 @@ jobs:
           npm run enrich:tags
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+      - name: Evaluate team tags
+        run: npm run eval:tags
       - run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}

@@ -363,6 +363,12 @@ async function searchDamage(
   const direction = survive ? 'incoming' : 'outgoing';
   const candidates: BenchmarkSolution[] = [];
   const seen = new Set<string>();
+  const winners: Array<{
+    fixed: Pinned;
+    movedPoints: number;
+    reached: string;
+  }> = [];
+  let minimalWinning = Infinity;
   const hpOptions = survive
     ? Array.from({ length: 33 }, (_, hp) => hp)
     : [null];
@@ -396,18 +402,12 @@ async function searchDamage(
         const reached = survive
           ? `survives ${rolls}/${rolls} rolls (max ${result.maxDamage} of ${result.defenderHp} HP)`
           : `OHKOs on the minimum roll (min ${result.minDamage} of ${result.defenderHp} HP)`;
-        for (const spread of equalCostSpreads(initial, fixed)) {
-          if (seen.has(spread)) continue;
-          seen.add(spread);
-          const solution = solutionFor(
-            context,
-            spread,
-            nature,
-            movedPoints,
-            reached
-          );
-          if (solution) candidates.push(solution);
+        if (movedPoints < minimalWinning) {
+          minimalWinning = movedPoints;
+          winners.length = 0;
         }
+        if (movedPoints === minimalWinning)
+          winners.push({ fixed, movedPoints, reached });
         continue;
       }
       const outcome = survive
@@ -428,6 +428,21 @@ async function searchDamage(
       };
       if (!best || compareAttempts(question.goal, attempt, best) > 0)
         best = attempt;
+    }
+  }
+  for (const winner of winners) {
+    abortIfNeeded(signal);
+    for (const spread of equalCostSpreads(initial, winner.fixed)) {
+      if (seen.has(spread)) continue;
+      seen.add(spread);
+      const solution = solutionFor(
+        context,
+        spread,
+        nature,
+        winner.movedPoints,
+        winner.reached
+      );
+      if (solution) candidates.push(solution);
     }
   }
   if (!candidates.length)
@@ -496,7 +511,10 @@ export async function solveBenchmark(
     return { kind: 'error', message: 'Choose a nature to see suggestions.' };
   if (!self.item || self.item === '---')
     return { kind: 'error', message: 'Choose an item to see suggestions.' };
-  const form = resolveBattleForm(self);
+  const form = resolveBattleForm(
+    self,
+    question.conditions.self.form ?? undefined
+  );
   if (form.error) return { kind: 'error', message: form.error };
   if (!statsFor(form.pokemon, initial, nature))
     return {
@@ -513,7 +531,11 @@ export async function solveBenchmark(
   if (!goalStat)
     return { kind: 'error', message: `${move} does not deal direct damage` };
 
-  const opponentForm = resolveBattleForm(question.opponent);
+  const opponentForm = resolveBattleForm(
+    question.opponent,
+    question.conditions.opponent.form ?? undefined
+  );
+  if (opponentForm.error) return { kind: 'error', message: opponentForm.error };
   const context: SearchContext = {
     self,
     question,
@@ -521,14 +543,12 @@ export async function solveBenchmark(
     pokemon: form.pokemon,
     move,
     goalStat,
-    target: opponentForm.error
-      ? 0
-      : effectiveSpeed(
-          opponentForm.pokemon,
-          parseChampionsSpread(question.opponent.spread),
-          question.opponent.nature,
-          question.opponent.item
-        ),
+    target: effectiveSpeed(
+      opponentForm.pokemon,
+      parseChampionsSpread(question.opponent.spread),
+      question.opponent.nature,
+      question.opponent.item
+    ),
     scarf:
       normalize(self.item) === 'choicescarf' ||
       normalize(question.opponent.item ?? '') === 'choicescarf',
@@ -563,11 +583,6 @@ export async function solveBenchmark(
     );
     if (baseline.kind !== 'exact')
       return { kind: 'error', message: baseline.reason };
-    if (baseline.minDamage === 0 && baseline.maxDamage === 0)
-      return {
-        kind: 'error',
-        message: `${move} deals no damage to ${question.opponent.pokemon}.`,
-      };
     const chance =
       question.goal === 'survive' ? baseline.survivalChance : baseline.koChance;
     if (chance === 1)
@@ -582,6 +597,11 @@ export async function solveBenchmark(
         current: emptyGroup,
         changed: null,
         best: null,
+      };
+    if (baseline.maxDamage === 0)
+      return {
+        kind: 'error',
+        message: `${move} deals no damage to ${question.opponent.pokemon}.`,
       };
   }
 

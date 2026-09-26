@@ -3,7 +3,13 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../src/lib/catalog.ts';
 import { roleFlags } from '../src/lib/tags.ts';
-import { loadEnvFile, post, questionsFor, stateOf } from './jev-enrich.mjs';
+import {
+  loadEnvFile,
+  post,
+  questionsFor,
+  stateOf,
+  stub,
+} from './jev-enrich.mjs';
 
 const output = resolve('src/lib/data/team-tags.json');
 /* Not test-results/: Playwright clears that directory on every e2e run. */
@@ -164,6 +170,16 @@ async function invariants() {
       `stability on record: agreement ${(state.agreement * 100).toFixed(1)}%, median archetype confidence ${state.medianArchetypeConfidence.toFixed(2)}`
     );
   console.log(state.ok ? 'Tag consumption: GO' : 'Tag consumption: NO-GO');
+  if (!state.ok) {
+    await writeFile(
+      output,
+      JSON.stringify({ ...stub, generatedAt: new Date().toISOString() }) + '\n'
+    );
+    console.error(
+      `Invariant violation rate ${(rate * 100).toFixed(1)}% exceeds the ${VIOLATION_RATE * 100}% limit; wrote an empty tag stub to ${output}.`
+    );
+    process.exitCode = 1;
+  }
   return state;
 }
 
