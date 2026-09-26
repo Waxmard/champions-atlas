@@ -558,13 +558,14 @@
       </div>
     {/if}
     <p class="provenance mt-8 max-w-3xl">
-      Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}.
-      <a
-        class="underline underline-offset-2"
-        href={data.catalog.sources[0].url}
-        target="_blank"
-        rel="external noreferrer">Teams and result claims via VGCPastes</a
-      >. Detailed sets available for {teams.filter((team) => team.paste).length}
+      Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}. Teams and result
+      claims via {#each data.catalog.sources as source, index (source.url)}<a
+          class="underline underline-offset-2"
+          href={source.url}
+          target="_blank"
+          rel="external noreferrer">{source.name}</a
+        >{index < data.catalog.sources.length - 1 ? ', ' : ''}{/each}. Detailed
+      sets available for {teams.filter((team) => team.paste).length}
       teams.
     </p>
   </section>

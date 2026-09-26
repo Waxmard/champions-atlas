@@ -8,6 +8,7 @@
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import X from '@lucide/svelte/icons/x';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
   import { copyText } from '$lib/clipboard';
@@ -19,13 +20,16 @@
     type Team,
   } from '$lib/catalog';
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
+  import type { TeamTagsIndex } from '$lib/tags';
   import {
     activeTeamKey,
     exportPaste,
+    isMegaSpecies,
+    MAX_TEAM_MEGAS,
     readSavedTeams,
     resolveSavedTeamId,
     saveTeam,
-    speciesMember,
+    swapSuggestions,
     type SavedTeam,
   } from '$lib/workbench';
   import { pushNow } from '$lib/sync.svelte';
@@ -51,6 +55,8 @@
     | undefined
   >();
   let pendingSpecies = $state<string | null>(null);
+  let showSwapPicker = $state(false);
+  let swapUnavailable = $state(false);
   const teams = $derived(data.catalog.teams as Team[]);
   const allSpecies = $derived(
     [
@@ -62,6 +68,11 @@
       (p) =>
         !(draft?.members ?? []).some(
           (m) => normalize(m.pokemon) === normalize(p)
+        ) &&
+        !(
+          isMegaSpecies(p) &&
+          (draft?.members ?? []).filter((m) => isMegaSpecies(m.pokemon))
+            .length >= MAX_TEAM_MEGAS
         )
     )
   );
@@ -101,6 +112,8 @@
       editorDirty = false;
       editedSlots.clear();
       pendingSpecies = null;
+      showSwapPicker = false;
+      swapUnavailable = false;
       message =
         id && !entry && !resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
@@ -302,31 +315,25 @@
     }
   }
   function startSpeciesSwap(pokemon: string) {
-    if (editing) return;
+    if (!draft || editing) return;
     pendingSpecies = pokemon;
+    showSwapPicker = false;
+    const best = swapSuggestions(
+      draft.members,
+      teams,
+      current,
+      pokemon,
+      data.tags as TeamTagsIndex
+    )[0];
+    swapUnavailable = !best;
+    if (!best) return;
+    draft.members[best.slot] = structuredClone(best.member);
+    editedSlots.add(best.slot);
+    message = 'Pokémon swap staged.';
   }
   function cancelSpeciesSwap() {
     pendingSpecies = null;
-  }
-  function applySpeciesSwap(index: number) {
-    if (!draft || !pendingSpecies) return;
-    const teammates = draft.members.filter((_, i) => i !== index);
-    draft.members[index] = speciesMember(
-      pendingSpecies,
-      teammates,
-      teams,
-      current
-    ) ?? {
-      pokemon: pendingSpecies,
-      item: null,
-      ability: null,
-      nature: null,
-      spread: null,
-      moves: [],
-    };
-    editedSlots.add(index);
-    pendingSpecies = null;
-    message = 'Pokémon swapped.';
+    swapUnavailable = false;
   }
   async function copyPaste() {
     if (!draft || editing) return;
@@ -487,30 +494,43 @@
         <p class="provenance mt-1.5">
           Editing does not create a working rental code.
         </p>
-        <div class="mt-5 flex items-start gap-3">
-          <div class="min-w-0 flex-1">
-            <PokemonPicker
-              options={availableSpecies}
-              onselect={startSpeciesSwap}
-              disabled={editing}
-              label="Change a Pokémon"
-              placeholder="Choose a Pokémon to swap in…"
-              disabledPlaceholder="Finish editing first"
-            />
-          </div>
+        <div class="mt-5">
           {#if pendingSpecies}
+            <div
+              class="t-panel-slide input flex h-12 items-center justify-between gap-2"
+              use:revealPanel
+            >
+              <span>{pendingSpecies}</span>
+              <button
+                type="button"
+                class="btn size-11 min-h-11 min-w-11 btn-ghost p-0"
+                aria-label="Clear selected Pokémon"
+                onclick={cancelSpeciesSwap}><X class="size-4" /></button
+              >
+            </div>
+          {:else if showSwapPicker}
+            <div class="t-panel-slide" use:revealPanel>
+              <PokemonPicker
+                options={availableSpecies}
+                onselect={startSpeciesSwap}
+                disabled={editing}
+                label="Change a Pokémon"
+                placeholder="Choose a Pokémon to swap in…"
+                disabledPlaceholder="Finish editing first"
+              />
+            </div>
+          {:else}
             <Button
               variant="outline"
-              class="min-h-11 shrink-0"
-              onclick={cancelSpeciesSwap}>Cancel</Button
+              class="min-h-11"
+              disabled={editing}
+              onclick={() => (showSwapPicker = true)}>Change a Pokémon</Button
             >
           {/if}
         </div>
-        {#if pendingSpecies}
-          <p class="mt-2 text-[0.9375rem] text-base-content/70" role="status">
-            Choose which Pokémon to replace with <strong
-              >{pendingSpecies}</strong
-            >.
+        {#if swapUnavailable && pendingSpecies}
+          <p class="provenance mt-2" role="status">
+            No catalog team with {pendingSpecies} shares a remaining teammate.
           </p>
         {/if}
         <div class="mt-5 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -529,15 +549,6 @@
                 {editing}
                 onedit={(field) => openSetEditor(index, field)}
               />
-              {#if pendingSpecies}
-                <Button
-                  variant="outline"
-                  class="mt-3 min-h-11 w-full"
-                  aria-label={`Replace ${member.pokemon} with ${pendingSpecies}`}
-                  onclick={() => applySpeciesSwap(index)}
-                  >Swap in {pendingSpecies}</Button
-                >
-              {/if}
               {#if editedSlots.has(index)}
                 <div
                   class="flex items-center justify-between gap-3 border-t px-3.5 py-2.5"
@@ -598,6 +609,14 @@
         currentRegulation={current}
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
+        tagIndex={data.tags as TeamTagsIndex}
+        ownTeams={saved.map(({ id, name, original, members }) => ({
+          id,
+          name,
+          regulation: original.regulation,
+          members,
+        }))}
+        excludeOwnTeamId={draft.id}
         onapply={(next) => applySetEdit(editIndex, next)}
         oncancel={cancelSetEdit}
         ondirtychange={(value) => (editorDirty = value)}

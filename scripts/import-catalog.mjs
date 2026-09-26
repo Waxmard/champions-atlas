@@ -12,7 +12,15 @@ import {
   syncSprites,
   validateIndex,
 } from './sync-assets.mjs';
-
+import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
+import { normalize } from '../src/lib/catalog.ts';
+import {
+  devonCorpUrl,
+  parseDevonCorp,
+  parseVictoryRoad,
+  parseVrPaste,
+  victoryRoadUrl,
+} from './catalog-sources.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
@@ -23,8 +31,26 @@ export function parseCsv(text) {
   });
 }
 
-const hashSources = (csvs) =>
-  createHash('sha256').update(csvs.join('\n')).digest('hex');
+const hashSources = (sources) =>
+  createHash('sha256').update(sources.join('\n')).digest('hex');
+
+const catalogId = (regulation, pasteUrl, members) =>
+  `${regulation.toLowerCase()}-${createHash('sha256')
+    .update(
+      JSON.stringify([
+        regulation,
+        pasteUrl,
+        members.map(({ pokemon, item }) => [pokemon, item]).sort(),
+      ])
+    )
+    .digest('hex')
+    .slice(0, 16)}`;
+
+function errorWithReason(reason, message) {
+  const error = new Error(message);
+  error.reason = reason;
+  return error;
+}
 
 const value = (text = '') =>
   ['-', 'None', 'N/A', 'No Tweet', 'Discord Submission'].includes(text.trim())
@@ -112,13 +138,8 @@ export function parseSheet(text, regulation) {
       const pasteUrl = url(field('Pokepaste'), 'pokepast.es');
       if (!/^https:\/\/pokepast\.es\/[a-f0-9]{16}$/.test(pasteUrl))
         throw new Error(`Invalid paste URL in ${row[0]}`);
-      const signature = JSON.stringify([
-        regulation,
-        pasteUrl,
-        members.map(({ pokemon, item }) => [pokemon, item]).sort(),
-      ]);
       return {
-        id: `${regulation.toLowerCase()}-${createHash('sha256').update(signature).digest('hex').slice(0, 16)}`,
+        id: catalogId(regulation, pasteUrl, members),
         sheetIds: [row[0]],
         name: field('Team Description'),
         creator: field('Full Name') || field('Owner'),
@@ -184,6 +205,157 @@ export function enrich(team, data) {
     pasteNotes: typeof data.notes === 'string' ? data.notes : null,
     pasteError: undefined,
   };
+}
+const isVrPasteUrl = (value) => value.startsWith('https://www.vrpastes.com/');
+
+const championRegulation = (value) => {
+  if (typeof value !== 'string') return null;
+  const text = normalize(value);
+  return (
+    /vgcregulation([a-z]{2})$/.exec(text)?.[1] ??
+    /champions.*reg([a-z]{2})$/.exec(text)?.[1] ??
+    null
+  );
+};
+
+function validateIndexFormat(candidate, payload) {
+  const regulation = normalize(candidate.regulation);
+  if (!['ma', 'mb', 'mc'].includes(regulation))
+    throw errorWithReason('invalid_payload', 'Invalid candidate regulation');
+  if (payload.provider === 'victory-road') {
+    const format = payload.format;
+    if (format === undefined || format === null || format === '') return;
+    if (typeof format !== 'string')
+      throw errorWithReason('invalid_payload', 'VR format must be a string');
+    if (normalize(format) !== `vgcregulation${regulation}`)
+      throw errorWithReason('format_conflict', `Unexpected format: ${format}`);
+    return;
+  }
+  const notes = payload.notes;
+  if (notes === undefined || notes === null) return;
+  if (typeof notes !== 'string')
+    throw errorWithReason('invalid_payload', 'Paste notes must be a string');
+  for (const line of notes.split(/\r?\n/)) {
+    const match = /^\s*Format\s*:\s*(.*?)\s*$/i.exec(line);
+    if (match && championRegulation(match[1]) !== regulation)
+      throw errorWithReason(
+        'format_conflict',
+        `Unexpected format: ${match[1]}`
+      );
+  }
+}
+
+function resolvedPokemon(member) {
+  const resolved = resolveBattleForm(member);
+  return resolved.error ? member.pokemon : resolved.pokemon;
+}
+
+function rosterMatches(members, expectedSpecies) {
+  if (expectedSpecies === null || expectedSpecies === undefined) return true;
+  if (
+    !Array.isArray(expectedSpecies) ||
+    expectedSpecies.length !== 6 ||
+    !expectedSpecies.every(
+      (species) => typeof species === 'string' && species.trim()
+    )
+  )
+    throw errorWithReason('invalid_roster', 'Invalid published roster');
+  const canonical = (name) => battleSpecies(name)?.name || name;
+  const actual = members
+    .map((member) => normalize(canonical(resolvedPokemon(member))))
+    .sort();
+  const expected = expectedSpecies
+    .map((species) => normalize(canonical(species)))
+    .sort();
+  if (actual.some((species, index) => species !== expected[index]))
+    throw errorWithReason(
+      'roster_mismatch',
+      'Paste species do not match the published roster'
+    );
+  return true;
+}
+
+export function teamFromIndex(candidate, payload, canonicalNames) {
+  if (
+    !candidate ||
+    !payload ||
+    typeof payload !== 'object' ||
+    Array.isArray(payload)
+  )
+    throw errorWithReason(
+      'invalid_payload',
+      'Invalid index candidate or paste payload'
+    );
+  validateIndexFormat(candidate, payload);
+  if (typeof payload.paste !== 'string' || !payload.paste)
+    throw errorWithReason('invalid_payload', 'Paste payload is missing sets');
+  if (
+    payload.notes !== undefined &&
+    payload.notes !== null &&
+    typeof payload.notes !== 'string'
+  )
+    throw errorWithReason('invalid_payload', 'Paste notes must be a string');
+  let parsed;
+  try {
+    parsed = parsePaste(payload.paste);
+  } catch (error) {
+    throw errorWithReason('invalid_payload', error.message);
+  }
+  rosterMatches(parsed, candidate.expectedSpecies);
+  const members = parsed.map((member) => {
+    const pokemon = resolvedPokemon(member);
+    return {
+      ...member,
+      pokemon: canonicalNames.get(normalize(pokemon)) || pokemon,
+    };
+  });
+  if (
+    !Array.isArray(candidate.reports) ||
+    candidate.reports.some(
+      (report) =>
+        !report ||
+        typeof report.event !== 'string' ||
+        typeof report.rank !== 'string' ||
+        typeof report.sourceUrl !== 'string'
+    )
+  )
+    throw errorWithReason('invalid_payload', 'Index reports are invalid');
+  if (
+    payload.publishedAt !== undefined &&
+    typeof payload.publishedAt !== 'string'
+  )
+    throw errorWithReason('invalid_payload', 'Published date must be a string');
+  return {
+    id: catalogId(candidate.regulation, candidate.pasteUrl, members),
+    sheetIds: [],
+    name: candidate.name,
+    creator: candidate.creator,
+    regulation: candidate.regulation,
+    publishedAt: payload.publishedAt || '',
+    pasteUrl: candidate.pasteUrl,
+    replicaCode: candidate.replicaCode || null,
+    replicaStatus: '',
+    reports: candidate.reports.map((report) => ({ ...report })),
+    members,
+    paste: payload.paste,
+    pasteNotes: payload.notes || null,
+  };
+}
+const vrPasteApi = (id) =>
+  `https://vrpaste-backend.vercel.app/api/paste/${id}?lang=english`;
+
+function validateProviderJson(text) {
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    data = null;
+  }
+  if (!data || typeof data !== 'object' || Array.isArray(data))
+    throw errorWithReason(
+      'invalid_payload',
+      'Provider payload is not a JSON object'
+    );
 }
 
 export async function enrichPastes(
@@ -341,8 +513,23 @@ async function main() {
     csvs.push(csv);
     teams.push(...parseSheet(csv, regulation));
   }
+  const indexRefresh = process.env.REFRESH === '1' || checkSheet;
+  const victoryRoadHtml = await fetchCached(
+    'victory-road.html',
+    victoryRoadUrl,
+    parseVictoryRoad,
+    indexRefresh
+  );
+  const devonCorpHtml = await fetchCached(
+    'devoncorp-m-a.html',
+    devonCorpUrl,
+    parseDevonCorp,
+    indexRefresh
+  );
+  const victoryRoad = parseVictoryRoad(victoryRoadHtml);
+  const devonCorp = parseDevonCorp(devonCorpHtml);
   const unique = deduplicate(teams);
-  const sourceHash = hashSources(csvs);
+  const sourceHash = hashSources([...csvs, victoryRoadHtml, devonCorpHtml]);
   let priorCatalog = null;
   try {
     priorCatalog = JSON.parse(await readFile(output, 'utf8'));
@@ -350,18 +537,6 @@ async function main() {
     if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
   }
   const previousTeams = priorCatalog?.teams || [];
-  if (
-    checkSheet &&
-    priorCatalog?.sourceHash === sourceHash &&
-    (priorCatalog?.teams?.length ?? 0) > 0
-  ) {
-    await restoreSprites(priorCatalog.teams);
-    await restoreItems(priorCatalog.teams);
-    console.log(
-      `Sheet unchanged (${sourceHash.slice(0, 8)}); reusing prior catalog of ${priorCatalog.teams.length} teams.`
-    );
-    return;
-  }
   const stats = await enrichPastes(unique, {
     limit: count,
     previousTeams,
@@ -379,17 +554,184 @@ async function main() {
       }
     },
   });
+  const canonicalNames = new Map();
+  for (const team of unique)
+    for (const member of team.members) {
+      const resolved = resolveBattleForm(member);
+      const key = normalize(resolved.error ? member.pokemon : resolved.pokemon);
+      if (!canonicalNames.has(key)) canonicalNames.set(key, member.pokemon);
+    }
+  const priorByKey = new Map();
+  for (const team of previousTeams)
+    if (team.pasteUrl && !priorByKey.has(`${team.pasteUrl}|${team.regulation}`))
+      priorByKey.set(`${team.pasteUrl}|${team.regulation}`, team);
+  const emitted = new Set(unique.map((team) => team.id));
+  const reasons = new Map();
+  const noteReason = (reason) =>
+    reasons.set(reason, (reasons.get(reason) || 0) + 1);
+  const payloads = new Map();
+  async function loadVictoryRoadPayload(candidate) {
+    const id = candidate.pasteUrl.split('/').at(-1);
+    let text;
+    try {
+      text = await fetchCached(
+        `vr-${id}.json`,
+        vrPasteApi(id),
+        validateProviderJson,
+        indexRefresh
+      );
+    } catch (error) {
+      throw error.reason
+        ? error
+        : errorWithReason('paste_unavailable', error.message);
+    }
+    try {
+      return { ...parseVrPaste(JSON.parse(text)), provider: 'victory-road' };
+    } catch (error) {
+      throw error.reason
+        ? error
+        : errorWithReason('invalid_payload', `Invalid VR payload: ${id}`);
+    }
+  }
+  async function loadPokepastePayload(candidate) {
+    const key = candidate.pasteUrl.split('/').at(-1);
+    let text;
+    try {
+      text = await fetchCached(
+        `${key}.json`,
+        `${candidate.pasteUrl}/json`,
+        validateProviderJson
+      );
+    } catch (error) {
+      throw error.reason
+        ? error
+        : errorWithReason('paste_unavailable', error.message);
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw errorWithReason('invalid_payload', `Invalid paste payload: ${key}`);
+    }
+    return {
+      paste: data.paste,
+      notes: data.notes,
+      publishedAt: '',
+      provider: 'pokepaste',
+    };
+  }
+  const loadPayload = (candidate) => {
+    const pending = isVrPasteUrl(candidate.pasteUrl)
+      ? loadVictoryRoadPayload(candidate)
+      : loadPokepastePayload(candidate);
+    if (!payloads.has(candidate.pasteUrl))
+      payloads.set(candidate.pasteUrl, pending);
+    return payloads.get(candidate.pasteUrl);
+  };
+  const compatiblePrior = (candidate) => {
+    const prior = priorByKey.get(
+      `${candidate.pasteUrl}|${candidate.regulation}`
+    );
+    if (!prior) return null;
+    if (
+      !Array.isArray(prior.reports) ||
+      !prior.reports.some((report) => report?.sourceUrl === candidate.indexUrl)
+    )
+      return null;
+    if (candidate.expectedSpecies) {
+      try {
+        rosterMatches(prior.members || [], candidate.expectedSpecies);
+      } catch {
+        return null;
+      }
+    }
+    return prior;
+  };
+  const fallbackReasons = new Set(['paste_unavailable', 'invalid_payload']);
+  const publicBudget =
+    count === Infinity ? Infinity : Math.max(0, count - stats.attempted);
+  let publicUsed = 0;
+  const publicTeams = [];
+  const sourceStats = [];
+  for (const [name, source] of [
+    ['Victory Road', victoryRoad],
+    ['DevonCorp', devonCorp],
+  ]) {
+    const counts = {
+      discovered: source.candidates.length + source.skipped.length,
+      accepted: 0,
+      priorRetained: 0,
+      skipped: 0,
+      merged: 0,
+    };
+    for (const entry of source.skipped) {
+      counts.skipped += 1;
+      noteReason(entry.reason);
+      console.warn(
+        `${name}: skipped ${entry.pasteUrl || 'row'} (${entry.reason})`
+      );
+    }
+    sourceStats.push({ name, counts });
+    for (const candidate of source.candidates) {
+      const prior = compatiblePrior(candidate);
+      const keep = (team, field) => {
+        publicTeams.push(team);
+        if (emitted.has(team.id)) counts.merged += 1;
+        else {
+          emitted.add(team.id);
+          counts[field] += 1;
+        }
+      };
+      if (publicUsed >= publicBudget) {
+        if (prior) keep(prior, 'priorRetained');
+        else {
+          counts.skipped += 1;
+          noteReason('limited');
+        }
+        continue;
+      }
+      publicUsed += 1;
+      try {
+        const payload = await loadPayload(candidate);
+        keep(teamFromIndex(candidate, payload, canonicalNames), 'accepted');
+      } catch (error) {
+        const reason = error.reason || 'paste_unavailable';
+        if (prior && fallbackReasons.has(reason))
+          keep({ ...prior, pasteError: error.message }, 'priorRetained');
+        else {
+          counts.skipped += 1;
+          noteReason(reason);
+          console.warn(
+            `${name}: skipped ${candidate.pasteUrl} (${reason}: ${error.message})`
+          );
+        }
+      }
+    }
+  }
+  const catalogTeams = deduplicate([...unique, ...publicTeams]);
   await writeCatalog(output, {
     updatedAt: new Date().toISOString(),
     currentRegulation: 'M-C',
-    sources: [{ name: 'VGCPastes', url: `${sheet}/edit` }],
+    sources: [
+      { name: 'VGCPastes', url: `${sheet}/edit` },
+      { name: 'Victory Road', url: victoryRoadUrl },
+      { name: 'DevonCorp', url: devonCorpUrl },
+    ],
     sourceHash,
-    teams: unique,
+    teams: catalogTeams,
   });
-  const sprites = await restoreSprites(unique);
-  const items = await restoreItems(unique);
+  const sprites = await restoreSprites(catalogTeams);
+  const items = await restoreItems(catalogTeams);
+  for (const { name, counts } of sourceStats)
+    console.log(
+      `${name}: ${counts.discovered} discovered — ${counts.accepted} accepted, ${counts.priorRetained} retained, ${counts.skipped} skipped, ${counts.merged} merged.`
+    );
+  if (reasons.size)
+    console.log(
+      `Skip reasons: ${[...reasons].map(([reason, total]) => `${reason}=${total}`).join(', ')}`
+    );
   console.log(
-    `Imported ${unique.length} teams; ${stats.enriched}/${stats.attempted} pastes enriched, ${stats.failed} failed. Catalog written atomically.${sprites ? ` ${sprites.wanted} sprites ready, ${sprites.failed} failed.` : ''}${items ? ` ${items.wanted} item icons ready, ${items.failed} failed.` : ''}`
+    `Imported ${catalogTeams.length} teams; ${stats.enriched}/${stats.attempted} pastes enriched, ${stats.failed} failed. Catalog written atomically.${sprites ? ` ${sprites.wanted} sprites ready, ${sprites.failed} failed.` : ''}${items ? ` ${items.wanted} item icons ready, ${items.failed} failed.` : ''}`
   );
 }
 

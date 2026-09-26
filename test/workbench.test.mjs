@@ -3,15 +3,17 @@ import test from 'node:test';
 import {
   differences,
   exportPaste,
+  isMegaSpecies,
   newCustomTeam,
   newSavedTeam,
+  pokemonSuggestions,
   readSavedTeams,
   saveTeam,
   setText,
   storageKey,
   catalogSuggestions,
   resolveSavedTeamId,
-  speciesMember,
+  swapSuggestions,
 } from '../src/lib/workbench.ts';
 import {
   championsSpreadTotal,
@@ -91,9 +93,30 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
   saveTeam(storage, first);
   const second = newSavedTeam(team('second'));
   saveTeam(storage, second);
+  const vrSource = team('vr-source');
+  vrSource.pasteUrl = 'https://www.vrpastes.com/qZK7HCqj';
+  const vr = newSavedTeam(vrSource);
+  const snapshot = structuredClone(vr.original.members);
+  saveTeam(storage, vr);
+  const reloaded = readSavedTeams(storage).find((saved) => saved.id === vr.id);
+  assert.equal(reloaded.original.pasteUrl, vrSource.pasteUrl);
+  assert.equal(reloaded.sources[0].pasteUrl, vrSource.pasteUrl);
+  assert.deepEqual(reloaded.original.members, snapshot);
+  for (const invalid of [
+    'https://fakevrpastes.com/qZK7HCqj',
+    'https://user@www.vrpastes.com/qZK7HCqj',
+    'https://www.vrpastes.com/qZK7HCqj/extra',
+    'https://www.vrpastes.com/qZK7HCqj\n',
+  ]) {
+    const bad = structuredClone(vr);
+    bad.sources[0].pasteUrl = invalid;
+    const before = value;
+    assert.throws(() => saveTeam(storage, bad), /untouched/);
+    assert.equal(value, before);
+  }
   first.name = 'Edited';
   saveTeam(storage, first);
-  assert.equal(readSavedTeams(storage).length, 2);
+  assert.equal(readSavedTeams(storage).length, 3);
   assert.equal(
     readSavedTeams(storage).find((team) => team.id === first.id).name,
     'Edited'
@@ -382,15 +405,12 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     { value: 'Fake Out', currentCount: 2, totalCount: 5 },
     { value: 'Flare Blitz', currentCount: 1, totalCount: 1 },
   ]);
-  assert.deepEqual(suggestions.spreads, [
-    { value: '32 HP', currentCount: 3, totalCount: 6 },
-  ]);
   assert.deepEqual(
     catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
     [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
   );
 });
-test('hybrid suggestions link Mega forms, keep stable fields fixed, and pair nature with EV spread', () => {
+test('hybrid suggestions link Mega forms and keep stable fields fixed', () => {
   const physicalDnite = (
     spread = '2 HP / 32 Atk / 32 Spe',
     nature = 'Adamant'
@@ -433,26 +453,13 @@ test('hybrid suggestions link Mega forms, keep stable fields fixed, and pair nat
   };
   const teammates = [member('Sneasler')];
 
-  // Suggesting spreads for Mega Dragonite with teammates:
   const suggestions = catalogSuggestions(
     draftSpecial,
     [t1, t2, t3, t4],
     'M-B',
     teammates
   );
-  assert.ok(
-    suggestions.spreads.some(
-      (s) => s.value === '2 HP / 32 SpA / 32 Spe' && s.nature === 'Modest'
-    )
-  );
-  assert.ok(
-    suggestions.spreads.some(
-      (s) =>
-        s.value === '1 HP / 1 Def / 32 SpA / 32 Spe' && s.nature === 'Modest'
-    )
-  );
-  assert.equal(suggestions.spreads[0].nature, 'Modest');
-  assert.equal(suggestions.spreads[1].nature, 'Modest');
+  assert.equal(suggestions.natures[0].value, 'Modest');
 
   // Suggesting item for special Dragonite:
   const draftNoItem = {
@@ -483,43 +490,6 @@ test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
   assert.equal(resolveSavedTeamId(teams, null, 'nonexistent'), 't1');
   assert.equal(resolveSavedTeamId(teams, null, null), 't1');
   assert.equal(resolveSavedTeamId([], 't1', 't1'), null);
-});
-
-test('speciesMember picks the set from the team sharing the most teammates', () => {
-  const x = team('x');
-  x.members = [
-    member('Incineroar', 'Alpha'),
-    member('Sneasler'),
-    member('Kingambit'),
-  ];
-  const y = team('y');
-  y.members = [member('Incineroar', 'Beta'), member('Sneasler')];
-  assert.equal(
-    speciesMember(
-      'Incineroar',
-      [member('Sneasler'), member('Kingambit')],
-      [x, y],
-      'M-C'
-    )?.item,
-    'Alpha'
-  );
-});
-
-test('speciesMember set depends on which teammate is swapped out', () => {
-  const x = team('x');
-  x.members = [member('Incineroar', 'Alpha'), member('Sneasler')];
-  const y = team('y');
-  y.members = [member('Incineroar', 'Beta'), member('Rillaboom')];
-  // Swapping out Sneasler leaves Rillaboom, so the Rillaboom team (Beta) wins.
-  assert.equal(
-    speciesMember('Incineroar', [member('Rillaboom')], [x, y], 'M-C')?.item,
-    'Beta'
-  );
-  // Swapping out Rillaboom leaves Sneasler, so the Sneasler team (Alpha) wins.
-  assert.equal(
-    speciesMember('Incineroar', [member('Sneasler')], [x, y], 'M-C')?.item,
-    'Alpha'
-  );
 });
 
 test('every nature maps to its standard raised and lowered stat', () => {
@@ -560,4 +530,184 @@ test('every nature maps to its standard raised and lowered stat', () => {
   assert.equal(natureEffect('modest')?.raised, 'SpA');
   assert.equal(natureEffect(null), null);
   assert.equal(natureEffect(''), null);
+});
+
+test('the role tiebreak never outranks a sourced result', () => {
+  const tags = {
+    teams: { role: { archetype: 'balance', speedMode: 'faster', roles: {} } },
+  };
+  const teammates = [member('Sneasler')];
+
+  // Poor evidence, but the team fills a job the draft lacks via Tailwind.
+  const fillsRole = team('role', 'M-C');
+  fillsRole.members = [
+    member('Sneasler'),
+    { ...member('Incineroar'), moves: ['Tailwind', 'Fake Out'] },
+  ];
+
+  // Better evidence, no role fill beyond what the teammate already covers.
+  const proven = team('evidence', 'M-C');
+  proven.members = [member('Sneasler'), member('Rillaboom')];
+  proven.reports = [{ event: 'Worlds', rank: 'Champion', sourceUrl: '' }];
+
+  const ranked = pokemonSuggestions(
+    teammates,
+    [fillsRole, proven],
+    'M-C',
+    undefined,
+    tags
+  );
+  assert.deepEqual(
+    ranked.map((suggestion) => suggestion.pokemon),
+    ['Rillaboom', 'Incineroar']
+  );
+
+  // With evidence equal, the role fill wins again.
+  const unproven = team('evidence-tied', 'M-C');
+  unproven.members = [member('Sneasler'), member('Rillaboom')];
+  const tied = pokemonSuggestions(
+    teammates,
+    [fillsRole, unproven],
+    'M-C',
+    undefined,
+    tags
+  );
+  assert.equal(tied[0].member.pokemon, 'Incineroar');
+
+  // The empty stub generated by --if-missing must be completely inert.
+  const stub = { teams: {} };
+  const withStub = pokemonSuggestions(
+    teammates,
+    [fillsRole, unproven],
+    'M-C',
+    undefined,
+    stub
+  );
+  assert.equal(withStub[0].member.pokemon, 'Rillaboom');
+  assert.deepEqual(
+    withStub.map((suggestion) => [
+      suggestion.role,
+      suggestion.archetype,
+      suggestion.roleFill,
+    ]),
+    withStub.map(() => [null, null, false])
+  );
+});
+
+test('isMegaSpecies matches named Mega forms and not similar species', () => {
+  assert.equal(isMegaSpecies('Meganium'), false);
+  assert.equal(isMegaSpecies('Garchomp-Mega-Z'), true);
+  assert.equal(isMegaSpecies('Froslass-Mega'), true);
+});
+
+test('pokemonSuggestions stops offering a third Mega', () => {
+  const megaTeam = team('mega', 'M-C');
+  megaTeam.members = [
+    member('Dragonite-Mega'),
+    member('Garchomp-Mega-Z'),
+    member('Froslass-Mega'),
+    member('Incineroar'),
+    member('Sneasler'),
+    member('Kingambit'),
+  ];
+  const twoMegas = pokemonSuggestions(
+    [member('Dragonite-Mega'), member('Garchomp-Mega-Z')],
+    [megaTeam],
+    'M-C'
+  );
+  assert.ok(twoMegas.length > 0);
+  assert.ok(twoMegas.every((suggestion) => !isMegaSpecies(suggestion.pokemon)));
+
+  const oneMega = pokemonSuggestions(
+    [member('Dragonite-Mega')],
+    [megaTeam],
+    'M-C'
+  );
+  assert.ok(
+    oneMega.some((suggestion) => suggestion.pokemon === 'Froslass-Mega')
+  );
+});
+
+test('search filters Pokémon before the six-result limit', () => {
+  const source = team('many');
+  source.members = [
+    member('Ally'),
+    ...Array.from({ length: 7 }, (_, index) => member(`Choice${index}`)),
+  ];
+  assert.equal(
+    pokemonSuggestions(
+      [member('Ally')],
+      [source],
+      'M-C',
+      undefined,
+      undefined,
+      'Choice6'
+    )[0].pokemon,
+    'Choice6'
+  );
+});
+
+test('searched swaps rank each eligible slot and preview its winning catalog set', () => {
+  const draft = [
+    member('One', 'A'),
+    member('Two', 'B'),
+    member('Three'),
+    member('Four'),
+    member('Five'),
+    member('Six'),
+  ];
+  const one = team('one');
+  one.members = [member('One', 'A'), member('Target', 'Set One')];
+  const two = team('two');
+  two.members = [member('Two', 'B'), member('Target', 'Set Two')];
+  const both = team('both');
+  both.members = [
+    member('One', 'Other'),
+    member('Two', 'Other'),
+    member('Target', 'Set Both'),
+  ];
+  const results = swapSuggestions(draft, [one, two, both], 'M-C', 'Target');
+  assert.deepEqual(
+    results.map(({ slot }) => slot),
+    [2, 3, 4, 5, 1, 0]
+  );
+  assert.equal(results[0].member.item, 'Set Both');
+  assert.equal(results[0].source.id, 'both');
+  assert.equal(results[4].member.item, 'Set One');
+  assert.equal(results[5].member.item, 'Set Two');
+  assert.deepEqual(
+    swapSuggestions(draft, [one, two, both], 'M-C').map(
+      ({ pokemon }) => pokemon
+    ),
+    ['Target']
+  );
+});
+
+test('swaps require teammate overlap and preserve the two-Mega limit by slot', () => {
+  const source = team('mega-swap');
+  source.members = [member('Ally'), member('Froslass-Mega')];
+  const draft = [
+    member('Dragonite-Mega'),
+    member('Garchomp-Mega-Z'),
+    member('Ally'),
+    member('Other'),
+    member('Another'),
+    member('Last'),
+  ];
+  assert.deepEqual(
+    swapSuggestions(draft, [source], 'M-C', 'Froslass-Mega').map(
+      ({ slot }) => slot
+    ),
+    [0, 1]
+  );
+  assert.deepEqual(swapSuggestions(draft, [source], 'M-C', 'Missing'), []);
+  assert.deepEqual(
+    swapSuggestions(
+      draft,
+      [{ ...source, members: [member('Froslass-Mega')] }],
+      'M-C',
+      'Froslass-Mega'
+    ),
+    []
+  );
 });

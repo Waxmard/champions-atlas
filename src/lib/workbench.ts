@@ -1,6 +1,32 @@
 import { z } from 'zod';
-import { compareTeams, normalize, type Member, type Team } from './catalog.ts';
-import { normalizeSet, normalizeSpread, parseCustomPaste } from './paste.ts';
+import {
+  compareTeams,
+  isPasteUrl,
+  normalize,
+  type Member,
+  type Team,
+} from './catalog.ts';
+import { resolveBattleForm } from './battle-forms.ts';
+import {
+  NATURES,
+  formatChampionsSpread,
+  isCompleteSpread,
+  normalizeSet,
+  normalizeSpread,
+  parseChampionsSpread,
+  parseCustomPaste,
+  spreadDeltas,
+  spreadMoved,
+  type SpreadDelta,
+} from './paste.ts';
+import { speedFor } from './stats.ts';
+import {
+  missingRoles,
+  postalRole,
+  roleFlags,
+  tagsForTeam,
+  type TeamTagsIndex,
+} from './tags.ts';
 
 export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
@@ -174,9 +200,7 @@ export function differences(before: Member[], after: Member[]) {
 }
 
 const textSchema = z.string().max(50_000);
-const pasteUrlSchema = textSchema.regex(
-  /^https:\/\/pokepast\.es\/[a-f0-9]{16}$/
-);
+const pasteUrlSchema = textSchema.refine(isPasteUrl);
 const memberSchema = z.looseObject({
   pokemon: textSchema.refine((value) => Boolean(normalize(value))),
   item: textSchema.nullable(),
@@ -246,6 +270,10 @@ export function saveTeam(
   return next;
 }
 
+export const MAX_TEAM_MEGAS = 2;
+export const isMegaSpecies = (pokemon: string) =>
+  /-Mega(-[XYZ])?$/i.test(pokemon.trim());
+
 export const basePokemon = (name: string) =>
   normalize(name).replace(/mega[a-z]?$/, '');
 
@@ -253,7 +281,6 @@ export interface CatalogSuggestion {
   value: string;
   currentCount: number;
   totalCount: number;
-  nature?: string | null;
   score?: number;
 }
 
@@ -261,13 +288,77 @@ export interface PokemonSuggestion {
   pokemon: string;
   member: Member;
   sharedTeammates: number;
+  matchingDetails: number;
+  role: string | null;
+  roleFill: boolean;
+  archetype: string | null;
+  source: Team;
+}
+
+const matchingDetails = (a: Member, b: Member) =>
+  (['item', 'ability', 'nature', 'spread'] as const).filter(
+    (field) =>
+      a[field] && b[field] && normalize(a[field]) === normalize(b[field])
+  ).length +
+  a.moves.filter((move) =>
+    b.moves.some((other) => normalize(move) === normalize(other))
+  ).length;
+
+function rankedSourceTeams(
+  teammates: Member[],
+  teams: Team[],
+  currentRegulation: string,
+  tags?: TeamTagsIndex
+) {
+  const missing =
+    Object.keys(tags?.teams ?? {}).length > 0
+      ? missingRoles(teammates, teams, tags)
+      : [];
+  return {
+    missing,
+    ranked: teams
+      .map((team) => {
+        let shared = 0;
+        let details = 0;
+        for (const member of teammates) {
+          const match = team.members.find(
+            (candidate) =>
+              normalize(candidate.pokemon) === normalize(member.pokemon)
+          );
+          if (!match) continue;
+          shared++;
+          details += matchingDetails(member, match);
+        }
+        const roleBonus = missing.some((role) =>
+          team.members.some((member) => roleFlags(member).includes(role))
+        )
+          ? 1
+          : 0;
+        return { team, shared, details, roleBonus };
+      })
+      .filter(({ shared }) => shared > 0)
+      .sort(
+        (a, b) =>
+          b.shared - a.shared ||
+          b.details - a.details ||
+          compareTeams(
+            a.team,
+            b.team,
+            currentRegulation,
+            b.roleBonus - a.roleBonus
+          )
+      ),
+  };
 }
 
 export function catalogSuggestions(
   target: string | Member,
   teams: Team[],
   currentRegulation: string,
-  teammates: Member[] = []
+  teammates: Member[] = [],
+  tags?: TeamTagsIndex,
+  pokemonQuery = '',
+  originalPokemon = typeof target === 'string' ? target : target.pokemon
 ) {
   const isSimple = typeof target === 'string';
   const targetMember: Member = isSimple
@@ -286,15 +377,13 @@ export function catalogSuggestions(
   const items = new Map<string, CatalogSuggestion>();
   const abilities = new Map<string, CatalogSuggestion>();
   const moves = new Map<string, CatalogSuggestion>();
-  const spreads = new Map<string, CatalogSuggestion>();
   const natures = new Map<string, CatalogSuggestion>();
 
   const add = (
     values: Map<string, CatalogSuggestion>,
     value: string | null,
     score: number,
-    current: boolean,
-    extra?: { nature?: string | null }
+    current: boolean
   ) => {
     if (!value || !normalize(value)) return;
     const key = normalize(value);
@@ -303,8 +392,6 @@ export function catalogSuggestions(
       existing.totalCount++;
       if (score > 0) existing.score = (existing.score || 0) + score;
       if (current) existing.currentCount++;
-      if (!isSimple && extra?.nature && !existing.nature)
-        existing.nature = extra.nature;
     } else {
       const entry: CatalogSuggestion = {
         value,
@@ -312,7 +399,6 @@ export function catalogSuggestions(
         totalCount: 1,
       };
       if (score > 0) entry.score = score;
-      if (!isSimple && extra?.nature) entry.nature = extra.nature;
       values.set(key, entry);
     }
   };
@@ -353,9 +439,6 @@ export function catalogSuggestions(
 
       add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
       add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
-      add(spreads, member.spread, baseScore + im + am + mm, isCurrent, {
-        nature: member.nature,
-      });
       add(natures, member.nature, baseScore + im + am + mm, isCurrent);
       for (const move of member.moves) {
         add(moves, move, baseScore + im + am + nm + sm, isCurrent);
@@ -376,13 +459,14 @@ export function catalogSuggestions(
     items: rank(items),
     abilities: rank(abilities),
     moves: rank(moves),
-    spreads: rank(spreads),
     natures: rank(natures),
     pokemon: pokemonSuggestions(
       teammates,
       teams,
       currentRegulation,
-      targetMember.pokemon
+      originalPokemon,
+      tags,
+      pokemonQuery
     ),
   };
 }
@@ -391,45 +475,25 @@ export function pokemonSuggestions(
   teammates: Member[],
   teams: Team[],
   currentRegulation: string,
-  excludePokemon?: string
+  excludePokemon?: string,
+  tags?: TeamTagsIndex,
+  query = ''
 ): PokemonSuggestion[] {
   const excludeSpecies = new Set(teammates.map((t) => normalize(t.pokemon)));
   if (excludePokemon) {
     excludeSpecies.add(normalize(excludePokemon));
     excludeSpecies.add(basePokemon(excludePokemon));
   }
-
-  const rankedTeams = teams
-    .map((team) => {
-      let shared = 0,
-        details = 0;
-      for (const t of teammates) {
-        const match = team.members.find(
-          (m) => normalize(m.pokemon) === normalize(t.pokemon)
-        );
-        if (!match) continue;
-        shared++;
-        if (t.item && match.item && normalize(t.item) === normalize(match.item))
-          details++;
-        if (
-          t.ability &&
-          match.ability &&
-          normalize(t.ability) === normalize(match.ability)
-        )
-          details++;
-      }
-      return { team, shared, details };
-    })
-    .filter((t) => t.shared > 0)
-    .sort(
-      (a, b) =>
-        b.shared - a.shared ||
-        b.details - a.details ||
-        compareTeams(a.team, b.team, currentRegulation)
-    );
+  const megaCount = teammates.filter((t) => isMegaSpecies(t.pokemon)).length;
+  const { ranked: rankedTeams, missing } = rankedSourceTeams(
+    teammates,
+    teams,
+    currentRegulation,
+    tags
+  );
   const seen = new Set<string>();
   const suggestions: PokemonSuggestion[] = [];
-  for (const { team, shared } of rankedTeams) {
+  for (const { team, shared, details } of rankedTeams) {
     for (const m of team.members) {
       const norm = normalize(m.pokemon);
       if (
@@ -437,12 +501,19 @@ export function pokemonSuggestions(
         excludeSpecies.has(basePokemon(m.pokemon))
       )
         continue;
+      if (megaCount >= MAX_TEAM_MEGAS && isMegaSpecies(m.pokemon)) continue;
+      if (query && !norm.includes(normalize(query))) continue;
       if (seen.has(norm)) continue;
       seen.add(norm);
       suggestions.push({
         pokemon: m.pokemon,
         member: m,
         sharedTeammates: shared,
+        matchingDetails: details,
+        role: postalRole(m.pokemon, teams, tags),
+        roleFill: missing.some((role) => roleFlags(m).includes(role)),
+        archetype: tagsForTeam(tags, team.id)?.archetype ?? null,
+        source: team,
       });
       if (suggestions.length >= 6) break;
     }
@@ -451,41 +522,103 @@ export function pokemonSuggestions(
   return suggestions;
 }
 
-export function speciesMember(
-  pokemon: string,
-  teammates: Member[],
+export interface SwapSuggestion extends PokemonSuggestion {
+  slot: number;
+}
+
+export function swapSuggestions(
+  members: Member[],
   teams: Team[],
-  currentRegulation: string
-): Member | null {
-  const norm = normalize(pokemon);
-  const rankedTeams = teams
-    .map((team) => {
-      let shared = 0;
-      for (const t of teammates) {
-        if (
-          team.members.some(
-            (m) => normalize(m.pokemon) === normalize(t.pokemon)
-          )
-        )
-          shared++;
-      }
-      return { team, shared };
-    })
-    .sort(
-      (a, b) =>
-        b.shared - a.shared || compareTeams(a.team, b.team, currentRegulation)
-    );
-  for (const { team } of rankedTeams) {
-    const match = team.members.find((m) => normalize(m.pokemon) === norm);
-    if (match)
-      return {
-        pokemon: match.pokemon,
-        item: match.item,
-        ability: match.ability,
-        nature: match.nature,
-        spread: match.spread,
-        moves: [...match.moves],
-      };
+  currentRegulation: string,
+  pokemon = '',
+  tags?: TeamTagsIndex
+): SwapSuggestion[] {
+  const candidates: SwapSuggestion[] = [];
+  for (const [slot, replaced] of members.entries()) {
+    const teammates = members.filter((_, index) => index !== slot);
+    for (const suggestion of pokemonSuggestions(
+      teammates,
+      teams,
+      currentRegulation,
+      replaced.pokemon,
+      tags,
+      pokemon
+    )) {
+      if (pokemon && normalize(suggestion.pokemon) !== normalize(pokemon))
+        continue;
+      candidates.push({ ...suggestion, slot });
+    }
   }
-  return null;
+  candidates.sort(
+    (a, b) =>
+      b.sharedTeammates - a.sharedTeammates ||
+      b.matchingDetails - a.matchingDetails ||
+      compareTeams(a.source, b.source, currentRegulation) ||
+      a.slot - b.slot
+  );
+  if (pokemon) return candidates;
+  const seen = new Set<string>();
+  return candidates
+    .filter(({ pokemon }) => {
+      const key = normalize(pokemon);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 6);
+}
+
+export interface OwnTeamSet {
+  id: string;
+  name: string;
+  regulation: string;
+  members: Member[];
+}
+
+export interface OwnSpreadSuggestion {
+  teamName: string;
+  regulation: string;
+  spread: string;
+  nature: string;
+  deltas: SpreadDelta[];
+  movedPoints: number;
+  speed: number | null;
+}
+
+export function ownSpreadSuggestions(
+  self: Member,
+  teams: OwnTeamSet[],
+  excludeTeamId: string | null
+): OwnSpreadSuggestion[] {
+  const form = resolveBattleForm(self);
+  if (form.error) return [];
+  const initial = parseChampionsSpread(self.spread);
+  const suggestions: OwnSpreadSuggestion[] = [];
+  for (const team of teams) {
+    if (team.id === excludeTeamId) continue;
+    for (const member of team.members) {
+      if (resolveBattleForm(member).pokemon !== form.pokemon) continue;
+      const spread = parseChampionsSpread(member.spread);
+      if (!isCompleteSpread(spread)) continue;
+      const nature = NATURES.find(
+        (name) => normalize(name) === normalize(member.nature ?? '')
+      );
+      if (!nature) continue;
+      const deltas = spreadDeltas(initial, spread);
+      if (!deltas.length) continue;
+      suggestions.push({
+        teamName: team.name,
+        regulation: team.regulation,
+        spread: formatChampionsSpread(spread),
+        nature,
+        deltas,
+        movedPoints: spreadMoved(deltas) / 2,
+        speed: speedFor(form.pokemon, spread, nature),
+      });
+    }
+  }
+  return suggestions.sort(
+    (a, b) =>
+      a.movedPoints - b.movedPoints || a.teamName.localeCompare(b.teamName)
+  );
 }

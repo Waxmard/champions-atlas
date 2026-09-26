@@ -104,16 +104,10 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   });
   await expect(editor).toBeVisible();
   await expectPokemonSubView(editor);
-  await expect(
-    editor.getByLabel('Pokémon suggestions', { exact: true })
-  ).toHaveCount(0);
-  await editor.getByRole('textbox', { name: 'Pokémon', exact: true }).focus();
   const pokemonChoices = editor
     .getByLabel('Pokémon suggestions', { exact: true })
     .getByRole('button');
-  await expect(pokemonChoices.first()).toBeVisible();
-  await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
-  await expect(pokemonChoices).toHaveCount(0);
+  await expect(pokemonChoices).toHaveCount(5);
   await editor.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(editor).toHaveCount(0);
 
@@ -328,6 +322,9 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText(initialMoves[0]);
 
+  await page
+    .getByRole('button', { name: 'Change a Pokémon', exact: true })
+    .click();
   const picker = page.getByRole('combobox', {
     name: 'Change a Pokémon',
     exact: true,
@@ -335,32 +332,79 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
   await picker.fill('Sneasler');
   await page.getByRole('option', { name: 'Sneasler', exact: true }).click();
   await expect(
-    page.getByRole('button', {
-      name: 'Replace Kingambit with Sneasler',
-      exact: true,
-    })
+    page.getByText('Sneasler', { exact: true }).first()
   ).toBeVisible();
-  await page
-    .getByRole('button', {
-      name: 'Replace Kingambit with Sneasler',
-      exact: true,
-    })
-    .click();
   await expect(
     page.getByRole('region', { name: 'Sneasler set', exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole('region', { name: 'Kingambit set', exact: true })
+    page.getByRole('region', { name: 'Glimmora-Mega set', exact: true })
   ).toHaveCount(0);
   const sneasler = page.getByRole('region', {
     name: 'Sneasler set',
     exact: true,
   });
   await expect(sneasler.getByRole('button', { name: /Apply/ })).toBeVisible();
+  await page.getByRole('button', { name: 'Clear selected Pokémon' }).click();
+  await expect(sneasler).toBeVisible();
   await sneasler.getByRole('button', { name: /Apply/ }).click();
   await expect(page.getByRole('status')).toHaveText(
     'Sneasler changes applied and saved.'
   );
+});
+
+test('Change searches beyond the first five and stages the published set', async ({
+  page,
+}) => {
+  await openWorkbench(page);
+  const beforeStorage = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    storageKey
+  );
+  await page
+    .getByRole('button', { name: 'Change Weavile', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await expect(
+    editor.getByLabel('Pokémon suggestions').getByRole('button')
+  ).toHaveCount(5);
+  await editor.getByRole('textbox', { name: 'Pokémon' }).fill('Raichu');
+  await editor.getByRole('button', { name: 'Use Raichu set' }).click();
+  await expect(editor).toHaveCount(0);
+  const raichu = page.getByRole('region', { name: 'Raichu set' });
+  await expect(raichu).toContainText('Shuca Berry');
+  await expect(raichu).toContainText('Lightning Rod');
+  await expect(raichu).toContainText('Electroweb');
+  await expect(raichu.getByRole('button', { name: /Apply/ })).toBeVisible();
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(beforeStorage);
+  await raichu.getByRole('button', { name: /Discard/ }).click();
+  await expect(page.getByRole('region', { name: 'Weavile set' })).toBeVisible();
+});
+
+test('page swap reports no overlap and clears its selection', async ({
+  page,
+}) => {
+  await openWorkbench(page);
+  await page
+    .getByRole('button', { name: 'Change a Pokémon', exact: true })
+    .click();
+  await page
+    .getByRole('combobox', { name: 'Change a Pokémon' })
+    .fill('Medicham');
+  await page.getByRole('option', { name: 'Medicham', exact: true }).click();
+  const noOverlap = page.getByText(
+    'No catalog team with Medicham shares a remaining teammate.',
+    { exact: true }
+  );
+  await expect(noOverlap).toBeVisible();
+  await page.getByRole('button', { name: 'Clear selected Pokémon' }).click();
+  await expect(noOverlap).toHaveCount(0);
+  await expect(page.getByRole('region', { name: 'Weavile set' })).toBeVisible();
 });
 
 test('item suggestions support Tab and Enter selection through save and reload', async ({

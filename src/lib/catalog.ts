@@ -46,6 +46,15 @@ export const normalize = (text: string) =>
     .replace(/♂/g, 'm')
     .replace(/[^a-z0-9]/g, '');
 
+export function isPasteUrl(value: string): boolean {
+  return (
+    value === value.trim() &&
+    /^https:\/\/(?:pokepast\.es\/[a-f0-9]{16}|www\.vrpastes\.com\/[A-Za-z0-9]{8})$/.test(
+      value
+    )
+  );
+}
+
 export function readFilters(params: URLSearchParams): MemberFilter[] {
   const values = params.getAll('member');
   if (values.length > 6) throw new Error('Select at most six Pokémon.');
@@ -171,7 +180,13 @@ function evidenceOf(team: Team, current: string): TeamEvidence {
   return cached;
 }
 
-export function compareTeams(a: Team, b: Team, current: string): number {
+/* tiebreak decides teams that are equally proven; date and id settle the rest. */
+export function compareTeams(
+  a: Team,
+  b: Team,
+  current: string,
+  tiebreak = 0
+): number {
   const ea = evidenceOf(a, current);
   const eb = evidenceOf(b, current);
   const ga =
@@ -193,6 +208,7 @@ export function compareTeams(a: Team, b: Team, current: string): number {
   return (
     ga - gb ||
     ea.level - eb.level ||
+    tiebreak ||
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)
   );

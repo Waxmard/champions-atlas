@@ -11,6 +11,7 @@
     label = 'Add Pokémon filter',
     placeholder = 'Find a Pokémon…',
     disabledPlaceholder = 'Six Pokémon selected',
+    portal = true,
   }: {
     options: string[];
     onselect: (pokemon: string) => void;
@@ -18,6 +19,7 @@
     label?: string;
     placeholder?: string;
     disabledPlaceholder?: string;
+    portal?: boolean;
   } = $props();
   let search = $state('');
   let selected = $state('');
@@ -58,7 +60,7 @@
       class="input h-12 w-full pr-4 pl-11 text-base disabled:opacity-50"
     />
   </div>
-  <Combobox.Portal>
+  <Combobox.Portal disabled={!portal}>
     <Combobox.Content
       sideOffset={6}
       class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"

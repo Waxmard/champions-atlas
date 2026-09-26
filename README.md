@@ -90,12 +90,21 @@ refresh or additional source integration is configured.
    All regulations are included. Replacement order favors keeping the Pokémon and its set details; source-team
    similarity and reported results break ties. Identical replacement sets are
    shown once, and Pokémon already in another slot are excluded.
-4. Select an item, ability, nature and EVs, or moves on a team card to update
-   that set. Use **Advanced set text** for raw edits, apply the valid set, then
-   **Save changes**. **Copy team text** exports current sets, normalizing EVs out of
-   32 and omitting IVs, level, and Tera Type for Pokémon Champions. Other set
-   fields remain unchanged. Unknown fields are omitted, not inferred. Edited
-   teams do not receive a new rental code.
+4. Select an item, ability, nature, EVs, or moves on a team card to edit that set.
+   Use **Advanced set text** for raw edits. Choose **Done**, then **Apply** on the
+   card to save. **Copy team text** exports current sets, normalizing EVs out of 32
+   and omitting IVs, level, and Tera Type for Pokémon Champions. Other set fields
+   remain unchanged. Unknown fields are omitted, not inferred. Edited teams do
+   not receive a new rental code.
+
+In **Edit EV spread**, allocate 66 points and choose a nature to see **Suggested spreads**.
+Recommendations compare your current build with common recorded sets in the current
+regulation. They use its Mega form, held item, and field effects set by either Pokémon's
+ability, favoring your Pokémon when field setters conflict. Survival and one-hit KO
+reasons describe one landed attack at full HP; losses appear as tradeoffs. A suggestion
+changes only the draft. Choose **Done**, then **Apply** to save. Expand **Speed tiers**
+to compare unmodified Speed; these tiers do not account for turn order, weather, or
+items. Incomplete spreads and unsupported damage mechanics do not produce damage claims.
 
 Saved copies survive reload and catalog refreshes on the same browser origin, and
 clearing browser storage removes them. Saving requires available browser storage.

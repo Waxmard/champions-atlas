@@ -128,8 +128,30 @@ user's edited team. Exact forms remain distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-Field-based editing for saved catalog teams is implemented. Legality-aware
-adaptation is not implemented.
+Field-based editing for saved catalog teams is implemented. Full legality-aware
+adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
+suggestions.
+
+EV spread suggestions list spreads that the owner's other saved teams already run
+on the same Pokémon. The owner can also ask one benchmark question: survive a
+named move from a named opponent, take a KO, or outspeed. The opponent's set is
+the most common recorded current-regulation set for that species, filtered by
+held item when one is named. An outspeed query excludes Choice Scarf targets
+unless Choice Scarf is the named item, and applies the ×1.5 multiplier to the
+target's Speed whenever the target holds it. Each answer reports the fewest moved
+points, up to six equal-cost spreads for the Pokémon's own nature, and up to six
+more when a second nature reaches the goal for fewer points. When no 66-point
+spread reaches the goal, the answer says so and names the closest achievable
+result. Damage is one landed hit at full HP with the resolved battle form, actual
+item, and deterministic field-setting abilities. Benchmark Speed is unmodified
+level-50 Speed with only the Choice Scarf ×1.5 multiplier applied, never
+weather- or ability-adjusted turn order; the Speed tiers list stays unmodified
+level-50 Speed.
+
+Inferred archetype and role tags are enrichment, never evidence: they carry no
+result label and never outrank a sourced result. They break ties among teams that
+already share the same teammates and set details and are equally proven; the
+keyword half of that tiebreak works without them.
 
 Custom import starts in **My teams** with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
@@ -148,7 +170,6 @@ spreads. Any borrowed or inferred spread must remain separate from sourced data.
 ## Version 2 and later
 
 - AI integration and separately verified subscription/API billing options.
-- Spread suggestions and calculator-assisted optimization.
 - Screenshot and team-ID import.
 - Cross-device sync.
 - Native iOS app.

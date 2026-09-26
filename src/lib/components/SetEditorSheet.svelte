@@ -1,7 +1,7 @@
 <script lang="ts">
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import X from '@lucide/svelte/icons/x';
-  import EvEditor from '$lib/components/EvEditor.svelte';
+  import EvWorkbench from '$lib/components/EvWorkbench.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '$lib/components/SetEditorDetails.svelte';
@@ -18,7 +18,8 @@
     parseSetBlock,
   } from '$lib/paste';
   import { getMoveType, getPokemonTypes, TYPE_COLORS } from '$lib/types';
-  import { catalogSuggestions, setText } from '$lib/workbench';
+  import type { TeamTagsIndex } from '$lib/tags';
+  import { catalogSuggestions, setText, type OwnTeamSet } from '$lib/workbench';
 
   type EditorView =
     'overview' | 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
@@ -29,6 +30,9 @@
     currentRegulation: string;
     initialField: EditableSetField;
     teammates?: Member[];
+    tagIndex?: TeamTagsIndex;
+    ownTeams?: OwnTeamSet[];
+    excludeOwnTeamId?: string | null;
     onapply: (member: Member) => void;
     oncancel: () => void;
     ondirtychange: (dirty: boolean) => void;
@@ -40,6 +44,9 @@
     currentRegulation,
     initialField,
     teammates = [],
+    tagIndex,
+    ownTeams = [],
+    excludeOwnTeamId = null,
     onapply,
     oncancel,
     ondirtychange,
@@ -74,7 +81,9 @@
   });
   let rawText = $state(initialText);
   let textBaseline = $state(initialText);
-  let activeSuggestions = $state<string | null>(null);
+  let activeSuggestions = $state<string | null>(
+    initialView === 'pokemon' ? 'pokemon' : null
+  );
   let pokemonQuery = $state('');
   let itemQuery = $state('');
   let abilityQuery = $state('');
@@ -99,7 +108,15 @@
       fieldText !== initialStructuredText
   );
   const suggestions = $derived(
-    catalogSuggestions(draftMember, teams, currentRegulation, teammates)
+    catalogSuggestions(
+      draftMember,
+      teams,
+      currentRegulation,
+      teammates,
+      tagIndex,
+      pokemonQuery,
+      initialMember.pokemon
+    )
   );
   const norm = (value: string, query: string) =>
     normalize(value).includes(normalize(query));
@@ -118,14 +135,6 @@
       .filter((option) => norm(option.value, abilityQuery))
       .slice(0, 5)
   );
-  const spreadSuggestions = $derived(
-    suggestions.spreads
-      .filter((option) => {
-        const spread = parseChampionsSpread(option.value);
-        return spread && championsSpreadTotal(spread) === 66;
-      })
-      .slice(0, 5)
-  );
   const legacyNature = $derived(
     form.nature && !NATURES.some((nature) => nature === form.nature)
       ? form.nature
@@ -136,7 +145,6 @@
   const currentSpreadTotal = $derived(
     parsedCurrentSpread ? championsSpreadTotal(parsedCurrentSpread) : 0
   );
-
   const subViewTitle = $derived.by(() => {
     switch (currentView) {
       case 'pokemon':
@@ -338,6 +346,11 @@
       return false;
     }
     return !dirty || confirm('Discard set changes?');
+  }
+
+  export function cancelNow() {
+    activeSuggestions = null;
+    return requestCancel();
   }
 
   export function focusInitialSection() {
@@ -609,21 +622,20 @@
     {:else if currentView === 'spread'}
       <!-- SPREAD SUB-VIEW -->
       <section aria-label="EV spread" class="grid gap-4">
-        <EvEditor
-          spread={form.spread}
-          nature={form.nature}
-          {spreadSuggestions}
+        <EvWorkbench
+          member={draftMember}
+          {teams}
+          {currentRegulation}
+          {ownTeams}
+          {excludeOwnTeamId}
           natureSuggestions={suggestions.natures}
           onspreadchange={(spread, nature) => {
             form.spread = spread;
             if (nature) form.nature = nature;
             clearError();
           }}
-          onnaturechange={(value) => {
-            form.nature = value;
-          }}
+          onnaturechange={(value) => (form.nature = value)}
         />
-
         {#if error && errorField === 'spread'}
           <p
             role="alert"
@@ -672,10 +684,7 @@
                     type="button"
                     aria-label={`Use ${option.pokemon} set`}
                     class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-                    onclick={() => {
-                      applyPreFilled(option.member);
-                      currentView = 'overview';
-                    }}
+                    onclick={() => onapply(structuredClone(option.member))}
                   >
                     <PokemonSprite pokemon={option.pokemon} size={32} />
                     <span class="min-w-0 flex-1">
@@ -748,7 +757,7 @@
         variant="outline"
         class="h-11 min-h-11 px-4"
         onclick={() => {
-          if (requestCancel()) oncancel();
+          if (cancelNow()) oncancel();
         }}
       >
         Cancel
