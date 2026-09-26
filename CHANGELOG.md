@@ -1,5 +1,16 @@
 # Changelog
 
+## [1.0.0](https://github.com/Waxmard/champions-atlas/compare/v0.3.0...v1.0.0) (2026-09-26)
+
+
+### ⚠ BREAKING CHANGES
+
+* add EV benchmarks and DevonCorp and Victory Road team imports ([#11](https://github.com/Waxmard/champions-atlas/issues/11))
+
+### Features
+
+* add EV benchmarks and DevonCorp and Victory Road team imports ([#11](https://github.com/Waxmard/champions-atlas/issues/11)) ([37248ff](https://github.com/Waxmard/champions-atlas/commit/37248ff6b17e9d9567a133d4df285a82fa8ff2f5))
+
 ## [0.3.0](https://github.com/Waxmard/champions-atlas/compare/v0.2.0...v0.3.0) (2026-09-22)
 
 
