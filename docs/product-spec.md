@@ -115,6 +115,15 @@ from similar teams. Applying a replacement changes only that slot. The other
 five sets and original remain intact. Set-text editing, local saving, and export
 remain available.
 
+Saved teams can be deleted after confirmation. If the deleted team was active,
+the next saved team becomes active; deleting the last one returns to the empty
+My teams view. Deletion also discards unsaved edits to that team. The app
+remembers the last successfully visited browse, team-detail, or My teams URL
+for a bare-root reload and returns to it after sign-in. Explicit links take
+precedence, and a missing remembered detail falls back to browsing. The main
+navigation remains visible while scrolling, and selecting a Pokémon clears
+its search input for the next choice.
+
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
 fields and moves next, then uses result ordering for ties. All regulations are
 included. Replacement sets favor retaining the chosen Pokémon and its set details,

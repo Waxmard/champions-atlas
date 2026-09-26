@@ -3,6 +3,7 @@
   import { SvelteSet } from 'svelte/reactivity';
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
@@ -23,6 +24,7 @@
   import type { TeamTagsIndex } from '$lib/tags';
   import {
     activeTeamKey,
+    deleteTeam,
     exportPaste,
     isMegaSpecies,
     MAX_TEAM_MEGAS,
@@ -42,6 +44,7 @@
   let ready = $state(false),
     message = $state(''),
     storageError = $state('');
+  let deleting = $state(false);
   let showExport = $state(false);
   let activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
@@ -90,22 +93,32 @@
     return { destroy: () => cancelAnimationFrame(frame) };
   }
 
-  function openSaved(id: string | null) {
+  function openSaved(
+    id: string | null,
+    activeOverride?: string | null,
+    navigate = true
+  ) {
     try {
       saved = readSavedTeams(localStorage);
       storageError = '';
-      const activeId = localStorage.getItem(activeTeamKey);
+      const activeId =
+        activeOverride === undefined
+          ? localStorage.getItem(activeTeamKey)
+          : activeOverride;
       const resolvedId = resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? JSON.parse(JSON.stringify(entry)) : null;
       baseline = JSON.stringify(draft);
-      if (entry) {
+      if (entry && activeOverride === undefined)
         localStorage.setItem(activeTeamKey, entry.id);
-        if (page.url.searchParams.get('team') !== entry.id) {
-          void goto(resolve(`/my-teams?team=${entry.id}`), {
-            replaceState: true,
-          });
-        }
+      if (!entry && activeOverride === undefined && !saved.length)
+        localStorage.removeItem(activeTeamKey);
+      if (navigate && (entry || !id)) {
+        const destination = entry
+          ? resolve('/my-teams') + '?team=' + encodeURIComponent(entry.id)
+          : resolve('/my-teams');
+        if (page.url.pathname + page.url.search !== destination)
+          void goto(destination as ResolvedPathname, { replaceState: true });
       }
       showExport = false;
       activeEditIndex = null;
@@ -343,6 +356,72 @@
       ? 'Team text copied. Unknown fields are omitted; no stats were guessed.'
       : 'Clipboard unavailable. Select and copy the export text below.';
   }
+  async function removeSelectedTeam() {
+    if (!draft || editing || deleting) return;
+    const id = draft.id;
+    const warning = dirty
+      ? ' Unsaved changes to this team will also be discarded.'
+      : '';
+    if (
+      !confirm(`Delete “` + draft.name + `”? This cannot be undone.` + warning)
+    )
+      return;
+    deleting = true;
+    let previousActiveId: string | null;
+    try {
+      previousActiveId = localStorage.getItem(activeTeamKey);
+    } catch {
+      previousActiveId = null;
+    }
+    let remaining: SavedTeam[];
+    try {
+      remaining = deleteTeam(localStorage, id);
+    } catch {
+      message =
+        'Could not delete team. Existing saved teams have been left untouched.';
+      deleting = false;
+      return;
+    }
+    draft = null;
+    baseline = '';
+    activeEditIndex = null;
+    editorDirty = false;
+    editedSlots.clear();
+    pendingSpecies = null;
+    showSwapPicker = false;
+    swapUnavailable = false;
+    showExport = false;
+    const replacement = resolveSavedTeamId(remaining, null, previousActiveId);
+    let activeFailed = false;
+    try {
+      if (replacement) localStorage.setItem(activeTeamKey, replacement);
+      else localStorage.removeItem(activeTeamKey);
+    } catch {
+      activeFailed = true;
+    }
+    openSaved(replacement, null, false);
+    try {
+      await goto(
+        (replacement
+          ? resolve('/my-teams') + '?team=' + encodeURIComponent(replacement)
+          : resolve('/my-teams')) as ResolvedPathname,
+        { replaceState: true }
+      );
+    } catch {
+      activeFailed = true;
+    }
+    message = activeFailed
+      ? 'Team deleted, but the active team could not be remembered.'
+      : 'Team deleted.';
+    void pushNow();
+    deleting = false;
+    await tick();
+    document
+      .querySelector<HTMLElement>(
+        replacement ? 'select' : 'a[href$="/my-teams/new"]'
+      )
+      ?.focus();
+  }
 </script>
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
@@ -383,17 +462,21 @@
     {#if saved.length}
       <label class="term mt-6 block max-w-xl"
         >Saved team
-        <select
-          class="select mt-2 min-h-11 w-full sm:text-sm"
-          value={draft?.id || ''}
-          onchange={(event) => {
-            void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
-          }}
+        <div
+          class="mt-2 overflow-hidden rounded-[var(--radius-field)] focus-within:ring-2 focus-within:ring-primary"
         >
-          {#each saved as team (team.id)}<option value={team.id}
-              >{team.name}</option
-            >{/each}
-        </select>
+          <select
+            class="select min-h-11 w-full sm:text-sm"
+            value={draft?.id || ''}
+            onchange={(event) => {
+              void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
+            }}
+          >
+            {#each saved as team (team.id)}<option value={team.id}
+                >{team.name}</option
+              >{/each}
+          </select>
+        </div>
       </label>
     {:else}
       <p class="plate mt-8 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
@@ -478,8 +561,14 @@
             <Button
               variant="outline"
               class="min-h-11"
-              disabled={editing}
+              disabled={editing || deleting}
               onclick={copyPaste}>Copy team text</Button
+            >
+            <Button
+              variant="outline"
+              class="min-h-11 text-base-content"
+              disabled={editing || deleting}
+              onclick={removeSelectedTeam}>Delete team</Button
             >
           </div>
         </div>

@@ -99,6 +99,7 @@
   }
   html {
     @apply font-sans;
+    scroll-padding-top: calc(var(--app-header-height, 0px) + 1rem);
   }
   body {
     @apply bg-base-200 text-base-content;
