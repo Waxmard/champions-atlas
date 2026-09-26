@@ -1,7 +1,7 @@
 {
   "name": "champions-atlas",
   "private": true,
-  "version": "0.3.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "predev": "node scripts/import-catalog.mjs --if-missing && node scripts/jev-enrich.mjs --if-missing",
