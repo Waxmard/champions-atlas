@@ -16,12 +16,7 @@
     TYPE_COLORS,
     type PokemonType,
   } from '$lib/types';
-  import {
-    activeTeamKey,
-    browseStorageKey,
-    readSavedTeams,
-    resolveSavedTeamId,
-  } from '$lib/workbench';
+  import { browseStorageKey } from '$lib/workbench';
   import { pushNow } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
   import {
@@ -161,25 +156,6 @@
 
   function restoreBrowse() {
     if (page.url.pathname !== resolve('/')) return;
-
-    if (page.url.searchParams.size === 0) {
-      try {
-        const saved = readSavedTeams(localStorage);
-        const targetId = resolveSavedTeamId(
-          saved,
-          null,
-          localStorage.getItem(activeTeamKey)
-        );
-        if (targetId) {
-          void goto(resolve(`/my-teams?team=${targetId}`), {
-            replaceState: true,
-          });
-          return;
-        }
-      } catch {
-        storageError = true;
-      }
-    }
 
     if (browseKeys.some((key) => page.url.searchParams.has(key))) {
       try {

@@ -6,12 +6,24 @@
   import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount } from 'svelte';
+  import type { ResolvedPathname } from '$app/types';
   import { initSync, signOut, sync } from '$lib/sync.svelte';
+  import {
+    activeTeamKey,
+    readSavedTeams,
+    resolveSavedTeamId,
+  } from '$lib/workbench';
 
   let { children } = $props();
   const isHome = $derived(page.url.pathname === resolve('/'));
   const isMyTeams = $derived(
     page.url.pathname.startsWith(resolve('/my-teams'))
+  );
+  const isBrowse = $derived(
+    isHome ||
+      page.url.pathname.startsWith(
+        resolve('/teams/[id]', { id: 'x' }).slice(0, -1)
+      )
   );
   const isLogin = $derived(page.url.pathname === resolve('/login'));
   const brandHref = $derived(
@@ -29,12 +41,218 @@
       .join('') || '?'
   );
 
-  onMount(() => initSync());
+  const lastPageKey = 'champions-atlas:last-page:v1';
+  const authReturnKey = 'champions-atlas:auth-return:v1';
+  let initialUrl = $state<URL | null>(null);
+  let startupReady = $state(false);
+  let startupSettled = $state(false);
+  let starting = false;
+  let redirecting = false;
+  let pendingReturn: string | null = null;
+  let headerHeight = $state(0);
+
+  function validDestination(value: string | null): string | null {
+    if (
+      !value?.startsWith('/') ||
+      value.startsWith('//') ||
+      value.includes('\\')
+    )
+      return null;
+    try {
+      const url = new URL(value, page.url.origin);
+      if (url.origin !== page.url.origin) return null;
+      const path = url.pathname;
+      const detailPrefix = resolve('/teams/[id]', { id: 'x' }).slice(0, -1);
+      if (
+        path !== resolve('/') &&
+        path !== resolve('/my-teams') &&
+        path !== resolve('/my-teams/new') &&
+        !(
+          path.startsWith(detailPrefix) &&
+          path.length > detailPrefix.length &&
+          !path.slice(detailPrefix.length).includes('/')
+        )
+      )
+        return null;
+      decodeURIComponent(path);
+      return path + url.search + url.hash;
+    } catch {
+      return null;
+    }
+  }
+
+  function storedDestination(
+    kind: 'local' | 'session',
+    key: string
+  ): string | null {
+    try {
+      return validDestination(
+        (kind === 'local' ? localStorage : sessionStorage).getItem(key)
+      );
+    } catch {
+      return null;
+    }
+  }
+
+  function updateStorage(
+    kind: 'local' | 'session',
+    key: string,
+    value: string | null
+  ) {
+    try {
+      const storage = kind === 'local' ? localStorage : sessionStorage;
+      if (value === null) storage.removeItem(key);
+      else storage.setItem(key, value);
+    } catch {
+      return;
+    }
+  }
+
+  function defaultDestination(): string {
+    try {
+      const teams = readSavedTeams(localStorage);
+      const id = resolveSavedTeamId(
+        teams,
+        null,
+        localStorage.getItem(activeTeamKey)
+      );
+      if (id) return resolve('/my-teams') + '?team=' + encodeURIComponent(id);
+    } catch {
+      return resolve('/');
+    }
+    return resolve('/');
+  }
+
+  function returnDestination(): string {
+    return (
+      pendingReturn ??
+      storedDestination('session', authReturnKey) ??
+      storedDestination('local', lastPageKey) ??
+      defaultDestination()
+    );
+  }
+
+  async function resume() {
+    if (
+      !initialUrl ||
+      starting ||
+      startupSettled ||
+      (sync.configured && !sync.authResolved)
+    )
+      return;
+    starting = true;
+    const incoming = initialUrl.pathname + initialUrl.search + initialUrl.hash;
+    const login = initialUrl.pathname === resolve('/login');
+    const bareRoot = incoming === resolve('/');
+    const remembered = bareRoot
+      ? storedDestination('local', lastPageKey)
+      : null;
+    let destination = login
+      ? returnDestination()
+      : bareRoot
+        ? (remembered ?? defaultDestination())
+        : incoming;
+    if (bareRoot || login) {
+      const selected = destination.startsWith(resolve('/my-teams') + '?')
+        ? new URL(destination, page.url.origin).searchParams.get('team')
+        : null;
+      if (selected) {
+        try {
+          if (
+            !readSavedTeams(localStorage).some((team) => team.id === selected)
+          )
+            destination = resolve('/my-teams');
+        } catch {
+          destination = resolve('/my-teams');
+        }
+      }
+    }
+    const automaticDetail =
+      !!remembered &&
+      destination === remembered &&
+      remembered.startsWith(resolve('/teams/[id]', { id: 'x' }).slice(0, -1));
+    if (sync.configured && !sync.user) {
+      pendingReturn = validDestination(destination);
+      if (pendingReturn) updateStorage('session', authReturnKey, pendingReturn);
+      if (!login) await goto(resolve('/login'), { replaceState: true });
+    } else {
+      if (destination !== incoming)
+        await goto(destination as ResolvedPathname, { replaceState: true });
+      if (automaticDetail && page.status === 404) {
+        updateStorage('local', lastPageKey, null);
+        await goto(resolve('/?browse=all'), { replaceState: true });
+      }
+      if (login) {
+        pendingReturn = null;
+        updateStorage('session', authReturnKey, null);
+      }
+    }
+    startupSettled = true;
+    startupReady = true;
+  }
+
+  onMount(() => {
+    initialUrl = new URL(location.href);
+    initSync();
+    return () =>
+      document.documentElement.style.removeProperty('--app-header-height');
+  });
 
   $effect(() => {
-    if (!sync.configured || !sync.authResolved) return;
-    if (sync.user && isLogin) void goto(resolve('/'));
-    else if (!sync.user && !isLogin) void goto(resolve('/login'));
+    if (initialUrl && (!sync.configured || sync.authResolved)) void resume();
+  });
+
+  $effect(() => {
+    if (
+      !startupSettled ||
+      !sync.configured ||
+      !sync.authResolved ||
+      redirecting
+    )
+      return;
+    const login = page.url.pathname === resolve('/login');
+    if ((sync.user && login) || (!sync.user && !login)) {
+      redirecting = true;
+      const destination = sync.user ? returnDestination() : resolve('/login');
+      if (!sync.user) {
+        pendingReturn = validDestination(
+          page.url.pathname + page.url.search + page.url.hash
+        );
+        if (pendingReturn)
+          updateStorage('session', authReturnKey, pendingReturn);
+      }
+      void goto(destination as ResolvedPathname, { replaceState: true })
+        .then(() => {
+          if (sync.user) {
+            pendingReturn = null;
+            updateStorage('session', authReturnKey, null);
+          }
+        })
+        .finally(() => {
+          redirecting = false;
+        });
+    }
+  });
+
+  $effect(() => {
+    const url = page.url;
+    if (
+      !startupReady ||
+      url.pathname === resolve('/login') ||
+      (url.pathname === resolve('/') && !url.search && !url.hash) ||
+      page.status >= 400 ||
+      (sync.configured && !sync.user)
+    )
+      return;
+    updateStorage('local', lastPageKey, url.pathname + url.search + url.hash);
+  });
+  $effect(() => {
+    if (headerHeight)
+      document.documentElement.style.setProperty(
+        '--app-header-height',
+        headerHeight + 'px'
+      );
+    else document.documentElement.style.removeProperty('--app-header-height');
   });
 </script>
 
@@ -45,7 +263,7 @@
 >
 {#if isLogin}
   {@render children()}
-{:else if sync.configured && (!sync.authResolved || !sync.user)}
+{:else if !startupReady || (sync.configured && (!sync.authResolved || !sync.user))}
   <main id="main" class="flex min-h-svh items-center justify-center">
     <LoaderCircle
       class="size-6 animate-spin text-base-content/60"
@@ -53,57 +271,74 @@
     />
   </main>
 {:else}
-  <header class="border-b border-base-300 bg-base-100">
+  <header
+    bind:clientHeight={headerHeight}
+    class="sticky top-0 z-40 border-b border-base-300 bg-base-100"
+  >
     <div
-      class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-2.5 sm:px-8"
+      class="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4 sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
     >
       <a
         href={brandHref}
-        class="flex min-h-11 items-center gap-2.5 rounded-[var(--radius-field)] px-2 outline-none focus-visible:ring-2 focus-visible:ring-primary {isHome
-          ? 'bg-info text-info-content'
-          : 'text-base-content hover:bg-base-200'}"
+        class="flex min-h-11 items-center rounded-[var(--radius-field)] px-2 text-base-content outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span
           class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
           >Champion's Atlas</span
         >
       </a>
-      <nav aria-label="Main" class="flex items-center gap-1">
+      <nav
+        aria-label="Main"
+        class="col-span-2 row-start-2 grid grid-cols-2 gap-1 sm:order-2 sm:flex sm:items-center"
+      >
+        <a
+          href={brandHref}
+          aria-current={isBrowse ? 'page' : undefined}
+          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isBrowse
+            ? 'bg-info text-info-content'
+            : 'text-primary hover:bg-info'}">Browse</a
+        >
         <a
           href={resolve('/my-teams')}
-          class="inline-flex min-h-11 items-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isMyTeams
+          aria-current={isMyTeams ? 'page' : undefined}
+          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isMyTeams
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">My teams</a
         >
+      </nav>
+      <div
+        class="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-1 sm:order-3"
+      >
         {#if sync.configured}
-          {#if sync.status === 'syncing' || sync.status === 'error'}<span
+          {#if sync.status === 'syncing' || sync.status === 'error'}
+            <span
               role="status"
               aria-live="polite"
               title={sync.error}
-              class="provenance px-1 {sync.status === 'error'
+              class="provenance max-w-16 text-center leading-tight wrap-break-word {sync.status ===
+              'error'
                 ? 'font-semibold'
                 : ''}"
               style={sync.status === 'error'
                 ? 'color: var(--color-error-content)'
                 : ''}
               >{sync.status === 'error' ? 'Sync failed' : 'Syncing…'}</span
-            >{/if}
+            >
+          {/if}
           {#if sync.user}
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
                 aria-label="Account menu"
-                class="inline-flex size-11 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
+                class="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
               >
                 <Avatar.Root
                   class="relative flex size-7 shrink-0 overflow-hidden rounded-full border"
                 >
-                  {#if sync.user.photoURL}
-                    <Avatar.Image
+                  {#if sync.user.photoURL}<Avatar.Image
                       src={sync.user.photoURL}
                       alt={userName}
                       class="absolute inset-0 size-full object-cover"
-                    />
-                  {/if}
+                    />{/if}
                   <Avatar.Fallback
                     class="flex size-full items-center justify-center bg-base-200 text-xs font-medium"
                     >{userInitials}</Avatar.Fallback
@@ -118,9 +353,11 @@
                 >
                   <div class="px-2 py-1.5">
                     <p class="truncate text-sm font-semibold">{userName}</p>
-                    {#if sync.user.email && sync.user.email !== userName}
-                      <p class="provenance truncate">{sync.user.email}</p>
-                    {/if}
+                    {#if sync.user.email && sync.user.email !== userName}<p
+                        class="provenance truncate"
+                      >
+                        {sync.user.email}
+                      </p>{/if}
                   </div>
                   <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-base-300" />
                   <DropdownMenu.Item
@@ -133,7 +370,7 @@
             </DropdownMenu.Root>
           {/if}
         {/if}
-      </nav>
+      </div>
     </div>
   </header>
   {@render children()}
