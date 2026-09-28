@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import { Combobox } from 'bits-ui';
   import Search from '@lucide/svelte/icons/search';
   import { normalize } from '$lib/catalog';
@@ -31,9 +32,11 @@
   function choose(value: string) {
     if (!value) return;
     onselect(value);
-    search = '';
-    selected = '';
     open = false;
+    void tick().then(() => {
+      selected = '';
+      search = '';
+    });
   }
 </script>
 
@@ -51,6 +54,7 @@
       aria-hidden="true"
     />
     <Combobox.Input
+      clearOnDeselect
       aria-label={label}
       placeholder={disabled ? disabledPlaceholder : placeholder}
       oninput={(event) => {

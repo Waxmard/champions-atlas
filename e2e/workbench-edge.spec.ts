@@ -1,8 +1,37 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 
 const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
+const activeTeamKey = 'champions-atlas:active-team:v1';
+
+async function saveCopies(page: Page, count: number) {
+  for (let index = 0; index < count; index++) {
+    await page.goto('/teams/' + peter.id);
+    await page
+      .getByRole('button', { name: 'Use this team', exact: true })
+      .click();
+    await expect(page).toHaveURL(/\/my-teams\?team=/);
+  }
+}
+
+async function stageWeavileItem(page: Page, item: string) {
+  const weavile = page.getByRole('region', {
+    name: 'Weavile set',
+    exact: true,
+  });
+  await weavile
+    .getByRole('button', { name: 'Edit Weavile item', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Weavile set',
+    exact: true,
+  });
+  await editor.getByLabel('Item', { exact: true }).fill(item);
+  await editor.getByLabel('Item', { exact: true }).press('Escape');
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(weavile.getByText(item, { exact: true })).toBeVisible();
+}
 
 test('import, edit, reload, compare, and export a custom team', async ({
   page,
@@ -220,6 +249,154 @@ test('corrupt storage is reported and kept; missing local IDs do not show anothe
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe('{broken');
+});
+
+test('QoL deletion cancel keeps staged changes and both saved copies', async ({
+  page,
+}) => {
+  await saveCopies(page, 2);
+  await stageWeavileItem(page, 'Cancel draft item');
+  const selectedUrl = page.url();
+  const storedBefore = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    storageKey
+  );
+  let dialogMessage = '';
+  page.once('dialog', async (dialog) => {
+    dialogMessage = dialog.message();
+    await dialog.dismiss();
+  });
+  await page.getByRole('button', { name: 'Delete team', exact: true }).click();
+
+  expect(dialogMessage).toContain(
+    'Unsaved changes to this team will also be discarded.'
+  );
+  await expect(page).toHaveURL(selectedUrl);
+  await expect(
+    page.getByRole('region', { name: 'Weavile set', exact: true })
+  ).toContainText('Cancel draft item');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(storedBefore);
+  expect(JSON.parse(storedBefore!).length).toBe(2);
+});
+
+test('QoL deletion replaces the selected copy and survives reload', async ({
+  page,
+}) => {
+  await saveCopies(page, 2);
+  await stageWeavileItem(page, 'Delete-only draft item');
+  const before = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!),
+    storageKey
+  );
+  const removedId = await page.getByLabel('Saved team').inputValue();
+  const remainingId = before.find(
+    (team: { id: string }) => team.id !== removedId
+  )!.id;
+  let dialogMessage = '';
+  page.once('dialog', async (dialog) => {
+    dialogMessage = dialog.message();
+    await dialog.accept();
+  });
+  await page.getByRole('button', { name: 'Delete team', exact: true }).click();
+
+  expect(dialogMessage).toContain(
+    'Unsaved changes to this team will also be discarded.'
+  );
+  await expect(page).toHaveURL('/my-teams?team=' + remainingId);
+  await expect(page.getByLabel('Saved team')).toHaveValue(remainingId);
+  await expect(page.getByRole('status')).toHaveText('Team deleted.');
+  await expect(
+    page.getByRole('region', { name: 'Weavile set', exact: true })
+  ).not.toContainText('Delete-only draft item');
+  expect(
+    await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)!),
+      storageKey
+    )
+  ).toEqual(before.filter((team: { id: string }) => team.id !== removedId));
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
+  ).toBe(remainingId);
+
+  await page.reload();
+  await expect(page).toHaveURL('/my-teams?team=' + remainingId);
+  await expect(page.getByLabel('Saved team')).toHaveValue(remainingId);
+  expect(
+    await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)!),
+      storageKey
+    )
+  ).toEqual(before.filter((team: { id: string }) => team.id !== removedId));
+});
+
+test('QoL deletion of the final copy stays empty after pagehide and reload', async ({
+  page,
+}) => {
+  await saveCopies(page, 1);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Delete team', exact: true }).click();
+
+  await expect(page).toHaveURL('/my-teams');
+  await expect(page.getByText(/No saved teams yet/)).toBeVisible();
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe('[]');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
+  ).toBeNull();
+
+  await page.reload();
+  await expect(page).toHaveURL('/my-teams');
+  await expect(page.getByText(/No saved teams yet/)).toBeVisible();
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe('[]');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
+  ).toBeNull();
+  await expect(
+    page.getByRole('region', { name: 'Your team', exact: true })
+  ).toHaveCount(0);
+});
+
+test('QoL deletion write failure preserves the draft and stored team', async ({
+  page,
+}) => {
+  await saveCopies(page, 1);
+  await stageWeavileItem(page, 'Write-failure draft item');
+  const storedBefore = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    storageKey
+  );
+  const activeBefore = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    activeTeamKey
+  );
+  await page.evaluate((key) => {
+    const setItem = Storage.prototype.setItem;
+    Storage.prototype.setItem = function (name, value) {
+      if (name === key) throw new Error('Quota exceeded');
+      setItem.call(this, name, value);
+    };
+  }, storageKey);
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Delete team', exact: true }).click();
+
+  await expect(page.getByRole('status')).toHaveText(
+    'Could not delete team. Existing saved teams have been left untouched.'
+  );
+  await expect(
+    page.getByRole('region', { name: 'Weavile set', exact: true })
+  ).toContainText('Write-failure draft item');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(storedBefore);
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
+  ).toBe(activeBefore);
+  await expect(page.getByLabel('Saved team')).toHaveValue(activeBefore!);
 });
 
 test('set edit commits on save and reopening my-teams restores active team', async ({

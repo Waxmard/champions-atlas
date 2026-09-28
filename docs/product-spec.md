@@ -115,6 +115,15 @@ from similar teams. Applying a replacement changes only that slot. The other
 five sets and original remain intact. Set-text editing, local saving, and export
 remain available.
 
+Saved teams can be deleted after confirmation. If the deleted team was active,
+the next saved team becomes active; deleting the last one returns to the empty
+My teams view. Deletion also discards unsaved edits to that team. The app
+remembers the last successfully visited browse, team-detail, or My teams URL
+for a bare-root reload and returns to it after sign-in. Explicit links take
+precedence, and a missing remembered detail falls back to browsing. The main
+navigation remains visible while scrolling, and selecting a Pokémon clears
+its search input for the next choice.
+
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
 fields and moves next, then uses result ordering for ties. All regulations are
 included. Replacement sets favor retaining the chosen Pokémon and its set details,
@@ -167,11 +176,18 @@ legality, and cross-device import are out of scope.
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.
 
+Signed-in devices sync saved teams through Cloud Firestore. Sequential saves
+update the same saved team on every device, and filters, navigation, and the
+active team stay on the device that set them. A device that changes a team
+before it sees another device's change to the same team keeps its own edit under
+that team's ID and preserves the displaced version as a separate recovered team.
+See [Firebase deployment and sync](firebase.md).
+
 ## Version 2 and later
 
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
-- Cross-device sync.
+- Cross-device sync (implemented for saved teams).
 - Native iOS app.
 
 Version 1 has no Supabase dependency. Storage providers, free-tier terms, and

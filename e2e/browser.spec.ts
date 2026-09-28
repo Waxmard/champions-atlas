@@ -70,6 +70,7 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
     await expect(incineroar).toBeVisible({ timeout: 1_000 });
   }).toPass({ timeout: 15_000 });
   await incineroar.click();
+  await expect(picker).toHaveValue('');
   await expect(
     page.getByRole('button', { name: 'Remove Incineroar', exact: true })
   ).toBeVisible();
@@ -82,6 +83,7 @@ test('multi-Pokémon item filters survive details, Back, Forward, and reload', a
   await expect(
     page.getByRole('button', { name: 'Remove Rillaboom', exact: true })
   ).toBeVisible();
+  await expect(picker).toHaveValue('');
   await page
     .getByRole('region', { name: 'Incineroar constraints' })
     .getByLabel('Held item')
@@ -195,4 +197,158 @@ test('invalid filters stay explicit; team deep links and missing teams work', as
   await page.goto('/teams/not-a-team');
   await expect(page.getByRole('heading', { name: '404' })).toBeVisible();
   await expect(page.getByText('Team not found in this catalog.')).toBeVisible();
+});
+
+test('QoL picker clears untyped keyboard choices and permits reselecting', async ({
+  page,
+}) => {
+  await page.goto('/');
+  const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
+  await picker.press('ArrowDown');
+  await expect(
+    page.getByRole('listbox').getByRole('option').first()
+  ).toBeVisible();
+  await picker.press('Enter');
+  const remove = page.getByRole('button', { name: /^Remove / }).first();
+  await expect(remove).toBeVisible();
+  const label = await remove.getAttribute('aria-label');
+  expect(label).toBeTruthy();
+  await expect(picker).toHaveValue('');
+  await remove.click();
+  await expect(remove).toHaveCount(0);
+  await picker.press('ArrowDown');
+  await expect(
+    page.getByRole('listbox').getByRole('option').first()
+  ).toBeVisible();
+  await picker.press('Enter');
+  await expect(
+    page.getByRole('button', { name: label!, exact: true })
+  ).toBeVisible();
+  await expect(picker).toHaveValue('');
+});
+
+test('QoL pinned navigation stays reachable across scroll and viewport sizes', async ({
+  page,
+}) => {
+  const viewport = page.viewportSize();
+  expect(viewport).not.toBeNull();
+  if (!viewport) throw new Error('A browser viewport is required.');
+
+  const shellBounds = () =>
+    page.evaluate(() => {
+      const nav = document.querySelector('nav[aria-label="Main"]');
+      const header = nav?.closest('header');
+      if (!nav || !header) throw new Error('Main navigation is missing.');
+      const bounds = (element: Element) => {
+        const { top, bottom, left, right, width, height } =
+          element.getBoundingClientRect();
+        return { top, bottom, left, right, width, height };
+      };
+      return {
+        scrollY: window.scrollY,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        documentWidth: document.documentElement.scrollWidth,
+        header: bounds(header),
+        nav: bounds(nav),
+        targets: [...header.querySelectorAll('a, button')].map(bounds),
+      };
+    });
+
+  await page.goto('/');
+  await expect(
+    page.getByRole('heading', { name: 'Explore teams' })
+  ).toBeVisible();
+  const mainNav = page.getByRole('navigation', { name: 'Main' });
+  const browse = mainNav.getByRole('link', { name: 'Browse', exact: true });
+  const myTeams = mainNav.getByRole('link', { name: 'My teams', exact: true });
+  await expect(browse).toHaveAttribute('aria-current', 'page');
+
+  await page.evaluate(() =>
+    window.scrollTo(0, document.documentElement.scrollHeight)
+  );
+  const scrolled = await shellBounds();
+  expect(scrolled.scrollY).toBeGreaterThan(300);
+  for (const box of [scrolled.header, scrolled.nav]) {
+    expect(box.top).toBeGreaterThanOrEqual(0);
+    expect(box.bottom).toBeLessThanOrEqual(scrolled.viewportHeight);
+    expect(box.left).toBeGreaterThanOrEqual(0);
+    expect(box.right).toBeLessThanOrEqual(scrolled.viewportWidth);
+  }
+
+  await myTeams.click();
+  await expect(page).toHaveURL(/\/my-teams$/);
+  await expect(myTeams).toHaveAttribute('aria-current', 'page');
+  await expect(browse).not.toHaveAttribute('aria-current', 'page');
+  await browse.click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+  await expect(browse).toHaveAttribute('aria-current', 'page');
+  await expect(myTeams).not.toHaveAttribute('aria-current', 'page');
+
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: viewport.height });
+    const responsive = await shellBounds();
+    expect(responsive.documentWidth).toBeLessThanOrEqual(width);
+    expect(responsive.targets.length).toBeGreaterThanOrEqual(3);
+    for (const target of responsive.targets) {
+      expect(target.width).toBeGreaterThanOrEqual(44);
+      expect(target.height).toBeGreaterThanOrEqual(44);
+    }
+  }
+
+  await page.setViewportSize(viewport);
+  const firstCard = page
+    .getByRole('region', { name: 'Matching teams' })
+    .getByRole('article')
+    .first();
+  await firstCard.getByRole('link').first().click();
+  await expect(
+    page.getByRole('button', { name: 'Use this team' })
+  ).toBeEnabled();
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
+
+  await page
+    .getByRole('link', { name: /^Go to / })
+    .first()
+    .click();
+  await expect(page).toHaveURL(/#pokemon-slot-0$/);
+  const rosterTarget = await page.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Main"]');
+    const header = nav?.closest('header');
+    const target = document.querySelector('#pokemon-slot-0');
+    if (!header || !target) throw new Error('Roster jump target is missing.');
+    return {
+      headerBottom: header.getBoundingClientRect().bottom,
+      targetTop: target.getBoundingClientRect().top,
+    };
+  });
+  expect(rosterTarget.targetTop).toBeGreaterThanOrEqual(
+    rosterTarget.headerBottom
+  );
+
+  const teamUrl = new URL(page.url());
+  teamUrl.hash = '';
+  await page.goto(teamUrl.pathname + teamUrl.search);
+  await page.evaluate(() =>
+    window.scrollTo(0, document.documentElement.scrollHeight)
+  );
+  const skip = page.getByRole('link', { name: 'Skip to content', exact: true });
+  await skip.focus();
+  await expect(skip).toBeFocused();
+  await page.keyboard.press('Enter');
+  await expect(page).toHaveURL(/#main$/);
+  const skipTarget = await page.evaluate(() => {
+    const nav = document.querySelector('nav[aria-label="Main"]');
+    const header = nav?.closest('header');
+    const target = document.querySelector('#main');
+    if (!header || !target) throw new Error('Skip target is missing.');
+    return {
+      headerBottom: header.getBoundingClientRect().bottom,
+      targetTop: target.getBoundingClientRect().top,
+    };
+  });
+  expect(skipTarget.targetTop).toBeGreaterThanOrEqual(skipTarget.headerBottom);
 });

@@ -16,13 +16,7 @@
     TYPE_COLORS,
     type PokemonType,
   } from '$lib/types';
-  import {
-    activeTeamKey,
-    browseStorageKey,
-    readSavedTeams,
-    resolveSavedTeamId,
-  } from '$lib/workbench';
-  import { pushNow } from '$lib/sync.svelte';
+  import { browseStorageKey } from '$lib/workbench';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
@@ -162,25 +156,6 @@
   function restoreBrowse() {
     if (page.url.pathname !== resolve('/')) return;
 
-    if (page.url.searchParams.size === 0) {
-      try {
-        const saved = readSavedTeams(localStorage);
-        const targetId = resolveSavedTeamId(
-          saved,
-          null,
-          localStorage.getItem(activeTeamKey)
-        );
-        if (targetId) {
-          void goto(resolve(`/my-teams?team=${targetId}`), {
-            replaceState: true,
-          });
-          return;
-        }
-      } catch {
-        storageError = true;
-      }
-    }
-
     if (browseKeys.some((key) => page.url.searchParams.has(key))) {
       try {
         rememberBrowse(browseParams(page.url.searchParams));
@@ -207,18 +182,6 @@
   afterNavigate(restoreBrowse);
   onMount(() => {
     ready = true;
-    const pushBrowse = () => {
-      void pushNow();
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') pushBrowse();
-    };
-    window.addEventListener('pagehide', pushBrowse);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.removeEventListener('pagehide', pushBrowse);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
   });
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(page.url.searchParams, next));
