@@ -176,11 +176,18 @@ legality, and cross-device import are out of scope.
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.
 
+Signed-in devices sync saved teams through Cloud Firestore. Sequential saves
+update the same saved team on every device, and filters, navigation, and the
+active team stay on the device that set them. A device that changes a team
+before it sees another device's change to the same team keeps its own edit under
+that team's ID and preserves the displaced version as a separate recovered team.
+See [Firebase deployment and sync](firebase.md).
+
 ## Version 2 and later
 
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
-- Cross-device sync.
+- Cross-device sync (implemented for saved teams).
 - Native iOS app.
 
 Version 1 has no Supabase dependency. Storage providers, free-tier terms, and

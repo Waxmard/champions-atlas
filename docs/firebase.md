@@ -20,25 +20,29 @@ workflows pass `--project` explicitly, so only local commands use the default.
 
 ## Data model
 
-A signed-in user owns one document at `users/{uid}`:
+A signed-in user owns one document at `users/{uid}` with validated `teams` and
+`updatedAt: serverTimestamp()`. `firestore.rules` allows access only when
+`request.auth.uid` matches the document ID. Older documents may still contain
+`activeTeamId` and `browse`; the app ignores them and removes them on the next
+saved-team write. Filters, navigation, and the active team stay device-local.
 
-| Field          | Type             | Purpose                                              |
-| -------------- | ---------------- | ---------------------------------------------------- |
-| `teams`        | `SavedTeam[]`    | Saved teams, validated before it replaces local data |
-| `activeTeamId` | `string \| null` | Selected team                                        |
-| `browse`       | `string \| null` | Browse filters and sort as a URLSearchParams string  |
-| `updatedAt`    | timestamp        | `serverTimestamp()`                                  |
+The app listens for server changes and reconciles saved teams in Firestore
+transactions. Sequential saves update the same team ID without making copies.
+When two devices independently change the same team before receiving each
+other's change, the last server-accepted save keeps the original ID and the
+displaced edited version becomes a separate `(recovered)` team. A deletion
+counts as an edit. Offline saves stay on the device until a later connection,
+save, or **Retry sync**. Sync never truncates teams to fit the 50-team limit; if
+reconciliation needs more room, it stops and leaves both versions intact.
 
-`firestore.rules` allows a read or write only when `request.auth.uid` matches the
-document ID.
-
-Saving pushes the whole document; opening the app pulls it. When a pull changes
-local storage the app reloads once per tab session, so rendered pages pick up the
-pulled teams and filters. The once-per-session bound (a `sessionStorage` flag) is
-load-bearing: Firestore does not guarantee nested-map key order, so an unbounded
-reload can re-trigger `pullNow` forever. Signing out clears the flag so a later
-sign-in can pull-and-reload again. There is no realtime listener and no conflict
-resolution: the last push wins.
+The existing `champions-atlas:teams:v1` key remains the working copy. The
+per-account cache lives at `champions-atlas:sync:v2:{projectId}:{uid}` with its
+baseline and local saved teams, while `champions-atlas:sync-owner:v2` tracks
+which account owns the working copy. First sign-in adopts existing local teams
+without trusting the old last-push marker. When a pre-existing cloud team has
+the same ID but different content, the cloud copy keeps that ID and the local
+copy is recovered, because historical edit order cannot be inferred. Signing out
+preserves the account cache, and no migration clears browser storage.
 
 ## Secrets and continuous integration
 
@@ -97,6 +101,22 @@ npx firebase-tools deploy --only hosting,firestore:rules --project champions-atl
    ```sh
    npx firebase-tools deploy --only firestore:rules --project champions-atlas-test
    ```
+
+### Test sync without a cloud project
+
+The app connects to the Firebase Emulator Suite only in a development build with
+`VITE_FIREBASE_EMULATORS=1`, the project ID `demo-champions-atlas`, and a
+loopback hostname, so a production build always talks to the configured project.
+Point the emulator ports at an isolated demo project and start the dev server:
+
+```sh
+./node_modules/.bin/firebase emulators:start --only auth,firestore --project demo-champions-atlas
+VITE_FIREBASE_API_KEY=demo-key VITE_FIREBASE_AUTH_DOMAIN=demo-champions-atlas.firebaseapp.com VITE_FIREBASE_PROJECT_ID=demo-champions-atlas VITE_FIREBASE_APP_ID=demo-app VITE_FIREBASE_EMULATORS=1 npm run dev -- --host 127.0.0.1 --port 5199 --strictPort
+```
+
+The emulator serves `firestore.rules` from the repository root. Sign in with a
+test account; there is no bypass for real accounts. `npm run build:e2e` blanks
+the `VITE_FIREBASE_*` values, so it never reaches an emulator.
 
 ## Sign-in domains
 

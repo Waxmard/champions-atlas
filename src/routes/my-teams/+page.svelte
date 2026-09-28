@@ -34,7 +34,7 @@
     swapSuggestions,
     type SavedTeam,
   } from '$lib/workbench';
-  import { pushNow } from '$lib/sync.svelte';
+  import { pushNow, setSyncPaused, sync } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -60,6 +60,7 @@
   let pendingSpecies = $state<string | null>(null);
   let showSwapPicker = $state(false);
   let swapUnavailable = $state(false);
+  let appliedRevision = 0;
   const teams = $derived(data.catalog.teams as Team[]);
   const allSpecies = $derived(
     [
@@ -113,7 +114,7 @@
         localStorage.setItem(activeTeamKey, entry.id);
       if (!entry && activeOverride === undefined && !saved.length)
         localStorage.removeItem(activeTeamKey);
-      if (navigate && (entry || !id)) {
+      if (navigate && (entry || !id || !saved.length)) {
         const destination = entry
           ? resolve('/my-teams') + '?team=' + encodeURIComponent(entry.id)
           : resolve('/my-teams');
@@ -157,6 +158,7 @@
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('beforeunload', warn);
+      setSyncPaused(false);
       window.removeEventListener('pagehide', onHide);
       document.removeEventListener('visibilitychange', onVisibility);
     };
@@ -165,6 +167,21 @@
     if (!ready) return;
     const id = page.url.searchParams.get('team');
     untrack(() => openSaved(id));
+  });
+  $effect(() => {
+    if (ready) setSyncPaused(dirty || editing || deleting);
+  });
+  $effect(() => {
+    if (
+      !ready ||
+      dirty ||
+      editing ||
+      deleting ||
+      sync.revision === appliedRevision
+    )
+      return;
+    appliedRevision = sync.revision;
+    untrack(() => openSaved(draft?.id ?? page.url.searchParams.get('team')));
   });
   beforeNavigate(({ cancel, willUnload }) => {
     if (willUnload) return;

@@ -17,7 +17,6 @@
     type PokemonType,
   } from '$lib/types';
   import { browseStorageKey } from '$lib/workbench';
-  import { pushNow } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
@@ -183,18 +182,6 @@
   afterNavigate(restoreBrowse);
   onMount(() => {
     ready = true;
-    const pushBrowse = () => {
-      void pushNow();
-    };
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') pushBrowse();
-    };
-    window.addEventListener('pagehide', pushBrowse);
-    document.addEventListener('visibilitychange', onVisibility);
-    return () => {
-      window.removeEventListener('pagehide', pushBrowse);
-      document.removeEventListener('visibilitychange', onVisibility);
-    };
   });
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(page.url.searchParams, next));

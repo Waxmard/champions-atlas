@@ -7,7 +7,7 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
-  import { initSync, signOut, sync } from '$lib/sync.svelte';
+  import { initSync, pushNow, signOut, sync } from '$lib/sync.svelte';
   import {
     activeTeamKey,
     readSavedTeams,
@@ -360,6 +360,20 @@
                       </p>{/if}
                   </div>
                   <DropdownMenu.Separator class="-mx-1 my-1 h-px bg-base-300" />
+                  {#if sync.status === 'error'}
+                    <p
+                      role="alert"
+                      class="max-w-64 px-2 py-1.5 text-sm leading-relaxed wrap-break-word"
+                      style="color: var(--color-error-content)"
+                    >
+                      {sync.error}
+                    </p>
+                    <DropdownMenu.Item
+                      onSelect={() => void pushNow()}
+                      class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-base-200"
+                      >Retry sync</DropdownMenu.Item
+                    >
+                  {/if}
                   <DropdownMenu.Item
                     onSelect={signOut}
                     class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-base-200"
@@ -373,7 +387,9 @@
       </div>
     </div>
   </header>
-  {@render children()}
+  {#key sync.user?.uid}
+    {@render children()}
+  {/key}
   <footer
     class="mx-auto mt-10 max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
   >
