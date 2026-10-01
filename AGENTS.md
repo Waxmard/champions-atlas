@@ -35,6 +35,18 @@ Read `docs/product-spec.md` before changing product behavior.
 - Preserve filters and browsing position when introducing team navigation.
 - Never run git add, commit, or push, publish packages, or deploy automatically.
 
+## Branches and releases
+
+- Branch ordinary work from `dev` and target feature/dependency pull requests
+  there. Squash them with meaningful Conventional Commit titles.
+- Keep `main` for production and releases. Promote reviewed `dev` → `main` pull
+  requests with rebase, not squash. Do not reset or force-push long-lived branches.
+- Backport each merged Release Please commit through a short-lived branch from
+  `dev` and a pull request merged with rebase. Retain dev dependency changes and
+  apply only release metadata; see the README release lifecycle.
+- Publish the one-time bootstrap to `main`, then create/protect `dev` from that
+  main state before changing the live default branch.
+
 ## UI design and component quality gates
 
 - When creating new components in `src/lib/components/` or executing layout redesigns across existing views:

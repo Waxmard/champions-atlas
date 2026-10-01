@@ -63,16 +63,28 @@ write**, then store it as a repository secret. The workflow needs a token other
 than `GITHUB_TOKEN` so that merging the release pull request triggers the
 `push`-triggered workflows.
 
-- A push to `main` runs `deploy-prod.yml`, which deploys Hosting and
-  `firestore.rules` to `champions-atlas`.
-- A pull request labeled `deploy-preview` runs `deploy-preview.yml`, which
-  deploys the rules and a Hosting preview channel to `champions-atlas-test`, then
-  comments the channel URL on the pull request.
+- CI and security checks run on pushes to `dev` and `main` and on pull requests
+  targeting either branch. Dependabot targets `dev`.
+- A push to `main` or a manual production dispatch on `main` runs
+  `deploy-prod.yml`, building the triggering commit SHA and deploying Hosting
+  and `firestore.rules` to `champions-atlas`. Manual dispatches on `dev` skip
+  the deploy job. There are no automatic dev deployments.
+- The daily catalog refresh runs at 08:17 UTC. Scheduled workflows originate
+  from the default branch, but production explicitly checks out `main`, even
+  when `dev` is the default branch. Import, enrichment, and evaluation must pass
+  before building and deploying.
+- A pull request to either `dev` or `main` labeled `deploy-preview` runs
+  `deploy-preview.yml`, which deploys the rules and a Hosting preview channel to
+  `champions-atlas-test`, then comments the channel URL on the pull request.
   The `deploy-preview` label must exist on the repository (`gh label create deploy-preview`); without it the job silently no-ops.
-- A push to `main` also runs `release-please.yml`, which opens or updates a
-  release pull request that bumps `package.json` and writes `CHANGELOG.md`. The
-  workflow merges that pull request once the required status checks pass, then
-  tags the release.
+- A push to `main` also runs `release-please.yml`, explicitly targeting `main`.
+  It opens or updates a release pull request that bumps `package.json` and
+  writes `CHANGELOG.md`. The workflow automatically merges that pull request
+  once the required status checks pass, then tags the release.
+
+The branch migration leaves GitHub environment secrets and protection settings
+unchanged. See the [release lifecycle](../README.md#release-lifecycle) for rebase
+promotions and manual release metadata backports to `dev`.
 
 Deploy by hand with:
 

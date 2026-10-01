@@ -69,8 +69,31 @@ Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
 
-See [data sources and ranking limits](docs/data-sources.md). No scheduled
-refresh or additional source integration is configured.
+See [data sources and ranking limits](docs/data-sources.md).
+
+## Release lifecycle
+
+Use `dev` as the integration branch and `main` for production and releases:
+
+1. Branch ordinary work from `dev`. Target feature and dependency pull requests
+   at `dev`, then squash them with meaningful Conventional Commit titles.
+2. Promote reviewed work with a `dev` → `main` pull request. Merge with rebase,
+   not squash, so Release Please reads the individual conventional commits.
+3. After Release Please merges its version and changelog pull request on `main`,
+   cherry-pick that pull request's actual merged commit SHA onto a short-lived
+   branch from `dev`. Open a pull request to `dev` and merge it with rebase.
+
+Rebase promotions rewrite commit identities. Do not reset or force-push `dev`
+to synchronize it with `main`. For release metadata backport conflicts in
+`package.json` and `package-lock.json`, retain `dev` dependency changes and apply
+only the released version bump. Retain the released changelog entries and
+`.release-please-manifest.json` version; do not copy main's entire package files.
+
+Before the live cutover, publish and merge `chore/dev-main-release` as a one-time
+bootstrap pull request to `main`, separate from `qol` product work. Create and
+protect `dev` from the published `main` before making it the default branch.
+See [Firebase deployment and sync](docs/firebase.md) for main deployments,
+daily catalog refreshes, and label-gated previews.
 
 ## Save, compare, and edit
 
