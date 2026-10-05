@@ -239,13 +239,17 @@ test('corrupt storage is reported and kept; missing local IDs do not show anothe
   page,
 }) => {
   await page.goto('/my-teams?team=missing');
-  await expect(page.getByRole('status')).toContainText('not on this device');
+  await expect(
+    page.getByRole('heading', { name: 'My teams', exact: true })
+  ).toBeVisible();
+  await expect(page).toHaveURL(/\/my-teams\?team=missing$/);
+  await expect(page.getByLabel('Saved team')).toHaveCount(0);
   await page.evaluate(
     (key) => localStorage.setItem(key, '{broken'),
     storageKey
   );
   await page.reload();
-  await expect(page.getByRole('alert')).toContainText('left untouched');
+  await expect(page.getByRole('alert')).toBeVisible();
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe('{broken');

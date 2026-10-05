@@ -124,6 +124,10 @@ precedence, and a missing remembered detail falls back to browsing. The main
 navigation remains visible while scrolling, and selecting a Pokémon clears
 its search input for the next choice.
 
+An explicit saved-team link with no saved teams keeps its URL and shows a
+missing-team notice. Resuming a deleted saved team opens the empty My teams
+view and clears its active selection.
+
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
 fields and moves next, then uses result ordering for ties. All regulations are
 included. Replacement sets favor retaining the chosen Pokémon and its set details,

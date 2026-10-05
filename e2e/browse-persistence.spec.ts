@@ -42,6 +42,17 @@ async function openResumeContext(
   localValues: Record<string, string> = {},
   trackWrites = true
 ) {
+  await expect(page).toHaveURL((url) => !url.searchParams.has('browse'));
+  await expect
+    .poll(() =>
+      page.evaluate(
+        (key) =>
+          localStorage.getItem(key) ===
+          location.pathname + location.search + location.hash,
+        lastPageKey
+      )
+    )
+    .toBe(true);
   await page.evaluate(
     ({ key, destination, values }) => {
       localStorage.setItem(key, destination);

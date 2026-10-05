@@ -114,7 +114,7 @@
         localStorage.setItem(activeTeamKey, entry.id);
       if (!entry && activeOverride === undefined && !saved.length)
         localStorage.removeItem(activeTeamKey);
-      if (navigate && (entry || !id || !saved.length)) {
+      if (navigate && (entry || !id)) {
         const destination = entry
           ? resolve('/my-teams') + '?team=' + encodeURIComponent(entry.id)
           : resolve('/my-teams');
