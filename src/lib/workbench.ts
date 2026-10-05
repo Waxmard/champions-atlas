@@ -269,6 +269,16 @@ export function saveTeam(
   storage.setItem(storageKey, raw);
   return next;
 }
+export function deleteTeam(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  id: string
+): SavedTeam[] {
+  const saved = readSavedTeams(storage);
+  const remaining = saved.filter((team) => team.id !== id);
+  if (remaining.length !== saved.length)
+    storage.setItem(storageKey, JSON.stringify(remaining));
+  return remaining;
+}
 
 export const MAX_TEAM_MEGAS = 2;
 export const isMegaSpecies = (pokemon: string) =>

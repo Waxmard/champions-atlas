@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   differences,
+  deleteTeam,
   exportPaste,
   isMegaSpecies,
   newCustomTeam,
@@ -141,6 +142,58 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
   assert.equal(value, '{broken');
   value = JSON.stringify([{ ...first, members: [] }]);
   assert.throws(() => readSavedTeams(storage), /untouched/);
+});
+
+test('delete saved team preserves remaining teams and corrupt data', () => {
+  const first = newSavedTeam(team('first'));
+  const second = newSavedTeam(team('second'));
+  let value = JSON.stringify([first, second]);
+  const writes = [];
+  const storage = {
+    getItem: (key) => {
+      assert.equal(key, storageKey);
+      return value;
+    },
+    setItem: (key, next) => {
+      assert.equal(key, storageKey);
+      writes.push(next);
+      value = next;
+    },
+  };
+
+  assert.deepEqual(deleteTeam(storage, first.id), [second]);
+  assert.deepEqual(JSON.parse(value), [second]);
+  const writesBeforeMissing = writes.length;
+  assert.deepEqual(deleteTeam(storage, 'missing'), [second]);
+  assert.equal(writes.length, writesBeforeMissing);
+
+  assert.deepEqual(deleteTeam(storage, second.id), []);
+  assert.equal(value, '[]');
+  assert.deepEqual(JSON.parse(value), []);
+
+  value = '{broken';
+  const writesBeforeCorrupt = writes.length;
+  assert.throws(() => deleteTeam(storage, 'missing'));
+  assert.equal(value, '{broken');
+  assert.equal(writes.length, writesBeforeCorrupt);
+
+  value = JSON.stringify([first, second]);
+  const beforeFailedWrite = value;
+  assert.throws(
+    () =>
+      deleteTeam(
+        {
+          ...storage,
+          setItem: (key) => {
+            assert.equal(key, storageKey);
+            throw new Error('Quota exceeded');
+          },
+        },
+        first.id
+      ),
+    /Quota exceeded/
+  );
+  assert.equal(value, beforeFailedWrite);
 });
 
 test('old saved teams load without retaining obsolete locks or losing original and edits', () => {
