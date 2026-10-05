@@ -302,7 +302,7 @@ test('a spread another saved team runs stages and saves', async ({ page }) => {
     .getByRole('dialog', { name: `Edit ${pokemon} set`, exact: true })
     .getByRole('region', { name: 'EV spread suggestions' });
   await expect(suggestions).toContainText(
-    'Spreads your own teams already run on this Pokémon.'
+    'Spreads your own teams run, then the most common catalog spreads.'
   );
   const row = suggestions.getByRole('button', {
     name: `Use Timid spread 18 HP / 26 Def / 22 Spe`,
@@ -340,4 +340,35 @@ test('a spread another saved team runs stages and saves', async ({ page }) => {
   });
   await expect(saved.getByLabel('Def EV', { exact: true })).toHaveValue('26');
   await expect(saved.getByLabel('Spe EV', { exact: true })).toHaveValue('22');
+});
+
+test('catalog spreads fill the list when no saved team runs the Pokémon', async ({
+  page,
+}) => {
+  const pokemon = 'Raichu-Mega-Y';
+  const { editor } = await openEditor(
+    page,
+    raichuTeamId,
+    raichuTeamName,
+    pokemon
+  );
+  const suggestions = editor.getByRole('region', {
+    name: 'EV spread suggestions',
+  });
+  await expect(suggestions).toContainText(
+    'then the most common catalog spreads'
+  );
+  const row = suggestions
+    .getByRole('button', { name: /^Use .+ spread .+$/ })
+    .first();
+  await expect(row).toBeVisible();
+  await expect(row).toContainText('catalog team');
+  const chips = await chipsOf(row).allTextContents();
+  await row.click();
+  for (const chip of chips) {
+    const [, value, stat] = /^(\d+) (\w+)$/.exec(chip)!;
+    await expect(editor.getByLabel(`${stat} EV`, { exact: true })).toHaveValue(
+      value
+    );
+  }
 });

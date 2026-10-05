@@ -14,14 +14,14 @@
   import type { Member, Team } from '$lib/catalog';
   import { speedBenchmark, speedFor, speedTiers } from '$lib/stats';
   import EvBenchmarkPanel from '$lib/components/EvBenchmarkPanel.svelte';
-  import type { CatalogSuggestion, OwnSpreadSuggestion } from '$lib/workbench';
+  import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
 
   let {
     member,
     spread,
     nature,
     index,
-    ownSpreads,
+    spreadSuggestions,
     currentRegulation,
     teams,
     natureSuggestions,
@@ -32,7 +32,7 @@
     spread: string;
     nature: string;
     index: BenchmarkIndex;
-    ownSpreads: OwnSpreadSuggestion[];
+    spreadSuggestions: SpreadSuggestion[];
     currentRegulation: string;
     teams: Team[];
     natureSuggestions: CatalogSuggestion[];
@@ -244,10 +244,10 @@
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Spreads your own teams already run on this Pokémon.
+      Spreads your own teams run, then the most common catalog spreads.
     </p>
   </div>
-  {#each ownSpreads.slice(0, 4) as option, i (option.teamName + option.spread)}
+  {#each spreadSuggestions as option, i (option.spread + option.nature)}
     {@const speed = speedBenchmark(
       resolvedForm.pokemon,
       parseChampionsSpread(option.spread),
@@ -265,14 +265,14 @@
       onclick={() => onspreadchange(option.spread, option.nature)}
     >
       <span id={'ev-suggestion-details-' + i} class="sr-only"
-        >{option.teamName} · {option.regulation} · {option.movedPoints} points moved</span
+        >{option.source} · {option.movedPoints} points moved</span
       >
       {@render chips(option.spread)}
       <span class="value"
         >{option.nature} · {formatSpreadDelta(option.deltas)}</span
       >
       <span class="provenance"
-        >{option.teamName} · {option.regulation} · {option.movedPoints} points moved</span
+        >{option.source} · {option.movedPoints} points moved</span
       >
       {#if option.speed !== null}
         <span class="provenance"
@@ -283,7 +283,9 @@
       {/if}
     </button>
   {:else}
-    <p class="provenance px-3 py-2.5">No saved team runs this Pokémon yet.</p>
+    <p class="provenance px-3 py-2.5">
+      No spread suggestions for this Pokémon yet.
+    </p>
   {/each}
   {#if tiers.length && currentSpeed !== null}
     <details class="px-3 py-2.5">

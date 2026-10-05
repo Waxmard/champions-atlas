@@ -150,9 +150,13 @@ Field-based editing for saved catalog teams is implemented. Full legality-aware
 adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
 suggestions.
 
-EV spread suggestions list spreads that the owner's other saved teams already run
-on the same Pokémon. The owner can also ask one benchmark question: survive a
-named move from a named opponent, take a KO, or outspeed. The opponent's set is
+EV spread suggestions merge the spreads the owner's other saved teams run on the
+same Pokémon with the most common catalog spreads for its resolved battle form,
+labeling each row with its source and dropping exact duplicates. Own-team spreads
+come first; catalog rows are ordered by current-regulation usage before older
+regulations. Choosing a row sets both the EV spread and its paired nature. The
+owner can also ask one benchmark question: survive a named move from a named
+opponent, take a KO, or outspeed. The opponent's set is
 the most common recorded current-regulation set for that species, filtered by
 held item when one is named. An outspeed query excludes Choice Scarf targets
 unless Choice Scarf is the named item, and applies the ×1.5 multiplier to the

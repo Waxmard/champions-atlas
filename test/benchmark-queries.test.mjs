@@ -15,7 +15,10 @@ import {
   spreadDeltas,
   spreadMoved,
 } from '../src/lib/paste.ts';
-import { ownSpreadSuggestions } from '../src/lib/workbench.ts';
+import {
+  catalogSpreadSuggestions,
+  ownSpreadSuggestions,
+} from '../src/lib/workbench.ts';
 
 const conditions = () => structuredClone(DEFAULT_BENCHMARK_CONDITIONS);
 const raichu = {
@@ -673,6 +676,75 @@ test('own spreads copy a same-species spread from another saved team', () => {
       raichu,
       [{ id: 'delta', name: 'Delta', regulation: 'M-C', members: [raichu] }],
       null
+    ),
+    []
+  );
+});
+
+test('catalog spreads aggregate teams, prioritize the current regulation, and pair natures', () => {
+  const catalog = [
+    team('cur-1', 'M-C', [
+      { ...raichu, spread: '18 HP / 25 Def / 23 Spe', nature: 'Timid' },
+    ]),
+    team('cur-2', 'M-C', [
+      { ...raichu, spread: '18 HP / 25 Def / 23 Spe', nature: 'Timid' },
+    ]),
+    team('old-1', 'M-B', [
+      { ...raichu, spread: '4 HP / 30 Atk / 32 Spe', nature: 'Adamant' },
+    ]),
+    team('old-2', 'M-B', [
+      { ...raichu, spread: '4 HP / 30 Atk / 32 Spe', nature: 'Adamant' },
+    ]),
+    team('old-3', 'M-B', [
+      { ...raichu, spread: '4 HP / 30 Atk / 32 Spe', nature: 'Adamant' },
+    ]),
+    team('other-form', 'M-C', [
+      {
+        ...raichu,
+        pokemon: 'Pikachu',
+        item: null,
+        nature: 'Timid',
+        spread: '32 HP / 32 SpA / 2 Spe',
+      },
+    ]),
+    team('incomplete', 'M-C', [
+      { ...raichu, spread: '32 HP', nature: 'Timid' },
+    ]),
+  ];
+  const results = catalogSpreadSuggestions(raichu, catalog, 'M-C');
+  assert.deepEqual(
+    results.map(
+      ({ nature, spread, currentCount, totalCount, movedPoints }) => ({
+        nature,
+        spread,
+        currentCount,
+        totalCount,
+        movedPoints,
+      })
+    ),
+    [
+      {
+        nature: 'Timid',
+        spread: '18 HP / 25 Def / 23 Spe',
+        currentCount: 2,
+        totalCount: 2,
+        movedPoints: 0,
+      },
+      {
+        nature: 'Adamant',
+        spread: '4 HP / 30 Atk / 32 Spe',
+        currentCount: 0,
+        totalCount: 3,
+        movedPoints: 39,
+      },
+    ]
+  );
+  assert.equal(typeof results[1].speed, 'number');
+  assert.deepEqual(
+    catalogSpreadSuggestions(
+      { ...raichu, pokemon: 'Missingno' },
+      catalog,
+      'M-C'
     ),
     []
   );

@@ -17,6 +17,7 @@ import {
   parseCustomPaste,
   spreadDeltas,
   spreadMoved,
+  type ChampionsSpread,
   type SpreadDelta,
 } from './paste.ts';
 import { speedFor } from './stats.ts';
@@ -640,4 +641,119 @@ export function ownSpreadSuggestions(
     (a, b) =>
       a.movedPoints - b.movedPoints || a.teamName.localeCompare(b.teamName)
   );
+}
+
+interface CatalogSpreadOption {
+  spread: string;
+  nature: string;
+  values: ChampionsSpread;
+  currentCount: number;
+  totalCount: number;
+}
+
+export interface CatalogSpreadSuggestion {
+  spread: string;
+  nature: string;
+  currentCount: number;
+  totalCount: number;
+  deltas: SpreadDelta[];
+  movedPoints: number;
+  speed: number | null;
+}
+
+export interface SpreadSuggestion {
+  spread: string;
+  nature: string;
+  source: string;
+  deltas: SpreadDelta[];
+  movedPoints: number;
+  speed: number | null;
+}
+
+const spreadCache = new WeakMap<
+  Team[],
+  { regulation: string; bySpecies: Map<string, CatalogSpreadOption[]> }
+>();
+
+function catalogSpreadIndex(
+  teams: Team[],
+  regulation: string
+): Map<string, CatalogSpreadOption[]> {
+  const cached = spreadCache.get(teams);
+  if (cached && cached.regulation === regulation) return cached.bySpecies;
+  const bySpecies = new Map<string, Map<string, CatalogSpreadOption>>();
+  for (const team of teams) {
+    const isCurrent = team.regulation === regulation;
+    for (const member of team.members) {
+      const values = parseChampionsSpread(member.spread);
+      if (!isCompleteSpread(values)) continue;
+      const nature = NATURES.find(
+        (name) => normalize(name) === normalize(member.nature ?? '')
+      );
+      if (!nature) continue;
+      const form = resolveBattleForm(member);
+      if (form.error) continue;
+      const species = normalize(form.pokemon);
+      let options = bySpecies.get(species);
+      if (!options) {
+        options = new Map();
+        bySpecies.set(species, options);
+      }
+      const spread = formatChampionsSpread(values);
+      const key = `${normalize(nature)}|${normalize(spread)}`;
+      const option = options.get(key);
+      if (option) {
+        option.totalCount++;
+        if (isCurrent) option.currentCount++;
+      } else {
+        options.set(key, {
+          spread,
+          nature,
+          values,
+          currentCount: isCurrent ? 1 : 0,
+          totalCount: 1,
+        });
+      }
+    }
+  }
+  const ranked = new Map<string, CatalogSpreadOption[]>();
+  for (const [species, options] of bySpecies)
+    ranked.set(
+      species,
+      [...options.values()].sort(
+        (a, b) =>
+          b.currentCount - a.currentCount ||
+          b.totalCount - a.totalCount ||
+          a.spread.localeCompare(b.spread) ||
+          a.nature.localeCompare(b.nature)
+      )
+    );
+  spreadCache.set(teams, { regulation, bySpecies: ranked });
+  return ranked;
+}
+
+export function catalogSpreadSuggestions(
+  self: Member,
+  teams: Team[],
+  currentRegulation: string,
+  limit = 4
+): CatalogSpreadSuggestion[] {
+  const form = resolveBattleForm(self);
+  if (form.error) return [];
+  const options =
+    catalogSpreadIndex(teams, currentRegulation).get(normalize(form.pokemon)) ??
+    [];
+  const initial = parseChampionsSpread(self.spread);
+  return options.slice(0, limit).map((option) => {
+    const deltas = spreadDeltas(initial, option.values);
+    return {
+      spread: option.spread,
+      nature: option.nature,
+      currentCount: option.currentCount,
+      totalCount: option.totalCount,
+      deltas,
+      movedPoints: spreadMoved(deltas) / 2,
+      speed: speedFor(form.pokemon, option.values, option.nature),
+    };
+  });
 }
