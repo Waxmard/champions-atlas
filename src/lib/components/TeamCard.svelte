@@ -2,7 +2,12 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
-  import { bestEvidence, evidenceGrade, type Team } from '$lib/catalog';
+  import {
+    bestEvidence,
+    evidenceGrade,
+    regulationLabel,
+    type Team,
+  } from '$lib/catalog';
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import PokemonSprite from './PokemonSprite.svelte';
 
@@ -45,7 +50,9 @@
     class="block rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
   >
     <div class="flex items-baseline justify-between gap-3">
-      {#if showRegulation}<span class="term">Reg {team.regulation}</span>{/if}
+      {#if showRegulation}<span class="term"
+          >{regulationLabel(team.regulation)}</span
+        >{/if}
       <span class="provenance ml-auto shrink-0">{team.publishedAt}</span>
     </div>
     <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">

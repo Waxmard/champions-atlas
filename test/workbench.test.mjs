@@ -122,6 +122,38 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
     readSavedTeams(storage).find((team) => team.id === first.id).name,
     'Edited'
   );
+  const pochSource = {
+    ...team('poch-source', 'Unknown'),
+    pasteUrl: '',
+    paste: null,
+    reports: [
+      {
+        event: 'Sketch Academy Sunday Regulation M-C Tournament',
+        rank: '2nd',
+        sourceUrl: 'https://x.com/example/status/2106083996589555887',
+      },
+    ],
+  };
+  const poch = newSavedTeam(pochSource);
+  saveTeam(storage, poch);
+  const loadedPoch = readSavedTeams(storage).find(
+    (saved) => saved.id === poch.id
+  );
+  assert.deepEqual(loadedPoch.original.reports, pochSource.reports);
+  assert.deepEqual(loadedPoch.original.members, pochSource.members);
+  assert.deepEqual(loadedPoch.sources, []);
+  const originalSnapshot = JSON.stringify(loadedPoch.original);
+  loadedPoch.members[2] = member('Replacement');
+  loadedPoch.members[0].set = 'Edited set';
+  assert.equal(JSON.stringify(loadedPoch.original), originalSnapshot);
+  saveTeam(storage, loadedPoch);
+  const reloadedPoch = readSavedTeams(storage).find(
+    (saved) => saved.id === poch.id
+  );
+  assert.deepEqual(reloadedPoch.original.reports, pochSource.reports);
+  assert.deepEqual(reloadedPoch.original.members, pochSource.members);
+  assert.equal(reloadedPoch.members[2].pokemon, 'Replacement');
+  assert.deepEqual(reloadedPoch.sources, []);
   const original = value;
   assert.throws(
     () =>

@@ -17,6 +17,7 @@
     bestEvidence,
     evidenceGrade,
     normalize,
+    regulationLabel,
     type Member,
     type Team,
   } from '$lib/catalog';
@@ -522,7 +523,7 @@
             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span
                 class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
-                >Reg {draft.original.regulation}</span
+                >{regulationLabel(draft.original.regulation)}</span
               >
               {#if originalResult}
                 <span

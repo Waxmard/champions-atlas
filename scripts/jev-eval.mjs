@@ -6,6 +6,7 @@ import { roleFlags } from '../src/lib/tags.ts';
 import {
   loadEnvFile,
   post,
+  publishesSets,
   questionsFor,
   stateOf,
   stub,
@@ -18,9 +19,10 @@ const AGREEMENT = 0.9;
 const CONFIDENCE = 0.6;
 const VIOLATION_RATE = 0.05;
 
-/* Partner-helping moves the five product role flags do not name: screens,
-   healing, Helping Hand-style boosts, sleep, and field effects. Validator
-   vocabulary only; the product's role flags are unchanged. */
+/* Partner-acting moves the five product role flags do not name: screens, healing,
+   Helping Hand-style boosts, sleep, field effects, and debuffs aimed at the
+   opposing side. Validator vocabulary only; the product's role flags are unchanged.
+   Self-only recovery, self-boosting, and pure damage moves never belong here. */
 const SUPPORT_MOVES = [
   'Helping Hand',
   'Coaching',
@@ -49,6 +51,26 @@ const SUPPORT_MOVES = [
   'Strength Sap',
   'Swagger',
   'Flatter',
+  'Perish Song',
+  'Disable',
+  'Glare',
+  'Mystical Fire',
+  'Snarl',
+  'Eerie Impulse',
+  'Charm',
+  'Baby-Doll Eyes',
+  'Acid Spray',
+  'Entrainment',
+  'Ally Switch',
+  'Trick',
+  'Switcheroo',
+  'Imprison',
+  'Gravity',
+  'Memento',
+  'Baton Pass',
+  'Psych Up',
+  'Haze',
+  'Toxic',
 ].map(normalize);
 
 const namesOf = (member) =>
@@ -143,7 +165,9 @@ async function invariants() {
   if (!tags) return null;
   const catalog = await loadCatalog();
   if (!catalog) return null;
-  const tagged = catalog.teams.filter((team) => tags.teams?.[team.id]);
+  const tagged = catalog.teams.filter(
+    (team) => publishesSets(team) && tags.teams?.[team.id]
+  );
   if (!tagged.length) {
     console.log(`${output} holds no tags yet.`);
     return null;

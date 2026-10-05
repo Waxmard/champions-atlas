@@ -6,8 +6,10 @@ Champion's Atlas helps its owner choose Pokémon Champions doubles teams on a
 phone. Existing spreadsheets are awkward to browse, and missingNO loses filters
 when opening a team. Version 1 succeeds by making discovery reliable and fast.
 
-This document records the planning conversation. It does not imply that source
-integrations or game-rule validation have been implemented.
+This document records the planning conversation. It does not imply that every
+planned source integration or game-rule validation has been implemented; the
+Poch.ms integration below shipped after planning, and
+[data sources](data-sources.md) describes the current import.
 
 ## Version 1
 
@@ -44,6 +46,8 @@ regulation, strong tournament finishes lead, followed by high ladder achievement
 lower ladder achievements, and other tournament entries or unknown results.
 Participation alone does not make a team proven. Top cut is a strong indicator;
 event size, significance, placement, and recency should inform tournament ordering.
+A team whose source publishes no regulation stays in an `Unknown` group that sorts
+below every known regulation, so its reported results do not make it look current.
 
 Current-regulation relevance outweighs stronger historical results when the
 current team has qualifying evidence. Early in M-C, reaching Master Ball qualifies
@@ -79,7 +83,8 @@ Use concrete examples to settle these rather than an unexplained weighted score.
 
 - Keep original source links, publication/fetch dates, game, battle format,
   regulation, and result evidence.
-- Keep unknown fields unknown, including spreads and placements.
+- Keep unknown fields unknown, including spreads, placements, and a source's
+  regulation when it publishes none.
 - Interpret result labels in context: a tournament's "Champion" is not the
   Champions ladder tier; Showdown "Peak 3rd" is not an in-game Champions rank.
 - Merge exact duplicates while retaining source evidence and distinct set variants.
@@ -92,14 +97,14 @@ Use concrete examples to settle these rather than an unexplained weighted score.
 
 ### Source research snapshot: 2026-09-11
 
-| Source                                                                                                                   | Verified during planning                                                                                                               | Remaining checks                                                                                          |
-| ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| [VGCPastes M-C](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=2001945654) | CSV export returned 81 teams with paste links, species, items, dates, sources, and replica metadata. Only four rows had rank metadata. | Fetch and parse paste contents; historical tabs; reuse conditions; schema changes.                        |
-| [Limitless API](https://docs.limitlesstcg.com/developer/tournaments.html)                                                | A sampled M-C event returned 71 submitted teamlists with items, abilities, moves, and natures; 39 entries had placements.              | Event completion, regulation/platform mapping, coverage, missing result handling.                         |
-| [poch.ms](https://poch.ms/en/leaderboard)                                                                                | Downloaded page contained team summaries and original X links.                                                                         | Full sets, achievement evidence, stable automated access, reuse conditions.                               |
-| [VGC History](https://vgchistory.com/data)                                                                               | Documents structured standings/team-sheet files and permits cached reuse.                                                              | Champions event coverage and sample imports.                                                              |
-| [MetaVGC](https://metavgc.com/teams/tournaments)                                                                         | Lists tournament teams and describes available set fields/pastes.                                                                      | Stable ingestion interface and reuse conditions.                                                          |
-| [PokéKit](https://poke.itlibra.com/en/opendata)                                                                          | Offers reusable JSON/CSV aggregate Showdown statistics.                                                                                | Later use only; aggregate spreads are not proof of an individual team's build or Champions ladder finish. |
+| Source                                                                                                                   | Verified during planning                                                                                                                                                                   | Remaining checks                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| [VGCPastes M-C](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=2001945654) | CSV export returned 81 teams with paste links, species, items, dates, sources, and replica metadata. Only four rows had rank metadata.                                                     | Fetch and parse paste contents; historical tabs; reuse conditions; schema changes.                          |
+| [Limitless API](https://docs.limitlesstcg.com/developer/tournaments.html)                                                | A sampled M-C event returned 71 submitted teamlists with items, abilities, moves, and natures; 39 entries had placements.                                                                  | Event completion, regulation/platform mapping, coverage, missing result handling.                           |
+| [poch.ms](https://poch.ms/en/leaderboard)                                                                                | Published page carries inline structured JSON. The importer reads it for M-A, M-B, and M-C doubles tournament entries and doubles social teams; social regulation stays literal `Unknown`. | Implemented; full sets, achievement evidence, cached access, and personal-use reuse conditions are settled. |
+| [VGC History](https://vgchistory.com/data)                                                                               | Documents structured standings/team-sheet files and permits cached reuse.                                                                                                                  | Champions event coverage and sample imports.                                                                |
+| [MetaVGC](https://metavgc.com/teams/tournaments)                                                                         | Lists tournament teams and describes available set fields/pastes.                                                                                                                          | Stable ingestion interface and reuse conditions.                                                            |
+| [PokéKit](https://poke.itlibra.com/en/opendata)                                                                          | Offers reusable JSON/CSV aggregate Showdown statistics.                                                                                                                                    | Later use only; aggregate spreads are not proof of an individual team's build or Champions ladder finish.   |
 
 Start by validating VGCPastes and Limitless imports. Add a supplementary ladder
 source if their result metadata cannot meet discovery needs. Direct X ingestion
@@ -145,9 +150,13 @@ Field-based editing for saved catalog teams is implemented. Full legality-aware
 adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
 suggestions.
 
-EV spread suggestions list spreads that the owner's other saved teams already run
-on the same Pokémon. The owner can also ask one benchmark question: survive a
-named move from a named opponent, take a KO, or outspeed. The opponent's set is
+EV spread suggestions merge the spreads the owner's other saved teams run on the
+same Pokémon with the most common catalog spreads for its resolved battle form,
+labeling each row with its source and dropping exact duplicates. Own-team spreads
+come first; catalog rows are ordered by current-regulation usage before older
+regulations. Choosing a row sets both the EV spread and its paired nature. The
+owner can also ask one benchmark question: survive a named move from a named
+opponent, take a KO, or outspeed. The opponent's set is
 the most common recorded current-regulation set for that species, filtered by
 held item when one is named. An outspeed query excludes Choice Scarf targets
 unless Choice Scarf is the named item, and applies the ×1.5 multiplier to the

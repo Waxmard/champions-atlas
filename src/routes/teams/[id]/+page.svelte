@@ -13,6 +13,8 @@
     bestEvidence,
     evidence,
     evidenceGrade,
+    isPasteUrl,
+    regulationLabel,
     type Team,
   } from '$lib/catalog';
   import {
@@ -86,7 +88,7 @@
   <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
     <span
       class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
-      >Reg {team.regulation}</span
+      >{regulationLabel(team.regulation)}</span
     >
     <span class="stamp" data-grade={evidenceGrade(strongest.level)}
       >{strongest.label}</span
@@ -106,19 +108,25 @@
     <Button class="min-h-11 px-4" disabled={!ready} onclick={useTeam}
       >Use this team</Button
     >
-    <Button
-      href={team.pasteUrl}
-      variant="outline"
-      class="min-h-11 px-4"
-      target="_blank"
-      rel="external noreferrer"
-      ><ExternalLink aria-hidden="true" />Open original paste</Button
-    >
+    {#if isPasteUrl(team.pasteUrl)}<Button
+        href={team.pasteUrl}
+        variant="outline"
+        class="min-h-11 px-4"
+        target="_blank"
+        rel="external noreferrer"
+        ><ExternalLink aria-hidden="true" />Open original paste</Button
+      >{/if}
     {#if paste}<Button
         variant="outline"
         class="min-h-11 px-4"
-        onclick={() => copy(paste, 'Team paste')}
-        ><Copy aria-hidden="true" />Copy team</Button
+        onclick={() =>
+          copy(
+            paste,
+            isPasteUrl(team.pasteUrl) ? 'Team paste' : 'Published sets'
+          )}
+        ><Copy aria-hidden="true" />{isPasteUrl(team.pasteUrl)
+          ? 'Copy team'
+          : 'Copy published sets'}</Button
       >{/if}
     {#if team.replicaCode && team.replicaStatus === '✔'}<Button
         variant="outline"
@@ -142,6 +150,12 @@
 
   {#if team.pasteError}<p class="provenance mt-3">
       Some published details could not be loaded. {team.pasteError}
+    </p>{/if}
+
+  {#if !isPasteUrl(team.pasteUrl)}<p class="provenance mt-3">
+      {team.paste
+        ? 'Only published details are included; missing set fields remain unknown.'
+        : 'Only the published roster is available; set details are unknown.'}
     </p>{/if}
 
   <section

@@ -429,10 +429,13 @@
         <option value={current}>{current} (current)</option>
         <option value="all">All regulations</option>
         {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
-            value={regulation}>{regulation}</option
+            value={regulation}
+            >{regulation === 'Unknown'
+              ? 'Unknown regulation'
+              : regulation}</option
           >{/if}
         {#each historicalRegulations as reg (reg)}<option value={reg}
-            >{reg}</option
+            >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
           >{/each}
       </select>
     </label>
@@ -527,8 +530,8 @@
           href={source.url}
           target="_blank"
           rel="external noreferrer">{source.name}</a
-        >{index < data.catalog.sources.length - 1 ? ', ' : ''}{/each}. Detailed
-      sets available for {teams.filter((team) => team.paste).length}
+        >{index < data.catalog.sources.length - 1 ? ', ' : ''}{/each}. Published
+      set details available for {teams.filter((team) => team.paste).length}
       teams.
     </p>
   </section>

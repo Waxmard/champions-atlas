@@ -21,6 +21,8 @@ import {
   parseVrPaste,
   victoryRoadUrl,
 } from './catalog-sources.mjs';
+import { reportsWithLadderNotes } from './catalog-results.mjs';
+import { parsePoch, pochUrl } from './poch-source.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
@@ -201,6 +203,11 @@ export function enrich(team, data) {
   return {
     ...team,
     members,
+    reports: reportsWithLadderNotes(
+      team.reports ?? [],
+      data.notes,
+      team.pasteUrl
+    ),
     paste: data.paste,
     pasteNotes: typeof data.notes === 'string' ? data.notes : null,
     pasteError: undefined,
@@ -325,6 +332,14 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
     typeof payload.publishedAt !== 'string'
   )
     throw errorWithReason('invalid_payload', 'Published date must be a string');
+  candidate = {
+    ...candidate,
+    reports: reportsWithLadderNotes(
+      candidate.reports,
+      payload.notes,
+      candidate.pasteUrl
+    ),
+  };
   return {
     id: catalogId(candidate.regulation, candidate.pasteUrl, members),
     sheetIds: [],
@@ -363,13 +378,22 @@ export async function enrichPastes(
   { loadPaste, previousTeams = [], limit = teams.length, concurrency = 3 }
 ) {
   const previous = new Map(previousTeams.map((team) => [team.pasteUrl, team]));
+
+  const baseReports = new Map(teams.map((team) => [team, team.reports ?? []]));
+  const withBaseReports = (team) => ({
+    ...team,
+    reports: baseReports.get(team),
+  });
   for (const team of teams) {
     const prior = previous.get(team.pasteUrl);
     if (!prior?.paste) continue;
     try {
       Object.assign(
         team,
-        enrich(team, { paste: prior.paste, notes: prior.pasteNotes })
+        enrich(withBaseReports(team), {
+          paste: prior.paste,
+          notes: prior.pasteNotes,
+        })
       );
     } catch {
       // A changed sheet composition invalidates stale enrichment.
@@ -383,7 +407,10 @@ export async function enrichPastes(
     while (cursor < selected.length) {
       const team = selected[cursor++];
       try {
-        Object.assign(team, enrich(team, await loadPaste(team)));
+        Object.assign(
+          team,
+          enrich(withBaseReports(team), await loadPaste(team))
+        );
         enriched++;
       } catch (error) {
         team.pasteError =
@@ -526,10 +553,21 @@ async function main() {
     parseDevonCorp,
     indexRefresh
   );
+  const pochHtml = await fetchCached(
+    'poch-leaderboard.html',
+    pochUrl,
+    parsePoch,
+    indexRefresh
+  );
   const victoryRoad = parseVictoryRoad(victoryRoadHtml);
   const devonCorp = parseDevonCorp(devonCorpHtml);
   const unique = deduplicate(teams);
-  const sourceHash = hashSources([...csvs, victoryRoadHtml, devonCorpHtml]);
+  const sourceHash = hashSources([
+    ...csvs,
+    victoryRoadHtml,
+    devonCorpHtml,
+    pochHtml,
+  ]);
   let priorCatalog = null;
   try {
     priorCatalog = JSON.parse(await readFile(output, 'utf8'));
@@ -561,6 +599,7 @@ async function main() {
       const key = normalize(resolved.error ? member.pokemon : resolved.pokemon);
       if (!canonicalNames.has(key)) canonicalNames.set(key, member.pokemon);
     }
+  const poch = parsePoch(pochHtml, canonicalNames);
   const priorByKey = new Map();
   for (const team of previousTeams)
     if (team.pasteUrl && !priorByKey.has(`${team.pasteUrl}|${team.regulation}`))
@@ -708,7 +747,17 @@ async function main() {
       }
     }
   }
-  const catalogTeams = deduplicate([...unique, ...publicTeams]);
+  const pochCounts = {
+    discovered: poch.teams.length + poch.skipped.length,
+    accepted: poch.teams.length,
+    priorRetained: 0,
+    skipped: poch.skipped.length,
+    merged: 0,
+  };
+  for (const entry of poch.skipped)
+    noteReason(entry.reason || 'invalid_record');
+  sourceStats.push({ name: 'Poch.ms', counts: pochCounts });
+  const catalogTeams = deduplicate([...unique, ...publicTeams, ...poch.teams]);
   await writeCatalog(output, {
     updatedAt: new Date().toISOString(),
     currentRegulation: 'M-C',
@@ -716,6 +765,7 @@ async function main() {
       { name: 'VGCPastes', url: `${sheet}/edit` },
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
+      { name: 'Poch.ms', url: pochUrl },
     ],
     sourceHash,
     teams: catalogTeams,
