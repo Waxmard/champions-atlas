@@ -128,3 +128,53 @@ test('agreed ranking examples and source-platform distinctions hold', () => {
     4
   );
 });
+
+test('reported ladder positions honor platform limits and Master Ball tier ranks', () => {
+  const report = (event, rank) => ({ event, rank, sourceUrl: '' });
+  for (const [event, rank, regulation, level] of [
+    ['Champions ranked battles', 'Rank 2', 'M-B', 3],
+    ['Champions ranked battles', 'Reported #1000', 'M-B', 1],
+    ['Champions ranked battles', 'Season finish #1001', 'M-B', 3],
+    ['Showdown ladder', 'Peak #100', 'M-C', 1],
+    ['Showdown ladder', 'Season finish #101', 'M-C', 3],
+    ['Champions ranked battles', 'Master Ball Rank 1', 'M-C', 2],
+    ['Champions ranked battles', 'Master Ball Rank 4', 'M-B', 3],
+    ['Worlds', 'Champion', 'M-B', 0],
+  ])
+    assert.equal(evidence(report(event, rank), regulation, 'M-C').level, level);
+});
+
+test('numeric ladder labels and Master Ball tier ranks are not global positions', () => {
+  const report = (event, rank) => ({ event, rank, sourceUrl: '' });
+  assert.equal(
+    evidence(report('Champions ranked battles', 'Reported #4'), 'M-C', 'M-C')
+      .level,
+    1
+  );
+  assert.equal(
+    evidence(
+      report('Champions ranked battles', 'Master Ball Rank 4'),
+      'M-C',
+      'M-C'
+    ).level,
+    2
+  );
+  const champion = evidence(report('Worlds', 'Champion'), 'M-B', 'M-C');
+  assert.equal(champion.level, 0);
+  assert.equal(champion.platform, 'Tournament');
+});
+
+test('Unknown regulation cannot borrow relevance from its reported results', () => {
+  const unknownReported = team(
+    'Unknown',
+    'Champions ranked battles',
+    'Reported #4'
+  );
+  const mcUnknown = team('M-C', '', '');
+  const mbQualifying = team('M-B', 'Worlds', 'Top cut');
+  const mcMaster = team('M-C', 'Ranked Ladder', 'Master Ball');
+  assert.ok(compareTeams(unknownReported, mcUnknown, 'M-C') > 0);
+  assert.ok(compareTeams(unknownReported, mbQualifying, 'M-C') > 0);
+  assert.ok(compareTeams(mcMaster, unknownReported, 'M-C') < 0);
+  assert.ok(compareTeams(mcMaster, mbQualifying, 'M-C') < 0);
+});

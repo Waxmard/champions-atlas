@@ -55,6 +55,9 @@ export function isPasteUrl(value: string): boolean {
   );
 }
 
+export const regulationLabel = (regulation: string) =>
+  regulation === 'Unknown' ? 'Regulation unknown' : `Reg ${regulation}`;
+
 export function readFilters(params: URLSearchParams): MemberFilter[] {
   const values = params.getAll('member');
   if (values.length > 6) throw new Error('Select at most six Pokémon.');
@@ -117,11 +120,14 @@ export function evidence(report: Report, regulation: string, current: string) {
   const showdown = /showdown/i.test(event);
   const ladder = showdown || /ranked|ladder/i.test(event);
   if (ladder) {
-    const position = /^(?:Peak )?(\d+)(?:st|nd|rd|th)$/i.exec(rank);
+    const position =
+      /^(?:Reported|Peak|Season finish) #?(\d+)(?:st|nd|rd|th)?$/i.exec(rank) ||
+      /^(\d+)(?:st|nd|rd|th)$/i.exec(rank);
     const high =
       /^(?:champions?(?: tier)?|rank 1)$/i.test(rank) ||
       (position && Number(position[1]) <= (showdown ? 100 : 1000));
-    const masterBall = /^master ?ball$/i.test(rank) && regulation === current;
+    const masterBall =
+      /^master ?ball(?: rank [1-9]\d*)?$/i.test(rank) && regulation === current;
     return {
       level: high ? 1 : masterBall ? 2 : 3,
       label: rank,
@@ -189,22 +195,27 @@ export function compareTeams(
 ): number {
   const ea = evidenceOf(a, current);
   const eb = evidenceOf(b, current);
+  /* Unknown-regulation teams never borrow relevance from an evidence grade. */
   const ga =
-    ea.level <= 2
-      ? a.regulation === current
-        ? 0
-        : 1
-      : a.regulation === current
-        ? 2
-        : 3;
+    a.regulation === 'Unknown'
+      ? 3
+      : ea.level <= 2
+        ? a.regulation === current
+          ? 0
+          : 1
+        : a.regulation === current
+          ? 2
+          : 3;
   const gb =
-    eb.level <= 2
-      ? b.regulation === current
-        ? 0
-        : 1
-      : b.regulation === current
-        ? 2
-        : 3;
+    b.regulation === 'Unknown'
+      ? 3
+      : eb.level <= 2
+        ? b.regulation === current
+          ? 0
+          : 1
+        : b.regulation === current
+          ? 2
+          : 3;
   return (
     ga - gb ||
     ea.level - eb.level ||

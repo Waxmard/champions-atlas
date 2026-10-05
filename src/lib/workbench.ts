@@ -91,10 +91,13 @@ export function newSavedTeam(team: Team): SavedTeam {
       pasteUrl: team.pasteUrl,
       members: team.members,
       paste: team.paste,
+      reports: team.reports,
     }),
     members: structuredClone(team.members),
     changeSlot: null,
-    sources: [{ name: team.name, pasteUrl: team.pasteUrl }],
+    sources: isPasteUrl(team.pasteUrl)
+      ? [{ name: team.name, pasteUrl: team.pasteUrl }]
+      : [],
   };
 }
 
@@ -217,6 +220,11 @@ const membersSchema = z
     (members) =>
       new Set(members.map((member) => normalize(member.pokemon))).size === 6
   );
+const reportSchema = z.object({
+  event: textSchema,
+  rank: textSchema,
+  sourceUrl: textSchema,
+});
 const originalSchema = z.looseObject({
   id: textSchema,
   name: textSchema,
@@ -224,6 +232,7 @@ const originalSchema = z.looseObject({
   pasteUrl: z.union([z.literal(''), pasteUrlSchema]),
   members: membersSchema,
   paste: textSchema.nullable(),
+  reports: z.array(reportSchema).max(100).optional(),
 });
 const sourceSchema = z.looseObject({
   name: textSchema,

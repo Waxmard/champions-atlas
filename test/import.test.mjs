@@ -28,6 +28,7 @@ import {
   validatePng,
 } from '../scripts/sync-assets.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
+import { bestEvidence } from '../src/lib/catalog.ts';
 
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-bootstrap-'));
@@ -131,6 +132,155 @@ test('paste enrichment matches species and item, never array position', () => {
       { members, pasteUrl: '' },
       { paste: paste.replace('Item0', 'Different item') }
     )
+  );
+});
+
+test('paste notes recover only explicit ladder results without duplicating claims', () => {
+  const members = Array.from({ length: 6 }, (_, i) => ({
+    pokemon: 'Pokemon' + i,
+    item: 'Item' + i,
+  }));
+  const paste = members
+    .map(
+      (member) =>
+        member.pokemon +
+        ' @ ' +
+        member.item +
+        '\nAbility: Ability\nAdamant Nature\n- Protect'
+    )
+    .join('\n\n');
+  const team = {
+    pasteUrl: 'https://pokepast.es/6fd031d71fe87a17',
+    regulation: 'M-B',
+    members,
+    reports: [
+      {
+        event: 'Averagewoopfan X post',
+        rank: '',
+        sourceUrl: 'https://x.com/averagewoopfan/status/2094857849721807173',
+      },
+    ],
+  };
+  const notes = [
+    'Notable Achievements: ',
+    '71st/4254 Grand Champions Festival Encore,',
+    '1st/22 Hatterene Series Summer Showdown,',
+    '1st/46 Poképal Smackdown #156, ',
+    'Achieved Champion Tier',
+  ].join('\r\n');
+  const enriched = enrich(team, { paste, notes });
+  assert.equal(enriched.pasteNotes, notes);
+  assert.deepEqual(enriched.reports, [
+    ...team.reports,
+    {
+      event: 'Champions ranked battles',
+      rank: 'Champion Tier',
+      sourceUrl: team.pasteUrl,
+    },
+  ]);
+  assert.deepEqual(team.reports, [
+    {
+      event: 'Averagewoopfan X post',
+      rank: '',
+      sourceUrl: 'https://x.com/averagewoopfan/status/2094857849721807173',
+    },
+  ]);
+  assert.deepEqual(bestEvidence(enriched, 'M-C'), {
+    level: 1,
+    label: 'Champion Tier',
+    platform: 'Champions ladder',
+    event: 'Champions ranked battles',
+  });
+  assert.deepEqual(
+    enrich(enriched, { paste, notes }).reports,
+    enriched.reports
+  );
+
+  const unrecognized = enrich(
+    { ...team, reports: [] },
+    {
+      paste,
+      notes: [
+        'Champion',
+        '71st/4254 Grand Champions Festival Encore,',
+        '1st/22 Hatterene Series Summer Showdown,',
+        'Format: gen9championsvgc2026regmb',
+        'Reached Rank 3',
+        'Achieved Rank 3',
+        'Achieved Rank 0',
+        'Global rank: 0',
+        'Peak rank: 9007199254740992',
+        'Season finish: 1.5',
+        'Showdown peak: -4',
+      ].join('\n'),
+    }
+  );
+  assert.deepEqual(unrecognized.reports, []);
+  assert.throws(
+    () => enrich(team, { paste, notes: 42 }),
+    /Paste notes must be a string/
+  );
+});
+
+test('paste notes recognize only the documented ladder annotation forms', () => {
+  const members = Array.from({ length: 6 }, (_, i) => ({
+    pokemon: 'Pokemon' + i,
+    item: 'Item' + i,
+  }));
+  const paste = members
+    .map((member) => member.pokemon + ' @ ' + member.item + '\n- Protect')
+    .join('\n\n');
+  const notes = [
+    ' achieved champions tier! ',
+    'Reached Champion Tier.',
+    'Reached Champions Tier',
+    'Achieved Rank 1',
+    'Reached Rank 1',
+    'Reached Rank 2!',
+    'Reached Master Ball',
+    'Achieved Master Ball.',
+    'Global rank: 4th',
+    'Champions global rank: #5',
+    'Champions rank: #6th',
+    'Peak rank: #7',
+    'Season finish #8',
+    'Showdown peak: #9th',
+  ].join('\n');
+  const reports = enrich(
+    {
+      pasteUrl: 'https://pokepast.es/0123456789abcdef',
+      members,
+      reports: [],
+    },
+    { paste, notes }
+  ).reports;
+  const expected = [
+    'Champions ranked battles|Champions Tier',
+    'Champions ranked battles|Champion Tier',
+    'Champions ranked battles|Rank 1',
+    'Champions ranked battles|Rank 2',
+    'Champions ranked battles|Master Ball',
+    'Champions ranked battles|Reported #4',
+    'Champions ranked battles|Reported #5',
+    'Champions ranked battles|Reported #6',
+    'Champions ranked battles|Peak #7',
+    'Champions ranked battles|Season finish #8',
+    'Showdown ladder|Peak #9',
+  ];
+  assert.deepEqual(
+    reports.map(({ event, rank }) => event + '|' + rank),
+    expected
+  );
+  assert.deepEqual(
+    enrich(
+      {
+        pasteUrl: 'https://pokepast.es/0123456789abcdef',
+        members,
+        reports: [],
+      },
+      { paste, notes: 'Achieved Rank 2' }
+    ).reports.map(({ rank }) => rank),
+    ['Rank 2']
   );
 });
 
@@ -358,6 +508,77 @@ test('partial imports retain compatible prior sets without masking sheet changes
   assert.equal(changed.paste, null);
   assert.equal(changed.members[0].item, 'New Item');
   assert.equal(changed.members[0].ability, null);
+});
+
+test('successful refresh removes stale note results and failed refresh retains prior evidence', async () => {
+  const sourceReports = [
+    {
+      event: 'Source post',
+      rank: '',
+      sourceUrl: 'https://x.com/player/status/1',
+    },
+  ];
+  const makeTeam = () => ({
+    id: 'team',
+    pasteUrl: 'https://pokepast.es/team',
+    regulation: 'M-B',
+    reports: structuredClone(sourceReports),
+    members: Array.from({ length: 6 }, (_, i) => ({
+      pokemon: 'Pokemon' + i,
+      item: 'Item' + i,
+      ability: null,
+      moves: [],
+      nature: null,
+      spread: null,
+    })),
+    paste: null,
+    pasteNotes: null,
+  });
+  const paste = Array.from(
+    { length: 6 },
+    (_, i) =>
+      'Pokemon' +
+      i +
+      ' @ Item' +
+      i +
+      '\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- Protect'
+  ).join('\n\n');
+  const priorNotes = [
+    'Notable Achievements:',
+    '71st/4254 Grand Champions Festival Encore,',
+    '1st/22 Hatterene Series Summer Showdown,',
+    '1st/46 Poképal Smackdown #156,',
+    'Achieved Champion Tier',
+  ].join('\n');
+  const previous = enrich(makeTeam(), { paste, notes: priorNotes });
+  const updated = makeTeam();
+  const currentNotes =
+    'Notable Achievements:\n1st/22 Hatterene Series Summer Showdown,';
+  await enrichPastes([updated], {
+    previousTeams: [previous],
+    loadPaste: async () => ({ paste, notes: currentNotes }),
+  });
+  assert.deepEqual(updated.reports, sourceReports);
+  assert.equal(updated.pasteNotes, currentNotes);
+
+  const failed = makeTeam();
+  await enrichPastes([failed], {
+    previousTeams: [previous],
+    loadPaste: async () => {
+      throw new Error('temporary outage');
+    },
+  });
+  assert.equal(failed.paste, paste);
+  assert.equal(failed.members[0].ability, 'Ability');
+  assert.equal(failed.pasteError, 'temporary outage');
+  assert.deepEqual(failed.reports, [
+    ...sourceReports,
+    {
+      event: 'Champions ranked battles',
+      rank: 'Champion Tier',
+      sourceUrl: failed.pasteUrl,
+    },
+  ]);
 });
 
 test('invalid refresh preserves existing catalog', async () => {

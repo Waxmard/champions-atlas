@@ -243,6 +243,8 @@ const sheetSources = {
     pasteText(mbPokemon, mbItems),
     'Format: gen9vgcregulationmb'
   ),
+  'poch-leaderboard.html':
+    '<script>self.__next_f.push([1,"a:{\\"entries\\":[],\\"x\\":[]}"])</script>',
 };
 
 test('imports public index teams alongside the sheets and accounts for every row', async () => {
@@ -300,7 +302,7 @@ test('imports public index teams alongside the sheets and accounts for every row
 
     assert.deepEqual(
       catalog.sources.map(({ name }) => name),
-      ['VGCPastes', 'Victory Road', 'DevonCorp']
+      ['VGCPastes', 'Victory Road', 'DevonCorp', 'Poch.ms']
     );
     assert.equal(catalog.teams.length, 4);
     const alice = catalog.teams.find(({ creator }) => creator === 'Alice');
@@ -749,5 +751,48 @@ test('index payloads are admitted only for the candidate Champions regulation', 
         names
       ),
     reasonChecker('roster_mismatch')
+  );
+});
+
+test('teamFromIndex restores only explicit ladder notes as results', () => {
+  const pasteUrl = 'https://pokepast.es/6fd031d71fe87a17';
+  const candidate = {
+    sourceName: 'DevonCorp',
+    indexUrl: devonCorpUrl,
+    name: "averagewoopfan's Charizard-Y Mawile Team",
+    creator: 'averagewoopfan',
+    regulation: 'M-B',
+    pasteUrl,
+    replicaCode: null,
+    expectedSpecies: null,
+    reports: [
+      {
+        event: 'Averagewoopfan X post',
+        rank: '',
+        sourceUrl: 'https://x.com/averagewoopfan/status/2094857849721807173',
+      },
+    ],
+  };
+  const notes = [
+    'Notable Achievements:',
+    '71st/4254 Grand Champions Festival Encore,',
+    '1st/22 Hatterene Series Summer Showdown,',
+    '1st/46 Poképal Smackdown #156,',
+    'Achieved Champion Tier',
+  ].join('\r\n');
+  const payload = { paste: pasteText(devonPokemon, devonItems), notes };
+  const imported = teamFromIndex(candidate, payload, new Map());
+  assert.equal(imported.pasteNotes, notes);
+  assert.deepEqual(imported.reports, [
+    ...candidate.reports,
+    {
+      event: 'Champions ranked battles',
+      rank: 'Champion Tier',
+      sourceUrl: pasteUrl,
+    },
+  ]);
+  assert.throws(
+    () => teamFromIndex(candidate, { ...payload, notes: 42 }, new Map()),
+    reasonChecker('invalid_payload')
   );
 });

@@ -1,9 +1,10 @@
 # Catalog snapshot
 
-The catalog holds Pokémon Champions doubles teams from three sources: the
+The catalog holds Pokémon Champions doubles teams from four sources: the
 VGCPastes M-C and M-B spreadsheets, Victory Road's Champions replica-team page,
-and DevonCorp's M-A collection. All teams from a sheet or an index include parsed
-paste sets. Missing fields within a published paste remain unknown.
+DevonCorp's M-A collection, and the published Poch.ms leaderboard. Teams from a
+sheet or an index include parsed paste sets, and Poch.ms records include the set
+details that page publishes. Missing fields remain unknown.
 
 Sources:
 
@@ -17,6 +18,12 @@ Sources:
   is one fixed M-A collection. The importer reads its article body only, and
   never the site-wide pages or the `/api/` and `format=json` variants that its
   robots policy disallows.
+- [Poch.ms](https://poch.ms/en/leaderboard) publishes its leaderboard as inline
+  structured JSON. The importer reads only that JSON and imports two record
+  sets: explicitly identified M-A, M-B, and M-C doubles tournament entries, and
+  doubles social teams. Regulation comes from the published format field only,
+  never from a season number, a publication date, or a tier claim. Reported
+  singles and other formats are excluded.
 - [Champions Battle Data](https://championsbattledata.com/api) supplies the level-50
   stat values used for Speed. Its JSON is CORS-enabled and offered for app use,
   and it is not used for usage percentages or result evidence. Refresh the
@@ -30,14 +37,22 @@ whose format names another regulation or another game, a protected paste, a
 Victory Road row whose published roster does not match the paste, and a Victory
 Road row whose creator and result claims belong to a different roster.
 
+A Poch.ms record joins the catalog only when its rule is `double`, its species
+resolve, and every field it uses parses. A record with an unresolvable species, a
+malformed field it needs, or a conflicting duplicate source ID is skipped rather
+than guessed. A source parse that finds supported records but admits none fails
+the refresh instead of publishing an empty success.
+
 ## Freshness and scheduling
 
 `.github/workflows/deploy-prod.yml` imports the catalog and deploys it on every
 push to `main`, and once a day at 08:17 UTC. GitHub can delay a scheduled run.
 The workflow serializes publication, and a failed import, tagging run, or build
-stops before deployment so the previously hosted build stays available. Nothing
-imports on a schedule outside that workflow: dev, build, and typecheck generate a
-missing catalog and otherwise leave it in place.
+stops before deployment so the previously hosted build stays available. A source
+fetch or structural failure throws before the atomic catalog write, so the
+previous catalog stays published. Nothing imports on a schedule outside that
+workflow: dev, build, and typecheck generate a missing catalog and otherwise
+leave it in place.
 
 ## Reuse conditions
 
@@ -55,6 +70,42 @@ species and item, allowing a base species to match the sheet's Mega form. A
 mismatch fails the import instead of assigning details to the wrong Pokémon.
 Paste notes remain visible because they can describe a different regulation.
 
+Poch.ms records keep published values and leave the rest unknown. A missing set
+field or scalar stays unknown. The page publishes no spreads, so these records
+never gain benchmark eligibility. A generated paste is an export of the published
+set details, and only when at least one member publishes some; it is not an
+original paste. Every record carries an empty paste URL and no sheet IDs, so the
+importer never merges it with a sheet or paste record on shared species alone. A
+published replica code is kept with an empty replica status, because publishing a
+code does not prove that it still works.
+
+Published display names map to a recognized species only through a bounded alias
+list: plain Floette and Eternal Flower Floette to Floette-Eternal, the five
+Hisuian names, Alolan Ninetales, Galarian Slowking, Wash and Heat Rotom, and
+Paldean Tauros Aqua Breed to Tauros-Paldea-Aqua. This is not general name
+resolution. An item-backed Mega form is used only when the published item
+supports it, as for Floette-Mega or Raichu-Mega-X, and an itemless Pokémon stays
+its base species. The importer never invents an item, ability, nature, or spread,
+and it rejects a record whose species do not resolve.
+
+Result evidence follows the source claims. A tournament placement becomes an
+ordinal label and never implies a top cut or treats participation as proof. A
+social record that names an event reports only that event placement. A social
+record without an event emits separate Champions ranked battles claims: a
+reported rank, a published tier with its tier rank appended, and a finite
+positive rating. All result reports point to the original X or Twitter post, and
+each record also keeps a separate Poch.ms attribution report. The importer never
+infers a peak, a season finish, or a rating threshold.
+
+The importer also recovers explicit ladder annotations from published paste
+notes. A whole note that states Achieved or Reached Champion Tier, Rank 1, Rank
+2, or Master Ball, and the global, peak, season-finish, and Showdown numeric
+forms, becomes a ladder claim sourced to the original paste. The notes and the
+original source reports stay unchanged, extraction is idempotent, and a
+successful refresh that drops an annotation removes the claim it derived. Only
+whole annotation lines count, so an unrecognized note stays visible and yields no
+evidence.
+
 A team from an index carries no sheet ID. Its published regulation, creator, and
 result claims are kept only after the paste passes the format and roster checks,
 so a row that links another team's paste is dropped rather than misattributed. A
@@ -63,7 +114,11 @@ still imports.
 
 Exact duplicates share regulation, paste URL, and member species/items. Their
 sheet IDs and report links merge; different paste URLs remain separate variants.
-Imports are atomic, and source files are cached. The displayed snapshot date
+Imports are atomic, and source files are cached. `REFRESH=1` or `CHECK_SHEET=1`
+fetches every source, the Poch.ms leaderboard included; `OFFLINE=1` requires the
+cache. The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
+accepted records, 92 of them with regulation `Unknown`, and 194 skipped records
+(reported singles and unsupported formats). The displayed snapshot date
 tracks catalog generation, not independent verification of source claims.
 By default every paste is fetched with three concurrent workers and reused from
 cache. Individual paste failures preserve compatible previous sets and expose an
@@ -74,8 +129,10 @@ leaves index teams unreached: those keep their previously validated record
 unchanged, and a new index team beyond the limit is omitted and reported as
 `limited`.
 
-Saved teams retain their own original snapshot and source history. Single-slot
-replacement copies the selected published raw set; manual edits belong to the user's draft.
+Saved teams retain their own original snapshot and source history, and the
+snapshot keeps the original reports too. A record without a real paste URL
+contributes no source entry. Single-slot replacement copies the selected
+published raw set; manual edits belong to the user's draft.
 Similarity measures shared Pokémon and matching known set details, with result
 priority breaking ties. It does not predict matchup quality or infer EVs.
 
@@ -95,7 +152,14 @@ current teams without qualifying evidence.
 For this prototype, explicit Champions/Rank 1 labels, reported Champions ladder
 positions up to 1,000, and Showdown positions up to 100 qualify. Numeric positions
 remain numeric positions in the UI; they are never converted into in-game tiers.
-These numeric cutoffs are provisional, not verified game-tier thresholds.
+`Master Ball Rank N` is a displayed tier that carries its source tier rank,
+never a global position and never a converted game tier. Teams whose regulation
+is `Unknown` always sort in the lowest group, whatever results they report, so
+they cannot outrank known-regulation teams through reported results. The filter
+labels the option `Unknown regulation`, and cards and the team detail view show
+`Regulation unknown`. The snapshot line reports published set details because
+some records publish partial sets. These numeric cutoffs are provisional, not
+verified game-tier thresholds.
 Tournament size, event significance, exact placement within a result group, and
 season finish versus peak do not yet break ties; publication date does.
 An eighth-place finish is not assumed to mean top cut without explicit evidence.
