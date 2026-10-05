@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/Waxmard/champions-atlas/compare/v1.0.0...v1.1.0) (2026-10-05)
+
+
+### Features
+
+* sync saved teams across devices and allow deleting them ([#17](https://github.com/Waxmard/champions-atlas/issues/17)) ([af54229](https://github.com/Waxmard/champions-atlas/commit/af54229846ca020ddb3505bcec14c7bd8bd06c4c))
+
 ## [1.0.0](https://github.com/Waxmard/champions-atlas/compare/v0.3.0...v1.0.0) (2026-09-26)
 
 
