@@ -70,6 +70,12 @@ export const stub = {
   teams: {},
 };
 
+/* A team that publishes no moves gives the model nothing to judge a job from,
+   so its answers would be guesses. Only fully published teams are tagged. */
+export const publishesSets = (team) =>
+  team.members.length > 0 &&
+  team.members.every((member) => member.moves.length > 0);
+
 export async function post(key, body) {
   for (let attempt = 0; ; attempt++) {
     const response = await fetch(endpoint, {
@@ -188,7 +194,8 @@ async function main() {
   let fetched = 0;
   let model = stub.model;
 
-  await pooled(catalog.teams, 4, async (team) => {
+  const taggable = catalog.teams.filter(publishesSets);
+  await pooled(taggable, 4, async (team) => {
     const cachePath = resolve(cacheDir, `${team.id}.json`);
     let answer = null;
     let fresh = false;
@@ -243,7 +250,7 @@ async function main() {
   const tagged = Object.keys(teams).length;
   const failed = Object.keys(failures).length;
   console.log(
-    `Tagged ${tagged}/${catalog.teams.length} teams, ${failed} failed, ${requested} requested. ${total} input tokens (~$${((total * pricePerMtok) / 1_000_000).toFixed(4)}).`
+    `Tagged ${tagged}/${taggable.length} taggable teams (${catalog.teams.length - taggable.length} without published sets skipped), ${failed} failed, ${requested} requested. ${total} input tokens (~$${((total * pricePerMtok) / 1_000_000).toFixed(4)}).`
   );
   /* Never ship silently when the credential or API produced nothing at all. */
   const verdict = !tagged

@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { post, questionsFor, stateOf, tagOf } from '../scripts/jev-enrich.mjs';
+import {
+  post,
+  publishesSets,
+  questionsFor,
+  stateOf,
+  tagOf,
+} from '../scripts/jev-enrich.mjs';
 import { invariantViolations } from '../scripts/jev-eval.mjs';
 
 const member = (moves, ability = null) => ({
@@ -104,6 +110,63 @@ test('structural invariants cover setters and every kind of support trait', () =
     invariantViolations(team, tag('trick_room', { 4: 'fast_attacker' })).length,
     0
   );
+});
+
+test('only teams whose members all publish moves are taggable', () => {
+  assert.equal(publishesSets({ members: [member(['Protect'])] }), true);
+  assert.equal(
+    publishesSets({ members: [member(['Protect']), member([])] }),
+    false
+  );
+  assert.equal(publishesSets({ members: [] }), false);
+});
+
+test('support work covers partner-acting moves and nothing self-only', () => {
+  const tag = {
+    archetype: 'balance',
+    speedMode: 'faster',
+    roles: { 1: 'support' },
+  };
+  for (const move of [
+    'Perish Song',
+    'Disable',
+    'Glare',
+    'Mystical Fire',
+    'Snarl',
+    'Eerie Impulse',
+    'Charm',
+    'Baby-Doll Eyes',
+    'Acid Spray',
+    'Entrainment',
+    'Ally Switch',
+    'Trick',
+    'Switcheroo',
+    'Imprison',
+    'Gravity',
+    'Memento',
+    'Baton Pass',
+    'Psych Up',
+    'Haze',
+    'Toxic',
+  ])
+    assert.deepEqual(
+      invariantViolations({ id: 't', members: [member([move])] }, tag),
+      []
+    );
+  for (const move of [
+    'Protect',
+    'Recover',
+    'Calm Mind',
+    'Stockpile',
+    'Swords Dance',
+    'Substitute',
+    'Minimize',
+    'Baneful Bunker',
+  ])
+    assert.equal(
+      invariantViolations({ id: 't', members: [member([move])] }, tag).length,
+      1
+    );
 });
 
 test('jev retries throttling with retry-after and gives up on other errors', async () => {
