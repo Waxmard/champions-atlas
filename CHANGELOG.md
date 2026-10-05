@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/Waxmard/champions-atlas/compare/v1.1.0...v1.2.0) (2026-10-05)
+
+
+### Features
+
+* suggest catalog EV spreads and import Poch.ms leaderboards ([#21](https://github.com/Waxmard/champions-atlas/issues/21)) ([880f180](https://github.com/Waxmard/champions-atlas/commit/880f18088553e732c76d2d7800681b86aed32aee))
+
 ## [1.1.0](https://github.com/Waxmard/champions-atlas/compare/v1.0.0...v1.1.0) (2026-10-05)
 
 
