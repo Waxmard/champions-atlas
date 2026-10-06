@@ -40,9 +40,9 @@
     }) === canonicalSnapshot({ name: team.name, members: team.members })
   );
   const rows = $derived(differences(team.original.members, team.members));
-  const slotDiffers = (index: number) =>
-    canonicalSnapshot(team.original.members[index]) !==
-    canonicalSnapshot(team.members[index]);
+  const swapped = (index: number) =>
+    normalize(team.members[index]?.pokemon ?? '') !==
+    normalize(team.original.members[index].pokemon);
   const groups = $derived.by<ComparisonGroup[]>(() => {
     const grouped: ComparisonGroup[] = [];
     for (const row of rows) {
@@ -52,7 +52,7 @@
     }
     return team.original.members.flatMap((member, index) => {
       const group = grouped.find(({ pokemon }) => pokemon === member.pokemon);
-      return group || slotDiffers(index)
+      return group || swapped(index)
         ? [{ pokemon: member.pokemon, rows: group?.rows ?? [], slot: index }]
         : [];
     });

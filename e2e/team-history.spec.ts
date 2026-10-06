@@ -689,3 +689,42 @@ test('only unsaved input warns on unload and pagehide flushes the latest bound v
     })
   ).toBe(false);
 });
+
+test('an unknown original EV spread is not a restorable slot change', async ({
+  page,
+}) => {
+  const team = newSavedTeam(fixture);
+  team.original.members[weavileIndex] = {
+    ...structuredClone(team.original.members[weavileIndex]),
+    spread: null,
+  };
+  team.members[weavileIndex] = {
+    ...structuredClone(team.members[weavileIndex]),
+    spread: '2 HP / 32 Atk / 32 Spe',
+  };
+  await seed(page, team);
+  const panel = await openHistory(page);
+  await expect(
+    panel.getByRole('button', { name: 'Restore original', exact: true })
+  ).toBeEnabled();
+  await expect(
+    panel.locator(`[data-original-slot="${weavileIndex}"]`)
+  ).toHaveCount(0);
+  await expect(
+    panel.getByRole('button', { name: 'Restore original set', exact: true })
+  ).toHaveCount(0);
+
+  const cleared = newSavedTeam(fixture);
+  cleared.members[weavileIndex] = {
+    ...structuredClone(cleared.members[weavileIndex]),
+    spread: null,
+  };
+  await seed(page, cleared);
+  const slot = (await openHistory(page)).locator(
+    `[data-original-slot="${weavileIndex}"]`
+  );
+  await expect(slot.getByText(/EVs: .+ → Unknown/)).toBeVisible();
+  await expect(
+    slot.getByRole('button', { name: 'Restore original set', exact: true })
+  ).toBeEnabled();
+});
