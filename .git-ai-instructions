@@ -1,0 +1,6 @@
+User POV: competitive Pokémon players using the deployed app — what they perceive as the product is a team builder: browsing catalogued sets, editing teams, and syncing them across devices.
+"User-facing" = a change a player can see or feel in the shipped app.
+
+# Only cases where this repo diverges from git-ai's default type heuristics:
+- Touching a catalog importer, scraper source, or tag-enrichment script → chore (data pipeline, not a player-facing capability)
+- Rewording or restyling existing UI copy or layout, with no behaviour change → style

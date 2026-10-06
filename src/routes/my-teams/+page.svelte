@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { SvelteSet } from 'svelte/reactivity';
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
@@ -12,6 +11,8 @@
   import X from '@lucide/svelte/icons/x';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
+  import TeamHistoryPanel from '$lib/components/TeamHistoryPanel.svelte';
+  import { canonicalSnapshot, restoreTeam } from '$lib/team-history';
   import { copyText } from '$lib/clipboard';
   import {
     bestEvidence,
@@ -31,11 +32,12 @@
     MAX_TEAM_MEGAS,
     readSavedTeams,
     resolveSavedTeamId,
+    rosterConflict,
     saveTeam,
     swapSuggestions,
     type SavedTeam,
   } from '$lib/workbench';
-  import { pushNow, setSyncPaused, sync } from '$lib/sync.svelte';
+  import { pushNow, sync } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -49,12 +51,14 @@
   let showExport = $state(false);
   let activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
-    editorDirty = $state(false);
-  let editedSlots = new SvelteSet<number>();
+    editorPending = $state(false);
+  let editorMember = $state<Member | null>(null);
+  let stale = $state(false);
   let editorRef = $state<
     | {
         focusInitialSection: () => void;
-        requestCancel: () => boolean;
+        flush: () => boolean;
+        requestClose: () => boolean;
       }
     | undefined
   >();
@@ -84,8 +88,11 @@
   const current = $derived(data.catalog.currentRegulation);
   const editing = $derived(activeEditIndex !== null);
   const dirty = $derived(
-    (!!draft && JSON.stringify(draft) !== baseline) || editorDirty
+    (!!draft && draft.name !== (baseline ? JSON.parse(baseline).name : '')) ||
+      editorPending
   );
+  const contentSnapshot = (team: Pick<SavedTeam, 'name' | 'members'>) =>
+    canonicalSnapshot({ name: team.name, members: team.members });
 
   function revealPanel(node: HTMLElement) {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -109,8 +116,8 @@
           : activeOverride;
       const resolvedId = resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
-      draft = entry ? JSON.parse(JSON.stringify(entry)) : null;
-      baseline = JSON.stringify(draft);
+      draft = entry ? structuredClone($state.snapshot(entry)) : null;
+      baseline = entry ? contentSnapshot(entry) : '';
       if (entry && activeOverride === undefined)
         localStorage.setItem(activeTeamKey, entry.id);
       if (!entry && activeOverride === undefined && !saved.length)
@@ -124,8 +131,9 @@
       }
       showExport = false;
       activeEditIndex = null;
-      editorDirty = false;
-      editedSlots.clear();
+      editorPending = false;
+      editorMember = null;
+      stale = false;
       pendingSpecies = null;
       showSwapPicker = false;
       swapUnavailable = false;
@@ -139,7 +147,7 @@
     }
   }
   function persistIfDirty() {
-    if (editing) return;
+    editorRef?.flush();
     saveTeamName();
   }
   onMount(() => {
@@ -159,7 +167,6 @@
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       window.removeEventListener('beforeunload', warn);
-      setSyncPaused(false);
       window.removeEventListener('pagehide', onHide);
       document.removeEventListener('visibilitychange', onVisibility);
     };
@@ -170,15 +177,12 @@
     untrack(() => openSaved(id));
   });
   $effect(() => {
-    if (ready) setSyncPaused(dirty || editing || deleting);
-  });
-  $effect(() => {
     if (
       !ready ||
       dirty ||
       editing ||
       deleting ||
-      sync.revision === appliedRevision
+      (sync.revision === appliedRevision && !stale)
     )
       return;
     appliedRevision = sync.revision;
@@ -186,96 +190,90 @@
   });
   beforeNavigate(({ cancel, willUnload }) => {
     if (willUnload) return;
-    if (dirty && !confirm('Discard unsaved team changes?')) cancel();
+    if (dirty && !confirm('Discard unsaved input?')) cancel();
   });
 
-  function saveTeamName() {
-    if (!draft || editing) return;
-    const trimmed = draft.name.trim();
-    if (!trimmed) {
-      message = 'Give this team a name.';
-      return;
-    }
-    const currentBase = baseline ? (JSON.parse(baseline) as SavedTeam) : null;
-    if (currentBase && draft.name === currentBase.name) return;
+  function persistChange(
+    patch: (team: SavedTeam) => SavedTeam,
+    saveName = false
+  ): boolean {
+    if (!draft) return false;
     try {
-      const currentSaved = readSavedTeams(localStorage).find(
-        (t) => t.id === draft!.id
+      const latest = readSavedTeams(localStorage).find(
+        ({ id }) => id === draft!.id
       );
-      const teamToSave: SavedTeam = {
-        ...(currentSaved ?? $state.snapshot(draft)),
-        name: draft.name,
-      };
-      saved = saveTeam(localStorage, teamToSave);
-      localStorage.setItem(activeTeamKey, teamToSave.id);
-      void pushNow();
-      if (currentBase) {
-        currentBase.name = draft.name;
-        baseline = JSON.stringify(currentBase);
+      if (!latest || contentSnapshot(latest) !== baseline) {
+        stale = true;
+        message =
+          'This team changed elsewhere. Close and reopen the editor before saving.';
+        return false;
       }
-      message = 'Team name saved.';
-    } catch {
-      message = 'Could not save team name.';
-    }
-  }
-
-  function applyPokemon(index: number) {
-    if (!draft) return;
-    const pokemonName = draft.members[index]?.pokemon || 'Pokémon';
-    try {
-      const currentSaved = readSavedTeams(localStorage).find(
-        (t) => t.id === draft!.id
-      );
-      const baseMembers = currentSaved
-        ? currentSaved.members
-        : (JSON.parse(baseline).members as Member[]);
-      const updatedMembers = [...baseMembers];
-      updatedMembers[index] = $state.snapshot(draft.members[index]);
-
-      const teamToSave: SavedTeam = {
-        ...(currentSaved ?? $state.snapshot(draft)),
-        name: draft.name.trim() || currentSaved?.name || draft.name,
-        members: updatedMembers,
-      };
-
-      saved = saveTeam(localStorage, teamToSave);
-      localStorage.setItem(activeTeamKey, teamToSave.id);
-      void pushNow();
-
-      if (baseline) {
-        const nextBase = JSON.parse(baseline) as SavedTeam;
-        nextBase.members[index] = JSON.parse(
-          JSON.stringify(updatedMembers[index])
-        );
-        nextBase.name = teamToSave.name;
-        baseline = JSON.stringify(nextBase);
-      } else {
-        baseline = JSON.stringify(teamToSave);
-      }
-
-      editedSlots.delete(index);
-
+      const next = patch(latest);
+      const pendingName = draft.name;
+      saved = saveTeam(localStorage, next);
+      const persisted = saved.find(({ id }) => id === next.id)!;
+      baseline = contentSnapshot(persisted);
+      draft = structuredClone($state.snapshot(persisted));
+      if (!saveName) draft.name = pendingName;
       storageError = '';
-      message = `${pokemonName} changes applied and saved.`;
+      message = 'Saved on this device.';
+      void pushNow();
+      return true;
     } catch {
       message =
         'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
+      return false;
     }
   }
-
-  function discardPokemon(index: number) {
+  function saveTeamName() {
     if (!draft) return;
-    const pokemonName = draft.members[index]?.pokemon || 'Pokémon';
-    try {
-      const base = JSON.parse(baseline) as SavedTeam;
-      if (base?.members?.[index]) {
-        draft.members[index] = JSON.parse(JSON.stringify(base.members[index]));
-      }
-      editedSlots.delete(index);
-      message = `${pokemonName} changes discarded.`;
-    } catch {
-      message = 'Could not discard changes.';
+    const name = draft.name.trim();
+    if (!name) {
+      message = 'Give this team a name.';
+      return;
     }
+    if (baseline && name === JSON.parse(baseline).name) {
+      draft.name = name;
+      return;
+    }
+    persistChange((team) => ({ ...team, name }), true);
+  }
+  function saveMember(index: number, member: Member): boolean {
+    if (!draft) return false;
+    return persistChange((team) => ({
+      ...team,
+      members: team.members.map((existing, slot) =>
+        slot === index ? structuredClone($state.snapshot(member)) : existing
+      ),
+    }));
+  }
+  function restoreOriginal() {
+    if (
+      !draft ||
+      editing ||
+      deleting ||
+      !confirm('Restore the original team? Your current sets will be replaced.')
+    )
+      return;
+    persistChange((team) => restoreTeam(team), true);
+  }
+  function restoreSlot(index: number) {
+    if (!draft || editing || deleting) return;
+    const member = $state.snapshot(draft.original.members[index]);
+    if (!member) return;
+    persistChange((team) => {
+      const conflict = rosterConflict(member, team.members, index);
+      if (conflict === 'duplicate')
+        throw new Error('This Pokémon is already in another slot.');
+      if (conflict === 'mega')
+        throw new Error('This team already has two Mega Pokémon.');
+      return {
+        ...team,
+        members: team.members.map((existing, slot) =>
+          slot === index ? structuredClone(member) : existing
+        ),
+      };
+    });
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -287,7 +285,8 @@
     pendingSpecies = null;
     activeEditIndex = index;
     activeEditField = field;
-    editorDirty = false;
+    editorPending = false;
+    editorMember = structuredClone($state.snapshot(draft!.members[index]));
   };
   function openSetDialog(node: HTMLDialogElement) {
     const { scrollX, scrollY } = window;
@@ -320,25 +319,14 @@
   }
   function handleDialogCancel(event: Event) {
     event.preventDefault();
-    if (editorRef?.requestCancel() ?? true) cancelSetEdit();
+    if (editorRef?.requestClose() ?? true) closeSetEdit();
   }
-  function applySetEdit(index: number, member: Member) {
-    if (!draft) return;
-    const field = activeEditField;
-    draft.members[index] = member;
-    editedSlots.add(index);
-    activeEditIndex = null;
-    editorDirty = false;
-    message = 'Set changes staged.';
-    void tick().then(() => {
-      focusSetField(index, field);
-    });
-  }
-  function cancelSetEdit() {
+  function closeSetEdit() {
     const targetSlot = activeEditIndex;
     const field = activeEditField;
     activeEditIndex = null;
-    editorDirty = false;
+    editorPending = false;
+    editorMember = null;
     if (targetSlot !== null) {
       void tick().then(() => {
         focusSetField(targetSlot, field);
@@ -358,9 +346,14 @@
     )[0];
     swapUnavailable = !best;
     if (!best) return;
-    draft.members[best.slot] = structuredClone(best.member);
-    editedSlots.add(best.slot);
-    message = 'Pokémon swap staged.';
+    persistChange((team) => ({
+      ...team,
+      members: team.members.map((member, index) =>
+        index === best.slot
+          ? structuredClone($state.snapshot(best.member))
+          : member
+      ),
+    }));
   }
   function cancelSpeciesSwap() {
     pendingSpecies = null;
@@ -403,8 +396,8 @@
     draft = null;
     baseline = '';
     activeEditIndex = null;
-    editorDirty = false;
-    editedSlots.clear();
+    editorPending = false;
+    editorMember = null;
     pendingSpecies = null;
     showSwapPicker = false;
     swapUnavailable = false;
@@ -509,11 +502,13 @@
       {message}
     </p>
     {#if draft}
-      {@const originalId = draft.original.id}
-      {@const catalogOriginal = teams.find((t) => t.id === originalId)}
-      {@const originalResult = catalogOriginal
-        ? bestEvidence(catalogOriginal, current)
-        : null}
+      {@const originalResult = bestEvidence(
+        {
+          reports: draft.original.reports ?? [],
+          regulation: draft.original.regulation,
+        },
+        current
+      )}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <header class="flex items-start gap-3 border-b pb-4">
           <div class="min-w-0">
@@ -529,7 +524,7 @@
                 <span
                   class="stamp"
                   data-grade={evidenceGrade(originalResult.level)}
-                  >{originalResult.label}</span
+                  >Original result: {originalResult.label}</span
                 >
               {/if}
             </div>
@@ -592,7 +587,7 @@
         </div>
         <div class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <p class="provenance">
-            {dirty ? 'Unsaved changes.' : 'Saved on this device.'}
+            {dirty ? 'Unsaved input.' : 'Saved on this device.'}
           </p>
           {#if draft.name !== draft.original.name}
             <p class="provenance">Original: {draft.original.name}</p>
@@ -640,6 +635,15 @@
             No catalog team with {pendingSpecies} shares a remaining teammate.
           </p>
         {/if}
+        {#key draft.id}
+          <TeamHistoryPanel
+            team={draft}
+            currentRegulation={current}
+            disabled={editing || deleting}
+            onrestore={restoreOriginal}
+            onrestoreslot={restoreSlot}
+          />
+        {/key}
         <div class="mt-5 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
           {#each draft.members as member, index (index)}
             <section
@@ -656,32 +660,6 @@
                 {editing}
                 onedit={(field) => openSetEditor(index, field)}
               />
-              {#if editedSlots.has(index)}
-                <div
-                  class="flex items-center justify-between gap-3 border-t px-3.5 py-2.5"
-                >
-                  <span class="term">Unsaved set</span>
-                  <div class="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      class="h-11 min-h-11 px-2.5 text-xs"
-                      aria-label={`Discard changes to ${member.pokemon}`}
-                      onclick={() => discardPokemon(index)}
-                    >
-                      Discard
-                    </Button>
-                    <Button
-                      size="sm"
-                      class="h-11 min-h-11 px-3 text-xs"
-                      aria-label={`Apply changes to ${member.pokemon}`}
-                      onclick={() => applyPokemon(index)}
-                    >
-                      Apply
-                    </Button>
-                  </div>
-                </div>
-              {/if}
             </section>
           {/each}
         </div>
@@ -701,17 +679,19 @@
     {/if}
   {/if}
 
-  {#if activeEditIndex !== null && draft}
+  {#if activeEditIndex !== null && draft && editorMember}
     {@const editIndex = activeEditIndex!}
     <dialog
       use:openSetDialog
       oncancel={handleDialogCancel}
-      aria-label={`Edit ${draft.members[editIndex].pokemon} set`}
+      aria-label={`Edit ${editorMember.pokemon} set`}
       class="set-editor-dialog fixed inset-0 z-50 m-0 flex h-[100dvh] max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-base-100 p-0 text-base-content shadow-xl sm:top-8 sm:bottom-auto sm:mx-auto sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100%-4rem)] sm:max-w-2xl sm:rounded-box sm:border"
     >
       <SetEditorSheet
         bind:this={editorRef}
-        member={draft.members[editIndex]}
+        member={editorMember}
+        originalMembers={draft.original.members}
+        originalSlotMember={draft.original.members[editIndex]}
         teams={data.catalog.teams as Team[]}
         currentRegulation={current}
         initialField={activeEditField}
@@ -724,9 +704,9 @@
           members,
         }))}
         excludeOwnTeamId={draft.id}
-        onapply={(next) => applySetEdit(editIndex, next)}
-        oncancel={cancelSetEdit}
-        ondirtychange={(value) => (editorDirty = value)}
+        onchange={(next) => saveMember(editIndex, next)}
+        onclose={closeSetEdit}
+        onpendingchange={(value) => (editorPending = value)}
       />
     </dialog>
   {/if}

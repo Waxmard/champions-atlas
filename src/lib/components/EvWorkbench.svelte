@@ -6,6 +6,7 @@
   import {
     catalogSpreadSuggestions,
     ownSpreadSuggestions,
+    originalSpreadSuggestion,
     type CatalogSuggestion,
     type OwnTeamSet,
     type SpreadSuggestion,
@@ -18,6 +19,7 @@
     natureSuggestions,
     ownTeams,
     excludeOwnTeamId,
+    originalMember,
     onspreadchange,
     onnaturechange,
   }: {
@@ -27,6 +29,7 @@
     natureSuggestions: CatalogSuggestion[];
     ownTeams: OwnTeamSet[];
     excludeOwnTeamId: string | null;
+    originalMember?: Member;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
   } = $props();
@@ -55,6 +58,15 @@
   const spreadSuggestions = $derived.by(() => {
     const seen = new SvelteSet<string>();
     const rows: SpreadSuggestion[] = [];
+    const original =
+      originalMember && originalSpreadSuggestion(member, originalMember);
+    if (original) {
+      const key = spreadKey(original.nature, original.spread);
+      if (!seen.has(key)) {
+        rows.push(original);
+        seen.add(key);
+      }
+    }
     for (const option of ownSpreadSuggestions(
       member,
       ownTeams,

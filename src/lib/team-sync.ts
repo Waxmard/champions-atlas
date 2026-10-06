@@ -1,25 +1,17 @@
 import { generateUUID, readSavedTeams, type SavedTeam } from './workbench.ts';
-
+import { canonicalSnapshot } from './team-history.ts';
 const roomError =
   'Sync needs more room. Remove unneeded teams before retrying; existing data has been preserved.';
 
-function canonical(value: unknown): string {
-  if (Array.isArray(value)) return `[${value.map(canonical).join(',')}]`;
-  if (value !== null && typeof value === 'object') {
-    return `{${Object.entries(value)
-      .filter(([, entry]) => entry !== undefined)
-      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
-      .map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`)
-      .join(',')}}`;
-  }
-  return JSON.stringify(value);
-}
-
 export function teamsSnapshot(teams: SavedTeam[]): string {
-  return `[${[...teams]
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-    .map(canonical)
-    .join(',')}]`;
+  return (
+    '[' +
+    [...teams]
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      .map(canonicalSnapshot)
+      .join(',') +
+    ']'
+  );
 }
 
 function validated(value: unknown): SavedTeam[] {
@@ -43,7 +35,9 @@ export function mergeSavedTeams(
   const result: SavedTeam[] = [];
   const same = (a: SavedTeam | undefined, b: SavedTeam | undefined) =>
     a === b ||
-    (a !== undefined && b !== undefined && canonical(a) === canonical(b));
+    (a !== undefined &&
+      b !== undefined &&
+      canonicalSnapshot(a) === canonicalSnapshot(b));
   const choose = (id: string): SavedTeam | undefined => {
     const l = locals.get(id);
     const r = remotes.get(id);
@@ -60,7 +54,7 @@ export function mergeSavedTeams(
     return l;
   };
   const recover = (team: SavedTeam) => {
-    const key = canonical(team);
+    const key = canonicalSnapshot(team);
     let id = recoveryIds.get(key);
     if (!id) {
       do id = generateUUID();

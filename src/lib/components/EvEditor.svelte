@@ -40,8 +40,10 @@
     onnaturechange: (nature: string) => void;
   } = $props();
 
+  let draft = $state<ChampionsSpread | null>(null);
   const values = $derived(
-    parseChampionsSpread(spread) ||
+    draft ||
+      parseChampionsSpread(spread) ||
       ({
         HP: 0,
         Atk: 0,
@@ -65,13 +67,19 @@
   );
   const tiers = $derived(speedTiers(teams));
 
+  const clampEv = (value: number) => Math.max(0, Math.min(32, value || 0));
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
-    onspreadchange(
-      formatChampionsSpread({
-        ...values,
-        [stat]: Math.max(0, Math.min(32, value || 0)),
-      })
-    );
+    const next = { ...values, [stat]: clampEv(value) };
+    draft = null;
+    onspreadchange(formatChampionsSpread(next));
+  }
+  function setStat(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
+    draft = { ...values, [stat]: clampEv(value) };
+  }
+  function commitDraft() {
+    if (!draft) return;
+    onspreadchange(formatChampionsSpread(draft));
+    draft = null;
   }
 </script>
 
@@ -126,10 +134,14 @@
             class="min-h-11 rounded-[var(--radius-selector)] border px-3 text-[0.8125rem] transition-colors {isSelected
               ? 'border-primary font-semibold'
               : 'border-base-300 hover:bg-base-200/70'}"
-            aria-label={`Use ${option.value} nature`}
+            aria-label={`Use ${option.value} nature${option.original ? ' (original)' : ''}`}
             onclick={() => onnaturechange(option.value)}
           >
             {option.value}
+            {#if option.original}<span
+                class="provenance ml-2"
+                aria-hidden="true">Original</span
+              >{/if}
           </button>
         {/each}
       </div>
@@ -207,9 +219,12 @@
               min="0"
               max="32"
               value={values[stat]}
+              data-ev-stat={stat}
               class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
               oninput={(event) =>
-                update(stat, event.currentTarget.valueAsNumber)}
+                setStat(stat, event.currentTarget.valueAsNumber)}
+              onchange={commitDraft}
+              onblur={commitDraft}
             />
             <span class="term">/ 32</span>
           </div>
@@ -223,7 +238,9 @@
           max="32"
           value={values[stat]}
           class="range w-full range-xs"
-          oninput={(event) => update(stat, event.currentTarget.valueAsNumber)}
+          oninput={(event) => setStat(stat, event.currentTarget.valueAsNumber)}
+          onchange={commitDraft}
+          onblur={commitDraft}
         />
       </div>
     {/each}
@@ -244,7 +261,7 @@
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Spreads your own teams run, then the most common catalog spreads.
+      Original team first, then your own teams and common catalog spreads.
     </p>
   </div>
   {#each spreadSuggestions as option, i (option.spread + option.nature)}
@@ -267,6 +284,9 @@
       <span id={'ev-suggestion-details-' + i} class="sr-only"
         >{option.source} · {option.movedPoints} points moved</span
       >
+      {#if option.original}<span class="provenance" aria-hidden="true"
+          >Original</span
+        >{/if}
       {@render chips(option.spread)}
       <span class="value"
         >{option.nature} · {formatSpreadDelta(option.deltas)}</span

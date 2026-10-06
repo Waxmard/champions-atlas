@@ -6,7 +6,6 @@ src/lib/data/catalog.json
 src/lib/data/team-tags.json
 playwright-report/
 test-results/
-!CLAUDE.md
 mise.local.toml
 firebase-debug.log
 

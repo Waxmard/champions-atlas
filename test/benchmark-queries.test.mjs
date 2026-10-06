@@ -18,6 +18,7 @@ import {
 import {
   catalogSpreadSuggestions,
   ownSpreadSuggestions,
+  originalSpreadSuggestion,
 } from '../src/lib/workbench.ts';
 
 const conditions = () => structuredClone(DEFAULT_BENCHMARK_CONDITIONS);
@@ -747,5 +748,49 @@ test('catalog spreads aggregate teams, prioritize the current regulation, and pa
       'M-C'
     ),
     []
+  );
+});
+
+test('own spreads keep the original nature and spread even when already used', () => {
+  const original = originalSpreadSuggestion(raichu, raichu);
+  assert.deepEqual(original, {
+    spread: '18 HP / 25 Def / 23 Spe',
+    nature: 'Timid',
+    source: 'Original team',
+    original: true,
+    deltas: [],
+    movedPoints: 0,
+    speed: 190,
+  });
+  assert.ok(
+    originalSpreadSuggestion({ ...raichu, pokemon: 'Raichu-Mega-Y' }, raichu)
+  );
+});
+
+test('catalog spreads original recommendations require complete standard sets and valid equal forms', () => {
+  for (const original of [
+    { ...raichu, spread: '32 HP' },
+    { ...raichu, spread: '18 HP / 25 Def / 22 Spe' },
+    { ...raichu, nature: 'Legacy' },
+    { ...raichu, nature: null },
+    { ...raichu, item: null },
+    { ...raichu, pokemon: 'Raichu-Mega-X' },
+    { ...raichu, pokemon: 'Raichu-Mega-Y', item: 'Raichunite X' },
+    { ...raichu, pokemon: 'Unknown' },
+  ])
+    assert.equal(originalSpreadSuggestion(raichu, original), undefined);
+  assert.equal(
+    originalSpreadSuggestion(
+      { ...raichu, pokemon: 'Unknown' },
+      { ...raichu, pokemon: 'Unknown' }
+    ),
+    undefined
+  );
+  assert.equal(
+    originalSpreadSuggestion(
+      { ...raichu, pokemon: 'Raichu-Mega-Y', item: 'Raichunite X' },
+      raichu
+    ),
+    undefined
   );
 });

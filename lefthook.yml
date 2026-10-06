@@ -1,4 +1,5 @@
 pre-commit:
+  parallel: true
   commands:
     format:
       glob: '*.{js,mjs,ts,svelte,json,css,md,yml,yaml}'
@@ -9,4 +10,4 @@ pre-commit:
       run: npx eslint --max-warnings 0 {staged_files}
     line-limit:
       glob: '*.{mjs,ts,svelte,css}'
-      run: bash scripts/check-line-limit.sh
+      run: bash scripts/check-line-limit.sh {staged_files}

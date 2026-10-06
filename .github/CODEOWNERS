@@ -1,0 +1,5 @@
+# Default owner for everything in the repo (last match wins, so this stays first).
+*                       @Waxmard
+
+# Own the routing file itself.
+/.github/CODEOWNERS     @Waxmard

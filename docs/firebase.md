@@ -20,11 +20,34 @@ workflows pass `--project` explicitly, so only local commands use the default.
 
 ## Data model
 
-A signed-in user owns one document at `users/{uid}` with validated `teams` and
-`updatedAt: serverTimestamp()`. `firestore.rules` allows access only when
-`request.auth.uid` matches the document ID. Older documents may still contain
-`activeTeamId` and `browse`; the app ignores them and removes them on the next
-saved-team write. Filters, navigation, and the active team stay device-local.
+A signed-in user owns a manifest at `users/{uid}` containing exactly
+`schemaVersion: 2`, ordered `teamIds`, and `updatedAt: serverTimestamp()`. Each
+`users/{uid}/teams/{teamId}` document contains one complete validated saved team,
+including its immutable original and provenance. The
+team's `id` matches its document ID. The manifest holds at most 50 unique IDs;
+the client rejects IDs that Firestore cannot safely represent without changing
+local identities. Filters, navigation, and the active team stay device-local.
+
+Transactions read the manifest and every listed child before writing. Missing,
+malformed, or mismatched children stop sync without replacing local teams or the
+sync baseline. Changed teams, removed children, and the replacement manifest
+commit atomically. An unchanged v2 result writes nothing. The parent listener
+requests reconciliation; it never adopts partial snapshots directly. Per-team
+documents avoid Firestore's 1 MiB document limit for combined histories, though
+each team must still fit that limit.
+
+An absent parent becomes an empty v2 manifest even when you have no teams. A
+legacy parent with a valid `teams` array migrates in one transaction: the client
+writes every resulting child and replaces the parent, removing legacy `teams`,
+`activeTeamId`, and `browse` fields. It does not keep a legacy mirror. Unsupported
+schema versions stop sync and preserve existing data.
+
+Rules permit only the owner to read the parent and its team children. Parent
+creation requires the v2 manifest shape; legacy owner updates remain allowed
+only while both the stored and requested parent lack `schemaVersion`. After
+migration, rules reject legacy overwrites and downgrades. Parent deletion is
+denied; removing all teams writes an empty manifest. Child writes require the
+document ID to match the saved-team ID. Other nested paths remain inaccessible.
 
 The app listens for server changes and reconciles saved teams in Firestore
 transactions. Sequential saves update the same team ID without making copies.
@@ -34,6 +57,11 @@ displaced edited version becomes a separate `(recovered)` team. A deletion
 counts as an edit. Offline saves stay on the device until a later connection,
 save, or **Retry sync**. Sync never truncates teams to fit the 50-team limit; if
 reconciliation needs more room, it stops and leaves both versions intact.
+
+Reconciliation continues while a set editor is open, but its mounted form does
+not refresh underneath you. If another device changes or deletes that team,
+the next save is rejected against the latest local working copy and retains
+your unsaved input. Close and reopen the editor to use the updated team.
 
 The existing `champions-atlas:teams:v1` key remains the working copy. The
 per-account cache lives at `champions-atlas:sync:v2:{projectId}:{uid}` with its
@@ -45,6 +73,12 @@ copy is recovered, because historical edit order cannot be inferred. Signing out
 preserves the account cache, and no migration clears browser storage.
 
 ## Secrets and continuous integration
+
+Deploy the updated Firestore rules before or with the new client. Until those
+rules are deployed, child access fails visibly; successful local saves remain
+available for **Retry sync**. After a v2 migration, old clients fail their legacy
+read validation instead of clearing local storage. Reload the app to use the
+new client. Neither local implementation nor emulator checks deploy rules.
 
 The Firebase workflows read five secrets from GitHub environments:
 `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,

@@ -19,10 +19,12 @@ import {
   onSnapshot,
   runTransaction,
   serverTimestamp,
+  Timestamp,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
 import { mergeSavedTeams, teamsSnapshot } from './team-sync.ts';
+import { canonicalSnapshot } from './team-history.ts';
 import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
 
 export type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
@@ -46,7 +48,6 @@ let unsubscribe: Unsubscribe | null = null;
 let base: SavedTeam[] | null = null;
 let pending = false;
 let savePending = false;
-let paused = false;
 let running: Promise<void> | null = null;
 
 const recordKey = (owner: string) => `champions-atlas:sync:v2:${owner}`;
@@ -63,6 +64,29 @@ function teams(value: unknown): SavedTeam[] {
       'Saved teams could not be read. Existing data has been left untouched.'
     );
   return readSavedTeams({ getItem: () => JSON.stringify(value) });
+}
+
+const cloudReadError =
+  'Cloud saved teams could not be read. Existing data has been left untouched.';
+
+function teamIds(value: unknown): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length > 50 ||
+    new Set(value).size !== value.length ||
+    value.some(
+      (id) =>
+        typeof id !== 'string' ||
+        !id ||
+        new TextEncoder().encode(id).length > 1500 ||
+        id.includes('/') ||
+        id === '.' ||
+        id === '..' ||
+        /^__[\s\S]*__$/.test(id)
+    )
+  )
+    throw new Error(cloudReadError);
+  return value;
 }
 
 function record(
@@ -169,20 +193,19 @@ function request(saved = false): Promise<void> {
   if (saved) savePending = true;
   sync.status = 'syncing';
   sync.error = '';
-  if (paused && !savePending) return Promise.resolve();
   if (!running) {
     const generation = session;
     running = drain(generation, uid).finally(() => {
       if (generation !== session) return;
       running = null;
-      if (pending && (!paused || savePending)) void request();
+      if (pending || savePending) void request();
     });
   }
   return running;
 }
 
 async function drain(generation: number, id: string) {
-  while (pending && (!paused || savePending)) {
+  while (pending || savePending) {
     pending = false;
     savePending = false;
     const recoveryIds = new Map<string, string>();
@@ -190,6 +213,7 @@ async function drain(generation: number, id: string) {
       if (!db || !valid(generation, id)) return;
       const capturedBase = base === null ? null : teams(base);
       const capturedLocal = readSavedTeams(localStorage);
+      teamIds(capturedLocal.map((team) => team.id));
       const ref = doc(db, 'users', id);
       sync.status = 'syncing';
       sync.error = '';
@@ -197,16 +221,67 @@ async function drain(generation: number, id: string) {
         if (!valid(generation, id)) throw new Error('Sync account changed.');
         const snapshot = await transaction.get(ref);
         if (!valid(generation, id)) throw new Error('Sync account changed.');
-        const remote = snapshot.exists() ? teams(snapshot.data().teams) : [];
+        const parent = snapshot.data();
+        let remote: SavedTeam[] = [];
+        let manifest: string[] | null = null;
+        try {
+          if (snapshot.exists()) {
+            if (!parent || !('schemaVersion' in parent)) {
+              remote = teams(parent?.teams);
+              teamIds(remote.map((team) => team.id));
+            } else {
+              if (
+                parent.schemaVersion !== 2 ||
+                Object.keys(parent).length !== 3 ||
+                !(parent.updatedAt instanceof Timestamp)
+              )
+                throw new Error(cloudReadError);
+              manifest = teamIds(parent.teamIds);
+              for (const teamId of manifest) {
+                const child = await transaction.get(
+                  doc(db!, 'users', id, 'teams', teamId)
+                );
+                if (!child.exists() || child.data().id !== teamId)
+                  throw new Error(cloudReadError);
+                remote.push(...teams([child.data()]));
+              }
+            }
+          }
+        } catch {
+          throw new Error(cloudReadError);
+        }
+        if (!valid(generation, id)) throw new Error('Sync account changed.');
         const merged = mergeSavedTeams(
           capturedBase,
           capturedLocal,
           remote,
           recoveryIds
         );
-        if (teamsSnapshot(merged) !== teamsSnapshot(remote)) {
+        const mergedIds = teamIds(merged.map((team) => team.id));
+        if (
+          manifest === null ||
+          canonicalSnapshot(mergedIds) !== canonicalSnapshot(manifest) ||
+          teamsSnapshot(merged) !== teamsSnapshot(remote)
+        ) {
           if (!valid(generation, id)) throw new Error('Sync account changed.');
-          transaction.set(ref, { teams: merged, updatedAt: serverTimestamp() });
+          const previous = new Map(remote.map((team) => [team.id, team]));
+          for (const team of merged) {
+            if (
+              manifest === null ||
+              canonicalSnapshot(team) !==
+                canonicalSnapshot(previous.get(team.id))
+            )
+              transaction.set(doc(db!, 'users', id, 'teams', team.id), team);
+          }
+          for (const teamId of manifest ?? []) {
+            if (!mergedIds.includes(teamId))
+              transaction.delete(doc(db!, 'users', id, 'teams', teamId));
+          }
+          transaction.set(ref, {
+            schemaVersion: 2,
+            teamIds: mergedIds,
+            updatedAt: serverTimestamp(),
+          });
         }
         return merged;
       });
@@ -322,11 +397,6 @@ export function initSync(): void {
       fail(error);
     }
   });
-}
-
-export function setSyncPaused(next: boolean): void {
-  paused = next;
-  if (!paused && uid && (pending || sync.status === 'error')) void request();
 }
 
 export async function signIn(): Promise<void> {

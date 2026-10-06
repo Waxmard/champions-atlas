@@ -148,7 +148,10 @@ export interface TeamEvidence {
   event: string;
 }
 
-export function bestEvidence(team: Team, current: string): TeamEvidence {
+export function bestEvidence(
+  team: Pick<Team, 'reports' | 'regulation'>,
+  current: string
+): TeamEvidence {
   return (
     team.reports
       .map((report) => ({

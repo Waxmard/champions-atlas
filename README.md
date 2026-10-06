@@ -74,48 +74,44 @@ refresh or additional source integration is configured.
 
 ## Save, compare, and edit
 
-1. Open a catalog team and choose **Use this team**, or choose **Add custom
-   team**. Build it in [Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder),
-   export it as text, then paste that complete six-Pokémon team. Custom imports
-   require an item, ability, nature, EVs, and four unique moves for every Pokémon.
-   Custom teams use the current regulation with legality unverified; file, URL,
-   screenshot, and legality inference are not supported. **My teams** stores an
-   independent original snapshot and editable copy in this browser's localStorage.
-2. Similar teams appear immediately, with all six of your sets kept unchanged.
-   Toggle **Change [Pokémon]** on one slot to see alternative builds of that
-   Pokémon and replacement species taken from similar source teams. Toggle it
-   again to return to team comparisons. Only one slot can be selected.
-3. Choose **Compare** to preview the change. **Use replacement** changes only
-   that slot and records its source; the other five sets and original stay intact.
-   All regulations are included. Replacement order favors keeping the Pokémon and its set details; source-team
-   similarity and reported results break ties. Identical replacement sets are
-   shown once, and Pokémon already in another slot are excluded.
-4. Select an item, ability, nature, EVs, or moves on a team card to edit that set.
-   Use **Advanced set text** for raw edits. Choose **Done**, then **Apply** on the
-   card to save. **Copy team text** exports current sets, normalizing EVs out of 32
-   and omitting IVs, level, and Tera Type for Pokémon Champions. Other set fields
-   remain unchanged. Unknown fields are omitted, not inferred. Edited teams do
-   not receive a new rental code.
+Open a catalog team and choose **Use this team**, or choose **Add custom team**
+in **My teams** and paste a complete six-Pokémon export from
+[Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder).
+Custom imports require an item, ability, nature, EVs, and four unique moves for
+every Pokémon. They have no published result claims; legality is unverified.
 
-In **Edit EV spread**, allocate 66 points and choose a nature to see **Suggested spreads**.
-Recommendations compare your current build with common recorded sets in the current
-regulation. They use its Mega form, held item, and field effects set by either Pokémon's
-ability, favoring your Pokémon when field setters conflict. Survival and one-hit KO
-reasons describe one landed attack at full HP; losses appear as tradeoffs. A suggestion
-changes only the draft. Choose **Done**, then **Apply** to save. Expand **Speed tiers**
-to compare unmodified Speed; these tiers do not account for turn order, weather, or
-items. Incomplete spreads and unsupported damage mechanics do not produce damage claims.
+Select a field on a saved team card to edit its set. Completed text saves on blur
+or Enter; selections and suggestions save immediately when the whole set is
+valid. Changed EV spreads must total 66 points. **Done** saves valid pending input
+and closes the editor; **Close** offers to discard only invalid or failed-write
+input. Earlier autosaves remain saved. There is no separate Apply step.
+**Advanced set text** replaces the set explicitly. Structured edits retain
+nicknames and supported untouched set lines. Unknown values are never guessed.
 
-Saved copies survive reload and catalog refreshes on the same browser origin, and
-clearing browser storage removes them. Saving requires available browser storage.
-Unsaved edits prompt before navigation. When Firebase is configured, the app
-requires Google sign-in and syncs saved teams across devices through Cloud
-Firestore; without configuration it runs local-only. See
-[Firebase deployment and sync](docs/firebase.md).
-M-C labels indicate source regulation, not a legality check or a guaranteed
-upgrade. Replacement suggestions do not require the source team to match your
-other five Pokémon exactly. Existing saved teams retain their original and edits
-when switching to the single-slot comparison controls.
+Expand **Original & history** to compare your current team with the original and
+restore the original, including name, sets, and roster order. **Restore original
+set** changes only that slot and is unavailable when it would duplicate a
+Pokémon or exceed the replacement Mega limit. Whole-team restoration does not
+change the saved ID or source history.
+
+Original source metadata is kept when saving a catalog team and shown as evidence
+for the original, not the edited version. Older saved teams show only metadata
+they retained. Custom teams show their starting team without public source claims.
+Original field and complete EV/nature suggestions lead the corresponding lists;
+other saved-team spreads and catalog spreads follow without duplicate pairs.
+Benchmark answers and **Speed tiers** retain their existing mechanics and limits.
+
+**Copy team text** exports current sets, normalizing EVs out of 32 and omitting
+IVs, level, and Tera Type for Pokémon Champions. Unknown fields are omitted.
+Edited teams do not receive a new rental code. Saved copies survive reload and
+catalog refreshes on the same browser origin; clearing browser storage removes
+them. Saving requires available browser storage. Only unsaved input prompts
+before navigation. Browse filters and position remain device-local.
+
+When Firebase is configured, Google sign-in synchronizes saved teams and their
+originals across devices. Without configuration the app runs local-only. See
+[Firebase deployment and sync](docs/firebase.md) for the per-team data model and
+the rules-before-client release requirement.
 
 ## Stack
 

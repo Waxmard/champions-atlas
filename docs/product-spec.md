@@ -112,13 +112,26 @@ is not a version 1 requirement.
 
 ## Version 1.5: similar teams and editing
 
-The workflow in **My teams** saves an original snapshot and editable copy,
-shows similar teams by default, and lets the user toggle one Pokémon to change.
-This is the only comparison setting. All six sets stay unchanged by default;
-choosing a slot shows alternative builds of that Pokémon and different species
-from similar teams. Applying a replacement changes only that slot. The other
-five sets and original remain intact. Set-text editing, local saving, and export
-remain available.
+The workflow in **My teams** saves an immutable original and an editable copy.
+Catalog originals retain the full published sets and source metadata available
+when saved. Custom originals are starting teams without public source claims;
+legacy originals are never backfilled from a refreshed catalog.
+
+Completed valid text saves on blur or Enter. Selections, clears, and suggestions
+save immediately; invalid interim EV allocations remain uncommitted. **Done**
+flushes and closes, while **Close** can discard only remaining unsaved input.
+There is no separate Apply step. The immutable original and the current team
+synchronize across devices.
+Background reconciliation remains active while an editor is mounted; the form
+stays unchanged, and stale saves retain pending input rather than overwrite a
+remote change or recreate a deleted team.
+
+**Original & history** compares the current team with the original and restores
+the original, including name and roster order, without changing the saved ID or
+source history. Individual
+original-slot restores leave the other five sets untouched and enforce duplicate
+Pokémon and replacement Mega restrictions. Set-text editing and export remain
+available; structured changes preserve supported untouched raw lines.
 
 Saved teams can be deleted after confirmation. If the deleted team was active,
 the next saved team becomes active; deleting the last one returns to the empty
@@ -150,12 +163,13 @@ Field-based editing for saved catalog teams is implemented. Full legality-aware
 adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
 suggestions.
 
-EV spread suggestions merge the spreads the owner's other saved teams run on the
-same Pokémon with the most common catalog spreads for its resolved battle form,
-labeling each row with its source and dropping exact duplicates. Own-team spreads
-come first; catalog rows are ordered by current-regulation usage before older
-regulations. Choosing a row sets both the EV spread and its paired nature. The
-owner can also ask one benchmark question: survive a named move from a named
+EV spread suggestions begin with the immutable original nature/spread pair when
+it is complete, standard, and resolves to the current battle form. Spreads from
+other saved teams follow, then common catalog spreads for the resolved form,
+with exact duplicate pairs removed. Original field suggestions use exact Pokémon
+identity or a successfully resolved matching battle form, never unrelated base
+forms. Catalog counts are not inflated by original recommendations.
+You can also ask one benchmark question: survive a named move from a named
 opponent, take a KO, or outspeed. The opponent's set is
 the most common recorded current-regulation set for that species, filtered by
 held item when one is named. An outspeed query excludes Choice Scarf targets
