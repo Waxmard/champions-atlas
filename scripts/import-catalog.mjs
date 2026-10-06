@@ -16,6 +16,7 @@ import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import {
   devonCorpUrl,
+  fetchWithRetry,
   parseDevonCorp,
   parseVictoryRoad,
   parseVrPaste,
@@ -465,7 +466,7 @@ async function main() {
     }
     if (process.env.OFFLINE === '1')
       throw new Error(`Missing cached file: ${name}`);
-    const response = await fetch(address, {
+    const response = await fetchWithRetry(address, {
       signal: AbortSignal.timeout(30000),
       redirect: 'error',
     });
@@ -527,7 +528,7 @@ async function main() {
     if (csv === null) {
       if (process.env.OFFLINE === '1')
         throw new Error(`Missing cached sheet: ${regulation}`);
-      const response = await fetch(address, {
+      const response = await fetchWithRetry(address, {
         signal: AbortSignal.timeout(30000),
       });
       if (!response.ok)

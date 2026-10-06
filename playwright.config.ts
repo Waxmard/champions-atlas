@@ -2,7 +2,8 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
-  workers: 1,
+  workers: process.env.CI ? 4 : undefined,
+  fullyParallel: true,
   use: {
     baseURL: 'http://127.0.0.1:4179',
     trace: 'retain-on-failure',

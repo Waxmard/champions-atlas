@@ -15,10 +15,22 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-24.04
+    env:
+      VITE_BUILD_ID: e2e
     steps:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - run: npm ci
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .cache/catalog
+            src/lib/data/catalog.json
+            static/sprites
+            static/items
+          key: catalog-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            catalog-${{ runner.os }}-
       - run: make ci
       - uses: actions/cache@v6
         with:
@@ -27,7 +39,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-playwright-
       - run: npx playwright install --with-deps chromium webkit
-      - run: npm run test:e2e
+      - run: npx playwright test
       - uses: actions/upload-artifact@v7
         if: failure()
         with:

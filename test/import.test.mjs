@@ -12,6 +12,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import { FETCH_ATTEMPTS, fetchWithRetry } from '../scripts/catalog-sources.mjs';
 import {
   parseCsv,
   parseSheet,
@@ -52,6 +53,43 @@ test('bootstrap fails without sources, reuses an existing catalog, and keeps ref
     assert.equal(await readFile(path, 'utf8'), original);
   } finally {
     await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('fetchWithRetry retries transient failures only and gives up eventually', async () => {
+  const original = globalThis.fetch;
+  const attempts = [];
+  const deny = (status) => {
+    attempts.push(status);
+    return new Response('', { status });
+  };
+  try {
+    globalThis.fetch = () => (attempts.length < 2 ? deny(503) : deny(200));
+    assert.equal((await fetchWithRetry('https://example.test/x')).status, 200);
+    assert.equal(attempts.length, 3);
+
+    attempts.length = 0;
+    globalThis.fetch = () => deny(404);
+    assert.equal((await fetchWithRetry('https://example.test/x')).status, 404);
+    assert.equal(attempts.length, 1);
+
+    attempts.length = 0;
+    globalThis.fetch = () => deny(500);
+    assert.equal((await fetchWithRetry('https://example.test/x')).status, 500);
+    assert.equal(attempts.length, FETCH_ATTEMPTS);
+
+    attempts.length = 0;
+    globalThis.fetch = () => {
+      attempts.push('rejected');
+      throw new TypeError('fetch failed');
+    };
+    await assert.rejects(
+      fetchWithRetry('https://example.test/x'),
+      /fetch failed/
+    );
+    assert.equal(attempts.length, FETCH_ATTEMPTS);
+  } finally {
+    globalThis.fetch = original;
   }
 });
 

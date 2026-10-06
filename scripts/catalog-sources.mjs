@@ -728,3 +728,27 @@ export function parseVrPaste(data) {
       .join('\n') || null;
   return { paste, notes, publishedAt: publishedDate(data.createdAt), format };
 }
+
+export const FETCH_ATTEMPTS = 3;
+const RETRY_DELAY_MS = 500;
+
+const isTransient = (status) => status === 429 || status >= 500;
+
+// Source hosts (paste providers, victoryroad.pro, Google Sheets) time out
+// transiently; a single connect timeout used to abort the whole import.
+export async function fetchWithRetry(address, options) {
+  for (let attempt = 1; ; attempt++) {
+    try {
+      const response = await fetch(address, options);
+      if (!isTransient(response.status) || attempt >= FETCH_ATTEMPTS)
+        return response;
+      throw new Error(`${response.status} fetching ${address}`);
+    } catch (error) {
+      if (attempt >= FETCH_ATTEMPTS) throw error;
+      console.warn(`${address} failed (${error.message}); retrying`);
+      await new Promise((resolve) =>
+        setTimeout(resolve, RETRY_DELAY_MS * attempt)
+      );
+    }
+  }
+}

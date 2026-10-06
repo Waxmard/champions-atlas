@@ -99,16 +99,28 @@ export function differences(before: Member[], after: Member[]) {
           after: b || 'Unknown',
         });
     }
-    if (
-      member.moves.length &&
-      member.moves.map(normalize).sort().join(',') !==
-        match.moves.map(normalize).sort().join(',')
-    )
+    const selectedKeys = member.moves.map(normalize);
+    const teamKeys = match.moves.map(normalize);
+    const removed = [
+      ...new Set(
+        member.moves.filter(
+          (move, index) => !teamKeys.includes(selectedKeys[index])
+        )
+      ),
+    ];
+    const added = [
+      ...new Set(
+        match.moves.filter(
+          (move, index) => !selectedKeys.includes(teamKeys[index])
+        )
+      ),
+    ];
+    if (member.moves.length && (removed.length || added.length))
       rows.push({
         pokemon: member.pokemon,
         field: 'Moves',
-        before: member.moves.join(', '),
-        after: match.moves.join(', ') || 'Unknown',
+        before: removed.join(', ') || 'None',
+        after: match.moves.length ? added.join(', ') || 'None' : 'Unknown',
       });
   }
   return rows;

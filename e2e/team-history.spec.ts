@@ -175,6 +175,18 @@ test('completed changes autosave together before Done, retain the original, and 
     )
   ).toBeVisible();
   await expect(
+    panel.getByText(
+      `Moves: ${originalWeavile.moves[0]} → History custom move`,
+      { exact: true }
+    )
+  ).toBeVisible();
+  await expect(
+    panel.getByText(
+      `Moves: ${originalWeavile.moves.join(', ')} → ${edited.members[weavileIndex].moves.join(', ')}`,
+      { exact: true }
+    )
+  ).toHaveCount(0);
+  await expect(
     panel.getByText('Source sheet IDs: MB809', { exact: false })
   ).toBeVisible();
   if (fixture.creator)

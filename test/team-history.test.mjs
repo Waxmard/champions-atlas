@@ -93,6 +93,28 @@ test('diff is identity aligned, needs a known selected value, and reports no ful
     ),
     []
   );
+
+  const swap = (beforeMoves, afterMoves) =>
+    differences(
+      [member('Weavile', { moves: beforeMoves })],
+      [member('Weavile', { moves: afterMoves })]
+    );
+  assert.deepEqual(swap(['Knock Off', 'Taunt'], ['Knock Off', 'Sludge Bomb']), [
+    {
+      pokemon: 'Weavile',
+      field: 'Moves',
+      before: 'Taunt',
+      after: 'Sludge Bomb',
+    },
+  ]);
+  assert.deepEqual(swap(['Protect'], ['Protect', 'Fake Out']), [
+    { pokemon: 'Weavile', field: 'Moves', before: 'None', after: 'Fake Out' },
+  ]);
+  assert.deepEqual(swap(['Protect', 'Fake Out'], ['Protect']), [
+    { pokemon: 'Weavile', field: 'Moves', before: 'Fake Out', after: 'None' },
+  ]);
+  assert.deepEqual(swap(['Protect', 'Fake Out'], ['fakeout', 'Protect']), []);
+  assert.deepEqual(swap([], ['Protect']), []);
 });
 
 test('grouped saves checkpoint once, keep originals, and restore without mutation', () => {
