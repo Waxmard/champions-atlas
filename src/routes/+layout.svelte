@@ -8,6 +8,7 @@
   import { onMount } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
   import { initSync, pushNow, signOut, sync } from '$lib/sync.svelte';
+  import { claimAutoReload, watchForUpdate } from '$lib/app-version';
   import {
     activeTeamKey,
     readSavedTeams,
@@ -50,6 +51,7 @@
   let redirecting = false;
   let pendingReturn: string | null = null;
   let headerHeight = $state(0);
+  let updateReady = $state(false);
 
   function validDestination(value: string | null): string | null {
     if (
@@ -194,8 +196,21 @@
   onMount(() => {
     initialUrl = new URL(location.href);
     initSync();
-    return () =>
+    const stopWatching = watchForUpdate({
+      running: import.meta.env.VITE_BUILD_ID,
+      onStale: (served) => {
+        if (
+          document.querySelector('dialog[open], [role="dialog"]') ||
+          !claimAutoReload(served)
+        )
+          updateReady = true;
+        else location.reload();
+      },
+    });
+    return () => {
+      stopWatching();
       document.documentElement.style.removeProperty('--app-header-height');
+    };
   });
 
   $effect(() => {
@@ -309,6 +324,14 @@
       <div
         class="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-1 sm:order-3"
       >
+        {#if updateReady}
+          <button
+            type="button"
+            onclick={() => location.reload()}
+            class="inline-flex min-h-11 items-center rounded-[var(--radius-field)] bg-info px-3 text-sm font-bold text-info-content outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >Reload to update</button
+          >
+        {/if}
         {#if sync.configured}
           {#if sync.status === 'syncing' || sync.status === 'error'}
             <span

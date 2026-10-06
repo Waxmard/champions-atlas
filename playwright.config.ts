@@ -29,6 +29,7 @@ export default defineConfig({
         '**/workbench-edge.spec.ts',
         '**/team-history.spec.ts',
         '**/browser.spec.ts',
+        '**/app-version.spec.ts',
       ],
       use: { ...devices['iPhone 13'], browserName: 'webkit' },
     },

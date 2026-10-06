@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
+import { chooseOption } from './picker';
 
 const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
@@ -335,8 +336,7 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
     name: 'Change a Pokémon',
     exact: true,
   });
-  await picker.fill('Sneasler');
-  await page.getByRole('option', { name: 'Sneasler', exact: true }).click();
+  await chooseOption(page, picker, 'Sneasler');
   await expect(
     page.getByText('Sneasler', { exact: true }).first()
   ).toBeVisible();
@@ -411,10 +411,11 @@ test('page swap reports no overlap and clears its selection', async ({
   await page
     .getByRole('button', { name: 'Change a Pokémon', exact: true })
     .click();
-  await page
-    .getByRole('combobox', { name: 'Change a Pokémon' })
-    .fill('Medicham');
-  await page.getByRole('option', { name: 'Medicham', exact: true }).click();
+  const swapPicker = page.getByRole('combobox', {
+    name: 'Change a Pokémon',
+    exact: true,
+  });
+  await chooseOption(page, swapPicker, 'Medicham');
   const noOverlap = page.getByText(
     'No catalog team with Medicham shares a remaining teammate.',
     { exact: true }

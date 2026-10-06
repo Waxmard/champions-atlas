@@ -7,6 +7,7 @@ import {
   type Page,
 } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
+import { chooseOption } from './picker';
 
 const savedTeamsKey = 'champions-atlas:teams:v1';
 const activeTeamKey = 'champions-atlas:active-team:v1';
@@ -153,8 +154,7 @@ async function expectInvalidDestinationFallback(
 
 async function addPokemon(page: Page, pokemon: string) {
   const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
-  await picker.fill(pokemon);
-  await page.getByRole('option', { name: pokemon, exact: true }).click();
+  await chooseOption(page, picker, pokemon);
 }
 
 async function expectSelection(page: Page) {

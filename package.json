@@ -24,7 +24,7 @@
     "sync:stats": "node scripts/sync-stats.mjs",
     "enrich:tags": "node scripts/jev-enrich.mjs",
     "eval:tags": "node scripts/jev-eval.mjs",
-    "build:e2e": "VITE_FIREBASE_API_KEY= VITE_FIREBASE_AUTH_DOMAIN= VITE_FIREBASE_PROJECT_ID= VITE_FIREBASE_APP_ID= npm run build",
+    "build:e2e": "VITE_FIREBASE_API_KEY= VITE_FIREBASE_AUTH_DOMAIN= VITE_FIREBASE_PROJECT_ID= VITE_FIREBASE_APP_ID= VITE_BUILD_ID=e2e npm run build",
     "test:e2e": "npm run build:e2e && playwright test"
   },
   "devDependencies": {
