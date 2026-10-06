@@ -238,6 +238,24 @@ export const MAX_TEAM_MEGAS = 2;
 export const isMegaSpecies = (pokemon: string) =>
   /-Mega(-[XYZ])?$/i.test(pokemon.trim());
 
+export function rosterConflict(
+  member: Member,
+  members: Member[],
+  slot: number
+): 'duplicate' | 'mega' | null {
+  const others = members.filter((_, index) => index !== slot);
+  const species = normalize(member.pokemon);
+  if (others.some((other) => normalize(other.pokemon) === species))
+    return 'duplicate';
+  if (
+    isMegaSpecies(member.pokemon) &&
+    others.filter((other) => isMegaSpecies(other.pokemon)).length >=
+      MAX_TEAM_MEGAS
+  )
+    return 'mega';
+  return null;
+}
+
 export const basePokemon = (name: string) =>
   normalize(name).replace(/mega[a-z]?$/, '');
 

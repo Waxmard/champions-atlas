@@ -23,6 +23,7 @@ updates:
       default-days: 7
     groups:
       minor-and-patch:
+        applies-to: version-updates
         update-types: [minor, patch]
     commit-message:
       prefix: chore(deps)

@@ -40,8 +40,10 @@
     onnaturechange: (nature: string) => void;
   } = $props();
 
+  let draft = $state<ChampionsSpread | null>(null);
   const values = $derived(
-    parseChampionsSpread(spread) ||
+    draft ||
+      parseChampionsSpread(spread) ||
       ({
         HP: 0,
         Atk: 0,
@@ -65,13 +67,19 @@
   );
   const tiers = $derived(speedTiers(teams));
 
+  const clampEv = (value: number) => Math.max(0, Math.min(32, value || 0));
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
-    onspreadchange(
-      formatChampionsSpread({
-        ...values,
-        [stat]: Math.max(0, Math.min(32, value || 0)),
-      })
-    );
+    const next = { ...values, [stat]: clampEv(value) };
+    draft = null;
+    onspreadchange(formatChampionsSpread(next));
+  }
+  function setStat(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
+    draft = { ...values, [stat]: clampEv(value) };
+  }
+  function commitDraft() {
+    if (!draft) return;
+    onspreadchange(formatChampionsSpread(draft));
+    draft = null;
   }
 </script>
 
@@ -126,7 +134,7 @@
             class="min-h-11 rounded-[var(--radius-selector)] border px-3 text-[0.8125rem] transition-colors {isSelected
               ? 'border-primary font-semibold'
               : 'border-base-300 hover:bg-base-200/70'}"
-            aria-label={`Use ${option.value} nature`}
+            aria-label={`Use ${option.value} nature${option.original ? ' (original)' : ''}`}
             onclick={() => onnaturechange(option.value)}
           >
             {option.value}
@@ -214,7 +222,9 @@
               data-ev-stat={stat}
               class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
               oninput={(event) =>
-                update(stat, event.currentTarget.valueAsNumber)}
+                setStat(stat, event.currentTarget.valueAsNumber)}
+              onchange={commitDraft}
+              onblur={commitDraft}
             />
             <span class="term">/ 32</span>
           </div>
@@ -223,13 +233,14 @@
         <!-- Bottom Row: Range Slider -->
         <input
           aria-label={`${stat} EV slider`}
-          data-ev-stat={stat}
           type="range"
           min="0"
           max="32"
           value={values[stat]}
           class="range w-full range-xs"
-          oninput={(event) => update(stat, event.currentTarget.valueAsNumber)}
+          oninput={(event) => setStat(stat, event.currentTarget.valueAsNumber)}
+          onchange={commitDraft}
+          onblur={commitDraft}
         />
       </div>
     {/each}

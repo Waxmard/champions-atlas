@@ -8,7 +8,7 @@
     regulationLabel,
   } from '$lib/catalog';
   import { canonicalSnapshot, differences } from '$lib/team-history';
-  import { isMegaSpecies, MAX_TEAM_MEGAS } from '$lib/workbench';
+  import { rosterConflict } from '$lib/workbench';
   import type { SavedTeam } from '$lib/workbench';
 
   interface Props {
@@ -81,18 +81,10 @@
     const original = team.original.members[index];
     if (canonicalSnapshot(original) === canonicalSnapshot(team.members[index]))
       return 'This slot already matches the original set.';
-    const others = team.members.filter((_, slot) => slot !== index);
-    if (
-      others.some(
-        ({ pokemon }) => normalize(pokemon) === normalize(original.pokemon)
-      )
-    )
+    const conflict = rosterConflict(original, team.members, index);
+    if (conflict === 'duplicate')
       return `${original.pokemon} is already in another slot. Restore the original team to recover its roster order.`;
-    if (
-      isMegaSpecies(original.pokemon) &&
-      others.filter(({ pokemon }) => isMegaSpecies(pokemon)).length >=
-        MAX_TEAM_MEGAS
-    )
+    if (conflict === 'mega')
       return 'Restoring this set would exceed the two-Mega limit. Restore the original team instead.';
     return '';
   }

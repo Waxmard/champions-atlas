@@ -325,12 +325,14 @@
         class="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-1 sm:order-3"
       >
         {#if updateReady}
-          <button
-            type="button"
-            onclick={() => location.reload()}
-            class="inline-flex min-h-11 items-center rounded-[var(--radius-field)] bg-info px-3 text-sm font-bold text-info-content outline-none focus-visible:ring-2 focus-visible:ring-primary"
-            >Reload to update</button
-          >
+          <span role="status" aria-live="polite">
+            <button
+              type="button"
+              onclick={() => location.reload()}
+              class="inline-flex min-h-11 items-center rounded-[var(--radius-field)] bg-info px-3 text-sm font-bold text-info-content outline-none hover:bg-info/70 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
+              >Reload to update</button
+            >
+          </span>
         {/if}
         {#if sync.configured}
           {#if sync.status === 'syncing' || sync.status === 'error'}

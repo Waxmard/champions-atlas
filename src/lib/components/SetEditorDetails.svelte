@@ -120,8 +120,7 @@
                 >
                   <ItemIcon item={opt.value} size={20} />
                   <span class="value">{opt.value}</span>
-                  {#if opt.original}<span class="provenance" aria-hidden="true"
-                      >Original</span
+                  {#if opt.original}<span class="provenance">Original</span
                     >{/if}
                 </button>
               </li>
@@ -205,9 +204,8 @@
                     oncommit();
                   }}
                 >
-                  {opt.value}{#if opt.original}<span
-                      class="provenance ml-2"
-                      aria-hidden="true">Original</span
+                  {opt.value}{#if opt.original}<span class="provenance ml-2"
+                      >Original</span
                     >{/if}
                 </button>
               </li>

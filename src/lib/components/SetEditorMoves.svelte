@@ -29,13 +29,11 @@
     onclear: (index: number) => void;
     oncommit: () => void;
   } = $props();
-  const slots = [0, 1, 2, 3];
 </script>
 
 <section aria-label="Moves" class="grid gap-4">
   <div class="grid gap-2 sm:grid-cols-2">
-    {#each slots as index (index)}
-      {@const move = moves[index]}
+    {#each moves as move, index (index)}
       {@const type = getMoveType(move)}
       {@const typeColor = type ? TYPE_COLORS[type] : null}
       <div
@@ -111,8 +109,7 @@
               onclick={() => onchoose(activeMoveSlot, option.value)}
               ><TypeMark type={optionType} size="md" /><span class="value"
                 >{option.value}</span
-              >{#if option.original}<span class="provenance" aria-hidden="true"
-                  >Original</span
+              >{#if option.original}<span class="provenance">Original</span
                 >{/if}</button
             >
           </li>

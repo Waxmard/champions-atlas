@@ -11,9 +11,7 @@
   import { Button } from '$lib/components/ui/button';
   import { normalize, type Member, type Team } from '$lib/catalog';
   import {
-    CHAMPIONS_STATS,
     championsSpreadTotal,
-    formatChampionsSpread,
     NATURES,
     parseChampionsSpread,
     parseSetBlock,
@@ -199,7 +197,8 @@
     if (!onchange(next)) {
       showError(
         currentView === 'text' ? 'text' : 'set',
-        'Could not save this input. Your edits are still here.'
+        'Could not save this input. Your edits are still here. ' +
+          'Close and reopen the editor, then try again.'
       );
       return false;
     }
@@ -231,14 +230,14 @@
       return 'A team can include at most two Mega Pokémon.';
     return '';
   }
-  function chooseSet(next: Member, historical = false) {
+  function chooseSet(next: Member, trusted = false) {
     const candidate = structuredClone($state.snapshot(next));
     const reason = rosterError(candidate);
     if (reason) {
       showError('pokemon', reason);
       return;
     }
-    if (!historical && !validateMember(candidate, 'structured')) return;
+    if (!trusted && !validateMember(candidate, 'structured')) return;
     replacement = candidate;
     applyPreFilled(candidate);
     accept(candidate);
@@ -314,38 +313,13 @@
     }
     return validateSpread(next.spread, mode === 'text' ? 'text' : 'spread');
   }
-  function sampleActiveControl() {
-    const control = document.activeElement;
-    if (
-      !(
-        control instanceof HTMLInputElement ||
-        control instanceof HTMLTextAreaElement ||
-        control instanceof HTMLSelectElement
-      ) ||
-      !editorElement?.contains(control)
-    )
-      return;
-    if (control.id === 'set-raw-textarea') rawText = control.value;
-    else if (control.id === 'set-pokemon-input') form.pokemon = control.value;
-    else if (control.id === 'set-item-input') form.item = control.value;
-    else if (control.id === 'set-ability-input') form.ability = control.value;
-    else if (control.id === 'set-nature-input') form.nature = control.value;
-    else if (/^set-move-[1-4]$/.test(control.id))
-      form.moves[Number(control.id.slice(-1)) - 1] = control.value;
-    else if (control instanceof HTMLInputElement && control.dataset.evStat) {
-      const stat = CHAMPIONS_STATS.find(
-        (stat) => stat === control.dataset.evStat
-      );
-      const spread = parseChampionsSpread(form.spread);
-      if (stat && spread) {
-        spread[stat] = Math.max(0, Math.min(32, control.valueAsNumber || 0));
-        form.spread = formatChampionsSpread(spread);
-      }
-    }
-  }
   export function flush(): boolean {
-    sampleActiveControl();
     return commit();
+  }
+  function keepFocus(event: PointerEvent) {
+    const active = document.activeElement;
+    if (active instanceof HTMLInputElement && active.dataset.evStat) return;
+    event.preventDefault();
   }
   function commit(): boolean {
     if (!dirty) {
@@ -704,7 +678,7 @@
                     class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
                     data-set-choice
                     onpointerdown={(event) => event.preventDefault()}
-                    onclick={() => chooseSet(option.member)}
+                    onclick={() => chooseSet(option.member, true)}
                   >
                     <PokemonSprite pokemon={option.pokemon} size={32} />
                     <span class="min-w-0 flex-1">
@@ -776,14 +750,14 @@
       >
         {error}
       </p>{/if}
-    <p class="provenance mb-3">
+    <p role="status" aria-live="polite" class="provenance mb-3">
       {dirty ? 'Unsaved input.' : 'Saved on this device.'}
     </p>
     <div class="flex justify-end gap-2">
       <Button
         variant="outline"
         class="h-11 min-h-11 px-4"
-        onpointerdown={(event) => event.preventDefault()}
+        onpointerdown={keepFocus}
         onclick={() => {
           activeSuggestions = null;
           if (requestClose()) onclose();
@@ -791,7 +765,7 @@
       >
       <Button
         class="h-11 min-h-11 px-4"
-        onpointerdown={(event) => event.preventDefault()}
+        onpointerdown={keepFocus}
         onclick={done}>Done</Button
       >
     </div>

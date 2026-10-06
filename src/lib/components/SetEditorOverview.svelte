@@ -70,10 +70,16 @@
   </div>
 
   {#if originalAvailable}
-    <Button variant="outline" disabled={!!originalReason} onclick={onoriginal}
-      >Use original set</Button
+    <Button
+      variant="outline"
+      class="min-h-11"
+      disabled={!!originalReason}
+      aria-describedby={originalReason ? 'original-set-reason' : undefined}
+      onclick={onoriginal}>Use original set</Button
     >
-    {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
+    {#if originalReason}<p id="original-set-reason" class="provenance">
+        {originalReason}
+      </p>{/if}
   {/if}
   <button
     type="button"

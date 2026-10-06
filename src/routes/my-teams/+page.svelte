@@ -32,6 +32,7 @@
     MAX_TEAM_MEGAS,
     readSavedTeams,
     resolveSavedTeamId,
+    rosterConflict,
     saveTeam,
     swapSuggestions,
     type SavedTeam,
@@ -147,8 +148,6 @@
   }
   function persistIfDirty() {
     editorRef?.flush();
-    const input = document.querySelector<HTMLInputElement>('[data-team-name]');
-    if (draft && input) draft.name = input.value;
     saveTeamName();
   }
   onMount(() => {
@@ -263,18 +262,10 @@
     const member = $state.snapshot(draft.original.members[index]);
     if (!member) return;
     persistChange((team) => {
-      const others = team.members.filter((_, slot) => slot !== index);
-      if (
-        others.some(
-          (other) => normalize(other.pokemon) === normalize(member.pokemon)
-        )
-      )
+      const conflict = rosterConflict(member, team.members, index);
+      if (conflict === 'duplicate')
         throw new Error('This Pokémon is already in another slot.');
-      if (
-        isMegaSpecies(member.pokemon) &&
-        others.filter((other) => isMegaSpecies(other.pokemon)).length >=
-          MAX_TEAM_MEGAS
-      )
+      if (conflict === 'mega')
         throw new Error('This team already has two Mega Pokémon.');
       return {
         ...team,
@@ -572,7 +563,6 @@
             >Team name<input
               class="input mt-2 min-h-11 w-full sm:text-sm"
               maxlength="200"
-              data-team-name
               bind:value={draft.name}
               onblur={saveTeamName}
               onkeydown={(e) => {

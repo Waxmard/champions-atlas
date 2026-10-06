@@ -466,10 +466,7 @@ async function main() {
     }
     if (process.env.OFFLINE === '1')
       throw new Error(`Missing cached file: ${name}`);
-    const response = await fetchWithRetry(address, {
-      signal: AbortSignal.timeout(30000),
-      redirect: 'error',
-    });
+    const response = await fetchWithRetry(address, { redirect: 'error' });
     if (!response.ok) throw new Error(`${response.status} fetching ${address}`);
     const text = await response.text();
     if (text.length > 5000000)
@@ -528,9 +525,7 @@ async function main() {
     if (csv === null) {
       if (process.env.OFFLINE === '1')
         throw new Error(`Missing cached sheet: ${regulation}`);
-      const response = await fetchWithRetry(address, {
-        signal: AbortSignal.timeout(30000),
-      });
+      const response = await fetchWithRetry(address);
       if (!response.ok)
         throw new Error(`Sheet fetch failed: ${response.status}`);
       csv = await response.text();

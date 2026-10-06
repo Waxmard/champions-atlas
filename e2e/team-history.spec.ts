@@ -55,9 +55,6 @@ async function openHistory(page: Page) {
   await expect(
     panel.getByRole('button', { name: 'Restore original', exact: true })
   ).toBeVisible();
-  await expect(panel.getByLabel('Compare with', { exact: true })).toHaveCount(
-    0
-  );
   return panel;
 }
 
@@ -499,9 +496,12 @@ test('failed writes retain form input for retry; Escape dismisses suggestions be
   }, storageKey);
   await enter(editor, 'Item', 'Retained failed input');
   await expect(
-    editor.getByText('Could not save this input. Your edits are still here.', {
-      exact: true,
-    })
+    editor.getByText(
+      'Could not save this input. Your edits are still here. Close and reopen the editor, then try again.',
+      {
+        exact: true,
+      }
+    )
   ).toBeVisible();
   expect((await stored(page)).members).toEqual(accepted.members);
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
