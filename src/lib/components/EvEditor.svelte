@@ -130,6 +130,10 @@
             onclick={() => onnaturechange(option.value)}
           >
             {option.value}
+            {#if option.original}<span
+                class="provenance ml-2"
+                aria-hidden="true">Original</span
+              >{/if}
           </button>
         {/each}
       </div>
@@ -207,6 +211,7 @@
               min="0"
               max="32"
               value={values[stat]}
+              data-ev-stat={stat}
               class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
               oninput={(event) =>
                 update(stat, event.currentTarget.valueAsNumber)}
@@ -218,6 +223,7 @@
         <!-- Bottom Row: Range Slider -->
         <input
           aria-label={`${stat} EV slider`}
+          data-ev-stat={stat}
           type="range"
           min="0"
           max="32"
@@ -244,7 +250,7 @@
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Spreads your own teams run, then the most common catalog spreads.
+      Original team first, then your own teams and common catalog spreads.
     </p>
   </div>
   {#each spreadSuggestions as option, i (option.spread + option.nature)}
@@ -267,6 +273,9 @@
       <span id={'ev-suggestion-details-' + i} class="sr-only"
         >{option.source} · {option.movedPoints} points moved</span
       >
+      {#if option.original}<span class="provenance" aria-hidden="true"
+          >Original</span
+        >{/if}
       {@render chips(option.spread)}
       <span class="value"
         >{option.nature} · {formatSpreadDelta(option.deltas)}</span

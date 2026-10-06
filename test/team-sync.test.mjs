@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mergeSavedTeams, teamsSnapshot } from '../src/lib/team-sync.ts';
+import { checkpointTeam } from '../src/lib/team-history.ts';
 
 const team = (id, name = id) => ({
   id,
@@ -32,6 +33,7 @@ const team = (id, name = id) => ({
   })),
   changeSlot: null,
   sources: [],
+  history: [],
 });
 const merge = (base, local, remote, ids = new Map()) =>
   mergeSavedTeams(base, local, remote, ids);
@@ -145,4 +147,47 @@ test('invalid teams and overflow never mutate inputs', () => {
   assert.equal(base[0].name, '0');
   assert.equal(local[0].name, 'Local');
   assert.equal(remote[0].name, 'Remote');
+});
+
+test('complete branch histories survive sequential sync, recovery, deletion and in-flight rebase', () => {
+  const initial = team('history');
+  initial.origin = 'catalog';
+  initial.original.creator = 'Author';
+  const edit = (previous, name, id) =>
+    checkpointTeam(
+      previous,
+      { ...structuredClone(previous), name },
+      { id, label: name }
+    );
+  const first = edit(initial, 'First', 'first');
+  const second = edit(first, 'Second', 'second');
+  assert.deepEqual(merge([initial], [first], [initial]), [first]);
+  assert.deepEqual(merge([first], [first], [second]), [second]);
+  assert.deepEqual(merge([first], [second], [first]), [second]);
+  const other = edit(first, 'Other branch', 'other');
+  other.members[0].set += '\nIVs: 0 Atk';
+  other.members[0].evidence = { original: true };
+  const recovered = merge([first], [second], [other]);
+  assert.deepEqual(recovered[0], second);
+  assert.deepEqual(recovered[1].history, other.history);
+  assert.deepEqual(recovered[1].original, other.original);
+  assert.equal(recovered[1].origin, other.origin);
+  assert.deepEqual(recovered[1].members, other.members);
+  assert.deepEqual(
+    recovered[0].history.map((r) => r.id),
+    ['first', 'second']
+  );
+  assert.deepEqual(
+    recovered[1].history.map((r) => r.id),
+    ['first', 'other']
+  );
+  const deleted = merge([first], [], [other]);
+  assert.equal(deleted.length, 1);
+  assert.deepEqual(deleted[0].history, other.history);
+  assert.deepEqual(deleted[0].original, other.original);
+  assert.deepEqual(merge([second], [second], []), []);
+  const committed = merge([initial], [first], [initial]);
+  const rebased = merge([first], [second], committed);
+  assert.deepEqual(rebased, [second]);
+  assert.deepEqual(merge(committed, rebased, committed), [second]);
 });

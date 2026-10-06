@@ -2,7 +2,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      function owner() {
+        return request.auth != null && request.auth.uid == userId;
+      }
+      function manifest() {
+        return request.resource.data.keys().hasAll(['schemaVersion', 'teamIds', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['schemaVersion', 'teamIds', 'updatedAt'])
+          && request.resource.data.schemaVersion == 2
+          && request.resource.data.teamIds is list
+          && request.resource.data.teamIds.size() <= 50
+          && request.resource.data.updatedAt is timestamp;
+      }
+      allow read: if owner();
+      allow create: if owner() && manifest();
+      allow update: if owner() && (manifest()
+        || (!('schemaVersion' in resource.data) && !('schemaVersion' in request.resource.data)));
+      match /teams/{teamId} {
+        allow read, delete: if owner();
+        allow create, update: if owner() && request.resource.data.id == teamId;
+      }
     }
   }
 }

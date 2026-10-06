@@ -9,8 +9,8 @@
     ability: string;
     nature: string;
     activeSuggestions: string | null;
-    filteredItems: Array<{ value: string }>;
-    filteredAbilities: Array<{ value: string }>;
+    filteredItems: Array<{ value: string; original?: true }>;
+    filteredAbilities: Array<{ value: string; original?: true }>;
     legacyNature: string | null;
     error: string;
     errorField: EditableSetField | null;
@@ -20,6 +20,7 @@
     onopensuggestions: (field: string) => void;
     onclearsuggestions: () => void;
     onclearerror: () => void;
+    oncommit: () => void;
   }
 
   let {
@@ -38,12 +39,12 @@
     onopensuggestions,
     onclearsuggestions,
     onclearerror,
+    oncommit,
   }: Props = $props();
 </script>
 
 <section class="grid gap-5">
   <div class="grid gap-4 sm:grid-cols-2">
-    <!-- Item -->
     <div class="min-w-0">
       <label for="set-item-input" class="term">Item</label>
       <div
@@ -62,6 +63,20 @@
           onfocus={() => onopensuggestions('item')}
           onclick={() => onopensuggestions('item')}
           oninput={(e) => onitemchange(e.currentTarget.value)}
+          onblur={(event) => {
+            if (!(
+              event.relatedTarget instanceof HTMLElement &&
+              event.relatedTarget.closest('[data-detail-choice]')
+            ))
+              oncommit();
+          }}
+          onkeydown={(event) => {
+            if (event.key === 'Enter' && !event.isComposing) {
+              event.preventDefault();
+              onclearsuggestions();
+              oncommit();
+            }
+          }}
         />
         {#if item}
           <button
@@ -69,10 +84,13 @@
             class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
             aria-label="Clear item"
             tabindex={activeSuggestions === 'item' ? -1 : 0}
+            data-detail-choice
+            onpointerdown={(event) => event.preventDefault()}
             onclick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onitemchange('');
+              oncommit();
             }}
           >
             <X class="size-4" />
@@ -92,13 +110,19 @@
                 <button
                   type="button"
                   class="flex min-h-11 items-center gap-2 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                  data-detail-choice
+                  onpointerdown={(event) => event.preventDefault()}
                   onclick={() => {
                     onitemchange(opt.value);
                     onclearsuggestions();
+                    oncommit();
                   }}
                 >
                   <ItemIcon item={opt.value} size={20} />
                   <span class="value">{opt.value}</span>
+                  {#if opt.original}<span class="provenance" aria-hidden="true"
+                      >Original</span
+                    >{/if}
                 </button>
               </li>
             {:else}
@@ -109,7 +133,6 @@
       {/if}
     </div>
 
-    <!-- Ability -->
     <div class="min-w-0">
       <label for="set-ability-input" class="term">Ability</label>
       <div
@@ -127,6 +150,20 @@
           onfocus={() => onopensuggestions('ability')}
           onclick={() => onopensuggestions('ability')}
           oninput={(e) => onabilitychange(e.currentTarget.value)}
+          onblur={(event) => {
+            if (!(
+              event.relatedTarget instanceof HTMLElement &&
+              event.relatedTarget.closest('[data-detail-choice]')
+            ))
+              oncommit();
+          }}
+          onkeydown={(event) => {
+            if (event.key === 'Enter' && !event.isComposing) {
+              event.preventDefault();
+              onclearsuggestions();
+              oncommit();
+            }
+          }}
         />
         {#if ability}
           <button
@@ -134,10 +171,13 @@
             class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
             aria-label="Clear ability"
             tabindex={activeSuggestions === 'ability' ? -1 : 0}
+            data-detail-choice
+            onpointerdown={(event) => event.preventDefault()}
             onclick={(e) => {
               e.preventDefault();
               e.stopPropagation();
               onabilitychange('');
+              oncommit();
             }}
           >
             <X class="size-4" />
@@ -157,12 +197,18 @@
                 <button
                   type="button"
                   class="min-h-11 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                  data-detail-choice
+                  onpointerdown={(event) => event.preventDefault()}
                   onclick={() => {
                     onabilitychange(opt.value);
                     onclearsuggestions();
+                    oncommit();
                   }}
                 >
-                  {opt.value}
+                  {opt.value}{#if opt.original}<span
+                      class="provenance ml-2"
+                      aria-hidden="true">Original</span
+                    >{/if}
                 </button>
               </li>
             {:else}
@@ -173,7 +219,6 @@
       {/if}
     </div>
 
-    <!-- Nature -->
     <div class="min-w-0 sm:col-span-2">
       <label for="set-nature-input" class="term">Nature</label>
       <select
@@ -185,8 +230,10 @@
         onchange={(e) => {
           onnaturechange(e.currentTarget.value);
           onclearerror();
+          oncommit();
         }}
       >
+        <option value="">Unknown</option>
         {#if legacyNature}
           <option value={legacyNature}>{legacyNature}</option>
         {/if}
@@ -200,6 +247,7 @@
   {#if error && (errorField === 'item' || errorField === 'ability' || errorField === 'nature')}
     <p
       role="alert"
+      tabindex="-1"
       class="text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >

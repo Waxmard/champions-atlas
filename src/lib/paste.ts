@@ -206,6 +206,29 @@ export function normalizeSet(set: string): string {
     .join('\n');
 }
 
+export function updateSetText(previous: Member, next: Member): string {
+  const [header, ...lines] = normalizeSet(
+    previous.set || previous.pokemon
+  ).split('\n');
+  const name =
+    normalize(previous.pokemon) === normalize(next.pokemon)
+      ? header.split(' @ ')[0]
+      : next.pokemon;
+  return normalizeSet(
+    [
+      name + (next.item ? ` @ ${next.item}` : ''),
+      ...lines.filter(
+        (line) => !/^(?:Ability:|EVs:|.* Nature$|- )/.test(line.trim())
+      ),
+      next.ability ? `Ability: ${next.ability}` : '',
+      next.spread ? `EVs: ${next.spread}` : '',
+      next.nature ? `${next.nature} Nature` : '',
+      ...next.moves.map((move) => `- ${move}`),
+    ]
+      .filter(Boolean)
+      .join('\n')
+  );
+}
 export function parseSetBlock(rawSet: string): Member {
   const set = normalizeSet(rawSet);
   const [first, ...lines] = set.split('\n').map((line) => line.trim());

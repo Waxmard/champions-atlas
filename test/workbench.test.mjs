@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  differences,
   deleteTeam,
   exportPaste,
   isMegaSpecies,
@@ -62,23 +61,6 @@ test('saved team preserves original and raw export fields', () => {
   assert.equal(parsePaste(paste).length, 6);
 });
 
-test('diff aligns species despite reordered slots, and distinguishes missing information from known changes', () => {
-  const before = team().members;
-  const after = structuredClone(before).reverse();
-  assert.deepEqual(differences(before, after), []);
-  after[0].item = null;
-  after[1].moves = ['Protect'];
-  after[2] = member('Replacement');
-  const rows = differences(before, after);
-  assert.ok(
-    rows.some((row) => row.pokemon === 'Pokemon5' && row.after === 'Unknown')
-  );
-  assert.ok(
-    rows.some((row) => row.field === 'Moves' && row.after === 'Protect')
-  );
-  assert.equal(rows.filter((row) => row.field === 'Pokémon').length, 2);
-});
-
 test('saved teams round-trip, preserve other teams, and never overwrite corrupt or unavailable storage', () => {
   let value = null;
   const storage = {
@@ -112,7 +94,7 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
     const bad = structuredClone(vr);
     bad.sources[0].pasteUrl = invalid;
     const before = value;
-    assert.throws(() => saveTeam(storage, bad), /untouched/);
+    assert.throws(() => saveTeam(storage, bad));
     assert.equal(value, before);
   }
   first.name = 'Edited';

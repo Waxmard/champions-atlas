@@ -18,6 +18,9 @@
     moves: string[];
     currentSpreadTotal: number;
     error?: string;
+    originalAvailable?: boolean;
+    originalReason?: string;
+    onoriginal: () => void;
     onnavigate: (
       view: 'pokemon' | 'details' | 'moves' | 'spread' | 'text'
     ) => void;
@@ -32,6 +35,9 @@
     moves,
     currentSpreadTotal,
     error,
+    originalAvailable = false,
+    originalReason = '',
+    onoriginal,
     onnavigate,
   }: Props = $props();
 
@@ -39,7 +45,6 @@
 </script>
 
 <div class="grid gap-3.5 pr-1 sm:pr-1.5">
-  <!-- Species Tile -->
   <div
     class="plate flex items-center justify-between gap-3 p-3.5 pr-4.5 sm:p-4 sm:pr-5"
     data-editor-section="pokemon"
@@ -64,7 +69,12 @@
     </Button>
   </div>
 
-  <!-- Item, Ability & Nature Tile -->
+  {#if originalAvailable}
+    <Button variant="outline" disabled={!!originalReason} onclick={onoriginal}
+      >Use original set</Button
+    >
+    {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
+  {/if}
   <button
     type="button"
     class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
@@ -115,7 +125,6 @@
     </div>
   </button>
 
-  <!-- Moves Tile (2x2 Grid) -->
   <button
     type="button"
     class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
@@ -151,7 +160,6 @@
     </div>
   </button>
 
-  <!-- EV Spread Tile -->
   <button
     type="button"
     class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
@@ -191,7 +199,6 @@
     </div>
   </button>
 
-  <!-- Showdown Text Link -->
   <div class="pt-1 text-center">
     <Button
       variant="ghost"
@@ -208,6 +215,7 @@
   {#if error}
     <p
       role="alert"
+      tabindex="-1"
       class="text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >

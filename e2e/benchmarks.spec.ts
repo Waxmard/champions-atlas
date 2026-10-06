@@ -69,7 +69,7 @@ async function ask(
 
 const chipsOf = (row: Locator) => row.locator('span.font-mono');
 
-test('a same-nature answer stages first and saves only on Apply', async ({
+test('a same-nature answer saves immediately without Apply', async ({
   page,
 }) => {
   const { card, editor, benchmarks } = await openEditor(
@@ -123,21 +123,20 @@ test('a same-nature answer stages first and saves only on Apply', async ({
     );
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
-  ).toBe(before);
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(card.getByRole('button', { name: /Apply/ })).toBeVisible();
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), storageKey)
-  ).toBe(before);
-  await card.getByRole('button', { name: /Apply/ }).click();
-  await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: 'Raichu-Mega-Y changes applied and saved.' })
-  ).toBeVisible();
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).not.toBe(before);
+  const saved = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!)[0],
+    storageKey
+  );
+  const savedMember = saved.members.find(
+    (member: { pokemon: string }) => member.pokemon === 'Raichu-Mega-Y'
+  );
+  expect(savedMember.spread).toBe('30 HP / 32 Def / 4 Spe');
+  expect(saved.history).toHaveLength(1);
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(card.getByRole('button', { name: /Apply|Discard/ })).toHaveCount(
+    0
+  );
 });
 
 test('a nature-change answer leads with the cheapest equal-cost spread', async ({
@@ -265,7 +264,7 @@ test('the panel starts empty, keeps the dialog inside the viewport and layers be
   ).toBe(true);
 });
 
-test('a spread another saved team runs stages and saves', async ({ page }) => {
+test('a spread another saved team runs saves immediately', async ({ page }) => {
   const pokemon = 'Raichu-Mega-Y';
   const { card, editor } = await openEditor(
     page,
@@ -302,7 +301,7 @@ test('a spread another saved team runs stages and saves', async ({ page }) => {
     .getByRole('dialog', { name: `Edit ${pokemon} set`, exact: true })
     .getByRole('region', { name: 'EV spread suggestions' });
   await expect(suggestions).toContainText(
-    'Spreads your own teams run, then the most common catalog spreads.'
+    'Original team first, then your own teams and common catalog spreads.'
   );
   const row = suggestions.getByRole('button', {
     name: `Use Timid spread 18 HP / 26 Def / 22 Spe`,
@@ -324,12 +323,16 @@ test('a spread another saved team runs stages and saves', async ({ page }) => {
       value
     );
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await card.getByRole('button', { name: /Apply/ }).click();
-  await expect(
-    page
-      .getByRole('status')
-      .filter({ hasText: `${pokemon} changes applied and saved.` })
-  ).toBeVisible();
+  const stored = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!),
+    storageKey
+  );
+  expect(
+    stored
+      .find((team: { name: string }) => team.name === raichuTeamName)
+      .members.find((member: { pokemon: string }) => member.pokemon === pokemon)
+      .spread
+  ).toBe('18 HP / 26 Def / 22 Spe');
   await page.reload();
   await card
     .getByRole('button', { name: `Edit ${pokemon} EVs`, exact: true })
@@ -356,10 +359,11 @@ test('catalog spreads fill the list when no saved team runs the Pokémon', async
     name: 'EV spread suggestions',
   });
   await expect(suggestions).toContainText(
-    'then the most common catalog spreads'
+    'then your own teams and common catalog spreads'
   );
   const row = suggestions
     .getByRole('button', { name: /^Use .+ spread .+$/ })
+    .filter({ hasText: 'catalog team' })
     .first();
   await expect(row).toBeVisible();
   await expect(row).toContainText('catalog team');

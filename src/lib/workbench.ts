@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { checkpointTeam } from './team-history.ts';
 import {
   compareTeams,
   isPasteUrl,
@@ -85,15 +86,9 @@ export function newSavedTeam(team: Team): SavedTeam {
   return {
     id: generateUUID(),
     name: team.name,
-    original: structuredClone({
-      id: team.id,
-      name: team.name,
-      regulation: team.regulation,
-      pasteUrl: team.pasteUrl,
-      members: team.members,
-      paste: team.paste,
-      reports: team.reports,
-    }),
+    original: structuredClone({ ...team }),
+    origin: 'catalog',
+    history: [],
     members: structuredClone(team.members),
     changeSlot: null,
     sources: isPasteUrl(team.pasteUrl)
@@ -121,86 +116,20 @@ export function newCustomTeam(
       pasteUrl: '',
       members,
       paste: storedPaste,
+      sheetIds: [],
+      creator: '',
+      publishedAt: '',
+      replicaCode: null,
+      replicaStatus: '',
+      reports: [],
+      pasteNotes: null,
     }),
+    origin: 'custom',
+    history: [],
     members: structuredClone(members),
     changeSlot: null,
     sources: [],
   };
-}
-
-export function differences(before: Member[], after: Member[]) {
-  const rows: {
-    pokemon: string;
-    field: string;
-    before: string;
-    after: string;
-  }[] = [];
-  for (const member of before) {
-    const match = after.find(
-      (other) => normalize(other.pokemon) === normalize(member.pokemon)
-    );
-    if (!match) {
-      rows.push({
-        pokemon: member.pokemon,
-        field: 'Pokémon',
-        before: 'On team',
-        after: 'Removed',
-      });
-      continue;
-    }
-    for (const [field, label] of [
-      ['item', 'Item'],
-      ['ability', 'Ability'],
-      ['nature', 'Nature'],
-      ['spread', 'EVs'],
-    ] as const) {
-      if (
-        !member[field] ||
-        !match[field] ||
-        normalize(member[field]) !== normalize(match[field])
-      )
-        rows.push({
-          pokemon: member.pokemon,
-          field: label,
-          before: member[field] || 'Unknown',
-          after: match[field] || 'Unknown',
-        });
-    }
-    if (
-      !member.moves.length ||
-      !match.moves.length ||
-      member.moves.map(normalize).sort().join(',') !==
-        match.moves.map(normalize).sort().join(',')
-    )
-      rows.push({
-        pokemon: member.pokemon,
-        field: 'Moves',
-        before: member.moves.join(', ') || 'Unknown',
-        after: match.moves.join(', ') || 'Unknown',
-      });
-    const beforeSet = member.set && setText(member);
-    const afterSet = match.set && setText(match);
-    if (beforeSet && afterSet && beforeSet !== afterSet)
-      rows.push({
-        pokemon: member.pokemon,
-        field: 'Full set',
-        before: beforeSet,
-        after: afterSet,
-      });
-  }
-  for (const member of after)
-    if (
-      !before.some(
-        (other) => normalize(other.pokemon) === normalize(member.pokemon)
-      )
-    )
-      rows.push({
-        pokemon: member.pokemon,
-        field: 'Pokémon',
-        before: 'Not on team',
-        after: 'Added',
-      });
-  return rows;
 }
 
 const textSchema = z.string().max(50_000);
@@ -234,6 +163,20 @@ const originalSchema = z.looseObject({
   members: membersSchema,
   paste: textSchema.nullable(),
   reports: z.array(reportSchema).max(100).optional(),
+  sheetIds: z.array(textSchema).max(100).optional(),
+  creator: textSchema.optional(),
+  publishedAt: textSchema.optional(),
+  replicaCode: textSchema.nullable().optional(),
+  replicaStatus: textSchema.optional(),
+  pasteNotes: textSchema.nullable().optional(),
+  pasteError: textSchema.optional(),
+});
+const revisionSchema = z.object({
+  id: textSchema.refine((value) => value.length > 0),
+  savedAt: textSchema.datetime(),
+  label: textSchema,
+  name: textSchema,
+  members: membersSchema,
 });
 const sourceSchema = z.looseObject({
   name: textSchema,
@@ -246,6 +189,14 @@ const savedTeamSchema = z.object({
   members: membersSchema,
   changeSlot: z.number().int().min(0).max(5).nullable().default(null),
   sources: z.array(sourceSchema).max(100),
+  origin: z.enum(['catalog', 'custom']).optional(),
+  history: z
+    .array(revisionSchema)
+    .max(20)
+    .default([])
+    .refine(
+      (items) => new Set(items.map((item) => item.id)).size === items.length
+    ),
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;
@@ -269,15 +220,30 @@ export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
 
 export function saveTeam(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
-  team: SavedTeam
-) {
+  team: SavedTeam,
+  checkpoint?: { id: string; label: string }
+): SavedTeam[] {
+  const validation = savedTeamsSchema.safeParse([team]);
+  if (!validation.success)
+    throw new Error(
+      'Saved teams could not be read. Existing data has been left untouched.'
+    );
+  const candidate = validation.data[0];
   const saved = readSavedTeams(storage);
-  const next = saved.filter((entry) => entry.id !== team.id);
-  next.push(team);
+  const previous = saved.find((entry) => entry.id === candidate.id);
+  const nextTeam = previous
+    ? checkpointTeam(
+        previous,
+        candidate,
+        checkpoint ?? { id: generateUUID(), label: 'Edited team' }
+      )
+    : candidate;
+  const next = saved.filter((entry) => entry.id !== candidate.id);
+  next.push(nextTeam);
   const raw = JSON.stringify(next);
-  readSavedTeams({ getItem: () => raw });
+  const normalized = readSavedTeams({ getItem: () => raw });
   storage.setItem(storageKey, raw);
-  return next;
+  return normalized;
 }
 export function deleteTeam(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
@@ -302,6 +268,23 @@ export interface CatalogSuggestion {
   currentCount: number;
   totalCount: number;
   score?: number;
+  original?: true;
+}
+
+export function originalMemberFor(
+  self: Member,
+  originals: Member[]
+): Member | undefined {
+  const exact = originals.find(
+    (member) => normalize(member.pokemon) === normalize(self.pokemon)
+  );
+  if (exact) return exact;
+  const form = resolveBattleForm(self);
+  if (form.error) return;
+  return originals.find((member) => {
+    const originalForm = resolveBattleForm(member);
+    return !originalForm.error && originalForm.pokemon === form.pokemon;
+  });
 }
 
 export interface PokemonSuggestion {
@@ -378,7 +361,8 @@ export function catalogSuggestions(
   teammates: Member[] = [],
   tags?: TeamTagsIndex,
   pokemonQuery = '',
-  originalPokemon = typeof target === 'string' ? target : target.pokemon
+  originalPokemon = typeof target === 'string' ? target : target.pokemon,
+  originalMember?: Member
 ) {
   const isSimple = typeof target === 'string';
   const targetMember: Member = isSimple
@@ -466,20 +450,49 @@ export function catalogSuggestions(
     }
   }
 
-  const rank = (values: Map<string, CatalogSuggestion>) =>
-    [...values.values()].sort(
-      (a, b) =>
-        (b.score || 0) - (a.score || 0) ||
-        b.currentCount - a.currentCount ||
-        b.totalCount - a.totalCount ||
-        a.value.localeCompare(b.value)
-    );
+  const original =
+    originalMember && originalMemberFor(targetMember, [originalMember]);
+  const rank = (
+    values: Map<string, CatalogSuggestion>,
+    originalValues: (string | null)[] = []
+  ) => {
+    const promoted: CatalogSuggestion[] = [];
+    for (const value of originalValues) {
+      const key = normalize(value ?? '');
+      if (
+        !value ||
+        !key ||
+        key === 'unknown' ||
+        promoted.some((entry) => normalize(entry.value) === key)
+      )
+        continue;
+      promoted.push({
+        ...(values.get(key) ?? { value, currentCount: 0, totalCount: 0 }),
+        original: true,
+      });
+      values.delete(key);
+    }
+    return [
+      ...promoted,
+      ...[...values.values()].sort(
+        (a, b) =>
+          (b.score || 0) - (a.score || 0) ||
+          b.currentCount - a.currentCount ||
+          b.totalCount - a.totalCount ||
+          a.value.localeCompare(b.value)
+      ),
+    ];
+  };
 
   return {
-    items: rank(items),
-    abilities: rank(abilities),
-    moves: rank(moves),
-    natures: rank(natures),
+    items: rank(items, [original?.item ?? null]),
+    abilities: rank(abilities, [original?.ability ?? null]),
+    moves: rank(moves, original?.moves),
+    natures: rank(natures, [
+      NATURES.find(
+        (name) => normalize(name) === normalize(original?.nature ?? '')
+      ) ?? null,
+    ]),
     pokemon: pokemonSuggestions(
       teammates,
       teams,
@@ -668,6 +681,32 @@ export interface SpreadSuggestion {
   deltas: SpreadDelta[];
   movedPoints: number;
   speed: number | null;
+  original?: true;
+}
+
+export function originalSpreadSuggestion(
+  self: Member,
+  original: Member
+): SpreadSuggestion | undefined {
+  const form = resolveBattleForm(self),
+    originalForm = resolveBattleForm(original);
+  if (form.error || originalForm.error || form.pokemon !== originalForm.pokemon)
+    return;
+  const spread = parseChampionsSpread(original.spread);
+  const nature = NATURES.find(
+    (name) => normalize(name) === normalize(original.nature ?? '')
+  );
+  if (!isCompleteSpread(spread) || !nature) return;
+  const deltas = spreadDeltas(parseChampionsSpread(self.spread), spread);
+  return {
+    spread: formatChampionsSpread(spread),
+    nature,
+    source: 'Original team',
+    original: true,
+    deltas,
+    movedPoints: spreadMoved(deltas) / 2,
+    speed: speedFor(form.pokemon, spread, nature),
+  };
 }
 
 const spreadCache = new WeakMap<
