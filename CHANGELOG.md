@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/Waxmard/champions-atlas/compare/v1.2.0...v1.3.0) (2026-10-06)
+
+
+### Features
+
+* add team edit history, autosave, and v2 Firestore sync ([#24](https://github.com/Waxmard/champions-atlas/issues/24)) ([723f883](https://github.com/Waxmard/champions-atlas/commit/723f883e4251c6f9cd9ef81fc397caa4d9701985))
+
 ## [1.2.0](https://github.com/Waxmard/champions-atlas/compare/v1.1.0...v1.2.0) (2026-10-05)
 
 
