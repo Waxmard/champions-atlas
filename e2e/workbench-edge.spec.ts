@@ -99,7 +99,6 @@ test('import, edit, reload, compare, and export a custom team', async ({
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
     ).ability
   ).toBe('Custom Ability');
-  expect(saved.history).toHaveLength(1);
   await page.reload();
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     'My custom team'

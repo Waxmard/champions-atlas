@@ -1,10 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import {
-  checkpointTeam,
-  differences,
-  restoreTeam,
-} from '../src/lib/team-history.ts';
+import { differences, restoreTeam } from '../src/lib/team-history.ts';
 import {
   catalogSuggestions,
   originalMemberFor,
@@ -117,43 +113,28 @@ test('diff is identity aligned, needs a known selected value, and reports no ful
   assert.deepEqual(swap([], ['Protect']), []);
 });
 
-test('grouped saves checkpoint once, keep originals, and restore without mutation', () => {
+test('grouped saves retain the stored original and restore without mutation', () => {
   const storage = memory(),
     initial = newSavedTeam(sourceTeam());
   initial.members[0].mystery = 'keep';
   saveTeam(storage, initial);
-  const group = { id: 'visit-1', label: 'Edited Pokemon0' };
   let candidate = readSavedTeams(storage)[0];
   candidate.members[0].item = 'Orb';
-  let saved = saveTeam(storage, candidate, group)[0];
+  let saved = saveTeam(storage, candidate)[0];
   candidate = structuredClone(saved);
   candidate.members[0].ability = 'Ability';
-  saved = saveTeam(storage, candidate, group)[0];
-  assert.equal(saved.history.length, 1);
-  assert.equal(saved.history[0].name, 'Published');
-  assert.equal(saved.history[0].members[0].item, null);
+  saved = saveTeam(storage, candidate)[0];
   assert.equal(saved.members[0].item, 'Orb');
   candidate = structuredClone(saved);
   candidate.name = 'Renamed';
-  saved = saveTeam(storage, candidate, {
-    id: 'visit-2',
-    label: 'Renamed team',
-  })[0];
-  assert.equal(saved.history.length, 2);
-  assert.equal(saved.history[1].name, 'Published');
-  const restored = restoreTeam(saved, saved.history[0].id);
+  saved = saveTeam(storage, candidate)[0];
+  const restored = restoreTeam(saved);
   assert.equal(restored.name, 'Published');
   assert.equal(restored.members[0].item, null);
   assert.equal(restored.original.creator, 'author');
   assert.equal(restored.id, initial.id);
-  const roundTrip = saveTeam(storage, restored, {
-    id: 'restore-1',
-    label: 'Restored version',
-  })[0];
-  assert.equal(roundTrip.history.length, 3);
-  assert.equal(roundTrip.history[2].members[0].item, 'Orb');
-  assert.equal(roundTrip.members[0].mystery, 'keep');
-  assert.throws(() => restoreTeam(saved, 'gone'), /no longer available/);
+  const roundTrip = saveTeam(storage, restored)[0];
+  assert.equal(roundTrip.members[0].item, null);
 });
 
 test('no-op, invalid candidate, corrupt storage, and failed writes preserve data', () => {
@@ -161,9 +142,8 @@ test('no-op, invalid candidate, corrupt storage, and failed writes preserve data
     saved = newSavedTeam(sourceTeam());
   saveTeam(storage, saved);
   const raw = storage.raw();
-  saveTeam(storage, readSavedTeams(storage)[0], { id: 'noop', label: 'noop' });
+  saveTeam(storage, readSavedTeams(storage)[0]);
   assert.equal(storage.raw(), raw);
-  assert.equal(readSavedTeams(storage)[0].history.length, 0);
   const invalid = structuredClone(readSavedTeams(storage)[0]);
   invalid.members[0].pokemon = '!!!';
   assert.throws(() => saveTeam(storage, invalid));
@@ -174,7 +154,7 @@ test('no-op, invalid candidate, corrupt storage, and failed writes preserve data
   );
 });
 
-test('history defaults legacy origin without inventing it and retains custom starting metadata', () => {
+test('legacy origin defaults without inventing it and retains custom starting metadata', () => {
   const custom = newCustomTeam(
     'Mine',
     'M-C',
@@ -187,41 +167,31 @@ test('history defaults legacy origin without inventing it and retains custom sta
     ).join('\n\n')
   );
   assert.equal(custom.origin, 'custom');
-  assert.deepEqual(custom.history, []);
   assert.deepEqual(custom.original.sheetIds, []);
   assert.equal(custom.original.replicaCode, null);
   const legacy = newSavedTeam(sourceTeam());
-  delete legacy.history;
+  legacy.history = [
+    {
+      id: 'legacy',
+      savedAt: '2026-10-01T00:00:00.000Z',
+      label: 'Edit',
+      name: legacy.name,
+      members: legacy.members,
+    },
+  ];
   delete legacy.origin;
   const loaded = readSavedTeams({ getItem: () => JSON.stringify([legacy]) })[0];
   assert.equal(loaded.origin, undefined);
-  assert.deepEqual(loaded.history, []);
+  assert.equal(loaded.history, undefined);
 });
 
-test('twenty-one editing groups expire only the oldest checkpoint', () => {
-  const storage = memory(),
-    base = newSavedTeam(sourceTeam());
-  saveTeam(storage, base);
-  let current = readSavedTeams(storage)[0];
-  for (let i = 0; i < 21; i++) {
-    const next = structuredClone(current);
-    next.name = 'Edit ' + i;
-    current = saveTeam(storage, next, { id: 'g' + i, label: 'Edit ' + i })[0];
-  }
-  assert.equal(current.history.length, 20);
-  assert.equal(current.history[0].id, 'g1');
-  assert.equal(current.original.name, 'Published');
-  assert.equal(current.name, 'Edit 20');
-});
-
-test('failed writes preserve caller and storage and retry the same group', () => {
+test('failed writes preserve caller and storage', () => {
   const storage = memory();
   const initial = saveTeam(storage, newSavedTeam(sourceTeam()))[0];
   const candidate = structuredClone(initial);
   candidate.name = 'Pending';
   const before = structuredClone(candidate),
     raw = storage.raw();
-  const group = { id: 'retry', label: 'Edited team' };
   assert.throws(
     () =>
       saveTeam(
@@ -231,17 +201,14 @@ test('failed writes preserve caller and storage and retry the same group', () =>
             throw new Error('Quota');
           },
         },
-        candidate,
-        group
+        candidate
       ),
     /Quota/
   );
   assert.deepEqual(candidate, before);
   assert.equal(storage.raw(), raw);
-  const saved = saveTeam(storage, candidate, group)[0];
-  assert.equal(saved.history.length, 1);
-  assert.equal(saved.history[0].id, group.id);
-  assert.deepEqual(saved.history[0].members, initial.members);
+  const saved = saveTeam(storage, candidate)[0];
+  assert.equal(saved.name, 'Pending');
 });
 
 test('invalid incoming sources and originals cannot hide behind retained fields', () => {
@@ -266,84 +233,26 @@ test('invalid incoming sources and originals cannot hide behind retained fields'
   }
 });
 
-test('checkpoint helper owns no-op, coalescing, and older-group rejection', () => {
-  const initial = newSavedTeam(sourceTeam());
-  const first = checkpointTeam(
-    initial,
-    { ...initial, name: 'First' },
-    { id: 'first', label: 'First' }
-  );
-  const second = checkpointTeam(
-    first,
-    { ...first, name: 'Second' },
-    { id: 'second', label: 'Second' }
-  );
-  assert.deepEqual(
-    checkpointTeam(second, second, { id: 'first', label: 'No-op' }).history,
-    second.history
-  );
-  assert.deepEqual(
-    checkpointTeam(
-      second,
-      { ...second, name: 'Third' },
-      { id: 'second', label: 'Changed label' }
-    ).history,
-    second.history
-  );
-  const snapshot = structuredClone(second);
-  assert.throws(
-    () =>
-      checkpointTeam(
-        second,
-        { ...second, name: 'Third' },
-        { id: 'first', label: 'Old' }
-      ),
-    /editing session changed elsewhere/
-  );
-  assert.deepEqual(second, snapshot);
-  const storage = memory();
-  saveTeam(storage, second);
-  const raw = storage.raw();
-  assert.throws(
-    () =>
-      saveTeam(
-        storage,
-        { ...second, name: 'Third' },
-        { id: 'first', label: 'Old' }
-      ),
-    /editing session changed elsewhere/
-  );
-  assert.equal(storage.raw(), raw);
-});
-
-test('stale metadata copies cannot replace stored provenance or history', () => {
+test('stale metadata copies cannot replace stored provenance', () => {
   const storage = memory(),
     initial = saveTeam(storage, newSavedTeam(sourceTeam()))[0];
-  const edited = saveTeam(
-    storage,
-    { ...initial, name: 'Edited' },
-    { id: 'visit', label: 'Edit' }
-  )[0];
+  const edited = saveTeam(storage, { ...initial, name: 'Edited' })[0];
   const stale = structuredClone(edited);
   stale.original.creator = 'Wrong';
   stale.origin = 'custom';
-  stale.history = [];
   stale.sources = [
     { name: 'Extra', pasteUrl: 'https://pokepast.es/1234567890abcdef' },
   ];
   const metadata = saveTeam(storage, stale)[0];
   assert.deepEqual(metadata.original, initial.original);
   assert.equal(metadata.origin, 'catalog');
-  assert.deepEqual(metadata.history, edited.history);
   assert.deepEqual(metadata.sources, stale.sources);
   stale.name = 'Next';
   const next = saveTeam(storage, stale)[0];
   assert.deepEqual(next.original, initial.original);
-  assert.equal(next.history.length, 2);
-  assert.deepEqual(next.history[0], edited.history[0]);
 });
 
-test('full detached provenance survives reload and restore recovers displaced exact state', () => {
+test('full detached provenance survives reload and restore returns the original state', () => {
   const source = sourceTeam();
   Object.assign(source, {
     pasteUrl: 'https://pokepast.es/1234567890abcdef',
@@ -371,60 +280,12 @@ test('full detached provenance survives reload and restore recovers displaced ex
   candidate.members.reverse();
   candidate.members[0].mystery = { edited: true };
   candidate.members[0].set += '\nShiny: Yes';
-  const edited = saveTeam(storage, candidate, { id: 'edit', label: 'Edit' })[0];
-  const restored = saveTeam(storage, restoreTeam(edited, 'original'), {
-    id: 'restore',
-    label: 'Restored original',
-  })[0];
+  const edited = saveTeam(storage, candidate)[0];
+  const restored = saveTeam(storage, restoreTeam(edited))[0];
   assert.deepEqual(restored.members, baseline.members);
-  const recovered = saveTeam(storage, restoreTeam(restored, 'restore'), {
-    id: 'recover',
-    label: 'Restored version',
-  })[0];
-  assert.equal(recovered.name, edited.name);
-  assert.deepEqual(recovered.members, edited.members);
-  assert.deepEqual(recovered.original, baseline);
-  assert.deepEqual(recovered.sources, loaded.sources);
-  assert.equal(recovered.id, loaded.id);
-  assert.deepEqual(recovered.history.slice(0, 2), restored.history);
-});
-
-test('malformed histories fail closed at read and save boundaries', () => {
-  const initial = newSavedTeam(sourceTeam());
-  const revision = {
-    id: 'r',
-    savedAt: '2026-10-06T00:00:00.000Z',
-    label: 'Edit',
-    name: initial.name,
-    members: initial.members,
-  };
-  const histories = [
-    [{ ...revision, id: '' }],
-    [{ ...revision, id: 'x'.repeat(50001) }],
-    [{ ...revision, savedAt: 'yesterday' }],
-    [{ ...revision, label: 'x'.repeat(50001) }],
-    [{ ...revision, name: 'x'.repeat(50001) }],
-    [revision, revision],
-    Array.from({ length: 21 }, (_, i) => ({ ...revision, id: String(i) })),
-    [{ ...revision, members: initial.members.slice(1) }],
-    [{ ...revision, members: Array(6).fill(initial.members[0]) }],
-  ];
-  for (const history of histories) {
-    const malformed = { ...initial, history },
-      raw = JSON.stringify([malformed]);
-    assert.throws(() => readSavedTeams({ getItem: () => raw }));
-    assert.throws(() =>
-      saveTeam(
-        { getItem: () => raw, setItem: () => assert.fail('Must not write') },
-        initial
-      )
-    );
-    const storage = memory();
-    saveTeam(storage, initial);
-    const before = storage.raw();
-    assert.throws(() => saveTeam(storage, malformed));
-    assert.equal(storage.raw(), before);
-  }
+  assert.deepEqual(restored.original, baseline);
+  assert.deepEqual(restored.sources, loaded.sources);
+  assert.equal(restored.id, loaded.id);
 });
 
 test('custom and legacy starting originals survive edits without inferred origin', () => {
@@ -441,7 +302,6 @@ test('custom and legacy starting originals survive edits without inferred origin
   );
   const legacy = newSavedTeam(sourceTeam());
   delete legacy.origin;
-  delete legacy.history;
   delete legacy.original.creator;
   for (const initial of [custom, legacy]) {
     const storage = memory();
@@ -450,9 +310,6 @@ test('custom and legacy starting originals survive edits without inferred origin
     const second = saveTeam(storage, { ...edited, name: 'Second' })[0];
     assert.equal(second.origin, initial.origin);
     assert.deepEqual(second.original, initial.original);
-    assert.equal(second.history.length, 2);
-    assert.notEqual(second.history[0].id, second.history[1].id);
-    assert.equal(second.history[0].label, 'Edited team');
   }
 });
 

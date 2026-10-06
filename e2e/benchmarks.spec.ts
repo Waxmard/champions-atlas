@@ -132,7 +132,6 @@ test('a same-nature answer saves immediately without Apply', async ({
     (member: { pokemon: string }) => member.pokemon === 'Raichu-Mega-Y'
   );
   expect(savedMember.spread).toBe('30 HP / 32 Def / 4 Spe');
-  expect(saved.history).toHaveLength(1);
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(card.getByRole('button', { name: /Apply|Discard/ })).toHaveCount(
     0

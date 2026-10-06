@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import { checkpointTeam } from './team-history.ts';
 import {
   compareTeams,
   isPasteUrl,
@@ -88,7 +87,6 @@ export function newSavedTeam(team: Team): SavedTeam {
     name: team.name,
     original: structuredClone({ ...team }),
     origin: 'catalog',
-    history: [],
     members: structuredClone(team.members),
     changeSlot: null,
     sources: isPasteUrl(team.pasteUrl)
@@ -125,7 +123,6 @@ export function newCustomTeam(
       pasteNotes: null,
     }),
     origin: 'custom',
-    history: [],
     members: structuredClone(members),
     changeSlot: null,
     sources: [],
@@ -171,13 +168,6 @@ const originalSchema = z.looseObject({
   pasteNotes: textSchema.nullable().optional(),
   pasteError: textSchema.optional(),
 });
-const revisionSchema = z.object({
-  id: textSchema.refine((value) => value.length > 0),
-  savedAt: textSchema.datetime(),
-  label: textSchema,
-  name: textSchema,
-  members: membersSchema,
-});
 const sourceSchema = z.looseObject({
   name: textSchema,
   pasteUrl: pasteUrlSchema,
@@ -190,13 +180,6 @@ const savedTeamSchema = z.object({
   changeSlot: z.number().int().min(0).max(5).nullable().default(null),
   sources: z.array(sourceSchema).max(100),
   origin: z.enum(['catalog', 'custom']).optional(),
-  history: z
-    .array(revisionSchema)
-    .max(20)
-    .default([])
-    .refine(
-      (items) => new Set(items.map((item) => item.id)).size === items.length
-    ),
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;
@@ -220,8 +203,7 @@ export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
 
 export function saveTeam(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
-  team: SavedTeam,
-  checkpoint?: { id: string; label: string }
+  team: SavedTeam
 ): SavedTeam[] {
   const validation = savedTeamsSchema.safeParse([team]);
   if (!validation.success)
@@ -232,11 +214,7 @@ export function saveTeam(
   const saved = readSavedTeams(storage);
   const previous = saved.find((entry) => entry.id === candidate.id);
   const nextTeam = previous
-    ? checkpointTeam(
-        previous,
-        candidate,
-        checkpoint ?? { id: generateUUID(), label: 'Edited team' }
-      )
+    ? { ...candidate, original: previous.original, origin: previous.origin }
     : candidate;
   const next = saved.filter((entry) => entry.id !== candidate.id);
   next.push(nextTeam);

@@ -19,55 +19,11 @@ export function canonicalSnapshot(value: unknown): string {
   return JSON.stringify(value);
 }
 
-export function checkpointTeam(
-  previous: SavedTeam,
-  next: SavedTeam,
-  checkpoint: { id: string; label: string }
-): SavedTeam {
-  const retained = {
-    ...next,
-    original: previous.original,
-    origin: previous.origin,
-    history: previous.history,
-  };
-  if (
-    canonicalSnapshot({ name: previous.name, members: previous.members }) ===
-      canonicalSnapshot({ name: next.name, members: next.members }) ||
-    previous.history.at(-1)?.id === checkpoint.id
-  )
-    return retained;
-  if (previous.history.some(({ id }) => id === checkpoint.id))
-    throw new Error(
-      'This editing session changed elsewhere. Reopen the editor.'
-    );
-  return {
-    ...retained,
-    history: [
-      ...previous.history,
-      {
-        id: checkpoint.id,
-        savedAt: new Date().toISOString(),
-        label: checkpoint.label,
-        name: previous.name,
-        members: structuredClone(previous.members),
-      },
-    ].slice(-20),
-  };
-}
-
-export function restoreTeam(
-  team: SavedTeam,
-  revisionId: string | 'original'
-): SavedTeam {
-  const version =
-    revisionId === 'original'
-      ? team.original
-      : team.history.find(({ id }) => id === revisionId);
-  if (!version) throw new Error('This restore point is no longer available.');
+export function restoreTeam(team: SavedTeam): SavedTeam {
   return {
     ...team,
-    name: version.name,
-    members: structuredClone(version.members),
+    name: team.original.name,
+    members: structuredClone(team.original.members),
   };
 }
 

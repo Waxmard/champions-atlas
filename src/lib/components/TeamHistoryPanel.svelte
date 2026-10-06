@@ -15,7 +15,7 @@
     team: SavedTeam;
     currentRegulation: string;
     disabled: boolean;
-    onrestore: (revisionId: string | 'original') => void;
+    onrestore: () => void;
     onrestoreslot: (index: number) => void;
   }
 
@@ -33,32 +33,13 @@
 
   let { team, currentRegulation, disabled, onrestore, onrestoreslot }: Props =
     $props();
-  let selection = $state('original');
-  let selectionTeamId = $state('');
-  $effect(() => {
-    if (
-      selectionTeamId !== team.id ||
-      (selection !== 'original' &&
-        !team.history.some(({ id }) => id === selection))
-    ) {
-      selection = 'original';
-      selectionTeamId = team.id;
-    }
-  });
-  const revisionId = $derived(
-    selectionTeamId === team.id &&
-      team.history.some(({ id }) => id === selection)
-      ? selection
-      : 'original'
-  );
-  const selected = $derived(
-    team.history.find(({ id }) => id === revisionId) ?? team.original
-  );
   const identical = $derived(
-    canonicalSnapshot({ name: selected.name, members: selected.members }) ===
-      canonicalSnapshot({ name: team.name, members: team.members })
+    canonicalSnapshot({
+      name: team.original.name,
+      members: team.original.members,
+    }) === canonicalSnapshot({ name: team.name, members: team.members })
   );
-  const rows = $derived(differences(selected.members, team.members));
+  const rows = $derived(differences(team.original.members, team.members));
   const slotDiffers = (index: number) =>
     canonicalSnapshot(team.original.members[index]) !==
     canonicalSnapshot(team.members[index]);
@@ -69,8 +50,7 @@
       if (group) group.rows.push(row);
       else grouped.push({ pokemon: row.pokemon, rows: [row], slot: null });
     }
-    if (revisionId !== 'original') return grouped;
-    return selected.members.flatMap((member, index) => {
+    return team.original.members.flatMap((member, index) => {
       const group = grouped.find(({ pokemon }) => pokemon === member.pokemon);
       return group || slotDiffers(index)
         ? [{ pokemon: member.pokemon, rows: group?.rows ?? [], slot: index }]
@@ -89,12 +69,6 @@
         'pasteNotes',
       ].some((key) => team.original[key] === undefined)
   );
-  const timestamp = (value: string) =>
-    new Intl.DateTimeFormat(undefined, {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-    }).format(new Date(value));
-
   function safeUrl(value: string): boolean {
     try {
       return ['http:', 'https:'].includes(new URL(value).protocol);
@@ -133,45 +107,19 @@
   >
   <div class="mt-3 space-y-5">
     <div class="flex flex-wrap items-end gap-3">
-      <label class="term min-w-0 flex-1"
-        >Compare with
-        <select
-          class="select mt-1.5 min-h-11 w-full bg-base-100 text-base-content"
-          aria-label="Compare with"
-          name="history-version"
-          value={revisionId}
-          onchange={(event) => {
-            selection = event.currentTarget.value;
-            selectionTeamId = team.id;
-          }}
-        >
-          <option value="original">Original team</option>
-          {#each team.history.toReversed() as revision (revision.id)}
-            <option value={revision.id}
-              >Before: {revision.label} — {timestamp(revision.savedAt)}</option
-            >
-          {/each}
-        </select>
-      </label>
       <Button
         variant="outline"
         class="min-h-11"
         disabled={disabled || identical}
-        onclick={() => onrestore(revisionId)}
-        >{revisionId === 'original'
-          ? 'Restore original'
-          : 'Restore this version'}</Button
+        onclick={() => onrestore()}>Restore original</Button
       >
     </div>
     <div class="provenance space-y-1">
-      <p>Restore points show the team before each editing session.</p>
-      <p>Each line reads selected version → your team.</p>
-      <p>Original plus the latest 20 restore points are kept.</p>
-      {#if !team.history.length}<p>No earlier edits yet.</p>{/if}
+      <p>Each line reads the original → your team.</p>
     </div>
 
     {#if identical}
-      <p class="value">No changes from this version.</p>
+      <p class="value">No changes from the original team.</p>
     {:else}
       <section aria-label="Version comparison" class="divide-y divide-base-300">
         {#each groups as group (group.pokemon)}

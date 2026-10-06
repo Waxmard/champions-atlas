@@ -88,13 +88,11 @@ input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
 
-Expand **Original & history** to compare or restore the original and recent
-versions. Restore points contain the team before each editing session. The
-immutable original and latest 20 restore points are retained, including names,
-sets, and roster order. Restoring creates a checkpoint of the displaced current
-version; it does not erase later history. **Restore original set** changes only
-that slot and is unavailable when it would duplicate a Pokémon or exceed the
-replacement Mega limit. Full original restoration remains available.
+Expand **Original & history** to compare your current team with the original and
+restore the original, including name, sets, and roster order. **Restore original
+set** changes only that slot and is unavailable when it would duplicate a
+Pokémon or exceed the replacement Mega limit. Whole-team restoration does not
+change the saved ID or source history.
 
 Original source metadata is kept when saving a catalog team and shown as evidence
 for the original, not the edited version. Older saved teams show only metadata
@@ -110,8 +108,8 @@ catalog refreshes on the same browser origin; clearing browser storage removes
 them. Saving requires available browser storage. Only unsaved input prompts
 before navigation. Browse filters and position remain device-local.
 
-When Firebase is configured, Google sign-in synchronizes saved teams, originals,
-and history across devices. Without configuration the app runs local-only. See
+When Firebase is configured, Google sign-in synchronizes saved teams and their
+originals across devices. Without configuration the app runs local-only. See
 [Firebase deployment and sync](docs/firebase.md) for the per-team data model and
 the rules-before-client release requirement.
 

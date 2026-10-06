@@ -120,16 +120,15 @@ legacy originals are never backfilled from a refreshed catalog.
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately; invalid interim EV allocations remain uncommitted. **Done**
 flushes and closes, while **Close** can discard only remaining unsaved input.
-There is no separate Apply step. Each editor visit keeps one pre-session restore
-point, while rename, Pokémon swap, and restore operations keep separate points.
-The immutable original and latest 20 restore points synchronize across devices.
+There is no separate Apply step. The immutable original and the current team
+synchronize across devices.
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
 remote change or recreate a deleted team.
 
-**Original & history** compares and restores full versions, including name and
-roster order. Restoring checkpoints the displaced current version without
-truncating later history or changing the saved ID or source history. Individual
+**Original & history** compares the current team with the original and restores
+the original, including name and roster order, without changing the saved ID or
+source history. Individual
 original-slot restores leave the other five sets untouched and enforce duplicate
 Pokémon and replacement Mega restrictions. Set-text editing and export remain
 available; structured changes preserve supported untouched raw lines.

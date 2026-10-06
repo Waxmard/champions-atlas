@@ -52,7 +52,12 @@ async function openHistory(page: Page) {
   const panel = historyPanel(page);
   if ((await panel.getAttribute('open')) === null)
     await panel.locator(':scope > summary').click();
-  await expect(panel.getByLabel('Compare with', { exact: true })).toBeVisible();
+  await expect(
+    panel.getByRole('button', { name: 'Restore original', exact: true })
+  ).toBeVisible();
+  await expect(panel.getByLabel('Compare with', { exact: true })).toHaveCount(
+    0
+  );
   return panel;
 }
 
@@ -84,11 +89,11 @@ async function restore(page: Page, panel: Locator, button: string) {
   await panel.getByRole('button', { name: button, exact: true }).click();
   page.off('dialog', handler);
   expect(prompts).toEqual([
-    'Restore this version? Your current team will remain in history.',
+    'Restore the original team? Your current sets will be replaced.',
   ]);
 }
 
-test('completed changes autosave together before Done, retain the original, and restore both versions', async ({
+test('completed changes autosave together before Done and Restore original reverts them', async ({
   page,
 }) => {
   const params = new URLSearchParams({
@@ -141,12 +146,7 @@ test('completed changes autosave together before Done, retain the original, and 
     .poll(async () => (await stored(page)).members[weavileIndex].moves[0])
     .toBe('History custom move');
   const edited = await stored(page);
-  expect(edited.history).toHaveLength(1);
-  expect(edited.history[0]).toMatchObject({
-    label: 'Edited Weavile',
-    name: before.name,
-    members: before.members,
-  });
+  expect(edited.history).toBeUndefined();
   expect(edited.original).toEqual(before.original);
   expect(edited.members.filter((_, index) => index !== weavileIndex)).toEqual(
     before.members.filter((_, index) => index !== weavileIndex)
@@ -196,20 +196,11 @@ test('completed changes autosave together before Done, retain the original, and 
   await restore(page, panel, 'Restore original');
   expect((await stored(page)).members).toEqual(before.members);
   await page.reload();
-  const reopened = await openHistory(page);
+  await openHistory(page);
   const restored = await stored(page);
-  const displaced = restored.history.at(-1)!;
-  expect(displaced.members).toEqual(edited.members);
-  await reopened
-    .getByLabel('Compare with', { exact: true })
-    .selectOption(displaced.id);
-  await restore(page, reopened, 'Restore this version');
-  const recovered = await stored(page);
-  expect(recovered.id).toBe(before.id);
-  expect(recovered.original).toEqual(before.original);
-  expect(recovered.sources).toEqual(before.sources);
-  expect(recovered.members).toEqual(edited.members);
-  expect(recovered.history).toHaveLength(3);
+  expect(restored.id).toBe(before.id);
+  expect(restored.original).toEqual(before.original);
+  expect(restored.sources).toEqual(before.sources);
   await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
   await expect(page).toHaveURL(browseUrl);
   for (const member of fixture.members)
@@ -226,7 +217,7 @@ test('completed changes autosave together before Done, retain the original, and 
   await expect(results.getByRole('heading')).toHaveText(resultNames);
 });
 
-test('a custom starting team has no public provenance and its rename is recoverable', async ({
+test('a custom starting team has no public provenance and Restore original discards the rename', async ({
   page,
 }) => {
   await page.goto('/my-teams');
@@ -240,10 +231,7 @@ test('a custom starting team has no public provenance and its rename is recovera
     .click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);
   const before = await stored(page);
-  let panel = await openHistory(page);
-  await expect(
-    panel.getByText('No earlier edits yet.', { exact: true })
-  ).toBeVisible();
+  const panel = await openHistory(page);
   await expect(
     panel.getByRole('heading', {
       name: 'Starting team details',
@@ -269,12 +257,7 @@ test('a custom starting team has no public provenance and its rename is recovera
   expect(restored.original).toEqual(before.original);
   expect(restored.sources).toEqual([]);
   await page.reload();
-  panel = await openHistory(page);
-  await panel
-    .getByLabel('Compare with', { exact: true })
-    .selectOption(restored.history.at(-1)!.id);
-  await restore(page, panel, 'Restore this version');
-  expect((await stored(page)).name).toBe('Renamed custom history');
+  await openHistory(page);
 });
 
 test('original suggestions lead after edits and using the original set saves within the editor visit', async ({
@@ -330,7 +313,7 @@ test('original suggestions lead after edits and using the original set saves wit
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
 });
 
-test('order, raw text and unknown metadata survive original and displaced-version restores', async ({
+test('order and slot conflicts survive the original restore', async ({
   page,
 }) => {
   const team = newSavedTeam(fixture);
@@ -357,20 +340,8 @@ test('order, raw text and unknown metadata survive original and displaced-versio
       .getByText(/already in another slot/)
   ).toBeVisible();
   await restore(page, panel, 'Restore original');
-  let saved = await stored(page);
+  const saved = await stored(page);
   expect(saved.members).toEqual(fixture.members);
-  expect(saved.history[0].members).toEqual(team.members);
-  await panel
-    .getByLabel('Compare with', { exact: true })
-    .selectOption(saved.history[0].id);
-  await restore(page, panel, 'Restore this version');
-  saved = await stored(page);
-  expect(saved.name).toBe(team.name);
-  expect(saved.members).toEqual(team.members);
-  expect(saved.original).toEqual(team.original);
-  expect(saved.sources).toEqual(team.sources);
-  await page.reload();
-  expect((await stored(page)).members).toEqual(team.members);
 });
 
 test('original slot restore changes only that slot and duplicate and Mega restrictions explain themselves', async ({
@@ -398,7 +369,6 @@ test('original slot restore changes only that slot and duplicate and Mega restri
     team.members.filter((_, index) => index !== weavileIndex)
   );
   expect(saved.name).toBe(team.name);
-  expect(saved.history[0].label).toBe('Restored Weavile');
   const megaIndex = fixture.members.findIndex(({ pokemon }) =>
     pokemon.endsWith('-Mega')
   );
@@ -453,7 +423,6 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   await editor.getByLabel('HP EV', { exact: true }).fill('1');
   await editor.getByLabel('HP EV', { exact: true }).press('Tab');
   expect((await stored(page)).members).toEqual(beforeInvalid.members);
-  expect((await stored(page)).history).toEqual(beforeInvalid.history);
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toBeVisible();
   await expect(editor.getByText(/total 66 points/).first()).toBeVisible();
@@ -462,7 +431,6 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   await expect
     .poll(async () => (await stored(page)).members[weavileIndex].spread)
     .toBe('1 HP / 32 Atk / 1 Def / 32 Spe');
-  expect((await stored(page)).history).toHaveLength(1);
   await editor
     .getByRole('button', { name: 'Back to overview', exact: true })
     .click();
@@ -508,11 +476,10 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   expect((await stored(page)).members).toEqual(valid.members);
 });
 
-test('failed writes retain form input and checkpoint for retry; Escape dismisses suggestions before closing', async ({
+test('failed writes retain form input for retry; Escape dismisses suggestions before closing', async ({
   page,
 }) => {
   await saveFixture(page);
-  const before = await stored(page);
   const editor = await edit(page);
   await enter(editor, 'Item', 'First durable autosave');
   const accepted = await stored(page);
@@ -537,7 +504,6 @@ test('failed writes retain form input and checkpoint for retry; Escape dismisses
     })
   ).toBeVisible();
   expect((await stored(page)).members).toEqual(accepted.members);
-  expect((await stored(page)).history).toEqual(accepted.history);
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
@@ -555,8 +521,6 @@ test('failed writes retain form input and checkpoint for retry; Escape dismisses
   await expect
     .poll(async () => (await stored(page)).members[weavileIndex].item)
     .toBe('Retained failed input');
-  expect((await stored(page)).history).toHaveLength(1);
-  expect((await stored(page)).history[0].members).toEqual(before.members);
   await editor.getByLabel('Item', { exact: true }).click();
   await expect(
     editor.getByLabel('Item suggestions', { exact: true })
@@ -576,7 +540,7 @@ test('failed writes retain form input and checkpoint for retry; Escape dismisses
   ).toBeFocused();
 });
 
-test('legacy provenance keeps retained evidence, never links unsupported URLs, and selection resets on team switch', async ({
+test('legacy provenance keeps retained evidence and never links unsupported URLs', async ({
   page,
 }) => {
   const team = newSavedTeam(fixture);
@@ -626,60 +590,6 @@ test('legacy provenance keeps retained evidence, never links unsupported URLs, a
   await expect(
     panel.getByText('javascript:alert(1)', { exact: true })
   ).toBeVisible();
-  const options = await panel
-    .getByLabel('Compare with', { exact: true })
-    .locator('option')
-    .allTextContents();
-  expect(options[1]).toMatch(/^Before: Edited Weavile/);
-  expect(options[2]).toMatch(/^Before: Renamed team/);
-  await panel.getByLabel('Compare with', { exact: true }).selectOption('older');
-  await expect(panel.getByLabel('Compare with', { exact: true })).toHaveValue(
-    'older'
-  );
-  await expect(
-    panel.getByText('These versions differ, but no field values changed.', {
-      exact: true,
-    })
-  ).toBeVisible();
-  await page.evaluate((key) => {
-    const teams = JSON.parse(localStorage.getItem(key)!);
-    teams[0].history = [];
-    localStorage.setItem(key, JSON.stringify(teams));
-  }, storageKey);
-  await page
-    .getByLabel('Team name', { exact: true })
-    .fill('Expired checkpoint inspection');
-  await page.getByLabel('Team name', { exact: true }).press('Enter');
-  await expect(panel.getByLabel('Compare with', { exact: true })).toHaveValue(
-    'original'
-  );
-  const second = newSavedTeam(fixture);
-  second.name = 'Another saved team';
-  await page.evaluate(
-    ({ key, second }) => {
-      const teams = JSON.parse(localStorage.getItem(key)!);
-      teams.push(second);
-      localStorage.setItem(key, JSON.stringify(teams));
-    },
-    { key: storageKey, second }
-  );
-  await page.reload();
-  const reloaded = await openHistory(page);
-  const revision = (await stored(page)).history[0];
-  await reloaded
-    .getByLabel('Compare with', { exact: true })
-    .selectOption(revision.id);
-  await expect(
-    reloaded.getByLabel('Compare with', { exact: true })
-  ).toHaveValue(revision.id);
-  await page.getByLabel('Saved team').selectOption(second.id);
-  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    second.name
-  );
-  const switched = await openHistory(page);
-  await expect(
-    switched.getByLabel('Compare with', { exact: true })
-  ).toHaveValue('original');
 });
 
 test('a published Pokémon swap autosaves without borrowing unrelated original suggestions', async ({
@@ -701,8 +611,6 @@ test('a published Pokémon swap autosaves without borrowing unrelated original s
     .poll(async () => (await stored(page)).members[weavileIndex].pokemon)
     .not.toBe('Weavile');
   const swapped = await stored(page);
-  expect(swapped.history).toHaveLength(1);
-  expect(swapped.history[0].members).toEqual(before.members);
   expect(swapped.original).toEqual(before.original);
   expect(swapped.members.filter((_, index) => index !== weavileIndex)).toEqual(
     before.members.filter((_, index) => index !== weavileIndex)
@@ -729,13 +637,6 @@ test('a published Pokémon swap autosaves without borrowing unrelated original s
     .getByRole('button', { name: 'Use original set', exact: true })
     .click();
   expect((await stored(page)).members).toEqual(before.members);
-  const restored = await stored(page);
-  expect(restored.history).toHaveLength(2);
-  expect(restored.history[0]).toEqual(swapped.history[0]);
-  expect(restored.history[1]).toMatchObject({
-    label: 'Restored Weavile',
-    members: swapped.members,
-  });
   await editor.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(editor).toHaveCount(0);
 });
@@ -758,7 +659,6 @@ test('only unsaved input warns on unload and pagehide flushes the latest bound v
   expect((await stored(page)).members[weavileIndex].item).toBe(
     'Pagehide bound value'
   );
-  expect((await stored(page)).history).toHaveLength(1);
   await editor.getByRole('button', { name: 'Close', exact: true }).click();
   await expect(editor).toHaveCount(0);
   editor = await edit(page, 'set text');

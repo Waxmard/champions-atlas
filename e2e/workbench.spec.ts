@@ -180,8 +180,6 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
     ).item
   ).toBe('Custom saved item');
-  expect(autosaved.history).toHaveLength(1);
-  expect(autosaved.history[0].members).toEqual(original.members);
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).not.toBe(beforeStorage);
@@ -364,7 +362,6 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
       (member: { pokemon: string }) => member.pokemon === 'Sneasler'
     )
   ).toBe(true);
-  expect(swapped.history.at(-1).label).toBe('Changed Pokémon');
 });
 
 test('Change searches beyond the first five and saves the published set', async ({
@@ -663,18 +660,6 @@ test('structured edits survive a trip through the Showdown text view', async ({
     .getByRole('button', { name: 'Use original set', exact: true })
     .click();
   await expect(editor).toBeVisible();
-  const restored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
-  expect(
-    restored.history.map((revision: { label: string }) => revision.label)
-  ).toEqual(['Edited Weavile', 'Restored Weavile']);
-  expect(
-    restored.history[1].members.find(
-      (member: { pokemon: string }) => member.pokemon === 'Weavile'
-    ).item
-  ).toBe('Choice Band');
   await editor
     .getByRole('button', {
       name: 'Edit item, ability, and nature',
@@ -788,7 +773,6 @@ test('pagehide flushes active editor input while preserving failed pending name'
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
     ).item
   ).toBe('Pagehide item');
-  expect(stored.history).toHaveLength(1);
   await expect(name).toHaveValue('');
   await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
     'Pagehide item'

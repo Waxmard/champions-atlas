@@ -23,7 +23,7 @@ workflows pass `--project` explicitly, so only local commands use the default.
 A signed-in user owns a manifest at `users/{uid}` containing exactly
 `schemaVersion: 2`, ordered `teamIds`, and `updatedAt: serverTimestamp()`. Each
 `users/{uid}/teams/{teamId}` document contains one complete validated saved team,
-including its immutable original, provenance, and latest 20 restore points. The
+including its immutable original and provenance. The
 team's `id` matches its document ID. The manifest holds at most 50 unique IDs;
 the client rejects IDs that Firestore cannot safely represent without changing
 local identities. Filters, navigation, and the active team stay device-local.

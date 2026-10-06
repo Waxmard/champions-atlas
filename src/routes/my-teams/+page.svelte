@@ -28,7 +28,6 @@
     activeTeamKey,
     deleteTeam,
     exportPaste,
-    generateUUID,
     isMegaSpecies,
     MAX_TEAM_MEGAS,
     readSavedTeams,
@@ -53,8 +52,6 @@
     activeEditField = $state<EditableSetField>('set'),
     editorPending = $state(false);
   let editorMember = $state<Member | null>(null);
-  let editorGroup: { id: string; label: string } | undefined;
-  let operationGroups: Record<string, { id: string; label: string }> = {};
   let stale = $state(false);
   let editorRef = $state<
     | {
@@ -135,8 +132,6 @@
       activeEditIndex = null;
       editorPending = false;
       editorMember = null;
-      editorGroup = undefined;
-      operationGroups = {};
       stale = false;
       pendingSpecies = null;
       showSwapPicker = false;
@@ -199,12 +194,8 @@
     if (dirty && !confirm('Discard unsaved input?')) cancel();
   });
 
-  function groupFor(key: string, label: string) {
-    return (operationGroups[key] ??= { id: generateUUID(), label });
-  }
   function persistChange(
     patch: (team: SavedTeam) => SavedTeam,
-    checkpoint: { id: string; label: string },
     saveName = false
   ): boolean {
     if (!draft) return false;
@@ -220,7 +211,7 @@
       }
       const next = patch(latest);
       const pendingName = draft.name;
-      saved = saveTeam(localStorage, next, checkpoint);
+      saved = saveTeam(localStorage, next);
       const persisted = saved.find(({ id }) => id === next.id)!;
       baseline = contentSnapshot(persisted);
       draft = structuredClone($state.snapshot(persisted));
@@ -229,12 +220,9 @@
       message = 'Saved on this device.';
       void pushNow();
       return true;
-    } catch (error) {
+    } catch {
       message =
-        error instanceof Error &&
-        error.message === 'This restore point is no longer available.'
-          ? error.message
-          : 'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
+        'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
       return false;
     }
   }
@@ -249,87 +237,52 @@
       draft.name = name;
       return;
     }
-    if (
-      persistChange(
-        (team) => ({ ...team, name }),
-        groupFor('rename', 'Renamed team'),
-        true
-      )
-    )
-      delete operationGroups.rename;
+    persistChange((team) => ({ ...team, name }), true);
   }
   function saveMember(index: number, member: Member): boolean {
-    if (!editorGroup || !draft) return false;
-    const restoresOriginal =
-      canonicalSnapshot(member) ===
-        canonicalSnapshot(draft.original.members[index]) &&
-      canonicalSnapshot(member) !==
-        canonicalSnapshot(JSON.parse(baseline).members[index]);
-    const key = 'slot:' + index;
-    const checkpoint = restoresOriginal
-      ? groupFor(key, 'Restored ' + member.pokemon)
-      : editorGroup;
-    const saved = persistChange(
-      (team) => ({
-        ...team,
-        members: team.members.map((existing, slot) =>
-          slot === index ? structuredClone($state.snapshot(member)) : existing
-        ),
-      }),
-      checkpoint
-    );
-    if (saved && restoresOriginal) {
-      delete operationGroups[key];
-      editorGroup = { id: generateUUID(), label: editorGroup.label };
-    }
-    return saved;
+    if (!draft) return false;
+    return persistChange((team) => ({
+      ...team,
+      members: team.members.map((existing, slot) =>
+        slot === index ? structuredClone($state.snapshot(member)) : existing
+      ),
+    }));
   }
-  function restoreVersion(revisionId: string | 'original') {
+  function restoreOriginal() {
     if (
       !draft ||
       editing ||
       deleting ||
-      !confirm(
-        'Restore this version? Your current team will remain in history.'
-      )
+      !confirm('Restore the original team? Your current sets will be replaced.')
     )
       return;
-    const group = groupFor(
-      'restore:' + revisionId,
-      revisionId === 'original' ? 'Restored original' : 'Restored version'
-    );
-    if (persistChange((team) => restoreTeam(team, revisionId), group, true))
-      delete operationGroups['restore:' + revisionId];
+    persistChange((team) => restoreTeam(team), true);
   }
   function restoreSlot(index: number) {
     if (!draft || editing || deleting) return;
     const member = $state.snapshot(draft.original.members[index]);
     if (!member) return;
-    const group = groupFor('slot:' + index, 'Restored ' + member.pokemon);
-    if (
-      persistChange((team) => {
-        const others = team.members.filter((_, slot) => slot !== index);
-        if (
-          others.some(
-            (other) => normalize(other.pokemon) === normalize(member.pokemon)
-          )
+    persistChange((team) => {
+      const others = team.members.filter((_, slot) => slot !== index);
+      if (
+        others.some(
+          (other) => normalize(other.pokemon) === normalize(member.pokemon)
         )
-          throw new Error('This Pokémon is already in another slot.');
-        if (
-          isMegaSpecies(member.pokemon) &&
-          others.filter((other) => isMegaSpecies(other.pokemon)).length >=
-            MAX_TEAM_MEGAS
-        )
-          throw new Error('This team already has two Mega Pokémon.');
-        return {
-          ...team,
-          members: team.members.map((existing, slot) =>
-            slot === index ? structuredClone(member) : existing
-          ),
-        };
-      }, group)
-    )
-      delete operationGroups['slot:' + index];
+      )
+        throw new Error('This Pokémon is already in another slot.');
+      if (
+        isMegaSpecies(member.pokemon) &&
+        others.filter((other) => isMegaSpecies(other.pokemon)).length >=
+          MAX_TEAM_MEGAS
+      )
+        throw new Error('This team already has two Mega Pokémon.');
+      return {
+        ...team,
+        members: team.members.map((existing, slot) =>
+          slot === index ? structuredClone(member) : existing
+        ),
+      };
+    });
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -343,10 +296,6 @@
     activeEditField = field;
     editorPending = false;
     editorMember = structuredClone($state.snapshot(draft!.members[index]));
-    editorGroup = {
-      id: generateUUID(),
-      label: 'Edited ' + editorMember.pokemon,
-    };
   };
   function openSetDialog(node: HTMLDialogElement) {
     const { scrollX, scrollY } = window;
@@ -387,7 +336,6 @@
     activeEditIndex = null;
     editorPending = false;
     editorMember = null;
-    editorGroup = undefined;
     if (targetSlot !== null) {
       void tick().then(() => {
         focusSetField(targetSlot, field);
@@ -407,20 +355,14 @@
     )[0];
     swapUnavailable = !best;
     if (!best) return;
-    if (
-      persistChange(
-        (team) => ({
-          ...team,
-          members: team.members.map((member, index) =>
-            index === best.slot
-              ? structuredClone($state.snapshot(best.member))
-              : member
-          ),
-        }),
-        groupFor('swap:' + pokemon, 'Changed Pokémon')
-      )
-    )
-      delete operationGroups['swap:' + pokemon];
+    persistChange((team) => ({
+      ...team,
+      members: team.members.map((member, index) =>
+        index === best.slot
+          ? structuredClone($state.snapshot(best.member))
+          : member
+      ),
+    }));
   }
   function cancelSpeciesSwap() {
     pendingSpecies = null;
@@ -465,8 +407,6 @@
     activeEditIndex = null;
     editorPending = false;
     editorMember = null;
-    editorGroup = undefined;
-    operationGroups = {};
     pendingSpecies = null;
     showSwapPicker = false;
     swapUnavailable = false;
@@ -710,7 +650,7 @@
             team={draft}
             currentRegulation={current}
             disabled={editing || deleting}
-            onrestore={restoreVersion}
+            onrestore={restoreOriginal}
             onrestoreslot={restoreSlot}
           />
         {/key}
