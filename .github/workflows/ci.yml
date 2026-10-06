@@ -25,20 +25,27 @@ jobs:
         with:
           path: |
             .cache/catalog
+            .cache/jev
             src/lib/data/catalog.json
             static/sprites
             static/items
           key: catalog-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             catalog-${{ runner.os }}-
-      - run: make ci
+          save-always: true
       - uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-playwright-
-      - run: npx playwright install --with-deps chromium webkit
+      - name: Install browsers while checks run
+        run: |
+          npx playwright install --with-deps chromium webkit > /tmp/playwright-install.log 2>&1 &
+          install=$!
+          make ci
+          wait "$install" || { cat /tmp/playwright-install.log; exit 1; }
+          cat /tmp/playwright-install.log
       - run: npx playwright test
       - uses: actions/upload-artifact@v7
         if: failure()

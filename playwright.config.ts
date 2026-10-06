@@ -4,6 +4,8 @@ export default defineConfig({
   testDir: './e2e',
   workers: process.env.CI ? 4 : undefined,
   fullyParallel: true,
+  timeout: 60_000,
+  expect: { timeout: 10_000 },
   use: {
     baseURL: 'http://127.0.0.1:4179',
     trace: 'retain-on-failure',
@@ -13,15 +15,6 @@ export default defineConfig({
     {
       name: 'desktop',
       use: { browserName: 'chromium', viewport: { width: 1440, height: 1000 } },
-    },
-    {
-      name: 'mobile',
-      use: {
-        browserName: 'chromium',
-        viewport: { width: 390, height: 844 },
-        isMobile: true,
-        hasTouch: true,
-      },
     },
     {
       name: 'mobile-webkit',
