@@ -1,5 +1,4 @@
 import { normalize, type Member } from './catalog.ts';
-import { normalizeSet } from './paste.ts';
 import type { SavedTeam } from './workbench.ts';
 
 export function canonicalSnapshot(value: unknown): string {
@@ -83,15 +82,7 @@ export function differences(before: Member[], after: Member[]) {
     const match = after.find(
       (other) => normalize(other.pokemon) === normalize(member.pokemon)
     );
-    if (!match) {
-      rows.push({
-        pokemon: member.pokemon,
-        field: 'Pokémon',
-        before: 'On team',
-        after: 'Removed',
-      });
-      continue;
-    }
+    if (!match) continue;
     for (const [field, label] of [
       ['item', 'Item'],
       ['ability', 'Ability'],
@@ -100,46 +91,25 @@ export function differences(before: Member[], after: Member[]) {
     ] as const) {
       const a = member[field],
         b = match[field];
-      if ((a || b) && (!a || !b || normalize(a) !== normalize(b)))
+      if (a && (!b || normalize(a) !== normalize(b)))
         rows.push({
           pokemon: member.pokemon,
           field: label,
-          before: a || 'Unknown',
+          before: a,
           after: b || 'Unknown',
         });
     }
     if (
-      (member.moves.length || match.moves.length) &&
+      member.moves.length &&
       member.moves.map(normalize).sort().join(',') !==
         match.moves.map(normalize).sort().join(',')
     )
       rows.push({
         pokemon: member.pokemon,
         field: 'Moves',
-        before: member.moves.join(', ') || 'Unknown',
+        before: member.moves.join(', '),
         after: match.moves.join(', ') || 'Unknown',
       });
-    const beforeSet = member.set && normalizeSet(member.set),
-      afterSet = match.set && normalizeSet(match.set);
-    if (beforeSet && afterSet && beforeSet !== afterSet)
-      rows.push({
-        pokemon: member.pokemon,
-        field: 'Full set',
-        before: member.set!,
-        after: match.set!,
-      });
   }
-  for (const member of after)
-    if (
-      !before.some(
-        (other) => normalize(other.pokemon) === normalize(member.pokemon)
-      )
-    )
-      rows.push({
-        pokemon: member.pokemon,
-        field: 'Pokémon',
-        before: 'Not on team',
-        after: 'Added',
-      });
   return rows;
 }

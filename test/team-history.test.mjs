@@ -52,21 +52,47 @@ const memory = () => {
   };
 };
 
-test('diff is identity aligned and suppresses absent-to-absent values', () => {
+test('diff is identity aligned, needs a known selected value, and reports no full-set or roster rows', () => {
   const before = Array.from({ length: 6 }, (_, i) => member('Pokemon' + i));
   assert.deepEqual(differences(before, structuredClone(before).reverse()), []);
   const after = structuredClone(before);
   after[0].item = 'Item';
-  after[1].moves = ['Protect'];
-  after[2] = member('Replacement');
-  const rows = differences(before, after);
-  assert.ok(
-    rows.some((row) => row.pokemon === 'Pokemon0' && row.after === 'Item')
+  before[1].item = 'Leftovers';
+  after[1].item = 'Choice Band';
+  before[2].item = 'Focus Sash';
+  after[2].item = null;
+  before[3].moves = ['Protect'];
+  after[3].moves = [];
+  before[4].moves = [];
+  after[4].moves = ['Protect'];
+  after[5] = member('Replacement');
+  assert.deepEqual(differences(before, after), [
+    {
+      pokemon: 'Pokemon1',
+      field: 'Item',
+      before: 'Leftovers',
+      after: 'Choice Band',
+    },
+    {
+      pokemon: 'Pokemon2',
+      field: 'Item',
+      before: 'Focus Sash',
+      after: 'Unknown',
+    },
+    {
+      pokemon: 'Pokemon3',
+      field: 'Moves',
+      before: 'Protect',
+      after: 'Unknown',
+    },
+  ]);
+  assert.deepEqual(
+    differences(
+      [{ ...before[0], set: 'Pokemon0 @ Item' }],
+      [{ ...structuredClone(before[0]), set: 'Pokemon0 @ Other Item' }]
+    ),
+    []
   );
-  assert.ok(
-    rows.some((row) => row.pokemon === 'Pokemon1' && row.after === 'Protect')
-  );
-  assert.equal(rows.filter((row) => row.field === 'Pokémon').length, 2);
 });
 
 test('grouped saves checkpoint once, keep originals, and restore without mutation', () => {

@@ -163,11 +163,17 @@ test('completed changes autosave together before Done, retain the original, and 
   expect((await stored(page)).members).toEqual(edited.members);
   const panel = await openHistory(page);
   await expect(
-    panel
-      .getByRole('region', { name: 'Selected version sets' })
-      .locator('[data-original-slot]')
-  ).toHaveCount(6);
-  await expect(panel.getByText('Weavile: Item', { exact: true })).toBeVisible();
+    panel.getByRole('region', { name: 'Version comparison', exact: true })
+  ).toBeVisible();
+  await expect(panel.getByText('Glimmora-Mega', { exact: true })).toHaveCount(
+    0
+  );
+  await expect(
+    panel.getByText(
+      `Item: ${originalWeavile.item} → ${edited.members[weavileIndex].item}`,
+      { exact: true }
+    )
+  ).toBeVisible();
   await expect(
     panel.getByText('Source sheet IDs: MB809', { exact: false })
   ).toBeVisible();
@@ -175,13 +181,6 @@ test('completed changes autosave together before Done, retain the original, and 
     await expect(
       panel.getByText(fixture.creator, { exact: true })
     ).toBeVisible();
-  await panel.getByText('Weavile: Full set', { exact: true }).click();
-  await expect(
-    panel.getByLabel('Selected version', { exact: true })
-  ).toHaveValue(originalWeavile.set!);
-  await expect(panel.getByLabel('Your team', { exact: true })).toHaveValue(
-    edited.members[weavileIndex].set!
-  );
   await restore(page, panel, 'Restore original');
   expect((await stored(page)).members).toEqual(before.members);
   await page.reload();
@@ -235,10 +234,11 @@ test('a custom starting team has no public provenance and its rename is recovera
   ).toBeVisible();
   await expect(
     panel.getByRole('heading', {
-      name: 'Starting team: Custom history',
+      name: 'Starting team details',
       exact: true,
     })
   ).toBeVisible();
+  await expect(panel.getByText('Starting name', { exact: true })).toBeVisible();
   await expect(panel.getByText(/Some original metadata/)).toHaveCount(0);
   await expect(panel.getByRole('link')).toHaveCount(0);
   await expect(
@@ -331,7 +331,11 @@ test('order, raw text and unknown metadata survive original and displaced-versio
   team.name = 'Reordered edited team';
   await seed(page, team);
   const panel = await openHistory(page);
-  await expect(panel.getByText('Roster order', { exact: true })).toBeVisible();
+  await expect(
+    panel.getByText('These versions differ, but no field values changed.', {
+      exact: true,
+    })
+  ).toBeVisible();
   await expect(
     panel.getByRole('button', { name: 'Restore original', exact: true })
   ).toBeEnabled();
@@ -617,9 +621,11 @@ test('legacy provenance keeps retained evidence, never links unsupported URLs, a
   expect(options[1]).toMatch(/^Before: Edited Weavile/);
   expect(options[2]).toMatch(/^Before: Renamed team/);
   await panel.getByLabel('Compare with', { exact: true }).selectOption('older');
+  await expect(panel.getByLabel('Compare with', { exact: true })).toHaveValue(
+    'older'
+  );
   await expect(
-    panel.getByRole('heading', {
-      name: 'Selected version: Older name',
+    panel.getByText('These versions differ, but no field values changed.', {
       exact: true,
     })
   ).toBeVisible();

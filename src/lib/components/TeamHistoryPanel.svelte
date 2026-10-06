@@ -1,5 +1,4 @@
 <script lang="ts">
-  import MemberCard from '$lib/components/MemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
   import {
     evidence,
@@ -19,6 +18,18 @@
     onrestore: (revisionId: string | 'original') => void;
     onrestoreslot: (index: number) => void;
   }
+
+  type ComparisonRow = {
+    pokemon: string;
+    field: string;
+    before: string;
+    after: string;
+  };
+  type ComparisonGroup = {
+    pokemon: string;
+    rows: ComparisonRow[];
+    slot: number | null;
+  };
 
   let { team, currentRegulation, disabled, onrestore, onrestoreslot }: Props =
     $props();
@@ -47,26 +58,24 @@
     canonicalSnapshot({ name: selected.name, members: selected.members }) ===
       canonicalSnapshot({ name: team.name, members: team.members })
   );
-  const rows = $derived.by(() => {
-    const result = differences(selected.members, team.members);
-    if (selected.name !== team.name)
-      result.unshift({
-        pokemon: '',
-        field: 'Team name',
-        before: selected.name,
-        after: team.name,
-      });
-    if (
-      canonicalSnapshot(selected.members.map(({ pokemon }) => pokemon)) !==
-      canonicalSnapshot(team.members.map(({ pokemon }) => pokemon))
-    )
-      result.unshift({
-        pokemon: '',
-        field: 'Roster order',
-        before: selected.members.map(({ pokemon }) => pokemon).join(', '),
-        after: team.members.map(({ pokemon }) => pokemon).join(', '),
-      });
-    return result;
+  const rows = $derived(differences(selected.members, team.members));
+  const slotDiffers = (index: number) =>
+    canonicalSnapshot(team.original.members[index]) !==
+    canonicalSnapshot(team.members[index]);
+  const groups = $derived.by<ComparisonGroup[]>(() => {
+    const grouped: ComparisonGroup[] = [];
+    for (const row of rows) {
+      const group = grouped.find(({ pokemon }) => pokemon === row.pokemon);
+      if (group) group.rows.push(row);
+      else grouped.push({ pokemon: row.pokemon, rows: [row], slot: null });
+    }
+    if (revisionId !== 'original') return grouped;
+    return selected.members.flatMap((member, index) => {
+      const group = grouped.find(({ pokemon }) => pokemon === member.pokemon);
+      return group || slotDiffers(index)
+        ? [{ pokemon: member.pokemon, rows: group?.rows ?? [], slot: index }]
+        : [];
+    });
   });
   const missingMetadata = $derived(
     team.origin !== 'custom' &&
@@ -156,6 +165,7 @@
     </div>
     <div class="provenance space-y-1">
       <p>Restore points show the team before each editing session.</p>
+      <p>Each line reads selected version → your team.</p>
       <p>Original plus the latest 20 restore points are kept.</p>
       {#if !team.history.length}<p>No earlier edits yet.</p>{/if}
     </div>
@@ -164,90 +174,42 @@
       <p class="value">No changes from this version.</p>
     {:else}
       <section aria-label="Version comparison" class="divide-y divide-base-300">
-        {#each rows as row, index (index)}
-          {#if row.field === 'Full set'}
-            <details class="py-3">
-              <summary class="min-h-11 cursor-pointer py-2 font-bold"
-                >{row.pokemon}: Full set</summary
+        {#each groups as group (group.pokemon)}
+          <div class="py-3" data-original-slot={group.slot ?? undefined}>
+            <p class="font-bold wrap-break-word">{group.pokemon}</p>
+            <ul class="mt-1 space-y-1">
+              {#each group.rows as row (row.field)}
+                <li class="wrap-anywhere">
+                  {row.field}: {row.before} → {row.after}
+                </li>
+              {/each}
+            </ul>
+            {#if group.slot !== null}
+              {@const slot = group.slot}
+              {@const reason = slotReason(slot)}
+              <Button
+                variant="outline"
+                class="mt-2 min-h-11"
+                disabled={disabled || !!reason}
+                aria-describedby={reason
+                  ? `original-slot-reason-${team.id}-${slot}`
+                  : undefined}
+                onclick={() => onrestoreslot(slot)}>Restore original set</Button
               >
-              <div class="grid min-w-0 gap-3 sm:grid-cols-2">
-                <label class="term min-w-0"
-                  >Selected version<textarea
-                    readonly
-                    aria-label="Selected version"
-                    class="textarea mt-1.5 min-h-48 w-full font-mono text-xs"
-                    value={row.before}></textarea></label
+              {#if reason}<p
+                  id={`original-slot-reason-${team.id}-${slot}`}
+                  class="provenance mt-2 wrap-anywhere"
                 >
-                <label class="term min-w-0"
-                  >Your team<textarea
-                    readonly
-                    aria-label="Your team"
-                    class="textarea mt-1.5 min-h-48 w-full font-mono text-xs"
-                    value={row.after}></textarea></label
-                >
-              </div>
-            </details>
-          {:else}
-            <div class="py-3">
-              <p class="font-bold wrap-break-word">
-                {row.pokemon ? `${row.pokemon}: ` : ''}{row.field}
-              </p>
-              <dl class="mt-2 grid min-w-0 gap-3 sm:grid-cols-2">
-                <div class="min-w-0">
-                  <dt class="term">Selected version</dt>
-                  <dd class="mt-1 wrap-anywhere">{row.before}</dd>
-                </div>
-                <div class="min-w-0">
-                  <dt class="term">Your team</dt>
-                  <dd class="mt-1 wrap-anywhere">{row.after}</dd>
-                </div>
-              </dl>
-            </div>
-          {/if}
-        {/each}
-        {#if !rows.length}<p class="provenance py-3">
-            The saved set text or member metadata differs from this version.
-          </p>{/if}
-      </section>
-    {/if}
-
-    <section aria-label="Selected version sets">
-      <h2 class="text-xl font-extrabold wrap-break-word">
-        {revisionId === 'original'
-          ? team.origin === 'custom'
-            ? 'Starting team'
-            : 'Original team'
-          : 'Selected version'}: {selected.name}
-      </h2>
-      <div class="mt-3 grid items-start gap-3 sm:grid-cols-2 xl:grid-cols-3">
-        {#each selected.members as member, index (index)}
-          <div class="plate min-w-0 overflow-hidden" data-original-slot={index}>
-            <MemberCard {member} slot={index + 1} editable={false} />
-            {#if revisionId === 'original'}
-              {@const reason = slotReason(index)}
-              <div class="border-t border-base-300 px-4 py-3">
-                <Button
-                  variant="outline"
-                  class="min-h-11"
-                  disabled={disabled || !!reason}
-                  aria-describedby={reason
-                    ? `original-slot-reason-${team.id}-${index}`
-                    : undefined}
-                  onclick={() => onrestoreslot(index)}
-                  >Restore original set</Button
-                >
-                {#if reason}<p
-                    id={`original-slot-reason-${team.id}-${index}`}
-                    class="provenance mt-2 wrap-anywhere"
-                  >
-                    {reason}
-                  </p>{/if}
-              </div>
+                  {reason}
+                </p>{/if}
             {/if}
           </div>
         {/each}
-      </div>
-    </section>
+        {#if !rows.length}<p class="provenance py-3">
+            These versions differ, but no field values changed.
+          </p>{/if}
+      </section>
+    {/if}
 
     <section
       aria-label="Original provenance"
