@@ -183,7 +183,6 @@ const savedTeamSchema = z.object({
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;
-
 export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
   const raw = storage.getItem(storageKey);
   if (raw === null) return [];
@@ -200,7 +199,6 @@ export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
     );
   return teams;
 }
-
 export function saveTeam(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   team: SavedTeam
@@ -213,6 +211,8 @@ export function saveTeam(
   const candidate = validation.data[0];
   const saved = readSavedTeams(storage);
   const previous = saved.find((entry) => entry.id === candidate.id);
+  if (!previous && saved.length >= 50)
+    throw new RangeError('50-team limit reached. Delete a team in My teams.');
   const nextTeam = previous
     ? { ...candidate, original: previous.original, origin: previous.origin }
     : candidate;

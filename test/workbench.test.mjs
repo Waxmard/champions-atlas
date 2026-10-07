@@ -295,18 +295,38 @@ test('saveTeam rejects empty-normalizing and duplicate species without touching 
 });
 
 test('readSavedTeams rejects oversized and duplicate-ID storage', () => {
-  const many = JSON.stringify(
-    Array.from({ length: 51 }, (_, i) => newSavedTeam(team(`team${i}`)))
+  const entries = Array.from({ length: 51 }, (_, i) =>
+    newSavedTeam(team(`team${i}`))
   );
+  const many = JSON.stringify(entries);
   assert.throws(() => readSavedTeams({ getItem: () => many }), /untouched/);
-
   const a = newSavedTeam(team());
-  const b = newSavedTeam(team());
-  b.id = a.id;
   assert.throws(
-    () => readSavedTeams({ getItem: () => JSON.stringify([a, b]) }),
+    () => readSavedTeams({ getItem: () => JSON.stringify([a, a]) }),
     /Duplicate saved team IDs/
   );
+  let value = JSON.stringify(entries.slice(0, 50));
+  const storage = {
+    getItem: () => value,
+    setItem: (_, next) => (value = next),
+  };
+  const before = value;
+  assert.throws(() => saveTeam(storage, entries[50]), RangeError);
+  assert.equal(value, before);
+  const existing = readSavedTeams(storage)[0];
+  const original = structuredClone(existing.original);
+  const origin = existing.origin;
+  existing.name = 'Updated';
+  existing.original.name = 'Changed original';
+  existing.origin = 'custom';
+  saveTeam(storage, existing);
+  const saved = readSavedTeams(storage);
+  assert.equal(saved.length, 50);
+  assert.equal(new Set(saved.map(({ id }) => id)).size, 50);
+  const updated = saved.find(({ id }) => id === existing.id);
+  assert.equal(updated.name, 'Updated');
+  assert.deepEqual(updated.original, original);
+  assert.equal(updated.origin, origin);
 });
 
 test('custom teams validate paste and preserve independent snapshots and empty source metadata through storage', () => {

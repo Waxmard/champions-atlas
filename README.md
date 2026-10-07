@@ -79,6 +79,8 @@ in **My teams** and paste a complete six-Pokémon export from
 [Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder).
 Custom imports require an item, ability, nature, EVs, and four unique moves for
 every Pokémon. They have no published result claims; legality is unverified.
+You can save up to 50 teams. At the limit, delete a team in **My teams** before
+adding another; existing teams remain editable.
 
 Select a field on a saved team card to edit its set. Completed text saves on blur
 or Enter; selections and suggestions save immediately when the whole set is
@@ -107,6 +109,9 @@ Edited teams do not receive a new rental code. Saved copies survive reload and
 catalog refreshes on the same browser origin; clearing browser storage removes
 them. Saving requires available browser storage. Only unsaved input prompts
 before navigation. Browse filters and position remain device-local.
+Wider short-landscape screens show browse results beside the filters. Pinch zoom
+remains available; touch controls use manipulation gestures and text fields
+use at least 16px text on narrow or touch-capable screens.
 
 When Firebase is configured, Google sign-in synchronizes saved teams and their
 originals across devices. Without configuration the app runs local-only. See

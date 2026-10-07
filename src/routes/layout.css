@@ -106,12 +106,21 @@
     font-size: 1rem;
     line-height: 1.5;
     font-optical-sizing: auto;
+    touch-action: manipulation;
   }
+  a,
+  summary,
+  [role='option'],
   input,
   select,
   textarea,
   button {
     touch-action: manipulation;
+  }
+  input,
+  select,
+  textarea,
+  button {
     font-style: normal;
   }
   input,
@@ -124,7 +133,7 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 768px), (any-pointer: coarse) {
   input,
   select,
   textarea {
@@ -143,6 +152,47 @@
     var(--color-base-content) 55%,
     transparent
   );
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (min-width: 640px) {
+  .browse-layout {
+    display: grid;
+    grid-template-columns: minmax(0, calc(var(--spacing) * 60)) minmax(0, 1fr);
+    gap: calc(var(--spacing) * 4);
+    align-items: start;
+    padding-block: calc(var(--spacing) * 4);
+  }
+  .browse-controls {
+    min-width: 0;
+  }
+  .browse-controls h1 {
+    @apply text-xl;
+  }
+  .browse-results {
+    margin-top: 0;
+    min-width: 0;
+  }
+  .browse-controls .browse-constraints {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .browse-controls .browse-fields {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .browse-controls .browse-move {
+    grid-column: 1 / -1;
+  }
+  .browse-results .browse-card-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (orientation: landscape) and (max-height: 500px) and (max-width: 639px) {
+  .browse-layout {
+    padding-block: calc(var(--spacing) * 4);
+  }
+  .browse-controls h1 {
+    @apply text-xl;
+  }
 }
 
 @layer components {
