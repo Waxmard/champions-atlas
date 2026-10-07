@@ -228,7 +228,7 @@
         <label for="benchmark-item" class="term">Opponent item</label>
         <select
           id="benchmark-item"
-          class="select mt-1.5 min-h-11 w-full text-sm"
+          class="atlas-select mt-1.5 min-h-11 w-full text-sm"
           value={item}
           onchange={(event) => (item = event.currentTarget.value)}
         >
@@ -247,7 +247,7 @@
           <label for="benchmark-move" class="term">Move</label>
           <select
             id="benchmark-move"
-            class="select mt-1.5 min-h-11 w-full text-sm"
+            class="atlas-select mt-1.5 min-h-11 w-full text-sm"
             value={selectedMove}
             onchange={(event) => (move = event.currentTarget.value)}
           >
@@ -285,7 +285,7 @@
         <label for="benchmark-weather" class="term">Weather</label>
         <select
           id="benchmark-weather"
-          class="select mt-1.5 min-h-11 w-full text-sm"
+          class="atlas-select mt-1.5 min-h-11 w-full text-sm"
           value={conditions.weather}
           onchange={(event) =>
             (conditions.weather = event.currentTarget
@@ -301,7 +301,7 @@
         <label for="benchmark-terrain" class="term">Terrain</label>
         <select
           id="benchmark-terrain"
-          class="select mt-1.5 min-h-11 w-full text-sm"
+          class="atlas-select mt-1.5 min-h-11 w-full text-sm"
           value={conditions.terrain}
           onchange={(event) =>
             (conditions.terrain = event.currentTarget
@@ -340,7 +340,7 @@
             type="number"
             min="1"
             max="100"
-            class="input mt-1.5 min-h-11 w-full px-2 text-center font-mono text-xs"
+            class="atlas-input mt-1.5 min-h-11 w-full px-2 text-center font-mono text-xs"
             value={conditions[entry.key as 'self' | 'opponent'].hpPercent}
             oninput={(event) =>
               (conditions[entry.key as 'self' | 'opponent'].hpPercent =
@@ -361,7 +361,7 @@
             type="number"
             min="-6"
             max="6"
-            class="input mt-1.5 min-h-11 w-full px-1 text-center font-mono text-xs"
+            class="atlas-input mt-1.5 min-h-11 w-full px-1 text-center font-mono text-xs"
             value={conditions.opponent.boosts[stat]}
             oninput={(event) =>
               (conditions.opponent.boosts[stat] = Math.min(

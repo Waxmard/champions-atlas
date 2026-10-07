@@ -49,19 +49,10 @@
     onclick={open}
     class="block rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
   >
-    <div class="flex items-baseline justify-between gap-3">
-      {#if showRegulation}<span class="term"
-          >{regulationLabel(team.regulation)}</span
-        >{/if}
-      <span class="provenance ml-auto shrink-0">{team.publishedAt}</span>
-    </div>
-    <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
-      {team.name}
-    </h2>
-    <ul
-      class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3"
-      aria-label="Team members"
-    >
+    {#if team.creator.trim()}
+      <p class="text-sm font-semibold wrap-break-word">{team.creator}</p>
+    {/if}
+    <ul class="mt-3 grid grid-cols-3 gap-x-2 gap-y-3" aria-label="Team members">
       {#each team.members as member, index (index)}
         <li
           class="flex min-w-0 flex-col items-center px-0.5 text-center"
@@ -78,12 +69,39 @@
         </li>
       {/each}
     </ul>
+    <h2
+      class="mt-3 text-sm leading-snug font-bold tracking-[-0.02em] wrap-break-word text-secondary-text"
+    >
+      {team.name}
+    </h2>
+    <div
+      class="mt-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1"
+    >
+      {#if showRegulation}<span class="term"
+          >{regulationLabel(team.regulation)}</span
+        >{/if}
+      <span class="provenance ml-auto">{team.publishedAt}</span>
+    </div>
     <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
       <div class="min-w-0">
         <span class="stamp" data-grade={grade}>{result.label}</span>
+        {#if result.platform !== 'Unknown' || result.event.trim()}
+          <div
+            class="mt-1.5 grid gap-0.5 text-xs leading-relaxed wrap-break-word"
+          >
+            {#if result.platform !== 'Unknown'}<p class="text-secondary-text">
+                {result.platform}
+              </p>{/if}
+            {#if result.event.trim() && result.event !== result.platform}<p
+                class="text-muted"
+              >
+                {result.event}
+              </p>{/if}
+          </div>
+        {/if}
       </div>
       <ArrowUpRight
-        class="mt-0.5 size-4 shrink-0 text-base-content/60"
+        class="mt-0.5 size-4 shrink-0 text-muted"
         aria-hidden="true"
       />
     </div>

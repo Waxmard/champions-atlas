@@ -42,9 +42,11 @@
       localStorage.setItem(activeTeamKey, saved.id);
       void pushNow();
       void goto(resolve(`/my-teams?team=${saved.id}`));
-    } catch {
+    } catch (error) {
       copyStatus =
-        'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+        error instanceof RangeError
+          ? error.message
+          : 'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
     }
   }
 
@@ -87,7 +89,7 @@
 
   <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
     <span
-      class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+      class="rounded-[var(--radius-selector)] border border-border bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
       >{regulationLabel(team.regulation)}</span
     >
     <span class="stamp" data-grade={evidenceGrade(strongest.level)}
@@ -198,6 +200,7 @@
           </div>
           {#if report.sourceUrl}<Button
               href={report.sourceUrl}
+              aria-label={`Original source ${index + 1}: ${report.event || 'Event not listed'}`}
               variant="outline"
               class="min-h-11"
               target="_blank"

@@ -3,6 +3,7 @@
   import ItemIcon from '$lib/components/ItemIcon.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import { NATURES } from '$lib/paste';
+  import { Button } from '$lib/components/ui/button';
 
   interface Props {
     item: string;
@@ -48,7 +49,7 @@
     <div class="min-w-0">
       <label for="set-item-input" class="term">Item</label>
       <div
-        class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+        class="atlas-field mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
       >
         <ItemIcon {item} size={20} />
         <input
@@ -79,9 +80,11 @@
           }}
         />
         {#if item}
-          <button
+          <Button
             type="button"
-            class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+            variant="ghost"
+            size="icon"
+            class="-mr-2"
             aria-label="Clear item"
             tabindex={activeSuggestions === 'item' ? -1 : 0}
             data-detail-choice
@@ -94,7 +97,7 @@
             }}
           >
             <X class="size-4" />
-          </button>
+          </Button>
         {/if}
       </div>
 
@@ -135,7 +138,7 @@
     <div class="min-w-0">
       <label for="set-ability-input" class="term">Ability</label>
       <div
-        class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+        class="atlas-field mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
       >
         <input
           id="set-ability-input"
@@ -165,9 +168,11 @@
           }}
         />
         {#if ability}
-          <button
+          <Button
             type="button"
-            class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+            variant="ghost"
+            size="icon"
+            class="-mr-2"
             aria-label="Clear ability"
             tabindex={activeSuggestions === 'ability' ? -1 : 0}
             data-detail-choice
@@ -180,7 +185,7 @@
             }}
           >
             <X class="size-4" />
-          </button>
+          </Button>
         {/if}
       </div>
 
@@ -222,7 +227,7 @@
       <select
         id="set-nature-input"
         aria-label="Nature"
-        class="select mt-1.5 min-h-11 w-full text-sm"
+        class="atlas-select mt-1.5 min-h-11 w-full text-sm"
         value={nature}
         onfocus={onclearsuggestions}
         onchange={(e) => {

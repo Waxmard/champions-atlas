@@ -477,7 +477,7 @@
           class="mt-2 overflow-hidden rounded-[var(--radius-field)] focus-within:ring-2 focus-within:ring-primary"
         >
           <select
-            class="select min-h-11 w-full sm:text-sm"
+            class="atlas-select min-h-11 w-full sm:text-sm"
             value={draft?.id || ''}
             onchange={(event) => {
               void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
@@ -517,7 +517,7 @@
             </h2>
             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span
-                class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+                class="rounded-[var(--radius-selector)] border border-border bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
                 >{regulationLabel(draft.original.regulation)}</span
               >
               {#if originalResult}
@@ -561,7 +561,7 @@
         <div class="flex flex-wrap items-end justify-between gap-4">
           <label class="term block w-full max-w-xl"
             >Team name<input
-              class="input mt-2 min-h-11 w-full sm:text-sm"
+              class="atlas-input mt-2 min-h-11 w-full sm:text-sm"
               maxlength="200"
               bind:value={draft.name}
               onblur={saveTeamName}
@@ -599,15 +599,16 @@
         <div class="mt-5">
           {#if pendingSpecies}
             <div
-              class="t-panel-slide input flex h-12 items-center justify-between gap-2"
+              class="t-panel-slide atlas-field h-12 justify-between gap-2"
               use:revealPanel
             >
               <span>{pendingSpecies}</span>
-              <button
+              <Button
                 type="button"
-                class="btn size-11 min-h-11 min-w-11 btn-ghost p-0"
+                variant="ghost"
+                size="icon"
                 aria-label="Clear selected Pokémon"
-                onclick={cancelSpeciesSwap}><X class="size-4" /></button
+                onclick={cancelSpeciesSwap}><X class="size-4" /></Button
               >
             </div>
           {:else if showSwapPicker}
@@ -672,7 +673,7 @@
             use:revealPanel
             >Export text<textarea
               readonly
-              class="textarea mt-2 min-h-72 w-full p-3 font-mono text-xs"
+              class="atlas-textarea mt-2 min-h-72 w-full p-3 font-mono text-xs"
               value={exportPaste(draft.members)}></textarea></label
           >{/if}
       </section>
