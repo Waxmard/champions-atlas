@@ -247,222 +247,235 @@
   />
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
-  <header>
-    <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-    >
-      Explore teams
-    </h1>
-    <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      Find a team for the Pokémon you want to use.
-    </p>
-  </header>
+<main
+  id="main"
+  class="browse-layout mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8"
+>
+  <div class="browse-controls">
+    <header>
+      <h1
+        class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+      >
+        Explore teams
+      </h1>
+      <p
+        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+      >
+        Find a team for the Pokémon you want to use.
+      </p>
+    </header>
 
-  {#if storageError}<p role="status" aria-live="polite" class="provenance mt-2">
-      Filters can't be remembered on this device.
-    </p>{/if}
+    {#if storageError}<p
+        role="status"
+        aria-live="polite"
+        class="provenance mt-2"
+      >
+        Filters can't be remembered on this device.
+      </p>{/if}
 
-  <div class="mt-4">
-    <button
-      type="button"
-      aria-expanded={typeOpen}
-      onclick={() => (typeOpen = !typeOpen)}
-      class="btn min-h-11 gap-2 btn-outline"
-    >
-      <Filter class="size-4 text-base-content/60" aria-hidden="true" />
-      Filter by type
-      {#if selectedTypes.length}<span class="badge badge-primary"
-          >{selectedTypes.length}</span
-        >{/if}
-    </button>
-    {#if typeOpen}
-      <div class="mt-2">
-        <TypeFilter
-          options={ALL_TYPES}
-          selected={selectedTypes}
-          onselect={setTypes}
-        />
-      </div>
-    {/if}
-    {#if selectedTypes.length}
-      <div class="mt-2 flex flex-wrap gap-1.5">
-        {#each selectedTypes as type (type)}
-          <span
-            class="inline-flex items-center gap-1.5 border border-l-[3px] border-base-300 bg-base-100 py-1 pr-1 pl-2 text-[0.8125rem]"
-            style="border-left-color: {TYPE_COLORS[type]}"
+    <div class="mt-4">
+      <button
+        type="button"
+        aria-expanded={typeOpen}
+        onclick={() => (typeOpen = !typeOpen)}
+        class="btn min-h-11 gap-2 btn-outline"
+      >
+        <Filter class="size-4 text-base-content/60" aria-hidden="true" />
+        Filter by type
+        {#if selectedTypes.length}<span class="badge badge-primary"
+            >{selectedTypes.length}</span
+          >{/if}
+      </button>
+      {#if typeOpen}
+        <div class="mt-2">
+          <TypeFilter
+            options={ALL_TYPES}
+            selected={selectedTypes}
+            onselect={setTypes}
+          />
+        </div>
+      {/if}
+      {#if selectedTypes.length}
+        <div class="mt-2 flex flex-wrap gap-1.5">
+          {#each selectedTypes as type (type)}
+            <span
+              class="inline-flex items-center gap-1.5 border border-l-[3px] border-base-300 bg-base-100 py-1 pr-1 pl-2 text-[0.8125rem]"
+              style="border-left-color: {TYPE_COLORS[type]}"
+            >
+              <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
+                class="font-medium">{type}</span
+              >
+              <button
+                type="button"
+                aria-label={`Remove ${type} type filter`}
+                onclick={() =>
+                  setTypes(selectedTypes.filter((t) => t !== type))}
+                class="grid size-11 place-items-center rounded-full text-base-content/60 hover:text-base-content"
+                ><X class="size-3.5" aria-hidden="true" /></button
+              >
+            </span>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    <div class="mt-4">
+      <span class="sr-only" aria-live="polite"
+        >{filters.length} of 6 Pokémon selected</span
+      >
+      <PokemonPicker
+        options={availablePokemon}
+        onselect={addPokemon}
+        disabled={filters.length >= 6}
+      />
+    </div>
+
+    {#if filters.length}
+      <div class="browse-constraints mt-4 grid gap-3 md:grid-cols-2">
+        {#each filters as filter, index (filter.pokemon)}
+          <section
+            class="plate min-w-0 px-4 pt-3 pb-4"
+            style="border-left: 3px solid {TYPE_COLORS[
+              getPokemonTypes(filter.pokemon)[0]
+            ]}"
+            aria-label={`${filter.pokemon} constraints`}
           >
-            <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
-              class="font-medium">{type}</span
+            <div class="flex items-center justify-between gap-3">
+              <div class="flex min-w-0 items-center gap-3">
+                <h2
+                  class="min-w-0 text-lg leading-tight font-extrabold wrap-break-word"
+                >
+                  <SpeciesLabel pokemon={filter.pokemon} spriteSize={36} />
+                </h2>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                class="size-11 shrink-0"
+                aria-label={`Remove ${filter.pokemon}`}
+                onclick={() =>
+                  changeFilters(filters.filter((_, i) => i !== index))}
+                ><X class="size-4" aria-hidden="true" /></Button
+              >
+            </div>
+
+            <div
+              class="browse-fields mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3"
             >
-            <button
-              type="button"
-              aria-label={`Remove ${type} type filter`}
-              onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
-              class="grid size-11 place-items-center rounded-full text-base-content/60 hover:text-base-content"
-              ><X class="size-3.5" aria-hidden="true" /></button
-            >
-          </span>
+              <label for={`item-${index}`} class="term min-w-0"
+                >Held item
+                <select
+                  id={`item-${index}`}
+                  class="select mt-1 min-h-11 w-full text-base sm:text-sm"
+                  value={filter.item}
+                  onchange={(event) =>
+                    updateMember(index, 'item', event.currentTarget.value)}
+                >
+                  <option value="">Any item</option>
+                  {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
+                      value={filter.item}>{filter.item}</option
+                    >{/if}
+                  {#each options(filter.pokemon, 'item') as item (item)}<option
+                      value={item}>{item}</option
+                    >{/each}
+                </select>
+              </label>
+
+              <label for={`ability-${index}`} class="term min-w-0"
+                >Ability
+                <select
+                  id={`ability-${index}`}
+                  class="select mt-1 min-h-11 w-full text-base sm:text-sm"
+                  value={filter.ability}
+                  onchange={(event) =>
+                    updateMember(index, 'ability', event.currentTarget.value)}
+                >
+                  <option value="">Any ability</option>
+                  {#if filter.ability && !options(filter.pokemon, 'ability').includes(filter.ability)}<option
+                      value={filter.ability}>{filter.ability}</option
+                    >{/if}
+                  {#each options(filter.pokemon, 'ability') as ability (ability)}<option
+                      value={ability}>{ability}</option
+                    >{/each}
+                </select>
+              </label>
+
+              <label
+                for={`move-${index}`}
+                class="browse-move term col-span-2 min-w-0 sm:col-span-1"
+                >Move
+                <select
+                  id={`move-${index}`}
+                  class="select mt-1 min-h-11 w-full text-base sm:text-sm"
+                  value={filter.move}
+                  onchange={(event) =>
+                    updateMember(index, 'move', event.currentTarget.value)}
+                >
+                  <option value="">Any move</option>
+                  {#if filter.move && !options(filter.pokemon, 'move').includes(filter.move)}<option
+                      value={filter.move}>{filter.move}</option
+                    >{/if}
+                  {#each options(filter.pokemon, 'move') as move (move)}<option
+                      value={move}>{move}</option
+                    >{/each}
+                </select>
+              </label>
+            </div>
+          </section>
         {/each}
       </div>
     {/if}
-  </div>
 
-  <div class="mt-4">
-    <span class="sr-only" aria-live="polite"
-      >{filters.length} of 6 Pokémon selected</span
-    >
-    <PokemonPicker
-      options={availablePokemon}
-      onselect={addPokemon}
-      disabled={filters.length >= 6}
-    />
-  </div>
-
-  {#if filters.length}
-    <div class="mt-4 grid gap-3 md:grid-cols-2">
-      {#each filters as filter, index (filter.pokemon)}
-        <section
-          class="plate min-w-0 px-4 pt-3 pb-4"
-          style="border-left: 3px solid {TYPE_COLORS[
-            getPokemonTypes(filter.pokemon)[0]
-          ]}"
-          aria-label={`${filter.pokemon} constraints`}
+    <div class="mt-4 grid grid-cols-2 gap-3">
+      <label for="regulation" class="term min-w-0"
+        >Regulation
+        <select
+          id="regulation"
+          class="select mt-1 min-h-11 w-full text-base sm:text-sm"
+          value={regulation}
+          onchange={(event) =>
+            changeOption('regulation', event.currentTarget.value)}
         >
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-3">
-              <h2
-                class="min-w-0 text-lg leading-tight font-extrabold wrap-break-word"
-              >
-                <SpeciesLabel pokemon={filter.pokemon} spriteSize={36} />
-              </h2>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              class="size-11 shrink-0"
-              aria-label={`Remove ${filter.pokemon}`}
-              onclick={() =>
-                changeFilters(filters.filter((_, i) => i !== index))}
-              ><X class="size-4" aria-hidden="true" /></Button
-            >
-          </div>
+          <option value={current}>{current} (current)</option>
+          <option value="all">All regulations</option>
+          {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
+              value={regulation}
+              >{regulation === 'Unknown'
+                ? 'Unknown regulation'
+                : regulation}</option
+            >{/if}
+          {#each historicalRegulations as reg (reg)}<option value={reg}
+              >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
+            >{/each}
+        </select>
+      </label>
 
-          <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <label for={`item-${index}`} class="term min-w-0"
-              >Held item
-              <select
-                id={`item-${index}`}
-                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                value={filter.item}
-                onchange={(event) =>
-                  updateMember(index, 'item', event.currentTarget.value)}
-              >
-                <option value="">Any item</option>
-                {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
-                    value={filter.item}>{filter.item}</option
-                  >{/if}
-                {#each options(filter.pokemon, 'item') as item (item)}<option
-                    value={item}>{item}</option
-                  >{/each}
-              </select>
-            </label>
-
-            <label for={`ability-${index}`} class="term min-w-0"
-              >Ability
-              <select
-                id={`ability-${index}`}
-                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                value={filter.ability}
-                onchange={(event) =>
-                  updateMember(index, 'ability', event.currentTarget.value)}
-              >
-                <option value="">Any ability</option>
-                {#if filter.ability && !options(filter.pokemon, 'ability').includes(filter.ability)}<option
-                    value={filter.ability}>{filter.ability}</option
-                  >{/if}
-                {#each options(filter.pokemon, 'ability') as ability (ability)}<option
-                    value={ability}>{ability}</option
-                  >{/each}
-              </select>
-            </label>
-
-            <label
-              for={`move-${index}`}
-              class="term col-span-2 min-w-0 sm:col-span-1"
-              >Move
-              <select
-                id={`move-${index}`}
-                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                value={filter.move}
-                onchange={(event) =>
-                  updateMember(index, 'move', event.currentTarget.value)}
-              >
-                <option value="">Any move</option>
-                {#if filter.move && !options(filter.pokemon, 'move').includes(filter.move)}<option
-                    value={filter.move}>{filter.move}</option
-                  >{/if}
-                {#each options(filter.pokemon, 'move') as move (move)}<option
-                    value={move}>{move}</option
-                  >{/each}
-              </select>
-            </label>
-          </div>
-        </section>
-      {/each}
+      <label for="sort" class="term min-w-0"
+        >Sort
+        <select
+          id="sort"
+          aria-label="Sort teams"
+          class="select mt-1 min-h-11 w-full text-base sm:text-sm"
+          value={sort}
+          onchange={(event) => changeOption('sort', event.currentTarget.value)}
+        >
+          <option value="priority">Recommended</option>
+          <option value="recent">Newest shared</option>
+        </select>
+      </label>
     </div>
-  {/if}
-
-  <div class="mt-4 grid grid-cols-2 gap-3">
-    <label for="regulation" class="term min-w-0"
-      >Regulation
-      <select
-        id="regulation"
-        class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-        value={regulation}
-        onchange={(event) =>
-          changeOption('regulation', event.currentTarget.value)}
-      >
-        <option value={current}>{current} (current)</option>
-        <option value="all">All regulations</option>
-        {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
-            value={regulation}
-            >{regulation === 'Unknown'
-              ? 'Unknown regulation'
-              : regulation}</option
-          >{/if}
-        {#each historicalRegulations as reg (reg)}<option value={reg}
-            >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
-          >{/each}
-      </select>
-    </label>
-
-    <label for="sort" class="term min-w-0"
-      >Sort
-      <select
-        id="sort"
-        aria-label="Sort teams"
-        class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-        value={sort}
-        onchange={(event) => changeOption('sort', event.currentTarget.value)}
-      >
-        <option value="priority">Recommended</option>
-        <option value="recent">Newest shared</option>
-      </select>
-    </label>
   </div>
 
-  <section aria-label="Matching teams" class="mt-5 min-w-0">
+  <section aria-label="Matching teams" class="browse-results mt-5 min-w-0">
     <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
       <p
         aria-live="polite"
         aria-atomic="true"
         class="value font-semibold tracking-wide"
       >
-        {results.length} teams
+        {results.length}
+        {results.length === 1 ? 'team' : 'teams'}
       </p>
       {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || filterState.error}<Button
           type="button"
@@ -473,7 +486,7 @@
         >{/if}
     </div>
     {#if results.length}
-      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+      <div class="browse-card-grid grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {#each visible as team (team.id)}<TeamCard
             {team}
             currentRegulation={current}
@@ -493,7 +506,10 @@
             onclick={() => changeOption('page', String(pageNumber - 1))}
             >Previous</Button
           >
-          <span class="value text-base-content/70"
+          <span
+            aria-live="polite"
+            aria-atomic="true"
+            class="value text-base-content/70"
             >Page {pageNumber} of {pageCount}</span
           >
           <Button
@@ -512,7 +528,7 @@
         </h2>
         <p class="mt-2 max-w-[46ch] text-[0.9375rem] leading-relaxed">
           {filterState.error ||
-            'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
+            'Try changing your Pokémon, set, type, or regulation filters. Filters are never silently relaxed.'}
         </p>
         <Button
           type="button"

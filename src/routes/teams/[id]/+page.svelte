@@ -42,9 +42,11 @@
       localStorage.setItem(activeTeamKey, saved.id);
       void pushNow();
       void goto(resolve(`/my-teams?team=${saved.id}`));
-    } catch {
+    } catch (error) {
       copyStatus =
-        'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+        error instanceof RangeError
+          ? error.message
+          : 'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
     }
   }
 
@@ -198,6 +200,7 @@
           </div>
           {#if report.sourceUrl}<Button
               href={report.sourceUrl}
+              aria-label={`Original source ${index + 1}: ${report.event || 'Event not listed'}`}
               variant="outline"
               class="min-h-11"
               target="_blank"

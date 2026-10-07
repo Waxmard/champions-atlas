@@ -352,3 +352,195 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
   });
   expect(skipTarget.targetTop).toBeGreaterThanOrEqual(skipTarget.headerBottom);
 });
+
+test('short-landscape browsing keeps results beside usable filters', async ({
+  page,
+}) => {
+  const assertTouchable = async (target: ReturnType<typeof page.getByRole>) => {
+    await target.scrollIntoViewIfNeeded();
+    await expect(target).toBeVisible();
+    const box = await target.boundingBox();
+    const viewport = page.viewportSize();
+    expect(box).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    if (!box || !viewport)
+      throw new Error('A visible viewport target is required.');
+    expect(box.width).toBeGreaterThanOrEqual(44);
+    expect(box.height).toBeGreaterThanOrEqual(44);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  };
+
+  for (const viewport of [
+    { width: 667, height: 375 },
+    { width: 844, height: 390 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto('/?regulation=M-C&sort=priority');
+
+    const mainNav = page.getByRole('navigation', { name: 'Main', exact: true });
+    const matching = page.getByRole('region', { name: 'Matching teams' });
+    const firstCard = matching.getByRole('article').first();
+    await expect(firstCard).toBeVisible();
+    const geometry = await page.evaluate(() => {
+      const nav = document.querySelector('nav[aria-label="Main"]');
+      const shell = nav?.closest('header');
+      const controls = document.querySelector('.browse-controls');
+      const results = document.querySelector('.browse-results');
+      const article = results?.querySelector('article');
+      if (!shell || !controls || !results || !article)
+        throw new Error('Browse layout geometry is incomplete.');
+      const rect = (element: Element) => {
+        const { top, bottom, left, right } = element.getBoundingClientRect();
+        return { top, bottom, left, right };
+      };
+      return {
+        shell: rect(shell),
+        controls: rect(controls),
+        results: rect(results),
+        firstCard: rect(article),
+        viewportHeight: window.innerHeight,
+        viewportWidth: window.innerWidth,
+        documentWidth: document.documentElement.scrollWidth,
+      };
+    });
+    expect(geometry.firstCard.top).toBeGreaterThanOrEqual(
+      geometry.shell.bottom
+    );
+    expect(geometry.firstCard.top).toBeLessThan(geometry.viewportHeight);
+    expect(geometry.results.left).toBeGreaterThanOrEqual(
+      geometry.controls.right
+    );
+    expect(geometry.documentWidth).toBeLessThanOrEqual(geometry.viewportWidth);
+    await expect(mainNav).toBeVisible();
+
+    const typeToggle = page.getByRole('button', { name: 'Filter by type' });
+    await assertTouchable(typeToggle);
+    await typeToggle.click();
+    const typeInput = page.getByRole('combobox', { name: 'Filter by type' });
+    await assertTouchable(typeInput);
+    await typeInput.fill('fire');
+    const fireOption = page.getByRole('option', { name: 'fire', exact: true });
+    await assertTouchable(fireOption);
+    await fireOption.click();
+    await typeInput.press('Escape');
+    const removeFire = page.getByRole('button', {
+      name: 'Remove fire type filter',
+      exact: true,
+    });
+    await expect(removeFire).toBeVisible();
+    await removeFire.click();
+    await typeToggle.click();
+
+    const regulation = page.getByRole('combobox', {
+      name: 'Regulation',
+      exact: true,
+    });
+    await assertTouchable(regulation);
+    await regulation.selectOption('all');
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('regulation'))
+      .toBe('all');
+    await regulation.selectOption('M-C');
+    const sort = page.getByRole('combobox', { name: 'Sort teams' });
+    await assertTouchable(sort);
+    await sort.selectOption('recent');
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('sort'))
+      .toBe('recent');
+    await sort.selectOption('priority');
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('regulation'))
+      .toBe('M-C');
+    await expect
+      .poll(() => new URL(page.url()).searchParams.get('sort'))
+      .toBe('priority');
+
+    await firstCard.scrollIntoViewIfNeeded();
+    const species = await firstCard
+      .getByRole('list', { name: 'Team members' })
+      .getByRole('listitem')
+      .first()
+      .locator('p')
+      .innerText();
+    const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
+    await assertTouchable(picker);
+    await picker.fill(species);
+    const speciesOption = page.getByRole('option', {
+      name: species,
+      exact: true,
+    });
+    await assertTouchable(speciesOption);
+    await speciesOption.click();
+
+    const constraintName = species + ' constraints';
+    const constraints = page.getByRole('region', { name: constraintName });
+    await expect(constraints).toBeVisible();
+    await expect
+      .poll(() =>
+        new URL(page.url()).searchParams
+          .getAll('member')
+          .map((value) => JSON.parse(value)[0])
+      )
+      .toContain(species);
+    const persistedQuery = new URL(page.url()).search;
+    await expect(
+      matching.getByRole('article').first().getByText(species, { exact: true })
+    ).toBeVisible();
+
+    const detailLink = matching
+      .getByRole('article')
+      .first()
+      .getByRole('link')
+      .first();
+    const detailHref = await detailLink.getAttribute('href');
+    expect(detailHref).toBeTruthy();
+    const detailUrl = new URL(detailHref!, page.url()).href;
+    await detailLink.scrollIntoViewIfNeeded();
+    await detailLink.click();
+    await expect(page).toHaveURL(detailUrl);
+    await expect(
+      page.getByRole('heading', { name: 'Results & sources' })
+    ).toBeVisible();
+    await page
+      .getByRole('link', { name: 'Back to teams', exact: true })
+      .click();
+    await expect.poll(() => new URL(page.url()).search).toBe(persistedQuery);
+    await expect(
+      page.getByRole('button', { name: 'Clear filters' })
+    ).toBeEnabled();
+    await expect(
+      page.getByRole('region', { name: constraintName })
+    ).toBeVisible();
+  }
+
+  await page.setViewportSize({ width: 320, height: 720 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  const stacked = await page.evaluate(() => {
+    const controls = document.querySelector('.browse-controls');
+    const results = document.querySelector('.browse-results');
+    if (!controls || !results)
+      throw new Error('Stacked browse layout is incomplete.');
+    return {
+      controls: controls.getBoundingClientRect().toJSON(),
+      results: results.getBoundingClientRect().toJSON(),
+      viewportWidth: window.innerWidth,
+      documentWidth: document.documentElement.scrollWidth,
+    };
+  });
+  expect(stacked.results.top).toBeGreaterThanOrEqual(stacked.controls.bottom);
+  expect(stacked.documentWidth).toBeLessThanOrEqual(stacked.viewportWidth);
+  await expect(
+    page.getByRole('button', { name: 'Clear filters' })
+  ).toBeEnabled();
+  await assertTouchable(
+    page.getByRole('combobox', { name: 'Add Pokémon filter' })
+  );
+  await assertTouchable(page.getByRole('button', { name: 'Filter by type' }));
+  await assertTouchable(
+    page.getByRole('combobox', { name: 'Regulation', exact: true })
+  );
+  await assertTouchable(page.getByRole('combobox', { name: 'Sort teams' }));
+});
