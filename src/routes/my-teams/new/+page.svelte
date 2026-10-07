@@ -40,7 +40,7 @@
         Add custom team
       </h1>
       <p
-        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-secondary-text"
       >
         Build your team in
         <a
@@ -60,7 +60,7 @@
     <label class="term block">
       Team name
       <input
-        class="input mt-2 min-h-11 w-full"
+        class="atlas-input mt-2 min-h-11 w-full"
         maxlength="200"
         required
         bind:value={name}
@@ -68,9 +68,9 @@
     </label>
     <label class="term mt-6 block">
       Team text
-      <span class="plate mt-2 block border-base-content/55">
+      <span class="atlas-field mt-2 block">
         <textarea
-          class="textarea min-h-96 w-full border-0 p-3 font-mono text-xs leading-5"
+          class="atlas-textarea min-h-96 w-full border-0 p-3 font-mono text-xs leading-5"
           maxlength="50000"
           required
           bind:value={paste}></textarea>

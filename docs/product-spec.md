@@ -231,7 +231,9 @@ explicit project goal. Use SvelteKit routing for team details and URL-based
 filter state.
 
 The confirmed component and styling stack is daisyUI with Tailwind CSS, using
-Bits UI primitives for accessible interactions. Maintained libraries handle CSV
+Bits UI primitives for accessible interactions. Buttons and form fields are
+app-owned token classes rather than daisyUI control classes, so the browse
+workspace, pickers, and editors share one visual language. Maintained libraries handle CSV
 parsing (csv-parse), saved-team validation (Zod), and class merging
 (tailwind-merge and clsx). Add components as needed and customize their source
 to suit the app.

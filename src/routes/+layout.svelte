@@ -280,15 +280,12 @@
   {@render children()}
 {:else if !startupReady || (sync.configured && (!sync.authResolved || !sync.user))}
   <main id="main" class="flex min-h-svh items-center justify-center">
-    <LoaderCircle
-      class="size-6 animate-spin text-base-content/60"
-      aria-label="Loading"
-    />
+    <LoaderCircle class="size-6 animate-spin text-muted" aria-label="Loading" />
   </main>
 {:else}
   <header
     bind:clientHeight={headerHeight}
-    class="sticky top-0 z-40 border-b border-base-300 bg-base-100"
+    class="sticky top-0 z-40 border-b border-border bg-base-100"
   >
     <div
       class="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4 sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
@@ -309,14 +306,14 @@
         <a
           href={brandHref}
           aria-current={isBrowse ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isBrowse
+          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-selector)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isBrowse
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">Browse</a
         >
         <a
           href={resolve('/my-teams')}
           aria-current={isMyTeams ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isMyTeams
+          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-selector)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isMyTeams
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">My teams</a
         >
@@ -374,7 +371,7 @@
                 <DropdownMenu.Content
                   align="end"
                   sideOffset={6}
-                  class="z-50 min-w-56 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
+                  class="z-50 min-w-56 rounded-[var(--radius-field)] border border-border bg-base-100 p-1 text-base-content shadow-lg"
                 >
                   <div class="px-2 py-1.5">
                     <p class="truncate text-sm font-semibold">{userName}</p>

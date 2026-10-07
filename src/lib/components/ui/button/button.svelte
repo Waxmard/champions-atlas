@@ -12,23 +12,23 @@
     'default' | 'xs' | 'sm' | 'lg' | 'icon' | 'icon-xs' | 'icon-sm' | 'icon-lg';
 
   const variants: Record<ButtonVariant, string> = {
-    default: 'btn-primary',
-    outline: 'btn-outline',
-    secondary: 'btn-soft',
-    ghost: 'btn-ghost',
-    destructive: 'btn-soft btn-error',
-    link: 'btn-link',
+    default: 'atlas-button-primary',
+    outline: 'atlas-button-outline',
+    secondary: 'atlas-button-secondary',
+    ghost: 'atlas-button-ghost',
+    destructive: 'atlas-button-destructive',
+    link: 'atlas-button-link',
   };
 
   const sizes: Record<ButtonSize, string> = {
-    default: 'btn-md',
-    xs: 'btn-xs',
-    sm: 'btn-sm',
-    lg: 'btn-lg',
-    icon: 'btn-square btn-md',
-    'icon-xs': 'btn-square btn-xs',
-    'icon-sm': 'btn-square btn-sm',
-    'icon-lg': 'btn-square btn-lg',
+    default: 'min-h-11 min-w-11 px-3 text-sm',
+    xs: 'atlas-button-compact min-h-6 min-w-6 px-2 text-xs',
+    sm: 'atlas-button-compact min-h-8 min-w-8 px-2.5 text-[13px]',
+    lg: 'min-h-12 min-w-12 px-4 text-base',
+    icon: 'size-11 min-h-11 min-w-11 p-0',
+    'icon-xs': 'atlas-button-compact size-6 min-h-6 min-w-6 p-0',
+    'icon-sm': 'atlas-button-compact size-8 min-h-8 min-w-8 p-0',
+    'icon-lg': 'size-12 min-h-12 min-w-12 p-0',
   };
 
   export function buttonVariants({
@@ -41,7 +41,7 @@
     class?: HTMLButtonAttributes['class'];
   } = {}): string {
     return twMerge(
-      "btn [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+      "atlas-button [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
       variants[variant] || variants.default,
       sizes[size] || sizes.default,
       clsx(className)

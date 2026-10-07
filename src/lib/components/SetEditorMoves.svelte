@@ -1,5 +1,6 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
+  import { Button } from '$lib/components/ui/button';
   import TypeMark from '$lib/components/TypeMark.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import type { CatalogSuggestion } from '$lib/workbench';
@@ -37,7 +38,7 @@
       {@const type = getMoveType(move)}
       {@const typeColor = type ? TYPE_COLORS[type] : null}
       <div
-        class="input flex min-h-11 items-center gap-2 border transition-colors {activeMoveSlot ===
+        class="atlas-field flex min-h-11 items-center gap-2 border transition-colors {activeMoveSlot ===
         index
           ? 'border-primary'
           : 'border-base-content/55 hover:border-base-content/80'}"
@@ -74,15 +75,17 @@
             }
           }}
         />
-        <button
+        <Button
           type="button"
-          class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+          variant="ghost"
+          size="icon"
+          class="-mr-2"
           aria-label={`Clear move ${index + 1}`}
           tabindex={activeSuggestions !== null ? -1 : 0}
           disabled={!move}
           data-move-choice
           onpointerdown={(event) => event.preventDefault()}
-          onclick={() => onclear(index)}><X class="size-4" /></button
+          onclick={() => onclear(index)}><X class="size-4" /></Button
         >
       </div>
     {/each}

@@ -617,7 +617,7 @@
     {:else if currentView === 'pokemon'}
       <section class="grid gap-4">
         <label for="set-pokemon-input" class="sr-only">Pokémon</label>
-        <label class="input flex min-h-11 items-center gap-2">
+        <label class="atlas-field flex min-h-11 items-center gap-2">
           <PokemonSprite pokemon={form.pokemon} size={28} />
           <input
             id="set-pokemon-input"
@@ -722,7 +722,7 @@
         <textarea
           id="set-raw-textarea"
           aria-label="Showdown set text"
-          class="textarea min-h-72 w-full resize-y p-3 font-mono text-xs leading-5"
+          class="atlas-textarea min-h-72 w-full resize-y p-3 font-mono text-xs leading-5"
           bind:value={rawText}
           oninput={clearError}
           onblur={flush}
