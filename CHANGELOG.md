@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.0](https://github.com/Waxmard/champions-atlas/compare/v1.3.0...v1.4.0) (2026-10-07)
+
+
+### Features
+
+* keep original nature spreads in suggestion limits ([#32](https://github.com/Waxmard/champions-atlas/issues/32)) ([d95d783](https://github.com/Waxmard/champions-atlas/commit/d95d78373965738f625fea697d9175317e04ac49))
+
 ## [1.3.0](https://github.com/Waxmard/champions-atlas/compare/v1.2.0...v1.3.0) (2026-10-06)
 
 
