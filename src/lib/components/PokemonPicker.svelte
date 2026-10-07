@@ -56,6 +56,7 @@
     <Combobox.Input
       clearOnDeselect
       aria-label={label}
+      aria-controls={open ? 'pokemon-filter-options' : undefined}
       placeholder={disabled ? disabledPlaceholder : placeholder}
       oninput={(event) => {
         search = event.currentTarget.value;
@@ -66,6 +67,8 @@
   </div>
   <Combobox.Portal disabled={!portal}>
     <Combobox.Content
+      id="pokemon-filter-options"
+      aria-label={label}
       sideOffset={6}
       class="z-50 max-h-[min(18rem,var(--bits-floating-available-height,18rem))] w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-border bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
     >

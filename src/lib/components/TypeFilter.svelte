@@ -33,6 +33,7 @@
     />
     <Combobox.Input
       aria-label="Filter by type"
+      aria-controls={open ? 'type-filter-options' : undefined}
       placeholder="Find a type…"
       onfocus={() => (open = true)}
       oninput={(event) => {
@@ -44,6 +45,8 @@
   </div>
   <Combobox.Portal>
     <Combobox.Content
+      id="type-filter-options"
+      aria-label="Filter by type"
       sideOffset={6}
       class="z-50 max-h-[min(18rem,var(--bits-floating-available-height,18rem))] w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-border bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
     >
