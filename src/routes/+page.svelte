@@ -1,11 +1,13 @@
 <script lang="ts">
   import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import type { Snapshot } from '@sveltejs/kit';
   import { page } from '$app/state';
   import { SvelteURLSearchParams } from 'svelte/reactivity';
-  import { onMount } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
   import TeamCard from '$lib/components/TeamCard.svelte';
@@ -36,6 +38,65 @@
   let storageError = $state(false);
   let typeOpen = $state(false);
   let ready = $state(false);
+  let filterPane = $state<HTMLDivElement>();
+  let resultsPane = $state<HTMLDivElement>();
+  let moreFilters = $state(false);
+  let moreTeams = $state(false);
+
+  function applyPendingOffsets() {
+    const pending = pendingOffsets;
+    if (!pending) return;
+    if (filterPane) filterPane.scrollTop = pending.filters;
+    if (resultsPane) resultsPane.scrollTop = pending.results;
+    if (offsetsReached()) pendingOffsets = null;
+  }
+
+  function offsetsReached() {
+    const pending = pendingOffsets;
+    if (!pending) return true;
+    if (!filterPane || !resultsPane) return false;
+    return (
+      Math.abs(filterPane.scrollTop - pending.filters) <= 1 &&
+      Math.abs(resultsPane.scrollTop - pending.results) <= 1
+    );
+  }
+
+  function overflowCue(node: HTMLDivElement, pane: 'filters' | 'results') {
+    const update = () => {
+      const below = node.scrollHeight - node.clientHeight - node.scrollTop > 1;
+      if (pane === 'filters') moreFilters = below;
+      else moreTeams = below;
+      if (offsetsReached()) pendingOffsets = null;
+    };
+    const dropPending = () => {
+      pendingOffsets = null;
+    };
+    const observer = new ResizeObserver(() => {
+      update();
+      // The header height lands after the first paint and WebKit reports the
+      // content box before the scroller's range grows, so a queued offset can
+      // be clamped. Re-apply it in the frame that follows the resize.
+      if (pendingOffsets)
+        requestAnimationFrame(() => {
+          update();
+          applyPendingOffsets();
+        });
+    });
+    observer.observe(node);
+    if (node.firstElementChild) observer.observe(node.firstElementChild);
+    node.addEventListener('scroll', update, { passive: true });
+    for (const type of ['pointerdown', 'wheel', 'keydown'])
+      node.addEventListener(type, dropPending, { passive: true });
+    update();
+    return {
+      destroy() {
+        observer.disconnect();
+        node.removeEventListener('scroll', update);
+        for (const type of ['pointerdown', 'wheel', 'keydown'])
+          node.removeEventListener(type, dropPending);
+      },
+    };
+  }
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const historicalRegulations = $derived(
@@ -119,6 +180,31 @@
   const visible = $derived(
     results.slice((pageNumber - 1) * 24, pageNumber * 24)
   );
+  let pendingOffsets = $state<{ filters: number; results: number } | null>(
+    null
+  );
+  let reducedMotion = $state(false);
+  let displayedCount = $state(0);
+  let previousCount = $state<number | null>(null);
+  const countDigits = $derived(String(teams.length).length);
+  $effect(() => {
+    if (!pendingOffsets || !filterPane || !resultsPane) return;
+    applyPendingOffsets();
+  });
+  $effect(() => {
+    const next = results.length;
+    const prior = untrack(() => displayedCount);
+    if (next === prior) return;
+    previousCount = reducedMotion || prior === 0 ? null : prior;
+    displayedCount = next;
+  });
+  function clearPreviousCount(event: AnimationEvent) {
+    if (
+      (event.currentTarget as HTMLElement).dataset.count ===
+      String(displayedCount)
+    )
+      previousCount = null;
+  }
 
   function browseParams(params: URLSearchParams) {
     const result = writeFilters(new URLSearchParams(), readFilters(params));
@@ -146,7 +232,7 @@
     const canonical = browseParams(params);
     rememberBrowse(canonical);
     const query = canonical.toString();
-    void goto(resolve(`/?${query}`), {
+    return goto(resolve(`/?${query}`), {
       replaceState: true,
       noScroll,
       keepFocus: true,
@@ -182,9 +268,17 @@
   afterNavigate(restoreBrowse);
   onMount(() => {
     ready = true;
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => {
+      reducedMotion = query.matches;
+      if (query.matches) previousCount = null;
+    };
+    sync();
+    query.addEventListener('change', sync);
+    return () => query.removeEventListener('change', sync);
   });
   function changeFilters(next: MemberFilter[]) {
-    navigate(writeFilters(page.url.searchParams, next));
+    return navigate(writeFilters(page.url.searchParams, next));
   }
   function addPokemon(pokemon: string) {
     if (
@@ -195,7 +289,7 @@
     const items = /-Mega(?:-[A-Z])?$/i.test(pokemon)
       ? options(pokemon, 'item')
       : [];
-    changeFilters([
+    void changeFilters([
       ...filters,
       {
         pokemon,
@@ -203,7 +297,17 @@
         ability: '',
         move: '',
       },
-    ]);
+    ]).then(async () => {
+      await tick();
+      const heading = filterPane?.querySelectorAll('.browse-constraints h2')[
+        filters.length - 1
+      ];
+      if (filterPane && heading)
+        filterPane.scrollTop +=
+          heading.getBoundingClientRect().top -
+          filterPane.getBoundingClientRect().top -
+          8;
+    });
   }
   function updateMember(
     index: number,
@@ -223,8 +327,32 @@
     const params = new SvelteURLSearchParams(page.url.searchParams);
     params.set(key, value);
     if (key !== 'page') params.delete('page');
-    navigate(params, key !== 'page');
+    void navigate(params, key !== 'page').then(() => {
+      if (!resultsPane) return;
+      if (key === 'page') resultsPane.scrollTop = 0;
+      else {
+        const limit = resultsPane.scrollHeight - resultsPane.clientHeight;
+        if (resultsPane.scrollTop > limit)
+          resultsPane.scrollTop = Math.max(0, limit);
+      }
+    });
   }
+
+  export const snapshot: Snapshot<{
+    filters: number;
+    results: number;
+    typeOpen: boolean;
+  }> = {
+    capture: () => ({
+      filters: filterPane?.scrollTop ?? 0,
+      results: resultsPane?.scrollTop ?? 0,
+      typeOpen,
+    }),
+    restore: (value) => {
+      typeOpen = value.typeOpen;
+      pendingOffsets = { filters: value.filters, results: value.results };
+    },
+  };
 
   function clearFilters() {
     navigate(new URLSearchParams());
@@ -247,235 +375,273 @@
   />
 </svelte:head>
 
-<main
-  id="main"
-  class="browse-layout mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8"
->
+<main id="main" class="browse-layout">
   <div class="browse-controls">
-    <header>
-      <h1
-        class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-      >
-        Explore teams
-      </h1>
-      <p
-        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-      >
-        Find a team for the Pokémon you want to use.
-      </p>
-    </header>
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard scrolling requires a focusable pane.) -->
+    <div
+      class="browse-filter-scroll"
+      bind:this={filterPane}
+      use:overflowCue={'filters'}
+      tabindex="0"
+      role="region"
+      aria-label="Team filters"
+    >
+      <div class="browse-filter-content">
+        <header>
+          <h1
+            class="browse-heading font-bold tracking-[-0.02em] wrap-break-word"
+          >
+            Explore teams
+          </h1>
+          <p
+            class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-secondary-text"
+          >
+            Find a team for the Pokémon you want to use.
+          </p>
+        </header>
 
-    {#if storageError}<p
-        role="status"
-        aria-live="polite"
-        class="provenance mt-2"
-      >
-        Filters can't be remembered on this device.
-      </p>{/if}
+        {#if storageError}<p
+            role="status"
+            aria-live="polite"
+            class="provenance mt-2"
+          >
+            Filters can't be remembered on this device.
+          </p>{/if}
 
-    <div class="mt-4">
-      <button
-        type="button"
-        aria-expanded={typeOpen}
-        onclick={() => (typeOpen = !typeOpen)}
-        class="btn min-h-11 gap-2 btn-outline"
-      >
-        <Filter class="size-4 text-base-content/60" aria-hidden="true" />
-        Filter by type
-        {#if selectedTypes.length}<span class="badge badge-primary"
-            >{selectedTypes.length}</span
-          >{/if}
-      </button>
-      {#if typeOpen}
-        <div class="mt-2">
-          <TypeFilter
-            options={ALL_TYPES}
-            selected={selectedTypes}
-            onselect={setTypes}
+        <div>
+          <Button
+            type="button"
+            variant="outline"
+            aria-expanded={typeOpen}
+            onclick={() => (typeOpen = !typeOpen)}
+            class="min-h-11 gap-2"
+          >
+            <Filter class="size-4 text-muted" aria-hidden="true" />
+            Filter by type
+            {#if selectedTypes.length}<span class="badge badge-primary"
+                >{selectedTypes.length}</span
+              >{/if}
+          </Button>
+          {#if typeOpen}
+            <div class="mt-2">
+              <TypeFilter
+                options={ALL_TYPES}
+                selected={selectedTypes}
+                onselect={setTypes}
+              />
+            </div>
+          {/if}
+          {#if selectedTypes.length}
+            <div class="mt-2 flex flex-wrap gap-1.5">
+              {#each selectedTypes as type (type)}
+                <span
+                  class="inline-flex items-center gap-1.5 rounded-field border border-l-[3px] border-border bg-base-100 py-1 pr-1 pl-2 text-[0.8125rem]"
+                  style="border-left-color: {TYPE_COLORS[type]}"
+                >
+                  <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
+                    class="font-medium">{type}</span
+                  >
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove ${type} type filter`}
+                    onclick={() =>
+                      setTypes(selectedTypes.filter((t) => t !== type))}
+                    class="size-11 rounded-full text-muted hover:text-base-content"
+                    ><X class="size-3.5" aria-hidden="true" /></Button
+                  >
+                </span>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        <div>
+          <span class="sr-only" aria-live="polite"
+            >{filters.length} of 6 Pokémon selected</span
+          >
+          <PokemonPicker
+            options={availablePokemon}
+            onselect={addPokemon}
+            disabled={filters.length >= 6}
           />
         </div>
-      {/if}
-      {#if selectedTypes.length}
-        <div class="mt-2 flex flex-wrap gap-1.5">
-          {#each selectedTypes as type (type)}
-            <span
-              class="inline-flex items-center gap-1.5 border border-l-[3px] border-base-300 bg-base-100 py-1 pr-1 pl-2 text-[0.8125rem]"
-              style="border-left-color: {TYPE_COLORS[type]}"
-            >
-              <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
-                class="font-medium">{type}</span
+
+        {#if filters.length}
+          <div class="browse-constraints grid gap-3">
+            {#each filters as filter, index (filter.pokemon)}
+              <section
+                class="plate min-w-0 px-4 pt-3 pb-4"
+                style="border-left: 3px solid {TYPE_COLORS[
+                  getPokemonTypes(filter.pokemon)[0]
+                ]}"
+                aria-label={`${filter.pokemon} constraints`}
+                data-constraint={index}
               >
-              <button
-                type="button"
-                aria-label={`Remove ${type} type filter`}
-                onclick={() =>
-                  setTypes(selectedTypes.filter((t) => t !== type))}
-                class="grid size-11 place-items-center rounded-full text-base-content/60 hover:text-base-content"
-                ><X class="size-3.5" aria-hidden="true" /></button
-              >
-            </span>
-          {/each}
-        </div>
-      {/if}
-    </div>
+                <div class="flex items-center justify-between gap-3">
+                  <div class="flex min-w-0 items-center gap-3">
+                    <h2
+                      class="min-w-0 text-lg leading-tight font-bold tracking-[-0.02em] wrap-break-word"
+                    >
+                      <SpeciesLabel pokemon={filter.pokemon} spriteSize={36} />
+                    </h2>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    class="size-11 shrink-0"
+                    aria-label={`Remove ${filter.pokemon}`}
+                    onclick={() =>
+                      changeFilters(filters.filter((_, i) => i !== index))}
+                    ><X class="size-4" aria-hidden="true" /></Button
+                  >
+                </div>
 
-    <div class="mt-4">
-      <span class="sr-only" aria-live="polite"
-        >{filters.length} of 6 Pokémon selected</span
-      >
-      <PokemonPicker
-        options={availablePokemon}
-        onselect={addPokemon}
-        disabled={filters.length >= 6}
-      />
-    </div>
+                <div class="browse-fields mt-3 grid gap-3">
+                  <label for={`item-${index}`} class="term min-w-0"
+                    >Held item
+                    <select
+                      id={`item-${index}`}
+                      class="atlas-select mt-1 min-h-11 w-full text-base sm:text-sm"
+                      value={filter.item}
+                      onchange={(event) =>
+                        updateMember(index, 'item', event.currentTarget.value)}
+                    >
+                      <option value="">Any item</option>
+                      {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
+                          value={filter.item}>{filter.item}</option
+                        >{/if}
+                      {#each options(filter.pokemon, 'item') as item (item)}<option
+                          value={item}>{item}</option
+                        >{/each}
+                    </select>
+                  </label>
 
-    {#if filters.length}
-      <div class="browse-constraints mt-4 grid gap-3 md:grid-cols-2">
-        {#each filters as filter, index (filter.pokemon)}
-          <section
-            class="plate min-w-0 px-4 pt-3 pb-4"
-            style="border-left: 3px solid {TYPE_COLORS[
-              getPokemonTypes(filter.pokemon)[0]
-            ]}"
-            aria-label={`${filter.pokemon} constraints`}
-          >
-            <div class="flex items-center justify-between gap-3">
-              <div class="flex min-w-0 items-center gap-3">
-                <h2
-                  class="min-w-0 text-lg leading-tight font-extrabold wrap-break-word"
-                >
-                  <SpeciesLabel pokemon={filter.pokemon} spriteSize={36} />
-                </h2>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                class="size-11 shrink-0"
-                aria-label={`Remove ${filter.pokemon}`}
-                onclick={() =>
-                  changeFilters(filters.filter((_, i) => i !== index))}
-                ><X class="size-4" aria-hidden="true" /></Button
-              >
-            </div>
+                  <label for={`ability-${index}`} class="term min-w-0"
+                    >Ability
+                    <select
+                      id={`ability-${index}`}
+                      class="atlas-select mt-1 min-h-11 w-full text-base sm:text-sm"
+                      value={filter.ability}
+                      onchange={(event) =>
+                        updateMember(
+                          index,
+                          'ability',
+                          event.currentTarget.value
+                        )}
+                    >
+                      <option value="">Any ability</option>
+                      {#if filter.ability && !options(filter.pokemon, 'ability').includes(filter.ability)}<option
+                          value={filter.ability}>{filter.ability}</option
+                        >{/if}
+                      {#each options(filter.pokemon, 'ability') as ability (ability)}<option
+                          value={ability}>{ability}</option
+                        >{/each}
+                    </select>
+                  </label>
 
-            <div
-              class="browse-fields mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3"
-            >
-              <label for={`item-${index}`} class="term min-w-0"
-                >Held item
-                <select
-                  id={`item-${index}`}
-                  class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                  value={filter.item}
-                  onchange={(event) =>
-                    updateMember(index, 'item', event.currentTarget.value)}
-                >
-                  <option value="">Any item</option>
-                  {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
-                      value={filter.item}>{filter.item}</option
-                    >{/if}
-                  {#each options(filter.pokemon, 'item') as item (item)}<option
-                      value={item}>{item}</option
-                    >{/each}
-                </select>
-              </label>
+                  <label for={`move-${index}`} class="browse-move term min-w-0"
+                    >Move
+                    <select
+                      id={`move-${index}`}
+                      class="atlas-select mt-1 min-h-11 w-full text-base sm:text-sm"
+                      value={filter.move}
+                      onchange={(event) =>
+                        updateMember(index, 'move', event.currentTarget.value)}
+                    >
+                      <option value="">Any move</option>
+                      {#if filter.move && !options(filter.pokemon, 'move').includes(filter.move)}<option
+                          value={filter.move}>{filter.move}</option
+                        >{/if}
+                      {#each options(filter.pokemon, 'move') as move (move)}<option
+                          value={move}>{move}</option
+                        >{/each}
+                    </select>
+                  </label>
+                </div>
+              </section>
+            {/each}
+          </div>
+        {/if}
 
-              <label for={`ability-${index}`} class="term min-w-0"
-                >Ability
-                <select
-                  id={`ability-${index}`}
-                  class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                  value={filter.ability}
-                  onchange={(event) =>
-                    updateMember(index, 'ability', event.currentTarget.value)}
-                >
-                  <option value="">Any ability</option>
-                  {#if filter.ability && !options(filter.pokemon, 'ability').includes(filter.ability)}<option
-                      value={filter.ability}>{filter.ability}</option
-                    >{/if}
-                  {#each options(filter.pokemon, 'ability') as ability (ability)}<option
-                      value={ability}>{ability}</option
-                    >{/each}
-                </select>
-              </label>
-
-              <label
-                for={`move-${index}`}
-                class="browse-move term col-span-2 min-w-0 sm:col-span-1"
-                >Move
-                <select
-                  id={`move-${index}`}
-                  class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                  value={filter.move}
-                  onchange={(event) =>
-                    updateMember(index, 'move', event.currentTarget.value)}
-                >
-                  <option value="">Any move</option>
-                  {#if filter.move && !options(filter.pokemon, 'move').includes(filter.move)}<option
-                      value={filter.move}>{filter.move}</option
-                    >{/if}
-                  {#each options(filter.pokemon, 'move') as move (move)}<option
-                      value={move}>{move}</option
-                    >{/each}
-                </select>
-              </label>
-            </div>
-          </section>
-        {/each}
-      </div>
-    {/if}
-
-    <div class="mt-4 grid grid-cols-2 gap-3">
-      <label for="regulation" class="term min-w-0"
-        >Regulation
-        <select
-          id="regulation"
-          class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-          value={regulation}
-          onchange={(event) =>
-            changeOption('regulation', event.currentTarget.value)}
-        >
-          <option value={current}>{current} (current)</option>
-          <option value="all">All regulations</option>
-          {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
+        <div class="grid grid-cols-2 gap-3">
+          <label for="regulation" class="term min-w-0"
+            >Regulation
+            <select
+              id="regulation"
+              class="atlas-filter-select mt-1 min-h-11 w-full text-base sm:text-sm"
               value={regulation}
-              >{regulation === 'Unknown'
-                ? 'Unknown regulation'
-                : regulation}</option
-            >{/if}
-          {#each historicalRegulations as reg (reg)}<option value={reg}
-              >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
-            >{/each}
-        </select>
-      </label>
+              onchange={(event) =>
+                changeOption('regulation', event.currentTarget.value)}
+            >
+              <option value={current}>{current} (current)</option>
+              <option value="all">All regulations</option>
+              {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
+                  value={regulation}
+                  >{regulation === 'Unknown'
+                    ? 'Unknown regulation'
+                    : regulation}</option
+                >{/if}
+              {#each historicalRegulations as reg (reg)}<option value={reg}
+                  >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
+                >{/each}
+            </select>
+          </label>
 
-      <label for="sort" class="term min-w-0"
-        >Sort
-        <select
-          id="sort"
-          aria-label="Sort teams"
-          class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-          value={sort}
-          onchange={(event) => changeOption('sort', event.currentTarget.value)}
-        >
-          <option value="priority">Recommended</option>
-          <option value="recent">Newest shared</option>
-        </select>
-      </label>
+          <label for="sort" class="term min-w-0"
+            >Sort
+            <select
+              id="sort"
+              aria-label="Sort teams"
+              class="atlas-filter-select mt-1 min-h-11 w-full text-base sm:text-sm"
+              value={sort}
+              onchange={(event) =>
+                changeOption('sort', event.currentTarget.value)}
+            >
+              <option value="priority">Recommended</option>
+              <option value="recent">Newest shared</option>
+            </select>
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="browse-scroll-cue" aria-hidden="true">
+      {#if moreFilters}More filters below <ChevronDown class="size-3" />{/if}
     </div>
   </div>
 
-  <section aria-label="Matching teams" class="browse-results mt-5 min-w-0">
-    <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
-      <p
-        aria-live="polite"
-        aria-atomic="true"
-        class="value font-semibold tracking-wide"
-      >
-        {results.length}
-        {results.length === 1 ? 'team' : 'teams'}
+  <section aria-label="Matching teams" class="browse-results">
+    <div
+      class="browse-results-header flex items-center justify-between gap-3 border-b"
+    >
+      <p class="value font-semibold tracking-wide">
+        <span class="sr-only" aria-live="polite" aria-atomic="true"
+          >{results.length}
+          {results.length === 1 ? 'team' : 'teams'}</span
+        >
+        <span class="browse-count" aria-hidden="true">
+          {#key displayedCount}
+            <span
+              class="browse-count-number"
+              style="min-width: {countDigits}ch"
+            >
+              <span
+                class:browse-count-incoming={previousCount !== null}
+                data-count={displayedCount}
+                onanimationend={clearPreviousCount}>{displayedCount}</span
+              >
+              {#if previousCount !== null}<span
+                  class="browse-count-outgoing"
+                  data-count={previousCount}>{previousCount}</span
+                >{/if}
+            </span>
+          {/key}
+          <span class="browse-count-suffix"
+            >{results.length === 1 ? 'team' : 'teams'}</span
+          >
+        </span>
       </p>
       {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || filterState.error}<Button
           type="button"
@@ -485,70 +651,87 @@
           onclick={clearFilters}>Clear filters</Button
         >{/if}
     </div>
-    {#if results.length}
-      <div class="browse-card-grid grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {#each visible as team (team.id)}<TeamCard
-            {team}
-            currentRegulation={current}
-            showRegulation={regulation === 'all'}
-            query={page.url.search}
-          />{/each}
-      </div>
-      {#if pageCount > 1}
-        <nav
-          aria-label="Team result pages"
-          class="mt-8 flex items-center justify-center gap-4"
-        >
-          <Button
-            variant="outline"
-            class="min-h-11"
-            disabled={pageNumber === 1}
-            onclick={() => changeOption('page', String(pageNumber - 1))}
-            >Previous</Button
-          >
-          <span
-            aria-live="polite"
-            aria-atomic="true"
-            class="value text-base-content/70"
-            >Page {pageNumber} of {pageCount}</span
-          >
-          <Button
-            variant="outline"
-            class="min-h-11"
-            disabled={pageNumber === pageCount}
-            onclick={() => changeOption('page', String(pageNumber + 1))}
-            >Next</Button
-          >
-        </nav>
-      {/if}
-    {:else}
-      <div class="plate px-6 py-10">
-        <h2 class="text-lg leading-tight font-extrabold">
-          {filterState.error ? 'Invalid filter link' : 'No matching teams'}
-        </h2>
-        <p class="mt-2 max-w-[46ch] text-[0.9375rem] leading-relaxed">
-          {filterState.error ||
-            'Try changing your Pokémon, set, type, or regulation filters. Filters are never silently relaxed.'}
+    <!-- svelte-ignore a11y_no_noninteractive_tabindex (Keyboard scrolling requires a focusable pane.) -->
+    <div
+      class="browse-results-scroll"
+      bind:this={resultsPane}
+      use:overflowCue={'results'}
+      tabindex="0"
+      role="region"
+      aria-label="Team results"
+    >
+      <div class="browse-results-content">
+        {#if results.length}
+          <div class="browse-card-grid">
+            {#each visible as team (team.id)}<TeamCard
+                {team}
+                currentRegulation={current}
+                showRegulation={regulation === 'all'}
+                query={page.url.search}
+              />{/each}
+          </div>
+          {#if pageCount > 1}
+            <nav
+              aria-label="Team result pages"
+              class="mt-8 flex items-center justify-center gap-4"
+            >
+              <Button
+                variant="outline"
+                class="min-h-11"
+                disabled={pageNumber === 1}
+                onclick={() => changeOption('page', String(pageNumber - 1))}
+                >Previous</Button
+              >
+              <span
+                aria-live="polite"
+                aria-atomic="true"
+                class="value text-secondary-text"
+                >Page {pageNumber} of {pageCount}</span
+              >
+              <Button
+                variant="outline"
+                class="min-h-11"
+                disabled={pageNumber === pageCount}
+                onclick={() => changeOption('page', String(pageNumber + 1))}
+                >Next</Button
+              >
+            </nav>
+          {/if}
+        {:else}
+          <div class="plate px-6 py-10">
+            <h2 class="text-lg leading-tight font-bold tracking-[-0.02em]">
+              {filterState.error ? 'Invalid filter link' : 'No matching teams'}
+            </h2>
+            <p class="mt-2 max-w-[46ch] text-[0.9375rem] leading-relaxed">
+              {filterState.error ||
+                'Try changing your Pokémon, set, type, or regulation filters. Filters are never silently relaxed.'}
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              class="mt-5 min-h-11"
+              disabled={!ready}
+              onclick={clearFilters}>Clear filters</Button
+            >
+          </div>
+        {/if}
+        <p class="provenance mt-8 max-w-3xl">
+          Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}. Teams and
+          result claims via {#each data.catalog.sources as source, index (source.url)}<a
+              class="underline underline-offset-2"
+              href={source.url}
+              target="_blank"
+              rel="external noreferrer">{source.name}</a
+            >{index < data.catalog.sources.length - 1 ? ', ' : ''}{/each}.
+          Published set details available for {teams.filter(
+            (team) => team.paste
+          ).length}
+          teams.
         </p>
-        <Button
-          type="button"
-          variant="outline"
-          class="mt-5 min-h-11"
-          disabled={!ready}
-          onclick={clearFilters}>Clear filters</Button
-        >
       </div>
-    {/if}
-    <p class="provenance mt-8 max-w-3xl">
-      Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}. Teams and result
-      claims via {#each data.catalog.sources as source, index (source.url)}<a
-          class="underline underline-offset-2"
-          href={source.url}
-          target="_blank"
-          rel="external noreferrer">{source.name}</a
-        >{index < data.catalog.sources.length - 1 ? ', ' : ''}{/each}. Published
-      set details available for {teams.filter((team) => team.paste).length}
-      teams.
-    </p>
+    </div>
+    <div class="browse-scroll-cue" aria-hidden="true">
+      {#if moreTeams}More teams below <ChevronDown class="size-3" />{/if}
+    </div>
   </section>
 </main>

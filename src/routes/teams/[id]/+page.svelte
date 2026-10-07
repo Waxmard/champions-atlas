@@ -89,7 +89,7 @@
 
   <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
     <span
-      class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+      class="rounded-[var(--radius-selector)] border border-border bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
       >{regulationLabel(team.regulation)}</span
     >
     <span class="stamp" data-grade={evidenceGrade(strongest.level)}

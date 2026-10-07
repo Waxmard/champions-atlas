@@ -14,6 +14,7 @@
   import type { Member, Team } from '$lib/catalog';
   import { speedBenchmark, speedFor, speedTiers } from '$lib/stats';
   import EvBenchmarkPanel from '$lib/components/EvBenchmarkPanel.svelte';
+  import { Button } from '$lib/components/ui/button';
   import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
 
   let {
@@ -181,25 +182,31 @@
               </span>
             {/if}
             <div class="flex items-center gap-1">
-              <button
+              <Button
                 type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+                variant="ghost"
+                size="xs"
+                class="font-mono text-[11px]"
                 disabled={values[stat] === 0}
                 onclick={() => update(stat, 0)}
               >
                 0
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+                variant="ghost"
+                size="xs"
+                class="font-mono text-[11px]"
                 disabled={values[stat] === 32}
                 onclick={() => update(stat, 32)}
               >
                 32
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+                variant="ghost"
+                size="xs"
+                class="font-mono text-[11px]"
                 disabled={canAdd <= 0}
                 aria-label={`Fill remaining EVs into ${stat}`}
                 title={canAdd > 0
@@ -208,7 +215,7 @@
                 onclick={() => update(stat, currentVal + canAdd)}
               >
                 {canAdd > 0 ? `+${canAdd}` : 'Fill'}
-              </button>
+              </Button>
             </div>
           </div>
           <div class="flex items-center gap-1.5">
@@ -220,7 +227,7 @@
               max="32"
               value={values[stat]}
               data-ev-stat={stat}
-              class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
+              class="atlas-input atlas-input-sm w-14 px-1 text-center font-mono text-xs font-semibold"
               oninput={(event) =>
                 setStat(stat, event.currentTarget.valueAsNumber)}
               onchange={commitDraft}
