@@ -169,6 +169,10 @@ other saved teams follow, then common catalog spreads for the resolved form,
 with exact duplicate pairs removed. Original field suggestions use exact Pokémon
 identity or a successfully resolved matching battle form, never unrelated base
 forms. Catalog counts are not inflated by original recommendations.
+When an observed complete pair matches the immutable original nature, at least
+one matching option remains visible through the catalog and combined list limits,
+even after you change the edited nature. Borrowed spreads retain their own source
+labels; they do not fill in unpublished original EVs.
 You can also ask one benchmark question: survive a named move from a named
 opponent, take a KO, or outspeed. The opponent's set is
 the most common recorded current-regulation set for that species, filtered by

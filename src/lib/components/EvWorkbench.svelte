@@ -56,6 +56,7 @@
     `${normalize(nature)}|${normalize(spread)}`;
 
   const spreadSuggestions = $derived.by(() => {
+    const preferredNature = originalMember?.nature ?? null;
     const seen = new SvelteSet<string>();
     const rows: SpreadSuggestion[] = [];
     const original =
@@ -87,7 +88,9 @@
     for (const option of catalogSpreadSuggestions(
       member,
       teams,
-      currentRegulation
+      currentRegulation,
+      4,
+      preferredNature
     )) {
       const key = spreadKey(option.nature, option.spread);
       if (seen.has(key)) continue;
@@ -105,7 +108,12 @@
         speed: option.speed,
       });
     }
-    return rows.slice(0, 6);
+    const selected = rows.slice(0, 6);
+    const preferred = rows.find(
+      (row) => normalize(row.nature) === normalize(preferredNature ?? '')
+    );
+    if (preferred && !selected.includes(preferred)) selected[5] = preferred;
+    return selected;
   });
 </script>
 
