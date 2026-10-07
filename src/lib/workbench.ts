@@ -771,7 +771,8 @@ export function catalogSpreadSuggestions(
   self: Member,
   teams: Team[],
   currentRegulation: string,
-  limit = 4
+  limit = 4,
+  preferredNature: string | null = null
 ): CatalogSpreadSuggestion[] {
   const form = resolveBattleForm(self);
   if (form.error) return [];
@@ -779,7 +780,12 @@ export function catalogSpreadSuggestions(
     catalogSpreadIndex(teams, currentRegulation).get(normalize(form.pokemon)) ??
     [];
   const initial = parseChampionsSpread(self.spread);
-  return options.slice(0, limit).map((option) => {
+  const selected = options.slice(0, limit);
+  const nature = normalize(preferredNature ?? '');
+  const preferred = options.find((pair) => normalize(pair.nature) === nature);
+  if (limit > 0 && preferred && !selected.includes(preferred))
+    selected[selected.length - 1] = preferred;
+  return selected.map((option) => {
     const deltas = spreadDeltas(initial, option.values);
     return {
       spread: option.spread,
