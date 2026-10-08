@@ -32,6 +32,7 @@ jobs:
         run: npm run import:catalog
         env:
           CHECK_SHEET: '1'
+          ALLOW_STALE_SOURCE_CACHE: '1'
       - name: Enrich team tags
         run: |
           if [ -z "$TYPESAFE_API_KEY" ]; then

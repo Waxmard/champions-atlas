@@ -732,7 +732,7 @@ export function parseVrPaste(data) {
 export const FETCH_ATTEMPTS = 3;
 const RETRY_DELAY_MS = 500;
 
-const isTransient = (status) => status === 429 || status >= 500;
+export const isTransient = (status) => status === 429 || status >= 500;
 
 // Source hosts (paste providers, victoryroad.pro, Google Sheets) time out
 // transiently; a single connect timeout used to abort the whole import.

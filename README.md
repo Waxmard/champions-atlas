@@ -69,6 +69,16 @@ Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
 
+Preview imports request live source refreshes with `CHECK_SHEET=1` and enable
+`ALLOW_STALE_SOURCE_CACHE=1`. If a refresh fails with an eligible transient HTTP
+or network error, the importer warns and reuses validated raw source cache,
+including spreadsheet CSVs. Existing request retries remain unchanged.
+Missing, unreadable, invalid, or oversized fallback
+cache still fails the source load. Fresh validation and cache-write failures stay
+fatal; mandatory-source failures stop the import without replacing the catalog.
+Production, CI, and local imports remain strict unless you explicitly set this
+flag. It does not change offline behavior or impose a cache age limit.
+
 See [data sources and ranking limits](docs/data-sources.md) for source
 interpretation, ranking, and catalog freshness.
 
