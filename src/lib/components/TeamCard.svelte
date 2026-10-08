@@ -5,6 +5,7 @@
   import {
     bestEvidence,
     evidenceGrade,
+    isCustomRulesTeam,
     regulationLabel,
     type Team,
   } from '$lib/catalog';
@@ -24,6 +25,13 @@
   } = $props();
   const result = $derived(bestEvidence(team, currentRegulation));
   const grade = $derived(evidenceGrade(result.level));
+  const custom = $derived(isCustomRulesTeam(team));
+  const evidenceContext = $derived(
+    result.platform === 'Tournament'
+      ? result.event +
+          (result.entrants === undefined ? '' : ` (${result.entrants} players)`)
+      : result.platform
+  );
 
   function open(event: MouseEvent) {
     if (
@@ -81,6 +89,10 @@
     <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
       <div class="min-w-0">
         <span class="stamp" data-grade={grade}>{result.label}</span>
+        {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
+            {evidenceContext}
+          </p>{/if}
+        {#if custom}<p class="term mt-1">Custom rules</p>{/if}
       </div>
       <ArrowUpRight
         class="mt-0.5 size-4 shrink-0 text-base-content/60"

@@ -7,7 +7,7 @@ filters with regulation-aware result ordering. Browse without a team in mind,
 find teams around a preferred core, and keep your current teams locally.
 
 The browser includes a VGCPastes M-C/M-B snapshot, combined Pokémon and set
-filters, preliminary result ordering, and team details. Filters, sorting, and
+filters, credential-based result ordering, and team details. Filters, sorting, and
 browsing position survive opening a team and returning. Saved teams, similarity
 comparison, and set-text editing work locally. Legality validation and PWA
 installation remain unimplemented. See
@@ -69,8 +69,8 @@ Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
 
-See [data sources and ranking limits](docs/data-sources.md). No scheduled
-refresh or additional source integration is configured.
+See [data sources and ranking limits](docs/data-sources.md) for source
+interpretation, ranking, and catalog freshness.
 
 ## Save, compare, and edit
 

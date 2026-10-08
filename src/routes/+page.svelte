@@ -24,13 +24,14 @@
     matchesTeam,
     compareTeams,
     getMemberOptions,
+    isCustomRulesTeam,
     normalize,
     type MemberFilter,
     type Team,
   } from '$lib/catalog';
   import type { PageData } from './$types';
 
-  const browseKeys = ['member', 'regulation', 'sort', 'page', 'type'];
+  const browseKeys = ['member', 'regulation', 'sort', 'page', 'type', 'custom'];
   const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
   let { data }: { data: PageData } = $props();
   let storageError = $state(false);
@@ -59,6 +60,9 @@
     page.url.searchParams.get('regulation') || current
   );
   const sort = $derived(page.url.searchParams.get('sort') || 'priority');
+  const includeCustomRules = $derived(
+    page.url.searchParams.get('custom') === '1'
+  );
   const selectedTypes = $derived(
     page.url.searchParams
       .getAll('type')
@@ -96,6 +100,7 @@
           .filter(
             (team) =>
               (regulation === 'all' || team.regulation === regulation) &&
+              (!isCustomRulesTeam(team) || includeCustomRules) &&
               matchesTeam(team, filters) &&
               matchesTypes(team, selectedTypes)
           )
@@ -128,6 +133,7 @@
     }
     result.set('regulation', params.get('regulation') || current);
     result.set('sort', params.get('sort') === 'recent' ? 'recent' : 'priority');
+    if (params.get('custom') === '1') result.set('custom', '1');
     const pageValue = params.get('page');
     if (pageValue && /^\d+$/.test(pageValue) && Number(pageValue) > 1)
       result.set('page', pageValue);
@@ -455,6 +461,27 @@
     </label>
   </div>
 
+  <div class="mt-4">
+    <label
+      for="include-custom-rules"
+      class="term inline-flex min-h-11 cursor-pointer items-center gap-2.5"
+    >
+      <input
+        id="include-custom-rules"
+        type="checkbox"
+        name="custom"
+        value="1"
+        autocomplete="off"
+        class="size-5 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        checked={includeCustomRules}
+        disabled={!ready}
+        onchange={(event) =>
+          changeOption('custom', event.currentTarget.checked ? '1' : '')}
+      />
+      Include custom-rule teams
+    </label>
+  </div>
+
   <section aria-label="Matching teams" class="mt-5 min-w-0">
     <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
       <p
@@ -464,7 +491,7 @@
       >
         {results.length} teams
       </p>
-      {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || filterState.error}<Button
+      {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || includeCustomRules || filterState.error}<Button
           type="button"
           variant="ghost"
           class="min-h-11 px-2"

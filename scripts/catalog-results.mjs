@@ -50,9 +50,17 @@ function parseAnnotation(note) {
       return { event: ladderEvent, rank: `Rank ${position}` };
   }
 
+  const masterBall =
+    /^(?:Achieved|Reached)\s+Master Ball(?:\s+Rank)?\s*:?\s*#?(\d+)(?:st|nd|rd|th)?$/i.exec(
+      line
+    );
+  if (masterBall) {
+    const division = positiveSafeInteger(masterBall[1]);
+    if (division >= 1 && division <= 4)
+      return { event: ladderEvent, rank: `Master Ball Rank ${division}` };
+  }
   if (/^(?:Reached|Achieved)\s+Master Ball$/i.test(line))
     return { event: ladderEvent, rank: 'Master Ball' };
-
   for (const [pattern, event, label] of numericAnnotations) {
     const match = pattern.exec(line);
     if (match) {

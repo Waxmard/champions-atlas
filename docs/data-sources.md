@@ -23,7 +23,8 @@ Sources:
   sets: explicitly identified M-A, M-B, and M-C doubles tournament entries, and
   doubles social teams. Regulation comes from the published format field only,
   never from a season number, a publication date, or a tier claim. Reported
-  singles and other formats are excluded.
+  singles and other formats are excluded. Existing X-linked social coverage remains
+  on this free source; the ranking policy adds no paid API, scraper, or subscription.
 - [Champions Battle Data](https://championsbattledata.com/api) supplies the level-50
   stat values used for Speed. Its JSON is CORS-enabled and offered for app use,
   and it is not used for usage percentages or result evidence. Refresh the
@@ -88,19 +89,21 @@ supports it, as for Floette-Mega or Raichu-Mega-X, and an itemless Pokémon stay
 its base species. The importer never invents an item, ability, nature, or spread,
 and it rejects a record whose species do not resolve.
 
-Result evidence follows the source claims. A tournament placement becomes an
-ordinal label and never implies a top cut or treats participation as proof. A
-social record that names an event reports only that event placement. A social
-record without an event emits separate Champions ranked battles claims: a
-reported rank, a published tier with its tier rank appended, and a finite
-positive rating. All result reports point to the original X or Twitter post, and
-each record also keeps a separate Poch.ms attribution report. The importer never
-infers a peak, a season finish, or a rating threshold.
+Result evidence follows source claims. Tournament reports retain the published
+rank label and, when available, a positive published entrant count. The count is
+the source-reported field size, not the number of imported teams; missing counts
+remain unknown. Invalid counts and placements beyond a known field are rejected.
+A social record that names an event reports only that event placement. A social
+record without an event emits separate Champions ranked battles claims for a
+reported rank, published tier, and finite positive rating. Reports link to the
+original X or Twitter post and retain separate Poch.ms attribution. The importer
+does not infer peak, season finish, or rating thresholds.
 
 The importer also recovers explicit ladder annotations from published paste
-notes. A whole note that states Achieved or Reached Champion Tier, Rank 1, Rank
-2, or Master Ball, and the global, peak, season-finish, and Showdown numeric
-forms, becomes a ladder claim sourced to the original paste. The notes and the
+notes. Whole-line Achieved or Reached annotations for Champion Tier, Rank 1,
+Rank 2, bare Master Ball, and Master Ball Rank 1–4, plus the global, peak,
+season-finish, and Showdown numeric forms, become ladder claims sourced to the
+original paste. The notes and the
 original source reports stay unchanged, extraction is idempotent, and a
 successful refresh that drops an annotation removes the claim it derived. Only
 whole annotation lines count, so an unrecognized note stays visible and yields no
@@ -140,33 +143,52 @@ M-C is the configured current regulation from the planning discussion. No
 current-rule legality checker exists. Original regulation is not evidence that
 a team remains legal or competitive now.
 
-## Preliminary ordering
+## Ranking and discovery
 
-The comparator passes all agreed comparison examples. Within current or
-historical regulation groups, it recognizes explicit tournament winner,
-runner-up, and top-cut labels, followed by strong reported ladder results,
-current-regulation Master Ball, other results, and unknown results. Qualifying
-current teams precede qualifying historical teams; historical qualifiers precede
-current teams without qualifying evidence.
+The comparator orders non-custom teams ahead of known custom-rule records, known
+regulations ahead of Unknown, then achievement band, current-regulation status,
+and credential merit. A supplied recommendation tiebreak follows merit;
+publication time and team ID settle remaining ties. Newest shared is a deliberate
+date-only sort. Unknown regulation remains below every known regulation.
 
-For this prototype, explicit Champions/Rank 1 labels, reported Champions ladder
-positions up to 1,000, and Showdown positions up to 100 qualify. Numeric positions
-remain numeric positions in the UI; they are never converted into in-game tiers.
-`Master Ball Rank N` is a displayed tier that carries its source tier rank,
-never a global position and never a converted game tier. Teams whose regulation
-is `Unknown` always sort in the lowest group, whatever results they report, so
-they cannot outrank known-regulation teams through reported results. The filter
-labels the option `Unknown regulation`, and cards and the team detail view show
-`Regulation unknown`. The snapshot line reports published set details because
-some records publish partial sets. These numeric cutoffs are provisional, not
-verified game-tier thresholds.
-Tournament size, event significance, exact placement within a result group, and
-season finish versus peak do not yet break ties; publication date does.
-An eighth-place finish is not assumed to mean top cut without explicit evidence.
+Achievement bands, from highest to lowest, are: (1) Champions Champion Tier or
+explicit Champions global, peak, or season-finish position 1–100, then Master Ball
+1; (2) qualifying major-event finishes; (3) Master Ball 2, Champions positions
+101–1,000, then Showdown positions 1–100; (4) supported community finishes; (5)
+Master Ball 3, Master Ball 4, then unspecified Master Ball in the current
+regulation; (6) other reported results; and (7) no result. Tournament Champion,
+Winner, and Runner up are placement labels, not ladder credentials. Numeric ladder
+positions retain their platform context and are not converted to tiers or compared
+across platforms.
 
-Before treating ordering as final, settle numeric ladder cutoffs and tournament
-strength/placement rules, add structured event evidence, and verify current
-regulation legality. Report labels describe source claims, not verified results.
+Major-event names match exact normalized aliases: Worlds, Worlds 2026, Worlds 2026
+San Francisco, Baltimore Regional 2027, and Frankfurt Regional Championships.
+Worlds finishes through 32nd and listed Regional Championship finishes through
+eighth qualify; an explicit top-cut claim qualifies only for a listed major.
+Other tournament finishes receive community priority only when the published
+field has at least 32 entrants and the finish is in the top quarter, capped at
+eighth. For example, eighth of 32 qualifies, while ninth of 32 and eighth of
+eight do not. Missing field size remains unknown. Regional Challenge and arbitrary
+event names containing World or Regional do not receive major priority.
+
+After current-regulation status, major results sort Worlds before listed regional
+events, then better finish bounds and larger known fields. Community results sort by finish-to-field ratio,
+then larger field and finish. Other reported results and no-result teams have no
+inferred credential merit. Publication time cannot promote a lower achievement
+band above a higher one.
+
+Known custom-rule records match Mudkip's Marsh Pit #6 by normalized event name or
+its published Poch record IDs. They are hidden from Browse by default; the Include
+custom-rule teams option reveals them there. Automatic recommendations always
+exclude these records, regardless of the Browse option. They remain available by
+direct link, keep their source attribution, and can be saved or used as teams.
+Their displayed evidence receives reported-grade treatment. This policy does not
+classify other similarly named events or infer standard-format legality; unknown
+restrictions are not evidence of standard rules.
+
+Cached catalogs without entrant metadata remain readable and use unknown field
+size conservatively. Event aliases and result labels describe source claims; they
+do not independently verify event identity, attendance, or results.
 
 ## Inferred tags
 

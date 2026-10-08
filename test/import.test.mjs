@@ -29,7 +29,7 @@ import {
   validatePng,
 } from '../scripts/sync-assets.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
-import { bestEvidence } from '../src/lib/catalog.ts';
+import { bestEvidence, evidenceGrade } from '../src/lib/catalog.ts';
 
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-bootstrap-'));
@@ -223,12 +223,10 @@ test('paste notes recover only explicit ladder results without duplicating claim
       sourceUrl: 'https://x.com/averagewoopfan/status/2094857849721807173',
     },
   ]);
-  assert.deepEqual(bestEvidence(enriched, 'M-C'), {
-    level: 1,
-    label: 'Champion Tier',
-    platform: 'Champions ladder',
-    event: 'Champions ranked battles',
-  });
+  const credential = bestEvidence(enriched, 'M-C');
+  assert.equal(credential.label, 'Champion Tier');
+  assert.equal(credential.platform, 'Champions ladder');
+  assert.equal(evidenceGrade(credential.level), 'strong');
   assert.deepEqual(
     enrich(enriched, { paste, notes }).reports,
     enriched.reports
