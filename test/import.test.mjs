@@ -171,6 +171,25 @@ test('paste enrichment matches species and item, never array position', () => {
       { paste: paste.replace('Item0', 'Different item') }
     )
   );
+  const cosmetic = enrich(
+    {
+      members: [
+        { pokemon: 'Sinistcha-Masterpiece', item: 'Colbur Berry' },
+        ...members.slice(1),
+      ],
+      pasteUrl: '',
+    },
+    {
+      paste: [
+        'Sinistcha @ Colbur Berry',
+        ...members.slice(1).map((m) => `${m.pokemon} @ ${m.item}`),
+      ]
+        .map((set) => `${set}\nAbility: Ability\n- Protect`)
+        .join('\n\n'),
+    }
+  );
+  assert.equal(cosmetic.members[0].pokemon, 'Sinistcha-Masterpiece');
+  assert.deepEqual(cosmetic.members[0].moves, ['Protect']);
 });
 
 test('paste notes recover only explicit ladder results without duplicating claims', () => {

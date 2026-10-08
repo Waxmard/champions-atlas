@@ -12,7 +12,11 @@ import {
   syncSprites,
   validateIndex,
 } from './sync-assets.mjs';
-import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
+import {
+  battleSpecies,
+  cosmeticForms,
+  resolveBattleForm,
+} from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import {
   devonCorpUrl,
@@ -192,9 +196,11 @@ export function deduplicate(teams) {
 export function enrich(team, data) {
   const sets = parsePaste(data.paste);
   const members = team.members.map((member) => {
+    const memberKey =
+      cosmeticForms[base(member.pokemon)] ?? base(member.pokemon);
     const matches = sets.filter(
       (set) =>
-        base(set.pokemon) === base(member.pokemon) &&
+        (cosmeticForms[base(set.pokemon)] ?? base(set.pokemon)) === memberKey &&
         slug(set.item || '') === slug(member.item || '')
     );
     if (matches.length !== 1)
@@ -268,7 +274,10 @@ function rosterMatches(members, expectedSpecies) {
     )
   )
     throw errorWithReason('invalid_roster', 'Invalid published roster');
-  const canonical = (name) => battleSpecies(name)?.name || name;
+  const canonical = (name) => {
+    const species = battleSpecies(name)?.name || name;
+    return cosmeticForms[normalize(species)] ?? species;
+  };
   const actual = members
     .map((member) => normalize(canonical(resolvedPokemon(member))))
     .sort();

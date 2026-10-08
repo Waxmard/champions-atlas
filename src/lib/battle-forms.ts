@@ -8,6 +8,17 @@ const aliases: Record<string, string> = {
   floetteeternalmega: 'Floette-Mega',
 };
 
+// Appearance-only forms: identical stats, types, abilities, and movesets, so a
+// set naming one form is the same set as the other.
+export const cosmeticForms: Record<string, string> = {
+  sinistchamasterpiece: 'sinistcha',
+  sinisteaantique: 'sinistea',
+  polteageistantique: 'polteageist',
+  poltchageistartisan: 'poltchageist',
+  vivillonfancy: 'vivillon',
+  vivillonpokeball: 'vivillon',
+};
+
 export const battleSpecies = (name: string) =>
   generation.species.get(normalize(aliases[normalize(name)] ?? name) as ID);
 

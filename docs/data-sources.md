@@ -67,8 +67,11 @@ ignored by Git.
 
 Sheet regulation, species, items, author, publication date, result claims, and
 replica status are retained. Missing values remain unknown. Paste sets match by
-species and item, allowing a base species to match the sheet's Mega form. A
-mismatch fails the import instead of assigning details to the wrong Pokémon.
+species and item, allowing a base species to match the sheet's Mega form. The
+declared appearance-only forms (`cosmeticForms`, such as `Sinistcha` and
+`Sinistcha-Masterpiece`) match across their spellings too, on both the paste and
+published-roster checks, while the retained name stays the one the source wrote.
+A mismatch fails the import instead of assigning details to the wrong Pokémon.
 Paste notes remain visible because they can describe a different regulation.
 
 Poch.ms records keep published values and leave the rest unknown. A missing set
