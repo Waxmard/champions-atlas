@@ -23,11 +23,16 @@ jobs:
             src/lib/data/catalog.json
             static/sprites
             static/items
+            static/posts
           key: catalog-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             catalog-${{ runner.os }}-
       - uses: jdx/mise-action@v4
       - run: npm ci
+      - name: Import X posts
+        run: npm run import:x
+        env:
+          CHECK_SHEET: '1'
       - name: Import catalog
         run: npm run import:catalog
         env:

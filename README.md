@@ -54,7 +54,14 @@ Regenerate or refresh explicitly with:
 npm run import:catalog
 REFRESH=1 npm run import:catalog
 OFFLINE=1 npm run import:catalog
+npm run import:x
 ```
+
+`npm run import:x` is the only step that contacts X: it fills the ignored
+`.cache/catalog/x-posts.json` post index from FxTwitter search and post lookups,
+and writes the ignored `src/lib/data/team-posts.json` evidence plus mirrored
+screenshots in `static/posts/`. The catalog import then admits X posts that link
+a Champions paste without fetching anything itself.
 
 The importer caches source files in `.cache/catalog`; `REFRESH=1` refreshes
 spreadsheet metadata. `OFFLINE=1` requires cached files. `PASTE_LIMIT` controls

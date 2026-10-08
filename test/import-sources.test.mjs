@@ -302,7 +302,7 @@ test('imports public index teams alongside the sheets and accounts for every row
 
     assert.deepEqual(
       catalog.sources.map(({ name }) => name),
-      ['VGCPastes', 'Victory Road', 'DevonCorp', 'Poch.ms']
+      ['VGCPastes', 'Victory Road', 'DevonCorp', 'Poch.ms', 'X posts']
     );
     assert.equal(catalog.teams.length, 4);
     const alice = catalog.teams.find(({ creator }) => creator === 'Alice');

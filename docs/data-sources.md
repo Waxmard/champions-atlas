@@ -1,10 +1,11 @@
 # Catalog snapshot
 
-The catalog holds Pokémon Champions doubles teams from four sources: the
+The catalog holds Pokémon Champions doubles teams from five sources: the
 VGCPastes M-C and M-B spreadsheets, Victory Road's Champions replica-team page,
-DevonCorp's M-A collection, and the published Poch.ms leaderboard. Teams from a
-sheet or an index include parsed paste sets, and Poch.ms records include the set
-details that page publishes. Missing fields remain unknown.
+DevonCorp's M-A collection, the published Poch.ms leaderboard, and X posts that
+link a Champions paste. Teams from a sheet or an index include parsed paste sets,
+and Poch.ms records include the set details that page publishes. Missing fields
+remain unknown.
 
 Sources:
 
@@ -25,6 +26,15 @@ Sources:
   never from a season number, a publication date, or a tier claim. Reported
   singles and other formats are excluded. Existing X-linked social coverage remains
   on this free source; the ranking policy adds no paid API, scraper, or subscription.
+- [X](https://x.com/search?q=pokepast.es%20pokemonchampions&f=live) posts are read
+  through the keyless FxTwitter JSON API, a community mirror rather than X's own
+  API, by `npm run import:x`. That script searches for Champions paste posts,
+  keeps the posts whose text links a PokéPaste or VR Pastes URL, and stores each
+  post's text, author, date, and screenshot. The catalog import then admits a post
+  as a team only when its linked paste passes the same format and roster checks as
+  any other index row, and prints `X: N discovered — A accepted, R retained, S
+skipped, M merged.` like every other source. A post supplies no result claim:
+  its report keeps empty event and rank fields, so it grades as unattributed.
 - [Champions Battle Data](https://championsbattledata.com/api) supplies the level-50
   stat values used for Speed. Its JSON is CORS-enabled and offered for app use,
   and it is not used for usage percentages or result evidence. Refresh the
@@ -55,13 +65,33 @@ previous catalog stays published. Nothing imports on a schedule outside that
 workflow: dev, build, and typecheck generate a missing catalog and otherwise
 leave it in place.
 
+`deploy-prod.yml` and `deploy-preview.yml` also run `npm run import:x` before the
+catalog import, under the same `CHECK_SHEET=1` refresh gate, so X discovery and
+post details refresh on that daily schedule. `ci.yml` only restores the cache and
+never fetches X. Dev, build, and typecheck write an empty post stub when
+`src/lib/data/team-posts.json` is missing, and never fetch. `OFFLINE=1`, or
+`--if-missing`, likewise writes the stub instead of fetching.
+
+X ingest bounds its own work per run: `X_POST_LIMIT` caps post lookups (400 by
+default, oldest first), `X_PAGE_LIMIT` caps search pages per query (1), and
+`X_IMAGE_LIMIT` caps mirrored screenshots (60). `X_AUTHOR_LIMIT` rotates how many
+citing authors are re-searched per run (40). `X_REFRESH_DAYS` (30) is the age at
+which a stored post is fetched again on a run without the refresh gate; a run
+with `CHECK_SHEET=1` or `REFRESH=1` refreshes the oldest stored posts every time
+instead. If every search fails, or five post lookups in a row cannot reach the
+API, the run keeps the cached post index and exits 0; with no cache at all it
+exits 1. A post lookup that reaches the API but returns a non-200 code or a
+non-JSON body is stored as `unavailable` and the team page says so.
+
 ## Reuse conditions
 
 The owner enabled daily automation for personal use with attribution and local
 caching, and accepted the unresolved reuse question for this combined source
 data. That decision is not a license from any provider, and public access alone
-grants no permission to redistribute. Generated catalogs and source caches are
-ignored by Git.
+grants no permission to redistribute. Stored X post text and screenshots are
+third-party content shown with the author handle and a link back to the post, and
+are never presented as catalog-verified result claims. Generated catalogs and
+source caches are ignored by Git.
 
 ## Interpretation
 
@@ -118,14 +148,26 @@ so a row that links another team's paste is dropped rather than misattributed. A
 missing result claim is not a rejection: an index row with no explicit placement
 still imports.
 
+An X team is such an index row. One post admits at most one team: the first
+linked paste that carries a Champions regulation, and never a paste whose format
+names another game. The team page shows the citing post's text, author handle,
+and publication date, clipped to 200 characters, with at most two screenshots
+that use the mirrored copy when it exists and the original image URL otherwise.
+A post whose lookup failed is labelled unavailable, and a post whose author does
+not match the team's listed creator is labelled as differing, rather than
+silently attributed.
+
 Exact duplicates share regulation, paste URL, and member species/items. Their
 sheet IDs and report links merge; different paste URLs remain separate variants.
 Imports are atomic, and source files are cached. `REFRESH=1` or `CHECK_SHEET=1`
 fetches every source, the Poch.ms leaderboard included; `OFFLINE=1` requires the
 cache. The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
 accepted records, 92 of them with regulation `Unknown`, and 194 skipped records
-(reported singles and unsupported formats). The displayed snapshot date
-tracks catalog generation, not independent verification of source claims.
+(reported singles and unsupported formats). With the X post index, the measured
+2026-10-08 import holds 1759 teams where the same inputs without it hold 1717, so
+X adds 42 admitted teams and 62 merged report links; 1186 of its 1290 cached posts
+are skipped, nearly all because their text links no paste. The displayed snapshot
+date tracks catalog generation, not independent verification of source claims.
 By default every paste is fetched with three concurrent workers and reused from
 cache. Individual paste failures preserve compatible previous sets and expose an
 error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
