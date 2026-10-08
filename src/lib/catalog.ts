@@ -40,6 +40,32 @@ export interface MemberFilter {
   ability: string;
   move: string;
 }
+
+export interface PostMedia {
+  type: string;
+  remote: string;
+  local: string | null;
+  alt: string | null;
+  width: number | null;
+  height: number | null;
+}
+
+export interface PostEvidence {
+  url: string;
+  handle: string;
+  name: string;
+  verified: boolean;
+  createdAt: string;
+  text: string;
+  state: string;
+  creatorMismatch: boolean;
+  media: PostMedia[];
+  pastes: string[];
+}
+
+export const xStatusId = (url: string) =>
+  /^https:\/\/(?:x|twitter)\.com\/[^/]+\/status\/(\d+)/.exec(url)?.[1] ?? null;
+
 export const normalize = (text: string) =>
   text
     .toLowerCase()

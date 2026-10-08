@@ -28,6 +28,7 @@ import {
 import { reportsWithLadderNotes } from './catalog-results.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
 import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
+import { readXCandidates, xSearchUrl } from './x-source.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
@@ -555,6 +556,9 @@ async function main() {
     parsePoch,
     indexRefresh
   );
+  const x = await readXCandidates(cache);
+  if (x === null)
+    console.warn('X: no cached post index; run npm run import:x.');
   const victoryRoad = parseVictoryRoad(victoryRoadHtml);
   const devonCorp = parseDevonCorp(devonCorpHtml);
   const unique = deduplicate(teams);
@@ -563,6 +567,7 @@ async function main() {
     victoryRoadHtml,
     devonCorpHtml,
     pochHtml,
+    ...(x ? [x.raw] : []),
   ]);
   let priorCatalog = null;
   try {
@@ -691,6 +696,7 @@ async function main() {
   for (const [name, source] of [
     ['Victory Road', victoryRoad],
     ['DevonCorp', devonCorp],
+    ...(x ? [['X', x]] : []),
   ]) {
     const counts = {
       discovered: source.candidates.length + source.skipped.length,
@@ -762,6 +768,7 @@ async function main() {
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
       { name: 'Poch.ms', url: pochUrl },
+      { name: 'X posts', url: xSearchUrl },
     ],
     sourceHash,
     teams: catalogTeams,

@@ -29,6 +29,7 @@ jobs:
             src/lib/data/catalog.json
             static/sprites
             static/items
+            static/posts
           key: catalog-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             catalog-${{ runner.os }}-
