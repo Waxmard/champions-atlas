@@ -13,8 +13,11 @@
     bestEvidence,
     evidence,
     evidenceGrade,
+    isCustomRulesTeam,
     isPasteUrl,
     regulationLabel,
+    xStatusId,
+    type PostEvidence,
     type Team,
   } from '$lib/catalog';
   import {
@@ -28,8 +31,15 @@
 
   let { data }: { data: PageData } = $props();
   const team: Team = $derived(data.team);
+  const posts = $derived(data.posts as Record<string, PostEvidence>);
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
   const strongest = $derived(bestEvidence(team, data.currentRegulation));
+  const custom = $derived(isCustomRulesTeam(team));
+  const summaryContext = $derived(
+    strongest.entrants === undefined
+      ? strongest.event
+      : `${strongest.event} (${strongest.entrants} players)`
+  );
   let ready = $state(false);
   let copyStatus = $state('');
   onMount(() => {
@@ -90,10 +100,10 @@
       class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
       >{regulationLabel(team.regulation)}</span
     >
-    <span class="stamp" data-grade={evidenceGrade(strongest.level)}
+    <span class="stamp" data-grade={evidenceGrade(custom ? 3 : strongest.level)}
       >{strongest.label}</span
     >
-    {#if strongest.event}<span class="provenance">{strongest.event}</span>{/if}
+    {#if strongest.event}<span class="provenance">{summaryContext}</span>{/if}
     <span class="provenance">Shared {team.publishedAt || 'date unknown'}</span>
   </div>
 
@@ -103,6 +113,11 @@
     {team.name}
   </h1>
   <p class="provenance mt-2.5">By {team.creator || 'an unlisted creator'}</p>
+
+  {#if custom}<p class="term mt-3">
+      Custom-rule event: this team was shared for a tournament with additional
+      Pokémon restrictions. Hidden from normal recommendations.
+    </p>{/if}
 
   <div class="mt-6 flex flex-wrap gap-2.5">
     <Button class="min-h-11 px-4" disabled={!ready} onclick={useTeam}
@@ -183,18 +198,53 @@
           team.regulation,
           data.currentRegulation
         )}
+        {@const post = posts[xStatusId(report.sourceUrl) ?? '']}
         <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div class="min-w-0">
             {#if team.reports.length > 1}<span
                 class="stamp"
-                data-grade={evidenceGrade(result.level)}>{result.label}</span
+                data-grade={evidenceGrade(custom ? 3 : result.level)}
+                >{result.label}</span
               >{/if}
             <div class="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
               <p class="value">
                 {report.event || 'Event not listed'}
               </p>
               <p class="term">{result.platform}</p>
+              {#if report.entrants !== undefined}<p class="provenance">
+                  {report.entrants} players
+                </p>{/if}
             </div>
+            {#if post}
+              {#if post.text}<p class="provenance mt-2">{post.text}</p>{/if}
+              {#if post.handle}<p class="provenance mt-1 break-all">
+                  <a
+                    class="underline hover:text-base-content"
+                    href={post.url}
+                    target="_blank"
+                    rel="external noreferrer">@{post.handle}</a
+                  >
+                  <span class="mx-1.5"></span>{post.createdAt}
+                </p>{/if}
+              {#if post.media.length}<div class="mt-2 flex flex-wrap gap-2">
+                  {#each post.media as media, index (index)}
+                    <img
+                      src={media.local ?? media.remote}
+                      alt={media.alt || `Team screenshot from @${post.handle}`}
+                      width={media.width ?? 640}
+                      height={media.height ?? 360}
+                      loading="lazy"
+                      class="h-32 w-auto rounded-[var(--radius-box)] border border-base-300"
+                    />
+                  {/each}
+                </div>{/if}
+              {#if post.state === 'unavailable'}<p class="provenance mt-1">
+                  Post unavailable
+                </p>{/if}
+              {#if post.creatorMismatch}<p class="provenance mt-1">
+                  Post author differs from the listed creator.
+                </p>{/if}
+            {/if}
           </div>
           {#if report.sourceUrl}<Button
               href={report.sourceUrl}

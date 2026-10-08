@@ -241,8 +241,16 @@ function catalogTeam(row, tournament, canonicalNames) {
     creator = text(row.player, 'player', true);
     const event = text(row.event, 'event', true);
     const placement = position(row.placement, 'placement', true);
+    const entrants = position(row.players, 'players', true);
+    if (placement && entrants && placement > entrants)
+      fail('invalid_position', 'placement cannot exceed players');
     name = `${creator} — ${event}`;
-    reports.push({ event, rank: ordinal(placement), sourceUrl: pochUrl });
+    reports.push({
+      event,
+      rank: ordinal(placement),
+      sourceUrl: pochUrl,
+      ...(entrants && { entrants }),
+    });
   } else {
     const displayName = text(row.displayName, 'displayName');
     const handle = text(row.handle, 'handle');

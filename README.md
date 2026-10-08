@@ -7,7 +7,7 @@ filters with regulation-aware result ordering. Browse without a team in mind,
 find teams around a preferred core, and keep your current teams locally.
 
 The browser includes a VGCPastes M-C/M-B snapshot, combined Pokémon and set
-filters, preliminary result ordering, and team details. Filters, sorting, and
+filters, credential-based result ordering, and team details. Filters, sorting, and
 browsing position survive opening a team and returning. Saved teams, similarity
 comparison, and set-text editing work locally. Legality validation and PWA
 installation remain unimplemented. See
@@ -54,7 +54,14 @@ Regenerate or refresh explicitly with:
 npm run import:catalog
 REFRESH=1 npm run import:catalog
 OFFLINE=1 npm run import:catalog
+npm run import:x
 ```
+
+`npm run import:x` is the only step that contacts X: it fills the ignored
+`.cache/catalog/x-posts.json` post index from FxTwitter search and post lookups,
+and writes the ignored `src/lib/data/team-posts.json` evidence plus mirrored
+screenshots in `static/posts/`. The catalog import then admits X posts that link
+a Champions paste without fetching anything itself.
 
 The importer caches source files in `.cache/catalog`; `REFRESH=1` refreshes
 spreadsheet metadata. `OFFLINE=1` requires cached files. `PASTE_LIMIT` controls
@@ -69,8 +76,18 @@ Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
 
-See [data sources and ranking limits](docs/data-sources.md). No scheduled
-refresh or additional source integration is configured.
+Preview imports request live source refreshes with `CHECK_SHEET=1` and enable
+`ALLOW_STALE_SOURCE_CACHE=1`. If a refresh fails with an eligible transient HTTP
+or network error, the importer warns and reuses validated raw source cache,
+including spreadsheet CSVs. Existing request retries remain unchanged.
+Missing, unreadable, invalid, or oversized fallback
+cache still fails the source load. Fresh validation and cache-write failures stay
+fatal; mandatory-source failures stop the import without replacing the catalog.
+Production, CI, and local imports remain strict unless you explicitly set this
+flag. It does not change offline behavior or impose a cache age limit.
+
+See [data sources and ranking limits](docs/data-sources.md) for source
+interpretation, ranking, and catalog freshness.
 
 ## Save, compare, and edit
 

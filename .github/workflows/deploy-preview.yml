@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   deploy-preview:
-    if: contains(github.event.pull_request.labels.*.name, 'deploy-preview')
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-preview') && !contains(github.event.pull_request.labels.*.name, 'inspect-import-cache') }}
     runs-on: ubuntu-24.04
     environment: preview
     steps:
@@ -23,15 +23,21 @@ jobs:
             src/lib/data/catalog.json
             static/sprites
             static/items
+            static/posts
           key: catalog-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             catalog-${{ runner.os }}-
       - uses: jdx/mise-action@v4
       - run: npm ci
+      - name: Import X posts
+        run: npm run import:x
+        env:
+          CHECK_SHEET: '1'
       - name: Import catalog
         run: npm run import:catalog
         env:
           CHECK_SHEET: '1'
+          ALLOW_STALE_SOURCE_CACHE: '1'
       - name: Enrich team tags
         run: |
           if [ -z "$TYPESAFE_API_KEY" ]; then
@@ -62,3 +68,102 @@ jobs:
           header: deploy-preview
           message: |
             Preview deployed: ${{ steps.channel.outputs.url }}
+
+  inspect-import-cache:
+    if: ${{ github.event.action == 'labeled' && github.event.label.name == 'inspect-import-cache' && github.event.pull_request.number == 36 }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v4
+      - uses: actions/cache/restore@v6
+        id: catalog-cache
+        with:
+          path: |
+            .cache/catalog
+            .cache/jev
+            src/lib/data/catalog.json
+            static/sprites
+            static/items
+          key: catalog-Linux-37804234930
+          fail-on-cache-miss: true
+      - if: ${{ steps.catalog-cache.outputs.cache-hit != 'true' || steps.catalog-cache.outputs.cache-matched-key != 'catalog-Linux-37804234930' }}
+        run: |
+          echo '::error::Exact historical catalog cache was not restored'
+          exit 1
+      - run: npm ci --ignore-scripts
+      - env:
+          EXPECTED_SOURCE_HASH: 91a7c407384b3d34f418e171dbabefacafe99a48fe1b63a8697333c799bb278d
+        run: |
+          node --input-type=module <<'PROGRAM'
+          import { createHash } from 'node:crypto';
+          import { readFile } from 'node:fs/promises';
+          import { parseVictoryRoad, parseVrPaste } from './scripts/catalog-sources.mjs';
+          import { parseSheet, deduplicate, teamFromIndex } from './scripts/import-catalog.mjs';
+          import { parsePoch } from './scripts/poch-source.mjs';
+          import { parsePaste } from './src/lib/paste.ts';
+          import { normalize } from './src/lib/catalog.ts';
+          import { battleSpecies, resolveBattleForm } from './src/lib/battle-forms.ts';
+
+          globalThis.fetch = async (address) => {
+            throw new Error('Cache diagnostics must not fetch source URLs: ' + address);
+          };
+          const expected = process.env.EXPECTED_SOURCE_HASH;
+          const read = (name) => readFile('.cache/catalog/' + name, 'utf8');
+          const catalog = JSON.parse(await readFile('src/lib/data/catalog.json', 'utf8'));
+          const order = [
+            'M-C.csv',
+            'M-B.csv',
+            'victory-road.html',
+            'devoncorp-m-a.html',
+            'poch-leaderboard.html',
+          ];
+          const texts = await Promise.all(order.map(read));
+          const recomputed = createHash('sha256')
+            .update(texts.join(String.fromCharCode(10)))
+            .digest('hex');
+          if (catalog.sourceHash !== expected || recomputed !== expected)
+            throw new Error(
+              'Catalog identity mismatch: expected=' + expected + ' catalog=' + catalog.sourceHash + ' recomputed=' + recomputed
+            );
+          console.log(JSON.stringify({ updatedAt: catalog.updatedAt, sourceHash: catalog.sourceHash, teams: catalog.teams.length }));
+          console.log('pasteError entries', JSON.stringify(catalog.teams.filter((team) => team.pasteError).map((team) => ({ name: team.name, pasteUrl: team.pasteUrl, pasteError: team.pasteError }))));
+
+          const [mcCsv, mbCsv, victoryRoadHtml, , pochHtml] = texts;
+          const canonicalNames = new Map();
+          for (const team of deduplicate([...parseSheet(mcCsv, 'M-C'), ...parseSheet(mbCsv, 'M-B')]))
+            for (const member of team.members) {
+              const resolved = resolveBattleForm(member);
+              const key = normalize(resolved.error ? member.pokemon : resolved.pokemon);
+              if (!canonicalNames.has(key)) canonicalNames.set(key, member.pokemon);
+            }
+          const canonical = (name) => battleSpecies(name)?.name || name;
+          const resolvedName = (member) => {
+            const resolved = resolveBattleForm(member);
+            return resolved.error ? member.pokemon : resolved.pokemon;
+          };
+
+          const vr = parseVictoryRoad(victoryRoadHtml);
+          for (const id of ['qZK7HCqj', 'cpTuCZeC']) {
+            const candidates = vr.candidates.filter((candidate) => candidate.pasteUrl.split('/').at(-1) === id);
+            if (!candidates.length) throw new Error('No index candidate for ' + id);
+            const payload = { ...parseVrPaste(JSON.parse(await read('vr-' + id + '.json'))), provider: 'victory-road' };
+            const members = parsePaste(payload.paste);
+            console.log(JSON.stringify({ id, actual: members.map((member) => ({ pokemon: member.pokemon, item: member.item })), actualKeys: members.map((member) => normalize(canonical(resolvedName(member)))).sort() }));
+            for (const candidate of candidates) {
+              let verdict;
+              try {
+                teamFromIndex(candidate, payload, canonicalNames);
+                verdict = 'accepted';
+              } catch (error) {
+                verdict = { reason: error.reason, message: error.message };
+              }
+              console.log(JSON.stringify({ id, creator: candidate.creator, regulation: candidate.regulation, expectedSpecies: candidate.expectedSpecies, expectedKeys: candidate.expectedSpecies.map((species) => normalize(canonical(species))).sort(), verdict }));
+            }
+          }
+
+          const poch = parsePoch(pochHtml, canonicalNames);
+          const reasons = poch.skipped.reduce((totals, skip) => ({ ...totals, [skip.reason]: (totals[skip.reason] || 0) + 1 }), {});
+          console.log(JSON.stringify({ accepted: poch.teams.length, reasons, unresolved: poch.skipped.filter((skip) => skip.reason === 'unresolved_species').map(({ id, source, message }) => ({ id, source, message })) }));
+          PROGRAM

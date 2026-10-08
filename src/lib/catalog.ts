@@ -15,6 +15,7 @@ export interface Report {
   event: string;
   rank: string;
   sourceUrl: string;
+  entrants?: number;
 }
 export interface Team {
   id: string;
@@ -39,6 +40,32 @@ export interface MemberFilter {
   ability: string;
   move: string;
 }
+
+export interface PostMedia {
+  type: string;
+  remote: string;
+  local: string | null;
+  alt: string | null;
+  width: number | null;
+  height: number | null;
+}
+
+export interface PostEvidence {
+  url: string;
+  handle: string;
+  name: string;
+  verified: boolean;
+  createdAt: string;
+  text: string;
+  state: string;
+  creatorMismatch: boolean;
+  media: PostMedia[];
+  pastes: string[];
+}
+
+export const xStatusId = (url: string) =>
+  /^https:\/\/(?:x|twitter)\.com\/[^/]+\/status\/(\d+)/.exec(url)?.[1] ?? null;
+
 export const normalize = (text: string) =>
   text
     .toLowerCase()
@@ -113,64 +140,227 @@ export function matchesTeam(
   );
 }
 
-export function evidence(report: Report, regulation: string, current: string) {
-  const { event, rank } = report;
-  if (!event || !rank)
-    return { level: 4, label: 'No reported result', platform: 'Unknown' };
-  const showdown = /showdown/i.test(event);
-  const ladder = showdown || /ranked|ladder/i.test(event);
-  if (ladder) {
-    const position =
-      /^(?:Reported|Peak|Season finish) #?(\d+)(?:st|nd|rd|th)?$/i.exec(rank) ||
-      /^(\d+)(?:st|nd|rd|th)$/i.exec(rank);
-    const high =
-      /^(?:champions?(?: tier)?|rank 1)$/i.test(rank) ||
-      (position && Number(position[1]) <= (showdown ? 100 : 1000));
-    const masterBall =
-      /^master ?ball(?: rank [1-9]\d*)?$/i.test(rank) && regulation === current;
-    return {
-      level: high ? 1 : masterBall ? 2 : 3,
-      label: rank,
-      platform: showdown ? 'Showdown' : 'Champions ladder',
-    };
-  }
-  const strong =
-    /^(champion|winner|runner up|1st|2nd)(?: \(Seniors\))?$|^top cut$/i.test(
-      rank
-    );
-  return { level: strong ? 0 : 3, label: rank, platform: 'Tournament' };
-}
+const majorEventTier = (event: string) => {
+  const key = normalize(event);
+  if (['worlds', 'worlds2026', 'worlds2026sanfrancisco'].includes(key))
+    return 0;
+  if (['baltimoreregional2027', 'frankfurtregionalchampionships'].includes(key))
+    return 1;
+  return null;
+};
 
-export interface TeamEvidence {
+type Priority = readonly [number, number, number, number, number];
+type ClassifiedEvidence = {
   level: number;
   label: string;
   platform: string;
+  priority: Priority;
+  entrants?: number;
+};
+const noEvidence = (entrants?: number): ClassifiedEvidence => ({
+  level: 4,
+  label: 'No reported result',
+  platform: 'Unknown',
+  priority: [6, 0, 0, 0, 0],
+  entrants,
+});
+const scalarCompare = (a: number, b: number) => (a === b ? 0 : a < b ? -1 : 1);
+const priorityCompare = (a: Priority, b: Priority) => {
+  for (let i = 0; i < a.length; i++) {
+    const compared = scalarCompare(a[i], b[i]);
+    if (compared) return compared;
+  }
+  return 0;
+};
+
+export function isCustomRulesTeam(team: {
+  id?: string;
+  reports?: readonly Report[];
+}): boolean {
+  return (
+    Boolean(
+      team.id &&
+      /^poch-tournament-6ab431f2e905c1db68748c9c-[1-9]\d*$/.test(team.id)
+    ) ||
+    Boolean(
+      team.reports?.some(
+        (report) =>
+          normalize(report.event) === normalize('Mudkip’s Marsh Pit #6')
+      )
+    )
+  );
+}
+
+export function evidence(
+  report: Report,
+  regulation: string,
+  current: string
+): ClassifiedEvidence {
+  const { event, rank, entrants } = report;
+  if (!event || !rank) return noEvidence(entrants);
+  const trimmed = event.trim();
+  const showdown = /^Showdown Ladder(?: \(Bo[13]\))?$/i.test(trimmed);
+  const champions =
+    /^(?:Ladder|Ranked Ladder|Champions Ladder|Champions ranked battles|Ranked Season M-[1-9]\d*|Champions ranked battles — (?:Season M-[1-9]\d*|Shared team))$/i.test(
+      trimmed
+    );
+  const ladder = showdown || champions;
+  if (ladder) {
+    const numeric =
+      /^(?:Reported|Peak|Season finish) #?(\d+)(?:st|nd|rd|th)?$/i.exec(rank) ||
+      /^(\d+)(?:st|nd|rd|th)$/i.exec(rank);
+    const value = numeric ? Number(numeric[1]) : NaN;
+    const position =
+      Number.isSafeInteger(value) && value > 0 ? value : undefined;
+    const division = champions
+      ? /^(?:Master ?Ball(?: Rank)? ([1-4])|Rank ([12]))$/i.exec(rank)
+      : null;
+    const divisionNumber = division?.[1] ?? division?.[2];
+    const champion = champions && /^(?:champions?)(?: tier)?$/i.test(rank);
+    const platform = showdown ? 'Showdown' : 'Champions ladder';
+    if (
+      champion ||
+      (position !== undefined && position <= 100 && champions) ||
+      divisionNumber === '1'
+    )
+      return {
+        level: 0,
+        label: rank,
+        platform,
+        priority: [
+          0,
+          divisionNumber === '1' ? 1 : 0,
+          position ?? Infinity,
+          0,
+          0,
+        ],
+        entrants,
+      };
+    if (
+      position !== undefined &&
+      ((champions && position <= 1000) || (showdown && position <= 100))
+    )
+      return {
+        level: 1,
+        label: rank,
+        platform,
+        priority: [2, champions ? 1 : 2, position, 0, 0],
+        entrants,
+      };
+    if (divisionNumber === '2')
+      return {
+        level: 1,
+        label: rank,
+        platform,
+        priority: [2, 0, 0, 0, 0],
+        entrants,
+      };
+    if (
+      divisionNumber === '3' ||
+      divisionNumber === '4' ||
+      (champions && /^Master ?Ball$/i.test(rank) && regulation === current)
+    )
+      return {
+        level: 2,
+        label: rank,
+        platform,
+        priority: [
+          4,
+          divisionNumber === '3' ? 0 : divisionNumber === '4' ? 1 : 2,
+          0,
+          0,
+          0,
+        ],
+        entrants,
+      };
+    return {
+      level: 3,
+      label: rank,
+      platform,
+      priority: [5, 0, 0, 0, 0],
+      entrants,
+    };
+  }
+  const major = majorEventTier(trimmed);
+  const normalizedRank = rank.replace(/ \(Seniors\)$/i, '').trim();
+  const finishMatch = /^(\d+)(?:st|nd|rd|th)$/i.exec(normalizedRank);
+  const topMatch = /^Top (\d+)$/i.exec(normalizedRank);
+  const finishRaw = finishMatch?.[1] ?? topMatch?.[1];
+  const finishValue = finishRaw ? Number(finishRaw) : NaN;
+  const finish =
+    Number.isSafeInteger(finishValue) && finishValue > 0
+      ? finishValue
+      : undefined;
+  const placing = /^(?:Champion|Winner)$/i.test(normalizedRank)
+    ? 1
+    : /^Runner up$/i.test(normalizedRank)
+      ? 2
+      : finish;
+  if (
+    major !== null &&
+    ((major === 0 &&
+      ((placing !== undefined && placing <= 32) ||
+        /^Top cut$/i.test(normalizedRank))) ||
+      (major === 1 &&
+        ((placing !== undefined && placing <= 8) ||
+          /^Top cut$/i.test(normalizedRank))))
+  )
+    return {
+      level: 0,
+      label: rank,
+      platform: 'Tournament',
+      priority: [1, major, placing ?? Infinity, -(entrants ?? 0), 0],
+      entrants,
+    };
+  if (
+    entrants !== undefined &&
+    Number.isSafeInteger(entrants) &&
+    entrants >= 32 &&
+    placing !== undefined &&
+    placing <= Math.min(8, Math.floor(entrants / 4))
+  )
+    return {
+      level: 1,
+      label: rank,
+      platform: 'Tournament',
+      priority: [3, 0, placing / entrants, -entrants, placing],
+      entrants,
+    };
+  return {
+    level: 3,
+    label: rank,
+    platform: 'Tournament',
+    priority: [5, 0, 0, 0, 0],
+    entrants,
+  };
+}
+
+export interface TeamEvidence extends ClassifiedEvidence {
   event: string;
 }
 
 export function bestEvidence(
-  team: Pick<Team, 'reports' | 'regulation'>,
+  team: Pick<Team, 'reports' | 'regulation'> & Partial<Pick<Team, 'id'>>,
   current: string
 ): TeamEvidence {
-  return (
-    team.reports
-      .map((report) => ({
-        ...evidence(report, team.regulation, current),
-        event: report.event,
-      }))
-      .sort((a, b) => a.level - b.level)[0] || {
-      level: 4,
-      label: 'No reported result',
-      platform: 'Unknown',
-      event: '',
-    }
-  );
+  let best: TeamEvidence | undefined;
+  for (const report of team.reports) {
+    const candidate = {
+      ...evidence(report, team.regulation, current),
+      event: report.event,
+    };
+    if (!best || priorityCompare(candidate.priority, best.priority) < 0)
+      best = candidate;
+  }
+  const result = best || { ...noEvidence(), event: '' };
+  return isCustomRulesTeam(team) ? { ...result, level: 3 } : result;
 }
 
-const evidenceCache = new WeakMap<Team, TeamEvidence>();
+const evidenceCache = new WeakMap<
+  Team,
+  { current: string; evidence: TeamEvidence }
+>();
 
-/* How strongly a result is proven, as a stamp grade. Level 4 means the source
-   sheet carried no result at all, which the guide prints as a blank. */
 export function evidenceGrade(
   level: number
 ): 'strong' | 'qualified' | 'reported' | 'none' {
@@ -181,47 +371,34 @@ export function evidenceGrade(
 }
 
 function evidenceOf(team: Team, current: string): TeamEvidence {
-  let cached = evidenceCache.get(team);
-  if (!cached) {
-    cached = bestEvidence(team, current);
-    evidenceCache.set(team, cached);
-  }
-  return cached;
+  const cached = evidenceCache.get(team);
+  if (cached?.current === current) return cached.evidence;
+  const result = bestEvidence(team, current);
+  evidenceCache.set(team, { current, evidence: result });
+  return result;
 }
 
-/* tiebreak decides teams that are equally proven; date and id settle the rest. */
 export function compareTeams(
   a: Team,
   b: Team,
   current: string,
   tiebreak = 0
 ): number {
+  const customOrder =
+    Number(isCustomRulesTeam(a)) - Number(isCustomRulesTeam(b));
+  if (customOrder) return customOrder;
+  const unknownOrder =
+    Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
+  if (unknownOrder) return unknownOrder;
   const ea = evidenceOf(a, current);
   const eb = evidenceOf(b, current);
-  /* Unknown-regulation teams never borrow relevance from an evidence grade. */
-  const ga =
-    a.regulation === 'Unknown'
-      ? 3
-      : ea.level <= 2
-        ? a.regulation === current
-          ? 0
-          : 1
-        : a.regulation === current
-          ? 2
-          : 3;
-  const gb =
-    b.regulation === 'Unknown'
-      ? 3
-      : eb.level <= 2
-        ? b.regulation === current
-          ? 0
-          : 1
-        : b.regulation === current
-          ? 2
-          : 3;
+  const band = scalarCompare(ea.priority[0], eb.priority[0]);
+  if (band) return band;
+  const currentOrder =
+    Number(b.regulation === current) - Number(a.regulation === current);
   return (
-    ga - gb ||
-    ea.level - eb.level ||
+    currentOrder ||
+    priorityCompare(ea.priority, eb.priority) ||
     tiebreak ||
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)

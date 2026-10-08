@@ -2,7 +2,9 @@ node_modules
 .cache/
 static/sprites/
 static/items/
+static/posts/
 src/lib/data/catalog.json
+src/lib/data/team-posts.json
 src/lib/data/team-tags.json
 playwright-report/
 test-results/
