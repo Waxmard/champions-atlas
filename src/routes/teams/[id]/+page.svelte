@@ -18,6 +18,7 @@
     regulationLabel,
     xStatusId,
     type PostEvidence,
+    type PostMedia,
     type Team,
   } from '$lib/catalog';
   import {
@@ -45,6 +46,18 @@
   onMount(() => {
     ready = true;
   });
+  function displayedMedia(post: PostEvidence): PostMedia[] {
+    const media = post.media ?? [];
+    const vision = post.vision;
+    const wanted =
+      vision?.status === 'accepted' && vision.summaryIndex !== null
+        ? [...new Set([vision.summaryIndex, ...vision.allocationIndexes])]
+        : [];
+    const chosen = wanted
+      .map((index) => media.find((entry) => entry.index === index))
+      .filter((entry): entry is PostMedia => Boolean(entry));
+    return (chosen.length ? chosen : media).slice(0, 2);
+  }
   function useTeam() {
     try {
       const saved = newSavedTeam(team);
@@ -114,6 +127,10 @@
   </h1>
   <p class="provenance mt-2.5">By {team.creator || 'an unlisted creator'}</p>
 
+  {#if team.regulationBasis === 'post-date'}<p class="provenance mt-3">
+      Regulation inferred from post date; team legality not verified.
+    </p>{/if}
+
   {#if custom}<p class="term mt-3">
       Custom-rule event: this team was shared for a tournament with additional
       Pokémon restrictions. Hidden from normal recommendations.
@@ -165,6 +182,11 @@
 
   {#if team.pasteError}<p class="provenance mt-3">
       Some published details could not be loaded. {team.pasteError}
+    </p>{/if}
+
+  {#if team.setSource === 'screenshot'}<p class="term mt-3">
+      Sets come from the post screenshot. Ability, nature, and point values that
+      are unreadable in the image stay unlisted rather than guessed.
     </p>{/if}
 
   {#if !isPasteUrl(team.pasteUrl)}<p class="provenance mt-3">
@@ -226,16 +248,27 @@
                   >
                   <span class="mx-1.5"></span>{post.createdAt}
                 </p>{/if}
-              {#if post.media.length}<div class="mt-2 flex flex-wrap gap-2">
-                  {#each post.media as media, index (index)}
-                    <img
-                      src={media.local ?? media.remote}
-                      alt={media.alt || `Team screenshot from @${post.handle}`}
-                      width={media.width ?? 640}
-                      height={media.height ?? 360}
-                      loading="lazy"
-                      class="h-32 w-auto rounded-[var(--radius-box)] border border-base-300"
-                    />
+              {#if post.media.length}<div
+                  class="mt-2 grid gap-2 sm:grid-cols-2"
+                >
+                  {#each displayedMedia(post) as media, index (index)}
+                    <a
+                      href={media.original ?? media.remote}
+                      target="_blank"
+                      rel="external noopener noreferrer"
+                      class="block overflow-hidden rounded-[var(--radius-box)] border border-base-300 outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      aria-label={`Open full-size source photo ${index + 1} from @${post.handle} in a new tab`}
+                    >
+                      <img
+                        src={media.local ?? media.remote}
+                        alt={media.alt ||
+                          `Team screenshot ${index + 1} from @${post.handle}`}
+                        width={media.width ?? 640}
+                        height={media.height ?? 360}
+                        loading="lazy"
+                        class="h-auto w-full"
+                      />
+                    </a>
                   {/each}
                 </div>{/if}
               {#if post.state === 'unavailable'}<p class="provenance mt-1">

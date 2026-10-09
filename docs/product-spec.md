@@ -200,8 +200,10 @@ Champion's Atlas accepts its exported text only. Imported text becomes the
 immutable original snapshot; nickname, gender, and unknown lines remain intact,
 while IVs, level, and Tera Type are omitted from displayed and exported Champions
 text. Custom teams are saved locally under the current regulation with legality
-unverified and no published source claims. File, URL, screenshot, rental-code,
-legality, and cross-device import are out of scope.
+unverified and no published source claims. File, URL, rental-code,
+legality, and cross-device import are out of scope. Custom teams still come from
+pasted Showdown text; screenshots are handled by the catalog's own source
+pipeline, described below.
 
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.
@@ -213,10 +215,45 @@ before it sees another device's change to the same team keeps its own edit under
 that team's ID and preserves the displaced version as a separate recovered team.
 See [Firebase deployment and sync](firebase.md).
 
+## Screenshot import and inferred regulation
+
+Screenshot import is in scope, with a qualification caveat: it is implemented and
+disabled by default. A post's own photo supplies a team only when no usable linked
+paste remains, the model outcome passes a strict versioned schema, and two
+independent extractions agree on species and forms, items, moves, and any
+populated optional field. Ability, nature, and spread stay unknown unless visibly
+read and agreed; an explicitly visible no-item state is not the same as an
+unreadable one; a visible TeamID stays inert metadata. Automatic publication of
+screenshot-derived teams stays disabled until the opt-in live qualification
+passes, so the app never publishes an unqualified image read as an admitted team.
+
+Links, pastes, and images are different strengths of evidence. A linked paste that
+passes the format and roster checks always wins and costs no model call. A paste
+that was previously valid but is temporarily unavailable is preferred over a
+conflicting image read, and an explicit unsupported or wrong-game paste format
+blocks the image fallback instead of being rescued by a date or an image guess. A
+screenshot-derived team is labelled as screenshot-derived, keeps its unknown
+optional fields unknown, and is never presented as an official result or as
+verified legality.
+
+Regulation semantics are resolved per post, not per paste URL. An explicit
+supported paste format wins even when the post's date belongs to another interval.
+Only a paste with no format at all may fall back to the post date, and only inside
+the verified M-A, M-B, and M-C intervals; such a team records
+`regulationBasis: 'post-date'`, and the detail page states that the regulation is
+inferred from the post date and that team legality is not verified. Inferred is
+not verified: posting context is not evidence that a team is legal now. Valid
+teams whose context stays unresolved — a legacy timestamp with only a day on a
+transition date, an invalid or out-of-schedule date, a contradictory format —
+remain `Unknown` and keep the existing unknown-regulation browsing behavior, with
+no guessing and no indefinite M-C extension.
+
 ## Version 2 and later
 
-- AI integration and separately verified subscription/API billing options.
-- Screenshot and team-ID import.
+- Further AI integration and separately verified subscription/API billing options;
+  screenshot extraction above is the only AI path implemented so far.
+- Team-ID import. A published TeamID remains bounded source metadata and is never
+  treated as a recoverable team.
 - Cross-device sync (implemented for saved teams).
 - Native iOS app.
 

@@ -46,7 +46,13 @@ The generated catalog is ignored by Git. `npm run dev`, `npm run build`, and
 `npm run typecheck` automatically import it when missing, then reuse it unchanged.
 A clean checkout needs network access for the initial import unless source files
 are already cached. The built app uses the bundled snapshot without fetching
-source data at runtime.
+source data at runtime; the only view-time requests are post screenshots whose
+image was not mirrored into `static/posts/`, which fall back to their original
+`pbs.twimg.com` URL. `X_IMAGE_LIMIT` controls how many are mirrored per ingest
+run, and the second photo of a post is never mirrored. `X_IMAGE_LIMIT=0` stops
+future mirrors only: it does not delete already mirrored files, and it does not
+prevent the original-image downloads that opted-in screenshot extraction
+requires.
 
 Regenerate or refresh explicitly with:
 
@@ -60,8 +66,35 @@ npm run import:x
 `npm run import:x` is the only step that contacts X: it fills the ignored
 `.cache/catalog/x-posts.json` post index from FxTwitter search and post lookups,
 and writes the ignored `src/lib/data/team-posts.json` evidence plus mirrored
-screenshots in `static/posts/`. The catalog import then admits X posts that link
-a Champions paste without fetching anything itself.
+screenshots in `static/posts/`. The catalog import admits X posts that link a
+Champions paste that passes the usual format and roster checks. X admission is
+no longer paste-only: a post with no usable paste can instead qualify through the
+opted-in screenshot extraction described in
+[X screenshots and paste precedence](docs/data-sources.md#x-screenshots-and-paste-precedence).
+
+Paste precedence is deliberate. The first linked paste that passes the format and
+roster checks is used and costs no paid call. A paste that was previously valid
+but is temporarily unavailable is preferred over a conflicting image read, and an
+explicit unsupported or wrong-game paste format blocks image fallback. Otherwise,
+extraction is a strict two-pass read: one coarse triage, then two independent
+detailed extractions that must agree on species, forms, items, moves, and every
+populated optional field. Ability, nature, and spread stay unknown unless both
+passes read them from the pixels; allocation companions are accepted only as
+Champions points (0–32 per stat, at most 66 total). Screenshot teams carry empty
+event and rank claims, and are labelled as screenshot-derived with unknown
+optional fields; they are not verified legality and are not presented as official
+results. Automatic screenshot publication stays disabled until the live
+qualification in `npm run eval:x-images` passes, which is why the shipped
+`automaticVisionQualified` flag is still false.
+
+The paid portion is bounded: `X_VISION_LIMIT` posts and
+`X_VISION_CALL_LIMIT` requests per run (both set to 20 and 60 in the deploy
+workflows), separate from the `X_POST_LIMIT` status-lookup cap. The
+qualification runner also honours `X_VISION_REQUEST_CAP` (default 360) so a run
+can be limited to the remaining paid budget. Only the two
+deploy workflows receive `DEEPSEEK_API_KEY`; `ci.yml`, dev, build, typecheck, and
+the browser tests stay offline for vision, and a run without the key withholds
+extraction and continues ordinary paste import.
 
 The importer caches source files in `.cache/catalog`; `REFRESH=1` refreshes
 spreadsheet metadata. `OFFLINE=1` requires cached files. `PASTE_LIMIT` controls

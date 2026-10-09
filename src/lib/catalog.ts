@@ -23,6 +23,7 @@ export interface Team {
   name: string;
   creator: string;
   regulation: string;
+  regulationBasis?: 'post-date';
   publishedAt: string;
   pasteUrl: string;
   replicaCode: string | null;
@@ -32,6 +33,7 @@ export interface Team {
   paste: string | null;
   pasteNotes: string | null;
   pasteError?: string;
+  setSource?: 'screenshot';
 }
 
 export interface MemberFilter {
@@ -44,10 +46,18 @@ export interface MemberFilter {
 export interface PostMedia {
   type: string;
   remote: string;
+  original?: string;
   local: string | null;
   alt: string | null;
   width: number | null;
   height: number | null;
+  index?: number;
+}
+
+export interface PostVision {
+  status: 'accepted' | 'rejected' | 'error' | 'withheld';
+  summaryIndex: number | null;
+  allocationIndexes: number[];
 }
 
 export interface PostEvidence {
@@ -56,11 +66,13 @@ export interface PostEvidence {
   name: string;
   verified: boolean;
   createdAt: string;
+  createdAtExact?: string;
   text: string;
   state: string;
   creatorMismatch: boolean;
   media: PostMedia[];
   pastes: string[];
+  vision?: PostVision;
 }
 
 export const xStatusId = (url: string) =>

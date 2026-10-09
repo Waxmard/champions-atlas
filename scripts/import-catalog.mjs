@@ -28,7 +28,7 @@ import {
 import { reportsWithLadderNotes } from './catalog-results.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
 import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
-import { readXCandidates, xSearchUrl } from './x-source.mjs';
+import { readXCandidates, xSearchUrl, xFormatState } from './x-source.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
@@ -223,41 +223,43 @@ export function enrich(team, data) {
 }
 const isVrPasteUrl = (value) => value.startsWith('https://www.vrpastes.com/');
 
-const championRegulation = (value) => {
-  if (typeof value !== 'string') return null;
-  const text = normalize(value);
-  return (
-    /vgcregulation([a-z]{2})$/.exec(text)?.[1] ??
-    /champions.*reg([a-z]{2})$/.exec(text)?.[1] ??
-    null
-  );
-};
-
 function validateIndexFormat(candidate, payload) {
-  const regulation = normalize(candidate.regulation);
-  if (!['ma', 'mb', 'mc'].includes(regulation))
+  const known = ['M-A', 'M-B', 'M-C'].includes(candidate.regulation);
+  if (
+    !known &&
+    !(candidate.sourceName === 'X' && candidate.regulation === 'Unknown')
+  )
     throw errorWithReason('invalid_payload', 'Invalid candidate regulation');
-  if (payload.provider === 'victory-road') {
-    const format = payload.format;
-    if (format === undefined || format === null || format === '') return;
-    if (typeof format !== 'string')
-      throw errorWithReason('invalid_payload', 'VR format must be a string');
-    if (normalize(format) !== `vgcregulation${regulation}`)
-      throw errorWithReason('format_conflict', `Unexpected format: ${format}`);
-    return;
-  }
-  const notes = payload.notes;
-  if (notes === undefined || notes === null) return;
-  if (typeof notes !== 'string')
-    throw errorWithReason('invalid_payload', 'Paste notes must be a string');
-  for (const line of notes.split(/\r?\n/)) {
-    const match = /^\s*Format\s*:\s*(.*?)\s*$/i.exec(line);
-    if (match && championRegulation(match[1]) !== regulation)
-      throw errorWithReason(
-        'format_conflict',
-        `Unexpected format: ${match[1]}`
-      );
-  }
+  if (
+    (payload.notes != null && typeof payload.notes !== 'string') ||
+    (payload.provider === 'victory-road' &&
+      payload.format != null &&
+      typeof payload.format !== 'string')
+  )
+    throw errorWithReason('invalid_payload', 'Paste metadata must be text');
+  const state = xFormatState(
+    payload.provider === 'victory-road' ? 'victory-road' : 'pokepaste',
+    payload
+  );
+  if (
+    state === 'unsupported' ||
+    (state !== 'missing' && state !== candidate.regulation) ||
+    (!known && state !== 'missing')
+  )
+    throw errorWithReason(
+      'format_conflict',
+      'Unsupported or contradictory paste format'
+    );
+  if (
+    candidate.regulationBasis &&
+    (candidate.sourceName !== 'X' ||
+      candidate.regulationBasis !== 'post-date' ||
+      state !== 'missing')
+  )
+    throw errorWithReason(
+      'invalid_payload',
+      'Invalid regulation inference provenance'
+    );
 }
 
 function resolvedPokemon(member) {
@@ -357,7 +359,8 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
     name: candidate.name,
     creator: candidate.creator,
     regulation: candidate.regulation,
-    publishedAt: payload.publishedAt || '',
+    regulationBasis: candidate.regulationBasis,
+    publishedAt: candidate.publishedAt || payload.publishedAt || '',
     pasteUrl: candidate.pasteUrl,
     replicaCode: candidate.replicaCode || null,
     replicaStatus: '',
@@ -559,15 +562,13 @@ async function main() {
   const x = await readXCandidates(cache);
   if (x === null)
     console.warn('X: no cached post index; run npm run import:x.');
-  const victoryRoad = parseVictoryRoad(victoryRoadHtml);
-  const devonCorp = parseDevonCorp(devonCorpHtml);
   const unique = deduplicate(teams);
   const sourceHash = hashSources([
     ...csvs,
     victoryRoadHtml,
     devonCorpHtml,
     pochHtml,
-    ...(x ? [x.raw] : []),
+    ...(x ? [x.raw, ...x.visionRaw] : []),
   ]);
   let priorCatalog = null;
   try {
@@ -694,13 +695,14 @@ async function main() {
   const publicTeams = [];
   const sourceStats = [];
   for (const [name, source] of [
-    ['Victory Road', victoryRoad],
-    ['DevonCorp', devonCorp],
+    ['Victory Road', parseVictoryRoad(victoryRoadHtml)],
+    ['DevonCorp', parseDevonCorp(devonCorpHtml)],
     ...(x ? [['X', x]] : []),
   ]) {
+    const extras = source.vision?.length ?? 0;
     const counts = {
       discovered: source.candidates.length + source.skipped.length,
-      accepted: 0,
+      accepted: extras,
       priorRetained: 0,
       skipped: 0,
       merged: 0,
@@ -713,6 +715,7 @@ async function main() {
       );
     }
     sourceStats.push({ name, counts });
+    publicTeams.push(...(source.vision ?? []));
     for (const candidate of source.candidates) {
       const prior = compatiblePrior(candidate);
       const keep = (team, field) => {

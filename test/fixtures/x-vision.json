@@ -1,0 +1,3752 @@
+{
+  "fixtureVersion": 1,
+  "coverage": [
+    "standard",
+    "localized-text",
+    "alternate-form",
+    "similar-names",
+    "explicit-no-item",
+    "allocation-companion",
+    "other-game",
+    "battle-screen",
+    "rank-screen",
+    "roster-only",
+    "cropped-illegible",
+    "ambiguous-multi-team",
+    "mismatched-companion"
+  ],
+  "records": [
+    {
+      "postId": "2107063073731428863",
+      "postUrl": "https://x.com/totsuwaki_coal/status/2107063073731428863",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["alternate-form", "localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HT3KrqNbcAAjqv1.jpg?name=orig",
+          "sha256": "4ab410d95920df2250c9fba6afa0b0efa09d767f3bbf6f6455f8e82d12c1ce12"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HT3KsQVaYAA-KhL.jpg?name=orig",
+          "sha256": "0919102f60159fe569756e518fb7027528e6fb50d92ec5111a74695232df12ed"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Tyranitar",
+            "itemState": "held",
+            "item": "Lum Berry",
+            "moves4": ["Rock Slide", "Knock Off", "Dragon Dance", "Protect"],
+            "ability": "Sand Stream",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Excadrill",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Protect", "Iron Head", "High Horsepower", "Rock Slide"],
+            "ability": "Sand Rush",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Indeedee-F",
+            "itemState": "held",
+            "item": "Mental Herb",
+            "moves4": ["Helping Hand", "Follow Me", "Trick Room", "Imprison"],
+            "ability": "Psychic Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "White Herb",
+            "moves4": ["Close Combat", "Gunk Shot", "Fake Out", "Protect"],
+            "ability": "Unburden",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Froslass",
+            "itemState": "held",
+            "item": "Froslassite",
+            "moves4": ["Blizzard", "Shadow Ball", "Aurora Veil", "Protect"],
+            "ability": "Cursed Body",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": ["Hyper Voice", "Draco Meteor", "Heat Wave", "Protect"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2105096352380154292",
+      "postUrl": "https://x.com/_rsbatista/status/2105096352380154292",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["standard"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTbN-XKW4AAGqsF.jpg?name=orig",
+          "sha256": "b1e5d8ca5893a71e41d310abfcbec873ff6cad994c32de6e318ef4dae71b2fe8"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTbN-XLWQAAz1Qh.jpg?name=orig",
+          "sha256": "b78bef3ede430225296218b8b28f0324ec2f9bea43b14adc65aa63a3e94ff626"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": [
+              "Fake Out",
+              "Flare Blitz",
+              "Throat Chop",
+              "Parting Shot"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Dragonite",
+            "itemState": "held",
+            "item": "Dragoninite",
+            "moves4": ["Dragon Pulse", "Heat Wave", "Tailwind", "Protect"],
+            "ability": "Multiscale",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Floette",
+            "itemState": "held",
+            "item": "Floettite",
+            "moves4": ["Dazzling Gleam", "Moonblast", "Calm Mind", "Protect"],
+            "ability": "Flower Veil",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Gholdengo",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Nasty Plot", "Protect", "Make It Rain", "Shadow Ball"],
+            "ability": "Good as Gold",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Fake Out",
+              "Wood Hammer",
+              "Grassy Glide",
+              "High Horsepower"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "Grassy Seed",
+            "moves4": ["Close Combat", "Dire Claw", "Acrobatics", "Protect"],
+            "ability": "Unburden",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101498563381330268",
+      "postUrl": "https://x.com/CBADgg/status/2101498563381330268",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["allocation-companion", "alternate-form", "similar-names"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSoFzlDXgAEIfZr.jpg?name=orig",
+          "sha256": "538323249818b69990f91d1ade969e5dac10782d96559051b3a77ffae350deb9"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSoFzlAW4AA52_b.jpg?name=orig",
+          "sha256": "a340f9a091a2f420a63ddbf818d017dd71609ade8018184c04ccfdd286487cb6"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "S9SVTM7MDJ",
+        "members": [
+          {
+            "pokemon": "Charizard",
+            "itemState": "held",
+            "item": "Charizardite Y",
+            "moves4": ["Heat Wave", "Weather Ball", "Solar Beam", "Protect"],
+            "ability": "Blaze",
+            "nature": "Modest",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Charizard",
+              "teamId": "S9SVTM7MDJ",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 3,
+                "SpA": 1,
+                "SpD": 0,
+                "Spe": 30
+              }
+            }
+          },
+          {
+            "pokemon": "Floette-Eternal",
+            "itemState": "held",
+            "item": "Floettite",
+            "moves4": [
+              "Moonblast",
+              "Dazzling Gleam",
+              "Light of Ruin",
+              "Protect"
+            ],
+            "ability": "Flower Veil",
+            "nature": "Modest",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Floette-Eternal",
+              "teamId": "S9SVTM7MDJ",
+              "points": {
+                "HP": 2,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": [
+              "Dragon Claw",
+              "Rock Tomb",
+              "Stomping Tantrum",
+              "Earthquake"
+            ],
+            "ability": "Rough Skin",
+            "nature": "Adamant",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Garchomp",
+              "teamId": "S9SVTM7MDJ",
+              "points": {
+                "HP": 10,
+                "Atk": 20,
+                "Def": 8,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 28
+              }
+            }
+          },
+          {
+            "pokemon": "Whimsicott",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Moonblast", "Tailwind", "Encore", "Protect"],
+            "ability": "Prankster",
+            "nature": "Timid",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Whimsicott",
+              "teamId": "S9SVTM7MDJ",
+              "points": {
+                "HP": 2,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Gholdengo",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Shadow Ball", "Make It Rain", "Nasty Plot", "Protect"],
+            "ability": "Good as Gold",
+            "nature": "Timid",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Gholdengo",
+              "teamId": "S9SVTM7MDJ",
+              "points": {
+                "HP": 7,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 27,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Chople Berry",
+            "moves4": ["Flare Blitz", "Snarl", "Parting Shot", "Fake Out"],
+            "ability": "Intimidate",
+            "nature": "Careful",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Incineroar",
+              "teamId": "S9SVTM7MDJ",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 9,
+                "SpA": 0,
+                "SpD": 20,
+                "Spe": 5
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2075463554015367416",
+      "postUrl": "https://x.com/Whitezero2000/status/2075463554015367416",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["explicit-no-item", "localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HM2HGPwaEAAQYQW.jpg?name=orig",
+          "sha256": "47d285d9b06c1e3a727bf5d9f36588eb55bca681d5f3b3259086dc5fd23e946c"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "RNKWFGHFDS",
+        "members": [
+          {
+            "pokemon": "Raichu",
+            "itemState": "held",
+            "item": "Raichunite X",
+            "moves4": ["Rising Voltage", "Grass Knot", "Fake Out", "Protect"],
+            "ability": "Lightning Rod",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Jolteon",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Rising Voltage", "Discharge", "Weather Ball", "Detect"],
+            "ability": "Volt Absorb",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Talonflame",
+            "itemState": "none",
+            "item": null,
+            "moves4": ["Acrobatics", "Taunt", "Tailwind", "Protect"],
+            "ability": "Gale Wings",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Vanilluxe",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Blizzard", "Freeze-Dry", "Ice Shard", "Protect"],
+            "ability": "Snow Warning",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Tsareena",
+            "itemState": "held",
+            "item": "Wide Lens",
+            "moves4": [
+              "Power Whip",
+              "Triple Axel",
+              "High Jump Kick",
+              "Protect"
+            ],
+            "ability": "Queenly Majesty",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Basculegion",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": ["Wave Crash", "Last Respects", "Flip Turn", "Soak"],
+            "ability": "Adaptability",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2106794560198529275",
+      "postUrl": "https://x.com/rioreumi/status/2106794560198529275",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["alternate-form", "localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTzWerbaEAArkJV.jpg?name=orig",
+          "sha256": "44c592e0f79865afe74bf5bca6a94d79244f10f4025b4cc80d6666008a0c5fed"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTzWe79bAAAD6eN.jpg?name=orig",
+          "sha256": "eb499a6f0a21168d8499c0e723742160290f032c7d057e2f4d60d4f3b85151b5"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": "QG27K4WQUC",
+        "members": [
+          {
+            "pokemon": "Basculegion-F",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Shadow Ball", "Ice Beam", "Muddy Water", "Protect"],
+            "ability": "Swift Swim",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Damp Rock",
+            "moves4": ["Hurricane", "Muddy Water", "Tailwind", "Helping Hand"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Swampert",
+            "itemState": "held",
+            "item": "Swampertite",
+            "moves4": ["Earthquake", "Ice Punch", "Wave Crash", "Protect"],
+            "ability": "Damp",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Golisopod",
+            "itemState": "held",
+            "item": "Golisopite",
+            "moves4": [
+              "Leech Life",
+              "Sucker Punch",
+              "Iron Head",
+              "First Impression"
+            ],
+            "ability": "Emergency Exit",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Samurott-Hisui",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": [
+              "Ceaseless Edge",
+              "Sacred Sword",
+              "Flip Turn",
+              "Icy Wind"
+            ],
+            "ability": "Sharpness",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Araquanid",
+            "itemState": "held",
+            "item": "Mystic Water",
+            "moves4": ["Liquidation", "Poison Jab", "Wide Guard", "Protect"],
+            "ability": "Water Bubble",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2106623342413484312",
+      "postUrl": "https://x.com/skylerdama/status/2106623342413484312",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["allocation-companion", "alternate-form"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTw6w6tWcAAJVw8.jpg?name=orig",
+          "sha256": "4ca289bdddf99439acaa1ffeb3e39b41cf45d14c9d27157b3e9ff7f68ab46a75"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTw6w6sWcAAblmd.jpg?name=orig",
+          "sha256": "54a3a36c6600bc85ffdf27b60bc81d3eb7f42e72d4a29d6482d0b1bfcfbc6ace"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "ADE75E4VPQ",
+        "members": [
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Weather Ball", "Tailwind", "Hurricane", "Wide Guard"],
+            "ability": "Drizzle",
+            "nature": "Modest",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Pelipper",
+              "teamId": "ADE75E4VPQ",
+              "points": {
+                "HP": 2,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Archaludon",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": [
+              "Electro Shot",
+              "Dragon Pulse",
+              "Flash Cannon",
+              "Protect"
+            ],
+            "ability": "Stamina",
+            "nature": "Calm",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Archaludon",
+              "teamId": "ADE75E4VPQ",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 9,
+                "SpD": 25,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Indeedee-F",
+            "itemState": "held",
+            "item": "Psychic Seed",
+            "moves4": ["Psychic", "Follow Me", "Helping Hand", "Trick Room"],
+            "ability": "Psychic Surge",
+            "nature": "Relaxed",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Indeedee-F",
+              "teamId": "ADE75E4VPQ",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 32,
+                "SpA": 0,
+                "SpD": 2,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Gardevoir",
+            "itemState": "held",
+            "item": "Gardevoirite",
+            "moves4": [
+              "Hyper Voice",
+              "Trick Room",
+              "Expanding Force",
+              "Protect"
+            ],
+            "ability": "Trace",
+            "nature": "Modest",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Gardevoir",
+              "teamId": "ADE75E4VPQ",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 2,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": [
+              "Fake Out",
+              "Throat Chop",
+              "Flare Blitz",
+              "Parting Shot"
+            ],
+            "ability": "Intimidate",
+            "nature": "Adamant",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Incineroar",
+              "teamId": "ADE75E4VPQ",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 9,
+                "SpA": 0,
+                "SpD": 20,
+                "Spe": 5
+              }
+            }
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": [
+              "Fake Out",
+              "Grassy Glide",
+              "Wood Hammer",
+              "High Horsepower"
+            ],
+            "ability": "Grassy Surge",
+            "nature": "Adamant",
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Rillaboom",
+              "teamId": "ADE75E4VPQ",
+              "points": {
+                "HP": 32,
+                "Atk": 32,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 2
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2106332411915350221",
+      "postUrl": "https://x.com/nmytykhs1672/status/2106332411915350221",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTsyKgKaYAAhncq.jpg?name=orig",
+          "sha256": "68830051c9d58bd06a989f711b3d7183abd0e88cd4b525db11b0752174dc8207"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTsyKjCaYAAMmZM.jpg?name=orig",
+          "sha256": "9ac18f376b228a6d154fa99c8eca30726f5d83c0c9bbdbf7c59b4e30a2d0aecf"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": "XBP9DPTRKR",
+        "members": [
+          {
+            "pokemon": "Swampert",
+            "itemState": "held",
+            "item": "Swampertite",
+            "moves4": ["Wave Crash", "Earthquake", "Ice Punch", "Protect"],
+            "ability": "Damp",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Grimmsnarl",
+            "itemState": "held",
+            "item": "Light Clay",
+            "moves4": [
+              "Spirit Break",
+              "Reflect",
+              "Light Screen",
+              "Parting Shot"
+            ],
+            "ability": "Prankster",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Weather Ball", "Hurricane", "Wide Guard", "Tailwind"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Golisopod",
+            "itemState": "held",
+            "item": "Golisopite",
+            "moves4": [
+              "Iron Head",
+              "Drill Run",
+              "Leech Life",
+              "First Impression"
+            ],
+            "ability": "Emergency Exit",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Archaludon",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": [
+              "Flash Cannon",
+              "Electro Shot",
+              "Dragon Pulse",
+              "Protect"
+            ],
+            "ability": "Stamina",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sinistcha",
+            "itemState": "held",
+            "item": "Colbur Berry",
+            "moves4": ["Matcha Gotcha", "Rage Powder", "Trick Room", "Protect"],
+            "ability": "Hospitality",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2106204893388374395",
+      "postUrl": "https://x.com/kapsgacha/status/2106204893388374395",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["allocation-companion"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTq-LEDXUAAbG1i.jpg?name=orig",
+          "sha256": "f36fbb008084690eaca1018f05129b97aa225a63bc2a0a358cc1e394beffee59"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTq-LEEWIAAghtx.jpg?name=orig",
+          "sha256": "9fc30e54de0e2a687b1d2907a1cfce485928c240e2ab3bb3b72f29d974ed0653"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "W0CJ6BN748",
+        "members": [
+          {
+            "pokemon": "Dragalge",
+            "itemState": "held",
+            "item": "Dragalgite",
+            "moves4": ["Sludge Bomb", "Dragon Pulse", "Scald", "Protect"],
+            "ability": "Adaptability",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Dragalge",
+              "teamId": "W0CJ6BN748",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 2,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Primarina",
+            "itemState": "held",
+            "item": "Mystic Water",
+            "moves4": ["Hyper Voice", "Moonblast", "Protect", "Calm Mind"],
+            "ability": "Liquid Voice",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Primarina",
+              "teamId": "W0CJ6BN748",
+              "points": {
+                "HP": 20,
+                "Atk": 0,
+                "Def": 21,
+                "SpA": 25,
+                "SpD": 0,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Chesnaught",
+            "itemState": "held",
+            "item": "Chesnaughtite",
+            "moves4": [
+              "Wood Hammer",
+              "Drain Punch",
+              "Spiky Shield",
+              "Wide Guard"
+            ],
+            "ability": "Bulletproof",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Chesnaught",
+              "teamId": "W0CJ6BN748",
+              "points": {
+                "HP": 28,
+                "Atk": 24,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 14,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Indeedee",
+            "itemState": "held",
+            "item": "Psychic Seed",
+            "moves4": [
+              "Expanding Force",
+              "Imprison",
+              "Mystical Fire",
+              "Protect"
+            ],
+            "ability": "Psychic Surge",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Indeedee",
+              "teamId": "W0CJ6BN748",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 32,
+                "SpA": 0,
+                "SpD": 2,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Farigiraf",
+            "itemState": "held",
+            "item": "Colbur Berry",
+            "moves4": [
+              "Expanding Force",
+              "Thunderbolt",
+              "Trick Room",
+              "Protect"
+            ],
+            "ability": "Armor Tail",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Farigiraf",
+              "teamId": "W0CJ6BN748",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 13,
+                "SpA": 0,
+                "SpD": 21,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Flare Blitz", "Parting Shot", "Fake Out", "Snarl"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Incineroar",
+              "teamId": "W0CJ6BN748",
+              "points": {
+                "HP": 21,
+                "Atk": 25,
+                "Def": 16,
+                "SpA": 0,
+                "SpD": 4,
+                "Spe": 0
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2106173209821475143",
+      "postUrl": "https://x.com/tohoku_9610647/status/2106173209821475143",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["alternate-form", "localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTqhW61bkAErgQo.jpg?name=orig",
+          "sha256": "4ef0aca0886e0bc24ac93bb1879c25bbdbe629e81079b0394e79e36e2be00725"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTqhXf1agAAZYcf.jpg?name=orig",
+          "sha256": "bd7337236b67f8a711e1ecdde0a0f9c57a559d18c152cbfb2b8b831e0137f8f8"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": [
+              "Parting Shot",
+              "Fake Out",
+              "Throat Chop",
+              "Flare Blitz"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": ["Hyper Voice", "Flamethrower", "Protect", "Tailwind"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Annihilape",
+            "itemState": "held",
+            "item": "Grassy Seed",
+            "moves4": ["Protect", "Drain Punch", "Rock Slide", "Rage Fist"],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Knock Off",
+              "Wood Hammer",
+              "High Horsepower",
+              "Grassy Glide"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Indeedee-F",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": [
+              "Expanding Force",
+              "Hyper Voice",
+              "Imprison",
+              "Trick Room"
+            ],
+            "ability": "Psychic Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Metagross",
+            "itemState": "held",
+            "item": "Metagrossite",
+            "moves4": [
+              "Psychic Fangs",
+              "Body Press",
+              "Stomping Tantrum",
+              "Iron Head"
+            ],
+            "ability": "Clear Body",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2106067269650640912",
+      "postUrl": "https://x.com/CHILL_uuga/status/2106067269650640912",
+      "split": "calibration",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTpBBIUaoAE0jy-.jpg?name=orig",
+          "sha256": "06a0d0e7e9a61099898aeeb8fdbcce930198cde1ddc759b53a5c8f62a1d76c7e"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTpBBIUbwAAn_Oe.jpg?name=orig",
+          "sha256": "99be9138df2200a0337a2d9db4d7438dd8d974198d5a040c4c65d040e98fcc35"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Metagross",
+            "itemState": "held",
+            "item": "Metagrossite",
+            "moves4": ["Psychic Fangs", "Steel Roller", "Iron Head", "Protect"],
+            "ability": "Clear Body",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Charizard",
+            "itemState": "held",
+            "item": "Charizardite Y",
+            "moves4": ["Heat Wave", "Weather Ball", "Solar Beam", "Protect"],
+            "ability": "Blaze",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Whimsicott",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Moonblast", "Tailwind", "Encore", "Protect"],
+            "ability": "Prankster",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Kingambit",
+            "itemState": "held",
+            "item": "Chople Berry",
+            "moves4": ["Kowtow Cleave", "Sucker Punch", "Iron Head", "Protect"],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Archaludon",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": [
+              "Electro Shot",
+              "Dragon Pulse",
+              "Flash Cannon",
+              "Protect"
+            ],
+            "ability": "Stamina",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": ["Hurricane", "Weather Ball", "Wide Guard", "Tailwind"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2105661495405388072",
+      "postUrl": "https://x.com/VDNLx3v9ZmT1YGX/status/2105661495405388072",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["alternate-form", "localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTjP9UMbwAAAR-L.jpg?name=orig",
+          "sha256": "d8251618b570e50eb650beed89f2991ba00122a8f38f0221fd044ddcd7794026"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTjP9r5a0AA7_6N.jpg?name=orig",
+          "sha256": "bc8dde179dc0784dae747172c06c00d246341d8bce4467d50f39ef538f5fa48f"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": "WNXQW8ULAX",
+        "members": [
+          {
+            "pokemon": "Goodra-Hisui",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": ["Heavy Slam", "Body Press", "Shelter", "Protect"],
+            "ability": "Sap Sipper",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": [
+              "Hyper Voice",
+              "Draco Meteor",
+              "Flamethrower",
+              "Protect"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Yache Berry",
+            "moves4": ["Earthquake", "Scale Shot", "Rock Slide", "Protect"],
+            "ability": "Rough Skin",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Hydreigon",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Dark Pulse", "Tailwind", "Taunt", "Protect"],
+            "ability": "Levitate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Dragapult",
+            "itemState": "held",
+            "item": "Light Clay",
+            "moves4": ["Hex", "Light Screen", "Reflect", "Thunder Wave"],
+            "ability": "Infiltrator",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Archaludon",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": [
+              "Draco Meteor",
+              "Flash Cannon",
+              "Thunderbolt",
+              "Aura Sphere"
+            ],
+            "ability": "Sturdy",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2105579591121383735",
+      "postUrl": "https://x.com/myscrenessi/status/2105579591121383735",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["alternate-form", "localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTiFekwaoAAoL0S.jpg?name=orig",
+          "sha256": "66ee22b1dbc5cee569bee8a8a87df0483ac02e858080b165f95b7ab4a4f8f8e0"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTiFekvakAA9trA.jpg?name=orig",
+          "sha256": "fd44af41e21178b83c8299e770874a8a41ff094f19749973640cc399ab1e9eab"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Krookodile",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Earthquake", "Knock Off", "Rock Slide", "Taunt"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Delphox",
+            "itemState": "held",
+            "item": "Delphoxite",
+            "moves4": [
+              "Heat Wave",
+              "Expanding Force",
+              "Focus Blast",
+              "Hypnosis"
+            ],
+            "ability": "Blaze",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Orthworm",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Body Press", "Heavy Slam", "Shed Tail", "Helping Hand"],
+            "ability": "Earth Eater",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Ninetales-Alola",
+            "itemState": "held",
+            "item": "Never-Melt Ice",
+            "moves4": [
+              "Blizzard",
+              "Dazzling Gleam",
+              "Freeze-Dry",
+              "Aurora Veil"
+            ],
+            "ability": "Snow Warning",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Indeedee",
+            "itemState": "held",
+            "item": "Payapa Berry",
+            "moves4": ["Hyper Voice", "Gravity", "Protect", "Imprison"],
+            "ability": "Psychic Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Basculegion",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": [
+              "Flip Turn",
+              "Last Respects",
+              "Wave Crash",
+              "Psychic Fangs"
+            ],
+            "ability": "Adaptability",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2105502794375708681",
+      "postUrl": "https://x.com/NightValley_/status/2105502794375708681",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTg_icSbIAAUqYJ.jpg?name=orig",
+          "sha256": "3cb02526f72481738fdc5c5b0d9ec6a09fe2966f7222260fba7670ce7dd5b98d"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTg_iajbUAAPTuJ.jpg?name=orig",
+          "sha256": "c2ee2d1d2ea0d54019c567118efb7c515fa55563bc915a18e335098fda78b696"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Sirfetch’d",
+            "itemState": "held",
+            "item": "Leek",
+            "moves4": ["Meteor Assault", "Close Combat", "Feint", "Detect"],
+            "ability": "Scrappy",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Golisopod",
+            "itemState": "held",
+            "item": "Golisopite",
+            "moves4": ["Leech Life", "Iron Head", "Sucker Punch", "Protect"],
+            "ability": "Emergency Exit",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Farigiraf",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Twin Beam", "Thunderbolt", "Trick Room", "Protect"],
+            "ability": "Armor Tail",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Whimsicott",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Moonblast", "Encore", "Tailwind", "Protect"],
+            "ability": "Prankster",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Glimmora",
+            "itemState": "held",
+            "item": "Glimmoranite",
+            "moves4": [
+              "Power Gem",
+              "Sludge Wave",
+              "Earth Power",
+              "Spiky Shield"
+            ],
+            "ability": "Toxic Debris",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Kingambit",
+            "itemState": "held",
+            "item": "Chople Berry",
+            "moves4": ["Kowtow Cleave", "Sucker Punch", "Low Kick", "Protect"],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2104916796050731502",
+      "postUrl": "https://x.com/0115RX/status/2104916796050731502",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTYqod3aQAAt3D3.jpg?name=orig",
+          "sha256": "abb5e45e1470c71230f14827e9e7749b72e4aa54e5ab1e06ea12d4769884c99a"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTYqqUsboAA47q-.jpg?name=orig",
+          "sha256": "fd5140cb1b544bf993c84d33401941eeda325b27d3e97053aa32e0d0aa2596ce"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": ["Flamethrower", "Protect", "Hyper Voice", "Tailwind"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Floette",
+            "itemState": "held",
+            "item": "Floettite",
+            "moves4": ["Calm Mind", "Moonblast", "Protect", "Dazzling Gleam"],
+            "ability": "Flower Veil",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Grassy Glide",
+              "High Horsepower",
+              "Wood Hammer",
+              "Fake Out"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Kingambit",
+            "itemState": "held",
+            "item": "Colbur Berry",
+            "moves4": ["Kowtow Cleave", "Sucker Punch", "Iron Head", "Protect"],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Basculegion",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Wave Crash", "Aqua Jet", "Last Respects", "Protect"],
+            "ability": "Swift Swim",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "Grassy Seed",
+            "moves4": ["Dire Claw", "Protect", "Rock Slide", "Close Combat"],
+            "ability": "Unburden",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2104850328814575883",
+      "postUrl": "https://x.com/mario_producer/status/2104850328814575883",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTXuMvZbYAAH32K.jpg?name=orig",
+          "sha256": "c122aa4dc877904fed00831d73f1da7d1fe73a1e0b309f8f0346e75cb94c8799"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTXuNJfa4AEn0kZ.jpg?name=orig",
+          "sha256": "dd4c21a50cffc01aaae02bd2ef299f8dfd5be15fc9fe79c261a62a88c5eade1c"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": [
+              "Draco Meteor",
+              "Hydro Pump",
+              "Fire Blast",
+              "Hyper Voice"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sinistcha",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": [
+              "Matcha Gotcha",
+              "Shadow Ball",
+              "Rage Powder",
+              "Trick Room"
+            ],
+            "ability": "Hospitality",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Rocky Helmet",
+            "moves4": ["Muddy Water", "Hurricane", "Tailwind", "Wide Guard"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Wyrdeer",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": ["Double-Edge", "Psychic", "Skill Swap", "Trick Room"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "Normal Gem",
+            "moves4": ["Close Combat", "Dire Claw", "Acrobatics", "Fake Out"],
+            "ability": "Poison Touch",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Kingambit",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": [
+              "Kowtow Cleave",
+              "Sucker Punch",
+              "Iron Head",
+              "Low Kick"
+            ],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2104532557799080285",
+      "postUrl": "https://x.com/bakuzorochannel/status/2104532557799080285",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTTNNGxa4AAmyS7.jpg?name=orig",
+          "sha256": "4f10997f5687cc937636839651a1f76f04e1193d23afb225ab98580114fb0a70"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTTNNG-bUAArbfP.jpg?name=orig",
+          "sha256": "619a3b368f3b2be94791a181ee6dbeb24db46d4d208d01aa24da55400ce02636"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": "4VUQNPMHMN",
+        "members": [
+          {
+            "pokemon": "Typhlosion",
+            "itemState": "held",
+            "item": "Charcoal",
+            "moves4": ["Eruption", "Burn Up", "Shadow Ball", "Protect"],
+            "ability": "Flash Fire",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Earthquake", "Dragon Claw", "Rock Slide", "Protect"],
+            "ability": "Rough Skin",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Talonflame",
+            "itemState": "held",
+            "item": "Grassy Seed",
+            "moves4": ["Acrobatics", "Quick Guard", "Tailwind", "Sunny Day"],
+            "ability": "Gale Wings",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Kingambit",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Kowtow Cleave", "Iron Head", "Sucker Punch", "Protect"],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Wood Hammer",
+              "Grassy Glide",
+              "High Horsepower",
+              "Fake Out"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Floette",
+            "itemState": "held",
+            "item": "Floettite",
+            "moves4": [
+              "Moonblast",
+              "Dazzling Gleam",
+              "Light of Ruin",
+              "Protect"
+            ],
+            "ability": "Flower Veil",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2104529188380443106",
+      "postUrl": "https://x.com/pokeyashiro/status/2104529188380443106",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTTKJG0bcAAR0JL.jpg?name=orig",
+          "sha256": "d6d2b5b14abc09421bf107d6eb59abb9d0cb14dbec2e24ed3e5d4808543b1dab"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "7EYG72RMCQ",
+        "members": [
+          {
+            "pokemon": "Torkoal",
+            "itemState": "held",
+            "item": "Charcoal",
+            "moves4": ["Eruption", "Weather Ball", "Earth Power", "Protect"],
+            "ability": "Drought",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sylveon",
+            "itemState": "held",
+            "item": "Fairy Feather",
+            "moves4": ["Hyper Voice", "Hyper Beam", "Quick Attack", "Detect"],
+            "ability": "Pixilate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "White Herb",
+            "moves4": ["Dire Claw", "Close Combat", "Fake Out", "Protect"],
+            "ability": "Unburden",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Chople Berry",
+            "moves4": [
+              "Flare Blitz",
+              "Throat Chop",
+              "Parting Shot",
+              "Fake Out"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Garchompite Z",
+            "moves4": ["Dragon Pulse", "Power Gem", "Flamethrower", "Protect"],
+            "ability": "Rough Skin",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Farigiraf",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Psychic", "Thunderbolt", "Helping Hand", "Trick Room"],
+            "ability": "Armor Tail",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2104520148589879342",
+      "postUrl": "https://x.com/6FzyymjpfB6m8r7/status/2104520148589879342",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTTB65La8AAwuza.jpg?name=orig",
+          "sha256": "b227e11e03e59e84597fc86917a7daaf8e6b6132e4b2d8bce4951e6291d2793f"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Tinkaton",
+            "itemState": "held",
+            "item": "Air Balloon",
+            "moves4": [
+              "Gigaton Hammer",
+              "Thunder Wave",
+              "Stealth Rock",
+              "Encore"
+            ],
+            "ability": "Mold Breaker",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Tyranitar",
+            "itemState": "held",
+            "item": "Tyranitarite",
+            "moves4": [
+              "Stone Edge",
+              "Ice Punch",
+              "Thunder Punch",
+              "Superpower"
+            ],
+            "ability": "Sand Stream",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": [
+              "Hyper Voice",
+              "Draco Meteor",
+              "Flamethrower",
+              "Protect"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Skeledirge",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": ["Torch Song", "Hex", "Will-O-Wisp", "Slack Off"],
+            "ability": "Unaware",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Swampert",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Wave Crash", "Earthquake", "Yawn", "Stealth Rock"],
+            "ability": "Torrent",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Terrain Extender",
+            "moves4": ["Grassy Glide", "Taunt", "Knock Off", "High Horsepower"],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2104444191346401454",
+      "postUrl": "https://x.com/CodeLyokoPR/status/2104444191346401454",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["standard"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTR8z4NWsAAAYL_.jpg?name=orig",
+          "sha256": "7908a0f90b62ef6c9236df2699ea2292e641fb2877de391ea3dbe41a8c3c8e6d"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTR81WCWQAA0fs-.jpg?name=orig",
+          "sha256": "19e5fe3c0a6908ed8fc98527801f7d0966840a2ab3c5cbc2f2a93cf29905355e"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "MQQKF6U8SJ",
+        "members": [
+          {
+            "pokemon": "Golisopod",
+            "itemState": "held",
+            "item": "Golisopite",
+            "moves4": ["Protect", "Iron Head", "Leech Life", "Close Combat"],
+            "ability": "Emergency Exit",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Swampert",
+            "itemState": "held",
+            "item": "Swampertite",
+            "moves4": ["Wave Crash", "Earthquake", "Ice Punch", "Protect"],
+            "ability": "Damp",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Grimmsnarl",
+            "itemState": "held",
+            "item": "Light Clay",
+            "moves4": ["Foul Play", "Parting Shot", "Reflect", "Light Screen"],
+            "ability": "Prankster",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Weather Ball", "Hurricane", "Wide Guard", "Tailwind"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Archaludon",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": [
+              "Flash Cannon",
+              "Dragon Pulse",
+              "Electro Shot",
+              "Protect"
+            ],
+            "ability": "Stamina",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sinistcha",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Matcha Gotcha", "Rage Powder", "Protect", "Trick Room"],
+            "ability": "Hospitality",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2102241622465601920",
+      "postUrl": "https://x.com/ChiaZhengqi/status/2102241622465601920",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["allocation-companion", "alternate-form"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSypm0KboAAtrgF.jpg?name=orig",
+          "sha256": "062ae26c522312a4f6f56f1fa4a8b242df0ce7ecec34292b62775edc65b096a9"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSypnMJaIAABelj.jpg?name=orig",
+          "sha256": "9aacf880744b66d251788288306eb795087bf6bc02e782e8775d41da91de6e1c"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "G4WXK11NVD",
+        "members": [
+          {
+            "pokemon": "Politoed",
+            "itemState": "held",
+            "item": "Zoom Lens",
+            "moves4": ["Weather Ball", "Hypnosis", "Perish Song", "Protect"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Politoed",
+              "teamId": "G4WXK11NVD",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 24,
+                "SpA": 0,
+                "SpD": 10,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Indeedee-F",
+            "itemState": "held",
+            "item": "Rocky Helmet",
+            "moves4": ["Psychic", "Follow Me", "Helping Hand", "Skill Swap"],
+            "ability": "Psychic Surge",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Indeedee-F",
+              "teamId": "G4WXK11NVD",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 32,
+                "SpA": 0,
+                "SpD": 2,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Delphox",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": [
+              "Expanding Force",
+              "Heat Wave",
+              "Focus Blast",
+              "Protect"
+            ],
+            "ability": "Blaze",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Delphox",
+              "teamId": "G4WXK11NVD",
+              "points": {
+                "HP": 2,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Garchompite Z",
+            "moves4": ["Dragon Pulse", "Power Gem", "Earth Power", "Protect"],
+            "ability": "Rough Skin",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Garchomp",
+              "teamId": "G4WXK11NVD",
+              "points": {
+                "HP": 2,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Metagross",
+            "itemState": "held",
+            "item": "Metagrossite",
+            "moves4": [
+              "Steel Roller",
+              "Psychic Fangs",
+              "Body Press",
+              "Protect"
+            ],
+            "ability": "Clear Body",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Metagross",
+              "teamId": "G4WXK11NVD",
+              "points": {
+                "HP": 8,
+                "Atk": 25,
+                "Def": 8,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 25
+              }
+            }
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Wood Hammer",
+              "High Horsepower",
+              "Fake Out",
+              "Grassy Glide"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Rillaboom",
+              "teamId": "G4WXK11NVD",
+              "points": {
+                "HP": 18,
+                "Atk": 25,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 22,
+                "Spe": 1
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2102143280892842239",
+      "postUrl": "https://x.com/seafoamshores/status/2102143280892842239",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["standard"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSxQLANXoAAH-s5.jpg?name=orig",
+          "sha256": "fd95f844855bbd4ceaad245b68db3740b16b75868934e7234526dce005d14025"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSxQLAWW4AAQ9yT.jpg?name=orig",
+          "sha256": "be3721b2407b9da937fd9731df395ea6e485c4bcf302a437eade135415c2e63b"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": "GA0H1NLJ8J",
+        "members": [
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Weather Ball", "Hurricane", "Tailwind", "Wide Guard"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Archaludon",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": [
+              "Electro Shot",
+              "Dragon Pulse",
+              "Flash Cannon",
+              "Protect"
+            ],
+            "ability": "Stamina",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Golisopod",
+            "itemState": "held",
+            "item": "Golisopite",
+            "moves4": [
+              "Leech Life",
+              "Iron Head",
+              "Sucker Punch",
+              "Swords Dance"
+            ],
+            "ability": "Emergency Exit",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Charizard",
+            "itemState": "held",
+            "item": "Charizardite Y",
+            "moves4": ["Heat Wave", "Weather Ball", "Ancient Power", "Protect"],
+            "ability": "Blaze",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Hydreigon",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Draco Meteor", "Dark Pulse", "Snarl", "U-turn"],
+            "ability": "Levitate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Grimmsnarl",
+            "itemState": "held",
+            "item": "Light Clay",
+            "moves4": [
+              "Spirit Break",
+              "Parting Shot",
+              "Reflect",
+              "Light Screen"
+            ],
+            "ability": "Prankster",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2102084579817312694",
+      "postUrl": "https://x.com/WillBrown_vgc/status/2102084579817312694",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["standard"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSwaeuaWkAAUq8E.jpg?name=orig",
+          "sha256": "1c4818b2ee520fab1e8b96b9bf618fb0a024efbd59dd057861ff0f734170b60f"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "VMB354U0A9",
+        "members": [
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Fake Out",
+              "Grassy Glide",
+              "Wood Hammer",
+              "High Horsepower"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Lucario",
+            "itemState": "held",
+            "item": "Lucarionite Z",
+            "moves4": ["Detect", "Aura Sphere", "Flash Cannon", "Calm Mind"],
+            "ability": "Inner Focus",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Garchompite Z",
+            "moves4": ["Protect", "Draco Meteor", "Power Gem", "Flamethrower"],
+            "ability": "Rough Skin",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": [
+              "Fake Out",
+              "Parting Shot",
+              "Flare Blitz",
+              "Helping Hand"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Basculegion",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Protect", "Wave Crash", "Aqua Jet", "Last Respects"],
+            "ability": "Adaptability",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "Grassy Seed",
+            "moves4": ["Protect", "Rock Tomb", "Close Combat", "Dire Claw"],
+            "ability": "Unburden",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101901960224063849",
+      "postUrl": "https://x.com/SPY_Anya11/status/2101901960224063849",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["localized-text"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSt0sPBb0AAMqwv.jpg?name=orig",
+          "sha256": "2c3822d59e9165056e7b6895a64f3deb00bed3ac740d135b2bb94a1324760621"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": null,
+        "members": [
+          {
+            "pokemon": "Tyranitar",
+            "itemState": "held",
+            "item": "Tyranitarite",
+            "moves4": ["Rock Slide", "Knock Off", "Low Kick", "Protect"],
+            "ability": "Sand Stream",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Excadrill",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["High Horsepower", "Iron Head", "Rock Slide", "Protect"],
+            "ability": "Sand Rush",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": [
+              "Hyper Voice",
+              "Draco Meteor",
+              "Flamethrower",
+              "Protect"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Indeedee",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": ["Expanding Force", "Mystical Fire", "Trick", "Protect"],
+            "ability": "Psychic Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Corviknight",
+            "itemState": "held",
+            "item": "Psychic Seed",
+            "moves4": ["Brave Bird", "Power Trip", "Bulk Up", "Roost"],
+            "ability": "Mirror Armor",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "White Herb",
+            "moves4": ["Close Combat", "Dire Claw", "Coaching", "Protect"],
+            "ability": "Unburden",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101858913511494050",
+      "postUrl": "https://x.com/AtrixMJ/status/2101858913511494050",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["allocation-companion"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HStNiRvWMAEsxgz.jpg?name=orig",
+          "sha256": "80234552910d06f4e5c6fd4c5b0e4a4a129fc8f57a58c91019a6d50463b70b1e"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HStNipEXoAANEMY.jpg?name=orig",
+          "sha256": "7b081dd4f2ebbdf91f4258964e0d07f631c82dc3d64ff43cda11451c8ff0f815"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "SH9PE4TG4S",
+        "members": [
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Garchompite Z",
+            "moves4": [
+              "Draco Meteor",
+              "Flamethrower",
+              "Earth Power",
+              "Protect"
+            ],
+            "ability": "Rough Skin",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Garchomp",
+              "teamId": "SH9PE4TG4S",
+              "points": {
+                "HP": 0,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 2,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Farigiraf",
+            "itemState": "held",
+            "item": "Twisted Spoon",
+            "moves4": ["Psychic", "Hyper Voice", "Trick Room", "Helping Hand"],
+            "ability": "Armor Tail",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Farigiraf",
+              "teamId": "SH9PE4TG4S",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 2,
+                "SpA": 15,
+                "SpD": 17,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Sneasler",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Poison Jab", "Close Combat", "Throat Chop", "Protect"],
+            "ability": "Poison Touch",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Sneasler",
+              "teamId": "SH9PE4TG4S",
+              "points": {
+                "HP": 0,
+                "Atk": 32,
+                "Def": 2,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Torkoal",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Eruption", "Overheat", "Earth Power", "Protect"],
+            "ability": "Drought",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Torkoal",
+              "teamId": "SH9PE4TG4S",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 2,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Floette",
+            "itemState": "held",
+            "item": "Floettite",
+            "moves4": [
+              "Dazzling Gleam",
+              "Moonblast",
+              "Light of Ruin",
+              "Protect"
+            ],
+            "ability": "Flower Veil",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Floette",
+              "teamId": "SH9PE4TG4S",
+              "points": {
+                "HP": 0,
+                "Atk": 0,
+                "Def": 2,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Passho Berry",
+            "moves4": [
+              "Flare Blitz",
+              "Darkest Lariat",
+              "Fake Out",
+              "Parting Shot"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Incineroar",
+              "teamId": "SH9PE4TG4S",
+              "points": {
+                "HP": 30,
+                "Atk": 23,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 13
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101833659640606991",
+      "postUrl": "https://x.com/KaguyaFalls/status/2101833659640606991",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["standard"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSs2kvWWIAAG4bC.jpg?name=orig",
+          "sha256": "ce5de95c1272aa47f563e6c4f6a73f6d16faa9214c06ed02acd85b5db19921f8"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "VC29B1T07T",
+        "members": [
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Fake Out", "Flare Blitz", "Assurance", "Parting Shot"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Farigiraf",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Protect", "Hyper Voice", "Psychic", "Trick Room"],
+            "ability": "Armor Tail",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Mawile",
+            "itemState": "held",
+            "item": "Mawilite",
+            "moves4": ["Protect", "Sucker Punch", "Play Rough", "Iron Head"],
+            "ability": "Hyper Cutter",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Primarina",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": ["Protect", "Calm Mind", "Hyper Voice", "Moonblast"],
+            "ability": "Liquid Voice",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Froslass",
+            "itemState": "held",
+            "item": "Froslassite",
+            "moves4": ["Protect", "Aurora Veil", "Blizzard", "Shadow Ball"],
+            "ability": "Cursed Body",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Pawmot",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Protect", "Fake Out", "Double Shock", "Close Combat"],
+            "ability": "Iron Fist",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101789266850259233",
+      "postUrl": "https://x.com/DoughboyVGC/status/2101789266850259233",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["standard"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSsOMXDWYAIp23J.jpg?name=orig",
+          "sha256": "082632f6833928eda0c7f49f1bd6d3ac31941816c495e8eb52e6772224cd7f1b"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSsOMXAXsAEu0H5.jpg?name=orig",
+          "sha256": "736794d12d856bfb2875808893769ff6e822c65ae5c453feda220f778b9b59ee"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 1,
+        "teamId": "NTB3MRCL6U",
+        "members": [
+          {
+            "pokemon": "Pelipper",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Hurricane", "Weather Ball", "Tailwind", "Protect"],
+            "ability": "Drizzle",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Basculegion",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": ["Wave Crash", "Last Respects", "Aqua Jet", "Flip Turn"],
+            "ability": "Adaptability",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Archaludon",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": ["Dragon Pulse", "Electro Shot", "Snarl", "Protect"],
+            "ability": "Stamina",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": ["Hyper Voice", "Draco Meteor", "Tailwind", "Protect"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Expert Belt",
+            "moves4": [
+              "Grassy Glide",
+              "Drum Beating",
+              "High Horsepower",
+              "Fake Out"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Golisopod",
+            "itemState": "held",
+            "item": "Golisopite",
+            "moves4": ["Leech Life", "Iron Head", "Close Combat", "Protect"],
+            "ability": "Emergency Exit",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101695666007212150",
+      "postUrl": "https://x.com/AnRiVGC/status/2101695666007212150",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["allocation-companion"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSq5EZDW8AAoCGn.jpg?name=orig",
+          "sha256": "c41c61ea1d5ad3f9ddb9fb2c1ee408f6e6160be4edfd7c43bf5672542dfc730f"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSq5EZEXgAAVMIj.jpg?name=orig",
+          "sha256": "3521e7aa145dc20946b5ee691827757b07a2b7605a54424087341e44e622691a"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "FCR4RCQEXY",
+        "members": [
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": [
+              "Flare Blitz",
+              "Fake Out",
+              "Parting Shot",
+              "Helping Hand"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Incineroar",
+              "teamId": "FCR4RCQEXY",
+              "points": {
+                "HP": 28,
+                "Atk": 5,
+                "Def": 1,
+                "SpA": 0,
+                "SpD": 9,
+                "Spe": 23
+              }
+            }
+          },
+          {
+            "pokemon": "Basculegion",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": ["Wave Crash", "Aqua Jet", "Last Respects", "Protect"],
+            "ability": "Adaptability",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Basculegion",
+              "teamId": "FCR4RCQEXY",
+              "points": {
+                "HP": 4,
+                "Atk": 28,
+                "Def": 5,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 29
+              }
+            }
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Wood Hammer",
+              "Grassy Glide",
+              "Fake Out",
+              "High Horsepower"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Rillaboom",
+              "teamId": "FCR4RCQEXY",
+              "points": {
+                "HP": 17,
+                "Atk": 25,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 10,
+                "Spe": 14
+              }
+            }
+          },
+          {
+            "pokemon": "Lucario",
+            "itemState": "held",
+            "item": "Lucarionite Z",
+            "moves4": ["Aura Sphere", "Flash Cannon", "Calm Mind", "Detect"],
+            "ability": "Inner Focus",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Lucario",
+              "teamId": "FCR4RCQEXY",
+              "points": {
+                "HP": 31,
+                "Atk": 0,
+                "Def": 7,
+                "SpA": 8,
+                "SpD": 6,
+                "Spe": 14
+              }
+            }
+          },
+          {
+            "pokemon": "Aerodactyl",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Rock Slide", "Dual Wingbeat", "Tailwind", "Protect"],
+            "ability": "Unnerve",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Aerodactyl",
+              "teamId": "FCR4RCQEXY",
+              "points": {
+                "HP": 2,
+                "Atk": 32,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Floette",
+            "itemState": "held",
+            "item": "Floettite",
+            "moves4": ["Moonblast", "Dazzling Gleam", "Calm Mind", "Protect"],
+            "ability": "Flower Veil",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Floette",
+              "teamId": "FCR4RCQEXY",
+              "points": {
+                "HP": 27,
+                "Atk": 0,
+                "Def": 2,
+                "SpA": 25,
+                "SpD": 0,
+                "Spe": 12
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101611974715195657",
+      "postUrl": "https://x.com/BoredKingKR/status/2101611974715195657",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["alternate-form"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSps89GakAAAzXk.jpg?name=orig",
+          "sha256": "fa41fb758bfa787926c577279fdcecbe36f8bea2f63c67f00c9dc7f76d2f8113"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSps89LbsAAa-aH.jpg?name=orig",
+          "sha256": "2acbb635fa23c2f8d39ddbd2e72f7c590808e2ed0b207f72c30eb2f1e8e386d1"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "3W8FBWPT7M",
+        "members": [
+          {
+            "pokemon": "Gengar",
+            "itemState": "held",
+            "item": "Gengarite",
+            "moves4": ["Perish Song", "Protect", "Sludge Bomb", "Shadow Ball"],
+            "ability": "Cursed Body",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Incineroar",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Fake Out", "Flare Blitz", "Parting Shot", "Protect"],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Eject Button",
+            "moves4": ["Protect", "U-turn", "Fake Out", "Grassy Glide"],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Ninetales-Alola",
+            "itemState": "held",
+            "item": "Choice Scarf",
+            "moves4": ["Icy Wind", "Blizzard", "Freeze-Dry", "Encore"],
+            "ability": "Snow Warning",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Kommo-o",
+            "itemState": "held",
+            "item": "Leftovers",
+            "moves4": [
+              "Clanging Scales",
+              "Clangorous Soul",
+              "Aura Sphere",
+              "Protect"
+            ],
+            "ability": "Soundproof",
+            "nature": null,
+            "allocation": null
+          },
+          {
+            "pokemon": "Kingambit",
+            "itemState": "held",
+            "item": "Chople Berry",
+            "moves4": ["Kowtow Cleave", "Protect", "Iron Head", "Sucker Punch"],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": null
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101432704168534261",
+      "postUrl": "https://x.com/prncessdianaaa/status/2101432704168534261",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["allocation-companion"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSnJ5-iawAAlEoo.jpg?name=orig",
+          "sha256": "976c87b21c813bc903d1ea45b757e4478a9f24e0647caa4eb032cdd95def0795"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSnJ5-hbgAAiUwj.jpg?name=orig",
+          "sha256": "1451369916467b0720a2e4b4cc46f68cd2398905b499aaea4456af4c71e88599"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "K14MDAHNUM",
+        "members": [
+          {
+            "pokemon": "Farigiraf",
+            "itemState": "held",
+            "item": "Sitrus Berry",
+            "moves4": ["Protect", "Trick Room", "Imprison", "Expanding Force"],
+            "ability": "Armor Tail",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Farigiraf",
+              "teamId": "K14MDAHNUM",
+              "points": {
+                "HP": 32,
+                "Atk": 0,
+                "Def": 24,
+                "SpA": 0,
+                "SpD": 10,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Rillaboom",
+            "itemState": "held",
+            "item": "Miracle Seed",
+            "moves4": [
+              "Grassy Glide",
+              "Wood Hammer",
+              "High Horsepower",
+              "Fake Out"
+            ],
+            "ability": "Grassy Surge",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Rillaboom",
+              "teamId": "K14MDAHNUM",
+              "points": {
+                "HP": 32,
+                "Atk": 32,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 2,
+                "Spe": 0
+              }
+            }
+          },
+          {
+            "pokemon": "Volcarona",
+            "itemState": "held",
+            "item": "Grassy Seed",
+            "moves4": ["Protect", "Heat Wave", "Quiver Dance", "Giga Drain"],
+            "ability": "Flame Body",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Volcarona",
+              "teamId": "K14MDAHNUM",
+              "points": {
+                "HP": 17,
+                "Atk": 0,
+                "Def": 13,
+                "SpA": 5,
+                "SpD": 1,
+                "Spe": 30
+              }
+            }
+          },
+          {
+            "pokemon": "Glimmora",
+            "itemState": "held",
+            "item": "Glimmoranite",
+            "moves4": [
+              "Spiky Shield",
+              "Sludge Bomb",
+              "Earth Power",
+              "Power Gem"
+            ],
+            "ability": "Toxic Debris",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Glimmora",
+              "teamId": "K14MDAHNUM",
+              "points": {
+                "HP": 1,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 1,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Salamence",
+            "itemState": "held",
+            "item": "Salamencite",
+            "moves4": [
+              "Protect",
+              "Draco Meteor",
+              "Hyper Voice",
+              "Flamethrower"
+            ],
+            "ability": "Intimidate",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Salamence",
+              "teamId": "K14MDAHNUM",
+              "points": {
+                "HP": 2,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Whimsicott",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Tailwind", "Encore", "Moonblast", "Sunny Day"],
+            "ability": "Prankster",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Whimsicott",
+              "teamId": "K14MDAHNUM",
+              "points": {
+                "HP": 2,
+                "Atk": 0,
+                "Def": 0,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2101369260878532772",
+      "postUrl": "https://x.com/GeniusVGC/status/2101369260878532772",
+      "split": "holdout",
+      "label": "eligible",
+      "coverage": ["allocation-companion"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSmQMCEXYAAUTD6.jpg?name=orig",
+          "sha256": "c62ceeaec805e9e786f3bdbef0ae5df8321f121ab5cb4fd7d98b06a5b1a03ecb"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSmQMmPWYAAzfsG.jpg?name=orig",
+          "sha256": "ef436d5b7574a163c54016e56b4732f81cba34383c1f9bcc18968498b95c9985"
+        }
+      ],
+      "expected": {
+        "summaryIndex": 0,
+        "teamId": "VAVLW41J1F",
+        "members": [
+          {
+            "pokemon": "Charizard",
+            "itemState": "held",
+            "item": "Charizardite Y",
+            "moves4": ["Heat Wave", "Weather Ball", "Ancient Power", "Protect"],
+            "ability": "Blaze",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Charizard",
+              "teamId": "VAVLW41J1F",
+              "points": {
+                "HP": 20,
+                "Atk": 0,
+                "Def": 30,
+                "SpA": 1,
+                "SpD": 0,
+                "Spe": 15
+              }
+            }
+          },
+          {
+            "pokemon": "Floette",
+            "itemState": "held",
+            "item": "Floettite",
+            "moves4": [
+              "Moonblast",
+              "Dazzling Gleam",
+              "Light of Ruin",
+              "Protect"
+            ],
+            "ability": "Flower Veil",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Floette",
+              "teamId": "VAVLW41J1F",
+              "points": {
+                "HP": 16,
+                "Atk": 0,
+                "Def": 6,
+                "SpA": 25,
+                "SpD": 0,
+                "Spe": 19
+              }
+            }
+          },
+          {
+            "pokemon": "Kingambit",
+            "itemState": "held",
+            "item": "Chople Berry",
+            "moves4": [
+              "Kowtow Cleave",
+              "Iron Head",
+              "Low Kick",
+              "Sucker Punch"
+            ],
+            "ability": "Defiant",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Kingambit",
+              "teamId": "VAVLW41J1F",
+              "points": {
+                "HP": 32,
+                "Atk": 15,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 18,
+                "Spe": 1
+              }
+            }
+          },
+          {
+            "pokemon": "Garchomp",
+            "itemState": "held",
+            "item": "Life Orb",
+            "moves4": [
+              "Earthquake",
+              "Dragon Claw",
+              "Stomping Tantrum",
+              "Protect"
+            ],
+            "ability": "Rough Skin",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Garchomp",
+              "teamId": "VAVLW41J1F",
+              "points": {
+                "HP": 6,
+                "Atk": 28,
+                "Def": 0,
+                "SpA": 0,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          },
+          {
+            "pokemon": "Basculegion",
+            "itemState": "held",
+            "item": "Mystic Water",
+            "moves4": ["Wave Crash", "Last Respects", "Aqua Jet", "Protect"],
+            "ability": "Adaptability",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Basculegion",
+              "teamId": "VAVLW41J1F",
+              "points": {
+                "HP": 12,
+                "Atk": 18,
+                "Def": 6,
+                "SpA": 0,
+                "SpD": 10,
+                "Spe": 20
+              }
+            }
+          },
+          {
+            "pokemon": "Whimsicott",
+            "itemState": "held",
+            "item": "Focus Sash",
+            "moves4": ["Moonblast", "Tailwind", "Misty Terrain", "Protect"],
+            "ability": "Prankster",
+            "nature": null,
+            "allocation": {
+              "mediaIndex": 1,
+              "pokemon": "Whimsicott",
+              "teamId": "VAVLW41J1F",
+              "points": {
+                "HP": 1,
+                "Atk": 0,
+                "Def": 1,
+                "SpA": 32,
+                "SpD": 0,
+                "Spe": 32
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "postId": "2106953372926624047",
+      "postUrl": "https://x.com/syo_hkd_1024/status/2106953372926624047",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["rank-screen"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HT1m7DmaYAAJSFG.jpg?name=orig",
+          "sha256": "129a5afdaa7640375e1a550fd6f3d67fcaf752cffe8288415fe51b02e9c8eed9"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HT1m7DpaYAAE2fW.jpg?name=orig",
+          "sha256": "a534accd8523f440d98e769e96bac2457c6891bf0ba8b74b995de616cdc487c2"
+        }
+      ],
+      "reason": "Both images are ranked-ladder result screens (win streak, rank, VP); neither shows team sets, held items, or moves."
+    },
+    {
+      "postId": "2106948674731581686",
+      "postUrl": "https://x.com/chlorophyll_470/status/2106948674731581686",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HT1iplwaoAAtGh5.jpg?name=orig",
+          "sha256": "7ea30fd6525d286e796bd28701e34ed5e6c7c2a033ecc2b0870254ac4893575b"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HT1iplyawAAh8n0.jpg?name=orig",
+          "sha256": "061d8cc590f2979268cc1adea76df2c81b7393be7b3a27201b2eff3de7c03670"
+        }
+      ],
+      "reason": "Both photos are ranked-battle result screens: Master Ball rank cards with season rating, and a Team 13 selector listing six species icons with held-item sprites. No ability row and no four-move list appears, so no six-slot set can be transcribed."
+    },
+    {
+      "postId": "2106709186562380231",
+      "postUrl": "https://x.com/pansy_wow/status/2106709186562380231",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["cropped-illegible"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTyI1oVb0AAlyQh.jpg?name=orig",
+          "sha256": "4fdc5327f60a400924708720a1fbff4356104116805551304ecb8ee9845d9a4f"
+        }
+      ],
+      "reason": "YouTube-thumbnail collage of six set cards that show an ability and four moves each but no held-item state and no team-summary frame, so the required item field is absent."
+    },
+    {
+      "postId": "2106074996565307761",
+      "postUrl": "https://x.com/SrRoxas/status/2106074996565307761",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["rank-screen", "cropped-illegible"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTpHTcmXUAA6_yn.jpg?name=orig",
+          "sha256": "551bde2524c9818dcac62b3c32d87013693171cb17bb2bd738879d090d905480"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTpICUmWYAAYycF.jpg?name=orig",
+          "sha256": "fff979b74e755c747beff0499284164d96b8842193dd1153c3f0df74bb78811b"
+        }
+      ],
+      "reason": "Photo 0 is a Master Ball tier rank/placement result screen. Photo 1 is a six-slot summary whose every held-item row is covered by an opaque black blob, so item state cannot be read."
+    },
+    {
+      "postId": "2105830205734650193",
+      "postUrl": "https://x.com/dbkesports/status/2105830205734650193",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTlpZtiXQAEtExJ.jpg?name=orig",
+          "sha256": "2c1df81de032833ebf632c807f056ec2f574419d2b16a056f494ca810d794fca"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTlpZtzWAAASr9J.jpg?name=orig",
+          "sha256": "be6fa4bc6b8c84e1bc7b0e6abdbe398e2103a2d009c86cc6b9497b123c77e140"
+        }
+      ],
+      "reason": "Two promotional result graphics: a Nexus Challenge #5 sixth-place poster, and a Team Used panel naming six species (Mega Garchomp Z, Rillaboom, Hisuian Arcanine, Milotic, Sneasler, Gholdengo). Neither shows held items or move lists."
+    },
+    {
+      "postId": "2105823776646820232",
+      "postUrl": "https://x.com/cryshadns4131/status/2105823776646820232",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTljjqYbUAA5qfK.jpg?name=orig",
+          "sha256": "1de8cdd195800bba65b3b58c4a7975f9ba9cd5605bf4ee3df485021325b5da3f"
+        }
+      ],
+      "reason": "Ranked battle lobby: season and tier info plus a six-sprite team roster with item icons only; no per-slot items, abilities, or moves."
+    },
+    {
+      "postId": "2105704324001329632",
+      "postUrl": "https://x.com/ryoma16b/status/2105704324001329632",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTj1fUiawAAK_L8.jpg?name=orig",
+          "sha256": "623bcfda49455609ec6c60c2f8e0c860aacbf72792befdebf417beaf27dd79fe"
+        }
+      ],
+      "reason": "Pokemon Champions Global Challenge 2027 I results screen: rank 921 and rate 1728.307 with a six-member team preview showing species and item icons only; no held-item names and no moves."
+    },
+    {
+      "postId": "2105098204572434513",
+      "postUrl": "https://x.com/kawa_pathiqe18/status/2105098204572434513",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTbPqBJbEAAF5F2.jpg?name=orig",
+          "sha256": "2ca66eb67c7689a6e22cb396d676629aec9b105268f19b7cfc92e69aa66020b3"
+        }
+      ],
+      "reason": "Global Challenge result screen: final rating and placement plus a six-sprite roster with item icons; no slot-by-slot held items or moves."
+    },
+    {
+      "postId": "2104949727850807314",
+      "postUrl": "https://x.com/KAKAnai10/status/2104949727850807314",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTZImwoboAADzZt.jpg?name=orig",
+          "sha256": "39a9a30dc3bb0b8933e59d9234809c49b88d41c380a852e003d1b957791ddb52"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTZInFaaYAApxzV.jpg?name=orig",
+          "sha256": "a5d36981d43fd5e410194ba904e02253f289a1228344615abdee703ddc07bf81"
+        }
+      ],
+      "reason": "Champions title artwork plus the Global Challenge 2027 I event entry screen listing six team members as icons only; no summary with held-item names and four moves."
+    },
+    {
+      "postId": "2104901356985463223",
+      "postUrl": "https://x.com/erza0602/status/2104901356985463223",
+      "split": "calibration",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTYcoKpboAA_eJF.jpg?name=orig",
+          "sha256": "308375ec9257ce6ca61ef47b307bd6835f9c2ffbb57b8b42466a9ea0e75e84cf"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTYcoKhbYAAaqqU.jpg?name=orig",
+          "sha256": "b2194b343f4ef36630417635e20dee3bb23d7b7f43a5d91acb24b7a0e64d2f45"
+        }
+      ],
+      "reason": "Japanese rank-result page (順位 95690位, 最終レート 1487.693) lists six roster species (カバルドン, ボーマンダ, ブリジュラス, ルカリオ, アシレーヌ, マスカーニャ) with icons but no items or moves; second image is a mail inbox with no team data."
+    },
+    {
+      "postId": "2104896783595999712",
+      "postUrl": "https://x.com/liapoke_kanna/status/2104896783595999712",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTYYd4jboAEBnNZ.jpg?name=orig",
+          "sha256": "6617e8425e52d93639cee54c351888d7c315688832ef7885c3eaef440108f529"
+        }
+      ],
+      "reason": "Ranked battle lobby: Master Ball tier, standing, and six team sprite icons with item icons; no readable items or move list."
+    },
+    {
+      "postId": "2104758041451360492",
+      "postUrl": "https://x.com/sait050928/status/2104758041451360492",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTWaSE3aEAAz2En.jpg?name=orig",
+          "sha256": "539d0f7bfedee1f04e3db4542b4eef526b4512d37a19ac210c11a63d1bf6c988"
+        }
+      ],
+      "reason": "Global Challenge 2027 I result screen: placement 127,043rd with final rating 1469.003, beside a Team 1 panel listing six species with held-item icons only. No ability row and no four-move list appears."
+    },
+    {
+      "postId": "2104649577228050509",
+      "postUrl": "https://x.com/Kura_0705__/status/2104649577228050509",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTU3osyboAAiMrU.jpg?name=orig",
+          "sha256": "a8067069877a09c327f55e1a6a1053a7edd42aecd5482af7d661a3a0b21461ee"
+        }
+      ],
+      "reason": "Champions Global Challenge 2027 I results screen: rank 111101 and rate 1483.312 with six roster species and item icons only; no set details and no moves."
+    },
+    {
+      "postId": "2104644871856505115",
+      "postUrl": "https://x.com/PkmnVeteranCJ/status/2104644871856505115",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTUzWzUWsAAAcaN.jpg?name=orig",
+          "sha256": "8a28aa07b164f699896ed3422d6df1c68c9dc0c31fb1fc67dc5caa3f35c68e95"
+        }
+      ],
+      "reason": "Global Challenge result screen: Placement No. 23,656 and Final Rating 1,559.937 beside a Team 2 roster panel with six names (Salamence, Shadow, Gardevoir, Critz, Amarouge, Kenpachi) and item icons only; no held item names and no moves."
+    },
+    {
+      "postId": "2104614824533704756",
+      "postUrl": "https://x.com/tabun11/status/2104614824533704756",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTUWxukaQAImdN7.jpg?name=orig",
+          "sha256": "ff70fdca64260b283315ae8ac61ff02f316d65f1ecd71c62fd8c036a36fc0fdf"
+        }
+      ],
+      "reason": "A Global Challenge 2027 I rank screen: final placement 3,466th with rating 1664.007, plus a Team 1 roster panel listing six species with held-item icons and genders only. No ability row and no four-move list is shown."
+    },
+    {
+      "postId": "2104592432855986530",
+      "postUrl": "https://x.com/NimbasaCityPost/status/2104592432855986530",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTUAPMmWkAA1Kwi.jpg?name=orig",
+          "sha256": "4e7e0c3d3cae5ecd55063cae2b6785414d2ebc0c564c8a9b107325696c841a5a"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HTUAQPrW4AAe4iF.jpg?name=orig",
+          "sha256": "8949dcbfc1397f0d51a8d2050ed9a683edd9b24e367120178a03bceea5dc63ac"
+        }
+      ],
+      "reason": "Photo of a player at a console plus a Champions Global Challenge results screen (rank 1, rate 1900.759) with six roster species and item icons only; no held-item names and no moves."
+    },
+    {
+      "postId": "2104538364737388946",
+      "postUrl": "https://x.com/mohitown2/status/2104538364737388946",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTTSfPRbkAA6m_I.jpg?name=orig",
+          "sha256": "96a6eff7d27b64839d054b9037c35086306b0521cf99f5183df59ea003297100"
+        }
+      ],
+      "reason": "Global Challenge rank/results screen: final placement 42487 and a six-Pokémon roster with Japanese names and held-item icons, but item names and moves are absent, so no slot can be transcribed."
+    },
+    {
+      "postId": "2104515163143745674",
+      "postUrl": "https://x.com/ktrn925/status/2104515163143745674",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTS9Yesa0AA7lHW.jpg?name=orig",
+          "sha256": "1e7deffcbe49495e437f1a4c351924830878236e5a9e2d5d93550139d055015e"
+        }
+      ],
+      "reason": "Global Challenge senior result screen: standing and rating plus a six-species roster with item icons; no readable per-slot items or moves."
+    },
+    {
+      "postId": "2104514429593485691",
+      "postUrl": "https://x.com/s_pk_0106/status/2104514429593485691",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTS8t8_aQAAAoPo.jpg?name=orig",
+          "sha256": "abaf790132f94b2c803f02789dc07d5ba2862230e2db646cb96a5094207be6c9"
+        }
+      ],
+      "reason": "Champions Global Challenge 2027 I results screen: rank 4154 and rate 1655.355 with a six-member nicknamed roster and item icons only; no held-item names and no moves."
+    },
+    {
+      "postId": "2104511757914169598",
+      "postUrl": "https://x.com/keibo_poke/status/2104511757914169598",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTS6SgebMAAylRO.jpg?name=orig",
+          "sha256": "3f4d4907f7aed094512033695af62b2ecfa8f808d37434bdd321cbeeb38f291e"
+        }
+      ],
+      "reason": "Global Challenge result screen: final placing plus a six-icon roster strip; no sets, held items, or moves appear."
+    },
+    {
+      "postId": "2104476154803769756",
+      "postUrl": "https://x.com/Lumpoke/status/2104476154803769756",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTSZ6JZbwAAw0G0.jpg?name=orig",
+          "sha256": "8f13be12fc547d14e95b955b783ba5be4f722fe4bf471bbb1360087165ff2b49"
+        }
+      ],
+      "reason": "Global Challenge 2027 I event screen: rank 1242 and rating 1705.730 with a チーム6 row of six sprites carrying item icons and a matchmaking button; no species names, item names, or moves are shown, so there is no six-slot summary."
+    },
+    {
+      "postId": "2104403860588466350",
+      "postUrl": "https://x.com/nichkangel/status/2104403860588466350",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["roster-only", "ambiguous-multi-team"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HTRYE8sWoAAVsqE.jpg?name=orig",
+          "sha256": "05c853114b620df2d59ed406fb85405e045d40066cc111c176a6792a6df5c595"
+        }
+      ],
+      "reason": "Fan infographic combining three players records and six-icon roster strips with item icons only; no moves are shown and more than one team is depicted."
+    },
+    {
+      "postId": "2101182053572391084",
+      "postUrl": "https://x.com/shaikhvgc786/status/2101182053572391084",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSjl6uNbIAAsx_H.jpg?name=orig",
+          "sha256": "28895295a65284c1c0f7e4228d61b0bb30f6103b441bbdf859e2981b1012a5cc"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSjl7LpaMAAMKru.jpg?name=orig",
+          "sha256": "83180a9e1091ed82b2578c532219c6f75d35e6f6333d62604a1c38d80ce33d40"
+        }
+      ],
+      "reason": "Ranked-ladder screens only: a Champion Tier rank-up screen (rank-up trial progress, VP earned, next rank) and a Tally Top 20 leaderboard listing player names with ratings. Neither shows a six-slot team with items and moves."
+    },
+    {
+      "postId": "2100511152832737306",
+      "postUrl": "https://x.com/MrPhoNoodle/status/2100511152832737306",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSaC_Y1XsAE-fxg.jpg?name=orig",
+          "sha256": "ad11deac6a67b645aba24beb31bc7596b8e72925b489b71ede723e435086d338"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSaC_Y2WQAER0vA.jpg?name=orig",
+          "sha256": "e8a5190ee0141feddc50731d31a18e7d6149cb71a23af29a9a9a39549b25e371"
+        }
+      ],
+      "reason": "Two English Ranked Battles screens: photo 1 is a 5-Win Streak result panel (MASTER BALL TIER RANK 1, Placement No. 724), photo 2 the battle lobby (Season M-6, Rank 1, Team 4 row of six sprite icons). No species names, items or moves."
+    },
+    {
+      "postId": "2099184704373317839",
+      "postUrl": "https://x.com/cycleshop_i/status/2099184704373317839",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSHNXOwaEAEgy-x.jpg?name=orig",
+          "sha256": "e1f8d20a969de9c727e5f1cc716ad2e6ea491e3f563892ecde9e3f0f73911019"
+        }
+      ],
+      "reason": "Victory Road tournament Top 16 bracket graphic: player tags and placements with six tiny sprite icons per entrant; no Pokémon names, held items, or moves are readable anywhere."
+    },
+    {
+      "postId": "2099155960757444977",
+      "postUrl": "https://x.com/KantoClark/status/2099155960757444977",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["mismatched-companion", "ambiguous-multi-team"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HSGyA84boAAP_hJ.jpg?name=orig",
+          "sha256": "c90cbbf535b7bed217780e280388584e76667ee73fb810301ab4e1337ed5db6a"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HSGys7YWwAIgqtQ.jpg?name=orig",
+          "sha256": "fc1f4f12f81b6fb506c6b1919bb5e431e808215cb17a2f6957f56f8da044856e"
+        }
+      ],
+      "reason": "Photo 0 and photo 1 are two different complete six-slot summaries: Team ID TLGDS5M1XL (Indeedee, Sneasler, Typhlosion, Tyranitar, Corviknight, Garchomp) vs Team ID HDWSDVGP9Q (Gholdengo, Houndstone, Grimmsnarl, Maushold, Tyranitar). The companion cannot be paired, so no single team is extractable."
+    },
+    {
+      "postId": "2098254136785658212",
+      "postUrl": "https://x.com/yuwaynezobel/status/2098254136785658212",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["battle-screen", "rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HR5_AQjaIAA6yWX.jpg?name=orig",
+          "sha256": "705097981f18897b0b3a3543a852fef7619b1131c097fa38d4bde83354db3178"
+        },
+        {
+          "index": 1,
+          "url": "https://pbs.twimg.com/media/HR5_AQcbcAAOy5c.jpg?name=orig",
+          "sha256": "c9e46a30717fcb345722b46624c94584e523994a011d174861fa4388c9779ff0"
+        }
+      ],
+      "reason": "Media 0 is an in-battle screen; media 1 is the ranked-match lobby showing rank, rating, and a six-icon roster strip without set, item, or move text."
+    },
+    {
+      "postId": "2097902867956847050",
+      "postUrl": "https://x.com/ConkledonkVGC/status/2097902867956847050",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HR0_iQ0bUAA4NLM.jpg?name=orig",
+          "sha256": "132da50a00067c7e622660395244cec79f504cbb7a1e7d2ada59f8cbe5e21756"
+        }
+      ],
+      "reason": "Cropped fragment of a tournament standings table showing places 14-16 (Joshavott 6 6-3-0, conkledonk 6 6-3-0, ThoseWhoKnow 5 5-2-0). Ranking rows only, no Pokémon sets visible."
+    },
+    {
+      "postId": "2097838462468579568",
+      "postUrl": "https://x.com/thepostmanp/status/2097838462468579568",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["rank-screen", "roster-only"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HR0DU51bAAA-GuG.jpg?name=orig",
+          "sha256": "b0f3258a076c85479d05c4fe9cf42e81eca6123e300ef34552f666af0cf98973"
+        }
+      ],
+      "reason": "Screenshot of the r/VGC Regulation M-C Kickoff Cup web Standings table: place, name, points, record, opponent win percentages and small team sprite rows for places 1-8. Ranking table only, no moves or items."
+    },
+    {
+      "postId": "2093798600077885946",
+      "postUrl": "https://x.com/chlotad/status/2093798600077885946",
+      "split": "holdout",
+      "label": "negative",
+      "coverage": ["other-game", "battle-screen"],
+      "media": [
+        {
+          "index": 0,
+          "url": "https://pbs.twimg.com/media/HQ6quDZagAA4ve0.jpg?name=orig",
+          "sha256": "9c4a9974493f623d3f2ef42e6b7a3ef31f8e79d779151d58d7b8a4bd557f0587"
+        }
+      ],
+      "reason": "Worlds 2025 broadcast battle frame: stream overlay with player cams, name plates and HP bars over the previous game's battle UI (Miraidon-era teams), no Champions six-slot summary, item rows or move lists."
+    }
+  ],
+  "coverageGaps": [
+    {
+      "tag": "code-only",
+      "reason": "No stand-alone code frame exists in the corpus: five independent sweeps (OCR of 1901 thumbnails plus 50+ full-resolution reads across 1310 photo posts) found every Team ID printed on a six-slot summary screen, never alone."
+    }
+  ]
+}

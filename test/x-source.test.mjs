@@ -4,9 +4,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { teamFromIndex } from '../scripts/import-catalog.mjs';
-import { ingestX } from '../scripts/import-x.mjs';
+import { ingestX, visionProjection } from '../scripts/import-x.mjs';
 import {
+  projectPost,
   readXCandidates,
+  xFormatState,
   xPastesIn,
   xRegulation,
   xRegulationFor,
@@ -210,6 +212,7 @@ test('search discovery stores a post with its paste and derived regulation', asy
       url: `https://pokepast.es/${pokepasteId}`,
       kind: 'pokepaste',
       regulation: 'M-B',
+      validated: true,
     },
   ]);
   assert.equal(index.posts[postId].handle, 'Trainer');
@@ -313,10 +316,11 @@ test('pastes whose format names another game or no game are unsupported_format',
   const index = await readJson(join(space.cache, 'x-posts.json'));
   assert.equal(index.posts[otherPostId].pastes[0].regulation, null);
   const { candidates, skipped } = await readXCandidates(space.cache);
-  assert.deepEqual(candidates, []);
+  assert.equal(candidates.length, 1);
+  assert.match(candidates[0].pasteUrl, new RegExp(quietPokepasteId));
   assert.deepEqual(
     skipped.map((entry) => entry.reason),
-    ['unsupported_format', 'unsupported_format']
+    ['unsupported_format']
   );
 });
 
@@ -363,6 +367,7 @@ test('a vrpastes link without www is canonicalized', async (t) => {
       url: `https://www.vrpastes.com/${vrId}`,
       kind: 'victory-road',
       regulation: 'M-C',
+      validated: true,
     },
   ]);
   const { candidates } = await readXCandidates(space.cache);
@@ -468,6 +473,10 @@ test('media is capped at two photos and only mirrored when small and an image', 
   const evidence = await readJson(space.outputPath);
   assert.equal(evidence.posts[postId].media.length, 2);
   assert.deepEqual(
+    evidence.posts[postId].media.map((entry) => entry.index),
+    [0, 1]
+  );
+  assert.deepEqual(
     evidence.posts[postId].media.map((entry) => entry.remote),
     [
       'https://pbs.twimg.com/media/aaa.jpg?name=small',
@@ -476,6 +485,7 @@ test('media is capped at two photos and only mirrored when small and an image', 
   );
   assert.equal(evidence.posts[postId].media[0].width, 1200);
   assert.equal(evidence.posts[postId].media[0].local, `/posts/${postId}-1.jpg`);
+  assert.equal(evidence.posts[postId].media[1].local, null);
   assert.equal(evidence.posts[otherPostId].media[0].local, null);
   assert.equal(evidence.posts[otherPostId].media[0].alt, 'Team sheet');
   assert.equal(evidence.posts[thirdPostId].media[0].local, null);
@@ -571,6 +581,20 @@ test('readXCandidates feeds teamFromIndex and fails loudly on a corrupt index', 
   assert.equal(team.reports[0].sourceUrl, postUrl('Trainer'));
   assert.equal(team.regulation, 'M-B');
   assert.equal(team.pasteUrl, `https://pokepast.es/${pokepasteId}`);
+  assert.equal(team.regulationBasis, undefined);
+  const unknownTeam = teamFromIndex(
+    { ...candidates[0], regulation: 'Unknown' },
+    { ...payload, notes: null },
+    new Map()
+  );
+  assert.equal(unknownTeam.regulation, 'Unknown');
+  assert.throws(() =>
+    teamFromIndex(
+      { ...candidates[0], regulation: 'Unknown' },
+      { ...payload, notes: 'Format: gen9ou' },
+      new Map()
+    )
+  );
 
   await writeFile(
     join(space.cache, `${quietPokepasteId}.json`),
@@ -674,4 +698,102 @@ test('xRegulation reads the labels the providers publish', () => {
     }),
     null
   );
+});
+test('X format state distinguishes absence from explicit malformed labels', () => {
+  assert.equal(xFormatState('pokepaste', { notes: null }), 'missing');
+  assert.equal(xFormatState('pokepaste', { notes: '  ' }), 'missing');
+  assert.equal(xFormatState('pokepaste', { notes: 'Format: ' }), 'missing');
+  assert.equal(
+    xFormatState('pokepaste', { notes: 'Format: gen9championsvgc2026regmbSV' }),
+    'unsupported'
+  );
+  assert.equal(
+    xFormatState('pokepaste', {
+      notes:
+        'Format: gen9championsvgc2026regmb\nFormat: gen9championsvgc2026regmc',
+    }),
+    'unsupported'
+  );
+  assert.equal(xFormatState('victory-road', { format: 4 }), 'unsupported');
+  assert.equal(xFormatState('victory-road', { format: '  ' }), 'missing');
+});
+
+test('X post projection preserves exact time and original photo URL', () => {
+  const projected = projectPost(
+    statusPost({
+      photos: [photo('a'), photo('b'), photo('c'), photo('d'), photo('e')],
+    })
+  );
+  assert.equal(
+    projected.createdAtExact,
+    new Date(1786004061 * 1000).toISOString()
+  );
+  assert.equal(projected.media.length, 4);
+  assert.equal(
+    projected.media[0].remote,
+    'https://pbs.twimg.com/media/a.jpg?name=small'
+  );
+  assert.equal(
+    projected.media[0].original,
+    'https://pbs.twimg.com/media/a.jpg?name=orig'
+  );
+  assert.equal(
+    projectPost({ created_timestamp: Number.MAX_SAFE_INTEGER }).createdAtExact,
+    ''
+  );
+  assert.equal(
+    projectPost({ created_at: '2026-06-31T03:00:00Z' }).createdAtExact,
+    ''
+  );
+  const day = projectPost({ created_at: '2026-06-17' });
+  assert.equal(day.createdAt, '2026-06-17');
+  assert.equal(day.createdAtExact, '');
+});
+
+test('legacy day fallback excludes transition days while exact instants resolve them', async (t) => {
+  const space = await workspace(t);
+  await mkdir(space.cache, { recursive: true });
+  const payload = pokepastePayload('');
+  await writeFile(
+    join(space.cache, 'x-posts.json'),
+    JSON.stringify({
+      posts: {
+        transition: {
+          url: postUrl('A', postId),
+          createdAt: '2026-06-17',
+          text: 'x',
+          pastes: [
+            { url: `https://pokepast.es/${pokepasteId}`, kind: 'pokepaste' },
+          ],
+        },
+        exact: {
+          url: postUrl('B', otherPostId),
+          createdAt: '2026-06-17',
+          createdAtExact: '2026-06-17T02:00:00Z',
+          text: 'x',
+          pastes: [
+            { url: `https://pokepast.es/${pokepasteId}`, kind: 'pokepaste' },
+          ],
+        },
+      },
+    })
+  );
+  await writeFile(
+    join(space.cache, `${pokepasteId}.json`),
+    JSON.stringify(payload)
+  );
+  const { candidates } = await readXCandidates(space.cache);
+  assert.equal(candidates[0].regulation, 'Unknown');
+  assert.equal(candidates[0].regulationBasis, undefined);
+  assert.equal(candidates[1].regulation, 'M-B');
+  assert.equal(candidates[1].regulationBasis, 'post-date');
+});
+
+test('vision projections keep only compact source indexes', () => {
+  const keys = Object.keys(visionProjection({ status: 'error' }));
+  assert.deepEqual(keys, ['status', 'summaryIndex', 'allocationIndexes']);
+  const members = [{ allocation: { mediaIndex: 3 } }, { allocation: null }];
+  const record = { status: 'accepted', result: { summaryIndex: 0, members } };
+  assert.equal(visionProjection(record).allocationIndexes.length, 1);
+  assert.equal(visionProjection(record).summaryIndex, 0);
 });

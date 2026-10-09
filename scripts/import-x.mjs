@@ -2,22 +2,20 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { normalize } from '../src/lib/catalog.ts';
-import { parsePaste } from '../src/lib/paste.ts';
-import {
-  fetchWithRetry,
-  isTransient,
-  parseVrPaste,
-} from './catalog-sources.mjs';
+import { fetchWithRetry, isTransient } from './catalog-sources.mjs';
 import {
   X_POST_RE,
   parseSearchPage,
   projectPost,
+  selectXPaste,
   xApiBase,
   xAuthorQuery,
+  xFormatState,
+  xPasteMembers,
   xPastesIn,
   xQueries,
-  xRegulationFor,
 } from './x-source.mjs';
+import { automaticVisionQualified, createVisionRun } from './x-vision.mjs';
 
 const output = resolve('src/lib/data/team-posts.json');
 const searchCount = 40;
@@ -48,6 +46,24 @@ const matchesCreator = (creator, post) =>
 const clip = (text) => {
   const cut = (text ?? '').slice(0, 200);
   return /[\uD800-\uDBFF]$/.test(cut) ? cut.slice(0, -1) : cut;
+};
+
+/* Post evidence keeps only compact extraction status and the source photo
+   indexes the accepted summary and its allocation companion used. */
+export const visionProjection = (record) => {
+  const accepted = Boolean(record?.status === 'accepted' && record.result);
+  const indexes = accepted
+    ? record.result.members
+        .map((member) => member.allocation?.mediaIndex)
+        .filter((index) => Number.isInteger(index))
+    : [];
+  return {
+    status: record?.status ?? 'error',
+    summaryIndex: accepted ? record.result.summaryIndex : null,
+    allocationIndexes: [...new Set(indexes)].sort(
+      (left, right) => left - right
+    ),
+  };
 };
 
 export async function ingestX({
@@ -85,6 +101,11 @@ export async function ingestX({
       console.warn(`X: ignored unreadable post index (${error.message})`);
   }
   const stored = cached.posts;
+  const priorPastes = new Map();
+  for (const post of Object.values(stored))
+    for (const paste of post.pastes ?? [])
+      if (paste?.url && !priorPastes.has(paste.url))
+        priorPastes.set(paste.url, paste);
 
   const citedHandles = new Set();
   const citedCreators = new Map();
@@ -214,6 +235,7 @@ export async function ingestX({
       name: '',
       verified: false,
       createdAt: '',
+      createdAtExact: '',
       text: '',
       state: 'unavailable',
       media: [],
@@ -225,8 +247,10 @@ export async function ingestX({
   const known = new Map();
   for (const post of Object.values(stored))
     for (const paste of xPastesIn(post?.text ?? ''))
-      if (!known.has(paste.url)) known.set(paste.url, paste);
+      if (!known.has(paste.url))
+        known.set(paste.url, { ...paste, regulation: null });
 
+  const payloads = new Map();
   let fetchedPastes = 0;
   for (const paste of known.values()) {
     const file = resolve(cache, payloadName(paste));
@@ -253,29 +277,62 @@ export async function ingestX({
         text = null;
       }
     }
-    let regulation = null;
-    if (text !== null) {
-      try {
-        const data = JSON.parse(text);
-        parsePaste(
-          paste.kind === 'victory-road' ? parseVrPaste(data).paste : data.paste
-        );
-        regulation = xRegulationFor(paste.kind, data);
-      } catch {
-        regulation = null;
-      }
+    const prior = priorPastes.get(paste.url);
+    if (text === null) {
+      payloads.set(paste.url, null);
+      if (prior?.validated === true) {
+        paste.validated = true;
+        paste.regulation = prior.regulation ?? null;
+      } else if (prior?.unsupported === true) paste.unsupported = true;
+      continue;
     }
-    paste.regulation = regulation;
+    try {
+      const data = JSON.parse(text);
+      payloads.set(paste.url, data);
+      const state = xFormatState(paste.kind, data);
+      if (state === 'unsupported') paste.unsupported = true;
+      else if (xPasteMembers(paste, data)) {
+        paste.validated = true;
+        paste.regulation = state === 'missing' ? null : state;
+      }
+    } catch {
+      payloads.set(paste.url, null);
+    }
   }
 
   const seenPastes = { ...cached.seenPastes };
   for (const post of Object.values(stored)) {
-    post.pastes = xPastesIn(post.text ?? '').map((paste) => ({
-      ...paste,
-      regulation: known.get(paste.url)?.regulation ?? null,
-    }));
+    post.pastes = xPastesIn(post.text ?? '').map(
+      (paste) => known.get(paste.url) ?? { ...paste, regulation: null }
+    );
     for (const paste of post.pastes)
       seenPastes[paste.url.split('/').at(-1)] = true;
+  }
+
+  let vision = null;
+  if (automaticVisionQualified) {
+    const photoPosts = [];
+    for (const post of Object.values(stored)) {
+      if (!post?.url) continue;
+      const decision = await selectXPaste(
+        post,
+        async (paste) => payloads.get(paste.url) ?? null
+      );
+      if (decision.allowImages) photoPosts.push(post);
+    }
+    const stamp = (post) =>
+      Date.parse(post.createdAtExact || post.createdAt || '') || 0;
+    photoPosts.sort((left, right) => stamp(right) - stamp(left));
+    const run = createVisionRun({
+      key: env.DEEPSEEK_API_KEY,
+      fetchImpl,
+      cacheDir: cache,
+      postLimit: limit(env, 'X_VISION_LIMIT', 20),
+      callLimit: limit(env, 'X_VISION_CALL_LIMIT', 60),
+    });
+    for (const post of photoPosts)
+      post.vision = visionProjection(await run.evaluate(post));
+    vision = run.stats();
   }
 
   let mirrored = 0;
@@ -306,7 +363,6 @@ export async function ingestX({
       console.warn(`X: skipped image ${photo.remote} (${error.message})`);
     }
   }
-
   cached.posts = stored;
   cached.seenPastes = seenPastes;
   cached.generatedAt = new Date(now).toISOString();
@@ -315,10 +371,14 @@ export async function ingestX({
   const fresh = [...known.keys()].filter(
     (url) => !catalogPastes.has(url.split('/').at(-1))
   ).length;
+  if (vision)
+    console.log(
+      `X vision: ${vision.accepted} accepted, ${vision.rejected} rejected, ${vision.errors} errors, ${vision.withheld} withheld, ${vision.cached} cached (${vision.requests} requests, ${vision.totalTokens} tokens).`
+    );
   console.log(
     `X: ${added} new posts, ${fetchedPastes} pastes fetched (${fresh} not in the catalog), ${Object.keys(stored).length} posts cached.`
   );
-  return { ok: true, posts: Object.keys(stored).length, added };
+  return { ok: true, posts: Object.keys(stored).length, added, vision };
 }
 
 async function search(query, pages, fetchImpl, api) {
@@ -347,6 +407,12 @@ async function writePostEvidence(posts, citedCreators, outputPath, now) {
           post.state === 'ok' && creators
             ? [...creators].some((creator) => !matchesCreator(creator, post))
             : false;
+        const media = (post.media ?? [])
+          .slice(0, post.vision?.status === 'accepted' ? 4 : 2)
+          .map((entry, index) => ({
+            ...entry,
+            index: Number.isInteger(entry.index) ? entry.index : index,
+          }));
         return [
           id,
           {
@@ -355,11 +421,13 @@ async function writePostEvidence(posts, citedCreators, outputPath, now) {
             name: post.name,
             verified: post.verified,
             createdAt: post.createdAt,
+            createdAtExact: post.createdAtExact,
             text: clip(post.text),
             state: post.state,
             creatorMismatch,
-            media: post.media ?? [],
+            media,
             pastes: [...new Set(xPastesIn(post.text ?? '').map((p) => p.url))],
+            ...(post.vision ? { vision: post.vision } : {}),
           },
         ];
       })

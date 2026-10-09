@@ -28,13 +28,17 @@ Sources:
   on this free source; the ranking policy adds no paid API, scraper, or subscription.
 - [X](https://x.com/search?q=pokepast.es%20pokemonchampions&f=live) posts are read
   through the keyless FxTwitter JSON API, a community mirror rather than X's own
-  API, by `npm run import:x`. That script searches for Champions paste posts,
-  keeps the posts whose text links a PokéPaste or VR Pastes URL, and stores each
-  post's text, author, date, and screenshot. The catalog import then admits a post
-  as a team only when its linked paste passes the same format and roster checks as
-  any other index row, and prints `X: N discovered — A accepted, R retained, S
-skipped, M merged.` like every other source. A post supplies no result claim:
-  its report keeps empty event and rank fields, so it grades as unattributed.
+  API, by `npm run import:x`. That script searches for Champions paste posts and
+  for Champions photo posts, keeps the posts whose text links a PokéPaste or VR
+  Pastes URL as well as eligible photo posts, and stores each post's text, author,
+  date, and screenshots. The catalog import admits a post as a team when its linked
+  paste passes the same format and roster checks as any other index row and, once
+  screenshot extraction qualifies, when a validated screenshot read supplies the
+  team; see [X screenshots and paste precedence](#x-screenshots-and-paste-precedence).
+  Like every other source it prints
+  `X: N discovered — A accepted, R retained, S skipped, M merged.` A post supplies
+  no result claim: its report keeps empty event and rank fields, so it grades as
+  unattributed.
 - [Champions Battle Data](https://championsbattledata.com/api) supplies the level-50
   stat values used for Speed. Its JSON is CORS-enabled and offered for app use,
   and it is not used for usage percentages or result evidence. Refresh the
@@ -66,22 +70,30 @@ workflow: dev, build, and typecheck generate a missing catalog and otherwise
 leave it in place.
 
 `deploy-prod.yml` and `deploy-preview.yml` also run `npm run import:x` before the
-catalog import, under the same `CHECK_SHEET=1` refresh gate, so X discovery and
-post details refresh on that daily schedule. `ci.yml` only restores the cache and
-never fetches X. Dev, build, and typecheck write an empty post stub when
-`src/lib/data/team-posts.json` is missing, and never fetch. `OFFLINE=1`, or
+catalog import, under the same `CHECK_SHEET=1` refresh gate, so X discovery runs
+and the oldest `X_POST_LIMIT` stored posts are re-read on that daily schedule; at
+the default the whole index cycles roughly every four days. `ci.yml` only restores
+the cache and never fetches X. Dev, build, and typecheck write an empty post stub
+when `src/lib/data/team-posts.json` is missing, and never fetch. `OFFLINE=1`, or
 `--if-missing`, likewise writes the stub instead of fetching.
 
 X ingest bounds its own work per run: `X_POST_LIMIT` caps post lookups (400 by
 default, oldest first), `X_PAGE_LIMIT` caps search pages per query (1), and
-`X_IMAGE_LIMIT` caps mirrored screenshots (60). `X_AUTHOR_LIMIT` rotates how many
-citing authors are re-searched per run (40). `X_REFRESH_DAYS` (30) is the age at
+`X_IMAGE_LIMIT` caps mirrored screenshots (60). `X_IMAGE_LIMIT=0` stops future
+mirrors without deleting files already mirrored and without suppressing the
+original-image downloads that opted-in screenshot extraction needs.
+`X_AUTHOR_LIMIT` rotates how many citing authors are re-searched per run (40).
+`X_REFRESH_DAYS` (30) is the age at
 which a stored post is fetched again on a run without the refresh gate; a run
 with `CHECK_SHEET=1` or `REFRESH=1` refreshes the oldest stored posts every time
 instead. If every search fails, or five post lookups in a row cannot reach the
 API, the run keeps the cached post index and exits 0; with no cache at all it
 exits 1. A post lookup that reaches the API but returns a non-200 code or a
-non-JSON body is stored as `unavailable` and the team page says so.
+non-JSON body is stored as `unavailable` and the team page says so. Screenshot
+extraction adds `X_VISION_LIMIT` evaluated posts and `X_VISION_CALL_LIMIT` model
+requests per run, both set by the deploy workflows and described below. The
+qualification runner also honours `X_VISION_REQUEST_CAP` (default 360) so a run
+can be limited to the remaining paid budget.
 
 ## Reuse conditions
 
@@ -148,10 +160,14 @@ so a row that links another team's paste is dropped rather than misattributed. A
 missing result claim is not a rejection: an index row with no explicit placement
 still imports.
 
-An X team is such an index row. One post admits at most one team: the first
-linked paste that carries a Champions regulation, and never a paste whose format
-names another game. The team page shows the citing post's text, author handle,
-and publication date, clipped to 200 characters, with at most two screenshots
+An X team is such an index row. One post admits at most one team, from the first
+linked paste that carries a Champions regulation and never a paste whose format
+names another game; when no usable paste remains and screenshot extraction is
+enabled, a validated screenshot read supplies that one team instead. Paste
+precedence and the extraction rules are described under
+[X screenshots and paste precedence](#x-screenshots-and-paste-precedence). The team
+page shows the citing post's text, author handle, and publication date, clipped to
+200 characters, with at most two screenshots
 that use the mirrored copy when it exists and the original image URL otherwise.
 A post whose lookup failed is labelled unavailable, and a post whose author does
 not match the team's listed creator is labelled as differing, rather than
@@ -187,6 +203,86 @@ priority breaking ties. It does not predict matchup quality or infer EVs.
 M-C is the configured current regulation from the planning discussion. No
 current-rule legality checker exists. Original regulation is not evidence that
 a team remains legal or competitive now.
+
+## X screenshots and paste precedence
+
+X admission is not paste-only. A post is admitted from a linked paste when one
+passes the usual format and roster checks, and otherwise from a validated
+screenshot read of the post's own photos, once that read is enabled. Precedence
+is fixed, in this order:
+
+- Use the first linked paste whose format is supported and whose payload parses as
+  six distinct sets. It costs no model call.
+- Never let a date-based or image-based guess override explicit paste evidence. A
+  paste whose format names another game, uses an unsupported spelling, or
+  contradicts itself on format is reported as `unsupported_format`, blocks image
+  fallback for that post, and leaves no admitted team.
+- Prefer a previously accepted paste that is temporarily unavailable over a
+  conflicting new screenshot read. Its stored regulation is retained from the
+  earlier run instead of reverting to unknown.
+- Only when no usable paste remains do the post's photos become eligible. A post
+  with no photos makes no model call, and one post contributes at most one team:
+  multiple different summaries or an ambiguous summary/allocation pairing are
+  rejected rather than guessed.
+
+Extraction is strict and bounded. It uses at most three sequential calls per post:
+one coarse triage, then two independent detailed extractions, the second never
+receiving the first answer. Both must agree on species and forms, held items,
+moves, summary identity, and every populated optional field, compared by slot
+identity rather than output order. Names must resolve through the committed
+dictionaries and existing battle-form resolution; nothing is fuzzy-corrected or
+inferred from common competitive sets, and dictionary membership is not a claim of
+current legality. Ability, nature, and spread stay unknown unless both passes read
+them from the source image; uncertainty in a required field rejects the team
+instead of dropping the field. Supplemental allocation companions are validated as
+Champions points (0 through 32 per stat, at most 66 in total), and ordinary
+252-point Scarlet/Violet EVs are rejected. Partial allocation evidence stays in
+extraction provenance, and `Member.spread` is populated only when the complete
+allocation is established, never filled with zeros. A visible no-item state stays
+distinct from unreadable item state. A visible TeamID is retained as bounded inert
+source metadata only: it is not validated, and no hosted paste is reconstructed
+from it.
+
+Accepted output is cached under the ignored `.cache/catalog/x-vision/` and keyed by
+input fingerprint, model, prompt version, and schema version, so an unchanged post
+is not paid for twice and a changed image never inherits an earlier acceptance.
+Cached accepted output is revalidated before catalog conversion. A transport or
+provider failure is retryable on a later run rather than a permanent rejection;
+authentication, credit, or throttling errors stop the paid portion of the run and
+leave ordinary paste import running.
+
+The paid portion needs `DEEPSEEK_API_KEY` and is bounded by `X_VISION_LIMIT`
+evaluated posts and `X_VISION_CALL_LIMIT` model requests per run, separate from
+the `X_POST_LIMIT` status-lookup cap. The qualification runner also honours
+`X_VISION_REQUEST_CAP` (default 360) so a run can be limited to the remaining
+paid budget. Only `deploy-prod.yml` and
+`deploy-preview.yml` pass the key, both with 20 posts and 60 requests; `ci.yml`,
+dev, build, typecheck, and the browser tests never receive it and never call the
+model. A run without the key withholds extraction with a summary line instead of
+recording a dummy success, and existing validated teams stay usable.
+
+Automatic screenshot publication is disabled until the opt-in live qualification
+(`npm run eval:x-images -- --live`, run outside ordinary tests and CI) passes. The
+same runner takes `--probe N`, which evaluates the first `N` fixture records,
+prints per-call finish reasons, tokens, and latency, and never writes the
+qualification verdict. The shipped `automaticVisionQualified` flag is `false`, so
+a validated screenshot team is not yet published from the catalog import on its
+own.
+
+Screenshot-derived teams carry `setSource: 'screenshot'`, a stable
+`x-image-<postId>` ID, no sheet ID, an empty `pasteUrl`, `replicaCode: null`, empty
+event and rank claims, and a paste export of the observed member fields only.
+Ability, nature, and spread are shown as unknown rather than invented, the team
+page labels the sets as screenshot-derived, and nothing about them is presented as
+an official result or as verified legality. Regulation comes from an explicit
+supported format when one exists. Only a paste with no format at all may fall back
+to the post date, and only inside the verified M-A/M-B/M-C half-open UTC intervals;
+such a team records `regulationBasis: 'post-date'` and the interface says the
+regulation is inferred from the post date and that team legality is not verified.
+A legacy cache entry holding only a day infers nothing on a transition day, and
+invalid dates or dates outside the schedule stay `Unknown` rather than extending
+M-C indefinitely. Posts sharing one paste URL resolve their posting context
+separately.
 
 ## Ranking and discovery
 
