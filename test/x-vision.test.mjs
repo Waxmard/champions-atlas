@@ -12,6 +12,7 @@ import {
 } from '../scripts/x-source.mjs';
 import { validateFixture } from '../scripts/x-vision-fixture.mjs';
 import { fetchVisionImage } from '../scripts/x-vision-input.mjs';
+import * as gemini from '../scripts/x-vision-gemini.mjs';
 import {
   agreeExtractions,
   automaticVisionQualified,
@@ -85,15 +86,16 @@ const triage = (overrides = {}) => ({
   ...overrides,
 });
 const usageFixture = {
-  prompt_tokens: 10,
-  completion_tokens: 5,
-  total_tokens: 15,
+  promptTokenCount: 10,
+  candidatesTokenCount: 5,
+  thoughtsTokenCount: 0,
+  totalTokenCount: 15,
 };
 const jsonResponse = (content, usage = usageFixture, finishReason = 'stop') =>
   new Response(
     JSON.stringify({
-      choices: [{ message: { content }, finish_reason: finishReason }],
-      usage,
+      candidates: [{ content: { parts: [{ text: content }] }, finishReason }],
+      usageMetadata: usage,
     }),
     { headers: { 'content-type': 'application/json' } }
   );
@@ -115,16 +117,15 @@ function acceptedFetch({
       return new Response(png, { headers: { 'content-type': 'image/png' } });
     }
     calls.model += 1;
-    assert.equal(url, 'https://api.deepseek.com/chat/completions');
+    assert.equal(url, gemini.url);
     assert.equal(init.method, 'POST');
     assert.equal(init.redirect, 'error');
-    assert.equal(init.headers.Authorization, 'Bearer test-key');
+    assert.equal(init.headers['x-goog-api-key'], 'test-key');
     const body = JSON.parse(init.body);
-    assert.equal(body.model, 'deepseek-flash');
-    assert.equal(body.tools, undefined);
+    assert.equal(body.model, undefined);
     assert.equal(JSON.stringify(body).includes('test-key'), false);
     calls.bodies.push(body);
-    const content = body.messages[0].content.startsWith('Extract')
+    const content = body.systemInstruction.parts[0].text.startsWith('Extract')
       ? typeof detail === 'function'
         ? detail(calls.model)
         : detail
@@ -164,7 +165,7 @@ test('gold fixture is present, valid, and split ten/ten calibration and twenty/t
 });
 
 test('exports the fixed, unqualified model boundary', () => {
-  assert.equal(model, 'deepseek-flash');
+  assert.equal(model, 'gemini-3.8-flash');
   assert.equal(promptVersion, 'x-vision-4');
   assert.equal(schemaVersion, 1);
   assert.equal(automaticVisionQualified, false);
@@ -407,6 +408,7 @@ test('accepted extraction uses three independent fixed-endpoint calls and reuses
     requests: 3,
     promptTokens: 30,
     completionTokens: 15,
+    reasoningTokens: 0,
     totalTokens: 45,
     stopReason: null,
   });
@@ -431,22 +433,12 @@ test('accepted extraction uses three independent fixed-endpoint calls and reuses
   );
   assert.equal(accepted.result.members[0].ability, null);
   assert.equal(JSON.stringify(mock.calls.bodies[2]).includes('Static'), false);
-  assert.ok(
-    mock.calls.bodies[0].messages.some(
-      (message) =>
-        message.role === 'system' &&
-        message.content.includes('additionalProperties')
-    )
-  );
-  assert.ok(
-    mock.calls.bodies[1].messages.some(
-      (message) =>
-        message.role === 'system' &&
-        message.content.includes('allocation') &&
-        !message.content.includes('json-schema.org') &&
-        message.content.includes('Showdown')
-    )
-  );
+  const systemText = (call) =>
+    mock.calls.bodies[call].systemInstruction.parts[0].text;
+  assert.ok(systemText(0).includes('additionalProperties'));
+  assert.ok(systemText(1).includes('allocation'));
+  assert.equal(systemText(1).includes('json-schema.org'), false);
+  assert.ok(systemText(1).includes('Showdown'));
   const cachedRun = createVisionRun({
     fetchImpl: async () => {
       throw new Error('cache hit must not fetch');
@@ -574,7 +566,7 @@ test('missing credentials make no image or paid requests and never claim accepta
   });
   const result = await run.evaluate(post('missing-key'));
   assert.equal(result.status, 'withheld');
-  assert.equal(result.reason, 'DEEPSEEK_API_KEY is not configured');
+  assert.equal(result.reason, 'GEMINI_API_KEY is not configured');
   assert.equal(calls, 0);
   assert.equal(run.stats().requests, 0);
 });
@@ -592,7 +584,7 @@ test('detailed provider failures are retryable and never cached as content rejec
       if (!failed && modelCalls === failedCall) {
         failed = true;
         return failedCall === 1
-          ? jsonResponse('', undefined, 'length')
+          ? jsonResponse('', usageFixture, 'MAX_TOKENS')
           : new Response('temporary provider failure', { status: 503 });
       }
       return mock.fetchImpl(url, init);

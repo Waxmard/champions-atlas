@@ -251,15 +251,19 @@ provider failure is retryable on a later run rather than a permanent rejection;
 authentication, credit, or throttling errors stop the paid portion of the run and
 leave ordinary paste import running.
 
-The paid portion needs `DEEPSEEK_API_KEY` and is bounded by `X_VISION_LIMIT`
-evaluated posts and `X_VISION_CALL_LIMIT` model requests per run, separate from
-the `X_POST_LIMIT` status-lookup cap. The qualification runner also honours
-`X_VISION_REQUEST_CAP` (default 360) so a run can be limited to the remaining
-paid budget. Only `deploy-prod.yml` and
-`deploy-preview.yml` pass the key, both with 20 posts and 60 requests; `ci.yml`,
-dev, build, typecheck, and the browser tests never receive it and never call the
-model. A run without the key withholds extraction with a summary line instead of
-recording a dummy success, and existing validated teams stay usable.
+The paid portion calls `gemini-3.8-flash` with per-image
+`MEDIA_RESOLUTION_ULTRA_HIGH` and needs `GEMINI_API_KEY`. It is
+bounded by `X_VISION_LIMIT` evaluated posts and `X_VISION_CALL_LIMIT` model
+requests per run, separate from the `X_POST_LIMIT` status-lookup cap. The
+qualification runner also honours `X_VISION_REQUEST_CAP` (default 360) so a run
+can be limited to the remaining paid budget. Inline image data is sent in the
+request itself, and the provider caps the whole request (prompt plus inline
+images) at 20 MB, so the client refuses a post whose images exceed 12 MiB. The
+deploy workflows cap vision at 20 posts and 60 requests but do not pass the
+Gemini key until qualification succeeds. `ci.yml`, dev, build, typecheck, and
+browser tests never receive it and never call the model. A run without the key
+withholds extraction with a summary line instead of recording a dummy success,
+and existing validated teams stay usable.
 
 Automatic screenshot publication is disabled until the opt-in live qualification
 (`npm run eval:x-images -- --live`, run outside ordinary tests and CI) passes. The

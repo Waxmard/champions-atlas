@@ -4,6 +4,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { speciesKey, stable, validateFixture } from './x-vision-fixture.mjs';
 import { fetchVisionImage } from './x-vision-input.mjs';
+import * as gemini from './x-vision-gemini.mjs';
 import {
   createVisionRun,
   model,
@@ -69,6 +70,10 @@ const cosmeticSuffix =
   /-(?:mega[xyz]?|[xyz]|[fm]|hero|eternal|masterpiece|antique|artisan)$/;
 const comparisonKey = (pokemon) =>
   speciesKey(pokemon).replace(cosmeticSuffix, '');
+const allocationKey = (allocation) => ({
+  ...allocation,
+  pokemon: comparisonKey(allocation.pokemon),
+});
 
 function compareResult(expected, result) {
   const core = [];
@@ -110,14 +115,17 @@ function compareResult(expected, result) {
     } else if (gold.allocation === null) {
       optional.push(gold.pokemon + '.allocation');
     } else {
-      if (stable(observed.allocation) !== stable(gold.allocation))
+      if (
+        stable(allocationKey(observed.allocation)) !==
+        stable(allocationKey(gold.allocation))
+      )
         optional.push(gold.pokemon + '.allocation');
     }
   }
   return { core, optional, omitted };
 }
 
-function scorePhase(label, records, outcomes) {
+export function scorePhase(label, records, outcomes) {
   const eligible = records.filter((record) => record.label === 'eligible');
   const negatives = records.length - eligible.length;
   const result = {
@@ -300,6 +308,7 @@ function addStats(total, current) {
     'requests',
     'promptTokens',
     'completionTokens',
+    'reasoningTokens',
     'totalTokens',
   ])
     total[key] += current[key] ?? 0;
@@ -318,6 +327,7 @@ async function evaluatePhase(createRun, records, phase, requestCount) {
     requests: 0,
     promptTokens: 0,
     completionTokens: 0,
+    reasoningTokens: 0,
     totalTokens: 0,
     stopReason: null,
   };
@@ -346,27 +356,67 @@ async function evaluatePhase(createRun, records, phase, requestCount) {
   return scored;
 }
 
-const endpoint = 'https://api.deepseek.com/chat/completions';
 const makeRun = (key, fetchImpl) => (postLimit) =>
   createVisionRun({ key, fetchImpl, cacheDir, postLimit, callLimit: 60 });
 
+export const costOf = (usage) => ({
+  pricePerMillionTokens: gemini.price,
+  priceSource: gemini.priceSource,
+  usd:
+    (usage.promptTokens * gemini.price.input +
+      usage.completionTokens * gemini.price.output) /
+    1e6,
+});
+
+function paidBlock(counter) {
+  const summed = (field) =>
+    counter.calls.reduce((total, call) => total + call.usage[field], 0);
+  return {
+    requestCap,
+    requests: counter.requests,
+    promptTokens: summed('promptTokens'),
+    completionTokens: summed('completionTokens'),
+    reasoningTokens: summed('reasoningTokens'),
+  };
+}
+
+function costBlock(paid, scored) {
+  const cost = costOf(paid);
+  return {
+    ...cost,
+    perRecord: scored.records ? cost.usd / scored.records : null,
+    perAcceptedTeam: scored.wholeTeamCorrect
+      ? cost.usd / scored.wholeTeamCorrect
+      : null,
+  };
+}
+
+const callFields = (call) => ({
+  truncated: call.truncated,
+  blank: call.blank,
+  elapsedMs: call.elapsedMs,
+  promptTokens: call.usage.promptTokens,
+  completionTokens: call.usage.completionTokens,
+  reasoningTokens: call.usage.reasoningTokens,
+});
+
 async function modelCall(response, elapsedMs) {
-  try {
-    const data = await response.clone().json();
-    return {
-      finishReason: data?.choices?.[0]?.finish_reason ?? null,
-      usage: data?.usage ?? null,
-      elapsedMs,
-    };
-  } catch {
-    return { finishReason: null, usage: null, elapsedMs };
-  }
+  const data = await response
+    .clone()
+    .json()
+    .catch(() => null);
+  return {
+    truncated: gemini.truncated(data),
+    blank: (gemini.text(data) ?? '').trim() === '',
+    usage: gemini.usage(data),
+    elapsedMs,
+  };
 }
 
 function guardedFetch(counter) {
   return async (input, init) => {
     const url = new URL(typeof input === 'string' ? input : input.url);
-    if (url.href !== endpoint) {
+    if (url.href !== gemini.url) {
       if (url.protocol !== 'https:' || url.hostname !== 'pbs.twimg.com')
         throw new Error('blocked unexpected network destination ' + url.origin);
       return fetch(input, init);
@@ -383,7 +433,7 @@ function guardedFetch(counter) {
 
 async function live(preflightResult, report) {
   if (!preflightResult.fixture || preflightResult.issues.length) return report;
-  const key = process.env.DEEPSEEK_API_KEY;
+  const key = process.env.GEMINI_API_KEY;
   if (!key) {
     report.status = 'blocked-no-key';
     report.preflight.keyAvailable = false;
@@ -416,12 +466,17 @@ async function live(preflightResult, report) {
         (sum, item) => sum + item.stats.completionTokens,
         0
       ),
+      reasoningTokens: report.phases.reduce(
+        (sum, item) => sum + item.stats.reasoningTokens,
+        0
+      ),
       totalTokens: report.phases.reduce(
         (sum, item) => sum + item.stats.totalTokens,
         0
       ),
       refusals: report.phases.reduce((sum, item) => sum + item.refusals, 0),
     };
+    report.paid.cost = costOf(report.paid);
     report.status = 'in-progress';
     await writeReport(report);
     if (scored.stats.stopReason || counter.requests >= requestCap) break;
@@ -498,7 +553,7 @@ function printReport(report) {
 }
 
 async function probe(preflightResult, count) {
-  const key = process.env.DEEPSEEK_API_KEY;
+  const key = process.env.GEMINI_API_KEY;
   if (!key) {
     console.log(
       JSON.stringify({ status: 'blocked-no-key', probe: count }, null, 2)
@@ -519,57 +574,79 @@ async function probe(preflightResult, count) {
   }
   const records = preflightResult.fixture.records.slice(0, count);
   const counter = { requests: 0, calls: [] };
-  const run = makeRun(key, guardedFetch(counter))(records.length);
-  const outcomes = new Map();
-  for (const record of records) {
-    const post = {
-      id: record.postId,
-      url: record.postUrl,
-      text: '',
-      media: record.media.map(({ index, url }) => ({ index, original: url })),
-    };
-    try {
-      outcomes.set(record.postId, await run.evaluate(post, { fresh: true }));
-    } catch (error) {
-      outcomes.set(record.postId, { status: 'error', reason: error.message });
-    }
-    if (run.stats().stopReason || counter.requests >= requestCap) break;
-  }
-  const scored = scorePhase('probe', records, outcomes);
-  const summed = (field) =>
-    counter.calls.reduce(
-      (total, call) => total + (call.usage?.[field] ?? 0),
-      0
-    );
+  const scored = await evaluatePhase(
+    makeRun(key, guardedFetch(counter)),
+    records,
+    'probe',
+    () => counter.requests
+  );
+  const paid = paidBlock(counter);
   console.log(
     JSON.stringify(
       {
         status: scored.errors ? 'probe-failed' : 'probe-ok',
         probe: count,
-        preflight: {
-          ready: preflightResult.issues.length === 0,
-          mediaCount: preflightResult.images.verified.length,
-        },
-        paid: {
-          requestCap,
-          requests: counter.requests,
-          promptTokens: summed('prompt_tokens'),
-          completionTokens: summed('completion_tokens'),
-          reasoningTokens: counter.calls.reduce(
-            (total, call) =>
-              total +
-              (call.usage?.completion_tokens_details?.reasoning_tokens ?? 0),
-            0
-          ),
-        },
-        calls: counter.calls.map(({ finishReason, elapsedMs, usage }) => ({
-          finishReason,
-          elapsedMs,
-          promptTokens: usage?.prompt_tokens ?? null,
-          completionTokens: usage?.completion_tokens ?? null,
-          reasoningTokens:
-            usage?.completion_tokens_details?.reasoning_tokens ?? null,
-        })),
+        preflight: ready(preflightResult),
+        paid,
+        cost: costBlock(paid, scored),
+        calls: counter.calls.map(callFields),
+        score: scored,
+      },
+      null,
+      2
+    )
+  );
+  if (scored.errors) process.exitCode = 1;
+}
+
+function ready(preflightResult) {
+  return {
+    ready: preflightResult.issues.length === 0,
+    mediaCount: preflightResult.images.verified.length,
+  };
+}
+
+async function split(preflightResult, value) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) {
+    console.log(
+      JSON.stringify({ status: 'blocked-no-key', split: value }, null, 2)
+    );
+    process.exitCode = 1;
+    return;
+  }
+  if (!preflightResult.fixture || preflightResult.issues.length) {
+    console.log(
+      JSON.stringify(
+        { status: 'not-ready', split: value, issues: preflightResult.issues },
+        null,
+        2
+      )
+    );
+    process.exitCode = 1;
+    return;
+  }
+  const records = preflightResult.fixture.records.filter(
+    (record) => record.split === value
+  );
+  const counter = { requests: 0, calls: [] };
+  const scored = await evaluatePhase(
+    makeRun(key, guardedFetch(counter)),
+    records,
+    value,
+    () => counter.requests
+  );
+  const paid = paidBlock(counter);
+  console.log(
+    JSON.stringify(
+      {
+        status: scored.errors ? 'split-failed' : 'split-ok',
+        split: value,
+        model,
+        preflight: ready(preflightResult),
+        paid,
+        cost: costBlock(paid, scored),
+        calls: counter.calls.map(callFields),
         score: scored,
       },
       null,
@@ -581,26 +658,42 @@ async function probe(preflightResult, count) {
 
 async function main() {
   const args = process.argv.slice(2);
-  const usage = 'Usage: node scripts/x-vision-eval.mjs [--live] [--probe N]';
+  const usage =
+    'Usage: node scripts/x-vision-eval.mjs [--live] [--probe N] [--split calibration|holdout]';
   const probeAt = args.indexOf('--probe');
   const probeCount = probeAt === -1 ? null : Number(args[probeAt + 1]);
+  const splitAt = args.indexOf('--split');
+  const splitValue = splitAt === -1 ? null : args[splitAt + 1];
   const liveRequested = args.includes('--live');
-  const extras =
-    probeAt === -1
-      ? args
-      : [...args.slice(0, probeAt), ...args.slice(probeAt + 2)];
+  const consumed = new Set();
+  for (const at of [probeAt, splitAt]) {
+    if (at === -1) continue;
+    consumed.add(at);
+    consumed.add(at + 1);
+  }
+  const extras = args.filter((arg, index) => !consumed.has(index));
+  const modes =
+    (probeAt === -1 ? 0 : 1) +
+    (splitAt === -1 ? 0 : 1) +
+    (liveRequested ? 1 : 0);
   if (
     extras.some((arg) => arg !== '--live') ||
     (probeAt !== -1 && (!Number.isInteger(probeCount) || probeCount < 1)) ||
-    (probeAt !== -1 && liveRequested)
+    (splitAt !== -1 && !['calibration', 'holdout'].includes(splitValue)) ||
+    modes > 1
   )
     throw new Error(usage);
-  const keyAvailable = Boolean(process.env.DEEPSEEK_API_KEY?.trim());
+  const keyAvailable = Boolean(process.env.GEMINI_API_KEY?.trim());
   const preflightResult = await preflight({
-    freshImages: keyAvailable && (liveRequested || probeAt !== -1),
+    freshImages:
+      keyAvailable && (liveRequested || probeAt !== -1 || splitAt !== -1),
   });
   if (probeAt !== -1) {
     await probe(preflightResult, probeCount);
+    return;
+  }
+  if (splitAt !== -1) {
+    await split(preflightResult, splitValue);
     return;
   }
   const report = baseReport(preflightResult);
@@ -609,7 +702,7 @@ async function main() {
     if (!keyAvailable) {
       report.status = 'blocked-no-key';
       report.preflight.issues.push(
-        'DEEPSEEK_API_KEY is required for live qualification'
+        'GEMINI_API_KEY is required for live qualification'
       );
     } else if (!preflightResult.issues.length) {
       await live(preflightResult, report);

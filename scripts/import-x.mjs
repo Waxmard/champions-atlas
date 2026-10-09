@@ -324,7 +324,7 @@ export async function ingestX({
       Date.parse(post.createdAtExact || post.createdAt || '') || 0;
     photoPosts.sort((left, right) => stamp(right) - stamp(left));
     const run = createVisionRun({
-      key: env.DEEPSEEK_API_KEY,
+      key: env.GEMINI_API_KEY,
       fetchImpl,
       cacheDir: cache,
       postLimit: limit(env, 'X_VISION_LIMIT', 20),

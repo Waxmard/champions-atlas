@@ -1063,7 +1063,7 @@
       ],
       "expected": {
         "summaryIndex": 1,
-        "teamId": null,
+        "teamId": "74GMQNVULR",
         "members": [
           {
             "pokemon": "Metagross",

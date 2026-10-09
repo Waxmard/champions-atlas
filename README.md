@@ -87,14 +87,15 @@ results. Automatic screenshot publication stays disabled until the live
 qualification in `npm run eval:x-images` passes, which is why the shipped
 `automaticVisionQualified` flag is still false.
 
-The paid portion is bounded: `X_VISION_LIMIT` posts and
-`X_VISION_CALL_LIMIT` requests per run (both set to 20 and 60 in the deploy
-workflows), separate from the `X_POST_LIMIT` status-lookup cap. The
-qualification runner also honours `X_VISION_REQUEST_CAP` (default 360) so a run
-can be limited to the remaining paid budget. Only the two
-deploy workflows receive `DEEPSEEK_API_KEY`; `ci.yml`, dev, build, typecheck, and
-the browser tests stay offline for vision, and a run without the key withholds
-extraction and continues ordinary paste import.
+The paid portion needs `GEMINI_API_KEY`, calls `gemini-3.8-flash`, and is
+bounded by `X_VISION_LIMIT` posts and `X_VISION_CALL_LIMIT` requests per run
+(both set to 20 and 60 in the deploy workflows), separate from the `X_POST_LIMIT`
+status-lookup cap. The qualification runner also honours `X_VISION_REQUEST_CAP`
+(default 360) so a run can be limited to the remaining paid budget. Requests use
+per-image `MEDIA_RESOLUTION_ULTRA_HIGH`; automatic publication remains disabled.
+The deploy workflows do not pass the Gemini key until qualification succeeds.
+`ci.yml`, dev, build, typecheck, and browser tests stay offline for vision.
+A run without the key withholds extraction and continues ordinary paste import.
 
 The importer caches source files in `.cache/catalog`; `REFRESH=1` refreshes
 spreadsheet metadata. `OFFLINE=1` requires cached files. `PASTE_LIMIT` controls

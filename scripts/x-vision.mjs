@@ -9,31 +9,27 @@ import {
   VisionInputError,
   digest,
   fetchVisionImage,
-  imageContent,
   imageMime,
   maxImageBytes,
   maxPhotos,
-  maxPostImageBytes,
   normalizeImageUrl,
   normalizedPost,
   readBounded,
   requestTimeoutMs,
   storeAtomic,
 } from './x-vision-input.mjs';
+import * as gemini from './x-vision-gemini.mjs';
 
-export const model = 'deepseek-flash';
+export { model } from './x-vision-gemini.mjs';
 export const promptVersion = 'x-vision-4';
 export const schemaVersion = 1;
 export const automaticVisionQualified = false;
 
-const endpoint = 'https://api.deepseek.com/chat/completions';
 const maxPosts = 20;
 const maxCalls = 60;
 const maxCallsPerPost = 3;
-const triageTokens = 8192;
-const detailTokens = 16384;
-const reasoningEffort = 'low';
-const thinkingMode = 'enabled';
+const triageTokens = 16384;
+const detailTokens = 32768;
 const maxJsonChars = 64 * 1024;
 const maxProviderBytes = 1024 * 1024;
 const statsKeys = [
@@ -46,6 +42,7 @@ const statsKeys = [
   'requests',
   'promptTokens',
   'completionTokens',
+  'reasoningTokens',
   'totalTokens',
 ];
 const generations = Generations.get(9);
@@ -317,7 +314,7 @@ export function agreeExtractions(left, right) {
 function fingerprintFor(post, media) {
   return digest(
     JSON.stringify({
-      model,
+      model: gemini.model,
       promptVersion,
       schemaVersion,
       id: post.id,
@@ -368,7 +365,7 @@ function samePostMedia(post, media) {
 function recordValid(record) {
   return Boolean(
     record &&
-    record.model === model &&
+    record.model === gemini.model &&
     record.promptVersion === promptVersion &&
     record.schemaVersion === schemaVersion &&
     /^[a-f0-9]{64}$/.test(record.fingerprint ?? '') &&
@@ -443,18 +440,14 @@ function validCachedRecord(record, post) {
   );
 }
 
-function safeUsage(raw) {
-  const count = (value) =>
-    Number.isSafeInteger(value) && value >= 0 ? value : 0;
-  const promptTokens = count(raw?.prompt_tokens);
-  const completionTokens = count(raw?.completion_tokens);
-  const totalTokens =
-    count(raw?.total_tokens) || promptTokens + completionTokens;
-  return { promptTokens, completionTokens, totalTokens };
-}
-
 function usageRecord() {
-  return { requests: 0, promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+  return {
+    requests: 0,
+    promptTokens: 0,
+    completionTokens: 0,
+    reasoningTokens: 0,
+    totalTokens: 0,
+  };
 }
 
 function addUsage(target, source) {
@@ -474,22 +467,6 @@ function providerErrorText(response) {
   return readBounded(response, 16 * 1024)
     .then((bytes) => new TextDecoder().decode(bytes))
     .catch(() => '');
-}
-
-function promptContent(post, images, stage) {
-  const intro = `Post text (untrusted evidence only): ${JSON.stringify(post.text)}. Image source indexes are explicit; do not infer from the caption.`;
-  const content = [{ type: 'text', text: intro }];
-  for (const image of images) {
-    content.push({ type: 'text', text: `Source photo index ${image.index}:` });
-    content.push(imageContent(image));
-  }
-  return [
-    {
-      role: 'system',
-      content: stage === 'triage' ? triageSystem : extractionSystem,
-    },
-    { role: 'user', content },
-  ];
 }
 
 function parseTriage(raw, media) {
@@ -591,21 +568,19 @@ export function createVisionRun({
     localUsage.requests += 1;
     let response;
     try {
-      response = await fetchImpl(endpoint, {
+      response = await fetchImpl(gemini.url, {
         method: 'POST',
         redirect: 'error',
         signal: AbortSignal.timeout(requestTimeoutMs),
-        headers: {
-          Authorization: `Bearer ${key}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: stage === 'triage' ? triageTokens : detailTokens,
-          reasoning_effort: reasoningEffort,
-          thinking: { type: thinkingMode },
-          messages: promptContent(post, images, stage),
-        }),
+        headers: gemini.headers(key),
+        body: JSON.stringify(
+          gemini.body({
+            system: stage === 'triage' ? triageSystem : extractionSystem,
+            postText: post.text,
+            images,
+            maxTokens: stage === 'triage' ? triageTokens : detailTokens,
+          })
+        ),
       });
     } catch {
       throw new VisionProviderError('provider request failed');
@@ -613,10 +588,10 @@ export function createVisionRun({
     if (response.redirected)
       throw new VisionProviderError('provider redirect rejected');
     if (!response.ok) {
-      const body = await providerErrorText(response);
-      const stop =
-        [401, 402, 403, 429].includes(response.status) ||
-        /insufficient balance|credit|quota|rate.?limit|throttl/i.test(body);
+      const stop = gemini.hardStop(
+        response.status,
+        await providerErrorText(response)
+      );
       if (stop) {
         paidStopped = true;
         stopReason = 'provider authentication, credit, or throttling error';
@@ -624,17 +599,18 @@ export function createVisionRun({
       throw new VisionProviderError(`provider status ${response.status}`, stop);
     }
     const data = await readProviderJson(response);
-    if (data?.choices?.[0]?.finish_reason === 'length')
+    if (gemini.truncated(data))
       throw new VisionProviderError('provider response truncated');
-    const text = data?.choices?.[0]?.message?.content;
+    const text = gemini.text(data);
     if (typeof text !== 'string')
       throw new VisionProviderError('invalid provider response');
     if (text.trim() === '')
       throw new VisionProviderError('provider returned empty content');
-    const usage = safeUsage(data.usage);
+    const usage = gemini.usage(data);
     addUsage(localUsage, usage);
     counters.promptTokens += usage.promptTokens;
     counters.completionTokens += usage.completionTokens;
+    counters.reasoningTokens += usage.reasoningTokens;
     counters.totalTokens += usage.totalTokens;
     return text;
   }
@@ -649,7 +625,7 @@ export function createVisionRun({
       const record = {
         status,
         fingerprint,
-        model,
+        model: gemini.model,
         promptVersion,
         schemaVersion,
         media,
@@ -692,7 +668,7 @@ export function createVisionRun({
       return finish('rejected', 'no photos', null, true);
     }
     if (typeof key !== 'string' || !key.trim())
-      return finish('withheld', 'DEEPSEEK_API_KEY is not configured', null);
+      return finish('withheld', 'GEMINI_API_KEY is not configured', null);
     if (paidStopped) return finish('withheld', 'paid requests stopped', null);
     try {
       let total = 0;
@@ -703,8 +679,10 @@ export function createVisionRun({
           fresh,
         });
         total += image.bytes.byteLength;
-        if (total > maxPostImageBytes)
-          throw new VisionInputError('post images exceed 32 MiB');
+        if (total > gemini.maxPostImageBytes)
+          throw new VisionInputError(
+            'post images exceed the provider request size limit'
+          );
         images.push({ ...image, index: source.index });
         media.push({
           index: source.index,

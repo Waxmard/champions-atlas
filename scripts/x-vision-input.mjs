@@ -4,7 +4,6 @@ import { join, resolve } from 'node:path';
 
 export const maxPhotos = 4;
 export const maxImageBytes = 8 * 1024 * 1024;
-export const maxPostImageBytes = 32 * 1024 * 1024;
 export const requestTimeoutMs = 120_000;
 const maxTextChars = 1200;
 const maxUrlChars = 2048;
@@ -186,16 +185,4 @@ export function normalizedPost(post) {
     throw new VisionInputError('duplicate photo index');
   media.sort((left, right) => left.index - right.index);
   return { id, url, text, media };
-}
-
-export function imageContent(image) {
-  const base64 = Buffer.from(
-    image.bytes.buffer,
-    image.bytes.byteOffset,
-    image.bytes.byteLength
-  ).toString('base64');
-  return {
-    type: 'image_url',
-    image_url: { url: `data:${image.mime};base64,${base64}` },
-  };
 }
