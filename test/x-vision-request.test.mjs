@@ -77,7 +77,7 @@ const source = (id) => ({
   ],
 });
 const contentFor = (body) =>
-  body.systemInstruction.parts[0].text.startsWith('Extract')
+  body.generationConfig.responseFormat.text.schema.properties.members
     ? extractionJson
     : triageJson;
 async function cacheDir(t) {
@@ -133,11 +133,105 @@ test('paid requests send the documented request contract', async (t) => {
         .length,
       images.length
     );
-    assert.ok(
-      body.systemInstruction.parts[0].text.startsWith(
-        call === 0 ? 'Inspect' : 'Extract'
-      )
+    const response = body.generationConfig.responseFormat.text;
+    const schema = response.schema;
+    assert.equal(response.mimeType, 'APPLICATION_JSON');
+    assert.equal(typeof schema, 'object');
+    assert.equal(schema.type, 'object');
+    assert.equal(schema.additionalProperties, false);
+    assert.equal(schema.properties.schemaVersion.const, 1);
+    assert.equal(schema.$schema, undefined);
+    assert.deepEqual(
+      schema.properties.teamId.anyOf.map((branch) => branch.type),
+      ['string', 'null']
     );
+    if (call === 0) {
+      assert.deepEqual(schema.properties.decision.enum, [
+        'eligible',
+        'ineligible',
+        'ambiguous',
+      ]);
+      assert.deepEqual(schema.required, [
+        'schemaVersion',
+        'decision',
+        'summaryIndex',
+        'allocationIndexes',
+        'teamId',
+      ]);
+      assert.equal(schema.properties.members, undefined);
+      assert.deepEqual(
+        schema.properties.summaryIndex.anyOf.map((branch) => branch.type),
+        ['integer', 'null']
+      );
+      const summaryIndex = schema.properties.summaryIndex.anyOf[0];
+      assert.equal(summaryIndex.minimum, 0);
+      assert.equal(summaryIndex.maximum, 3);
+      assert.equal(schema.properties.allocationIndexes.type, 'array');
+      assert.equal(schema.properties.allocationIndexes.maxItems, 3);
+      assert.equal(schema.properties.allocationIndexes.items.type, 'integer');
+      assert.equal(schema.properties.allocationIndexes.items.minimum, 0);
+      assert.equal(schema.properties.allocationIndexes.items.maximum, 3);
+    } else {
+      assert.deepEqual(schema.required, [
+        'schemaVersion',
+        'summaryIndex',
+        'teamId',
+        'members',
+      ]);
+      assert.equal(schema.properties.summaryIndex.type, 'integer');
+      assert.equal(schema.properties.summaryIndex.minimum, 0);
+      assert.equal(schema.properties.summaryIndex.maximum, 3);
+      const members = schema.properties.members;
+      assert.equal(members.type, 'array');
+      assert.equal(members.minItems, 6);
+      assert.equal(members.maxItems, 6);
+      const member = members.items;
+      assert.equal(member.type, 'object');
+      assert.equal(member.additionalProperties, false);
+      assert.deepEqual(member.required, [
+        'pokemon',
+        'itemState',
+        'item',
+        'moves4',
+        'ability',
+        'nature',
+        'allocation',
+      ]);
+      assert.deepEqual(member.properties.itemState.enum, ['held', 'none']);
+      assert.equal(member.properties.moves4.minItems, 4);
+      assert.equal(member.properties.moves4.maxItems, 4);
+      for (const field of ['item', 'ability', 'nature'])
+        assert.deepEqual(
+          member.properties[field].anyOf.map((branch) => branch.type),
+          ['string', 'null']
+        );
+      assert.deepEqual(
+        member.properties.allocation.anyOf.map((branch) => branch.type),
+        ['object', 'null']
+      );
+      const allocation = member.properties.allocation.anyOf[0];
+      assert.equal(allocation.type, 'object');
+      assert.equal(allocation.additionalProperties, false);
+      assert.deepEqual(allocation.required, [
+        'mediaIndex',
+        'pokemon',
+        'teamId',
+        'points',
+      ]);
+      assert.deepEqual(
+        allocation.properties.teamId.anyOf.map((branch) => branch.type),
+        ['string', 'null']
+      );
+      assert.equal(allocation.properties.points.additionalProperties, false);
+      assert.equal(allocation.properties.points.required, undefined);
+      for (const point of Object.values(
+        allocation.properties.points.properties
+      )) {
+        assert.equal(point.type, 'integer');
+        assert.equal(point.minimum, 0);
+        assert.equal(point.maximum, 32);
+      }
+    }
   });
 });
 

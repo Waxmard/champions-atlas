@@ -243,6 +243,14 @@ distinct from unreadable item state. A visible TeamID is retained as bounded ine
 source metadata only: it is not validated, and no hosted paste is reconstructed
 from it.
 
+Each triage and detailed request includes its stage-specific native JSON Schema
+through `generationConfig.responseFormat.text`. The prompts, request schemas, and
+local validation use the same Zod definitions. Local strict validation, domain
+checks, and agreement between both independent detailed reads remain mandatory.
+Native schema constraints do not establish that image text is legible or that an
+extracted value is true. Live endpoint and schema compatibility, and extraction
+quality, remain unverified until a separately authorized bounded live probe.
+
 Accepted output is cached under the ignored `.cache/catalog/x-vision/` and keyed by
 input fingerprint, model, prompt version, and schema version, so an unchanged post
 is not paid for twice and a changed image never inherits an earlier acceptance.

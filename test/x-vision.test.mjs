@@ -18,7 +18,6 @@ import {
   automaticVisionQualified,
   createVisionRun,
   model,
-  promptVersion,
   revalidateAccepted,
   schemaVersion,
   validateExtraction,
@@ -125,7 +124,8 @@ function acceptedFetch({
     assert.equal(body.model, undefined);
     assert.equal(JSON.stringify(body).includes('test-key'), false);
     calls.bodies.push(body);
-    const content = body.systemInstruction.parts[0].text.startsWith('Extract')
+    const content = body.generationConfig.responseFormat.text.schema.properties
+      .members
       ? typeof detail === 'function'
         ? detail(calls.model)
         : detail
@@ -166,7 +166,6 @@ test('gold fixture is present, valid, and split ten/ten calibration and twenty/t
 
 test('exports the fixed, unqualified model boundary', () => {
   assert.equal(model, 'gemini-3.8-flash');
-  assert.equal(promptVersion, 'x-vision-4');
   assert.equal(schemaVersion, 1);
   assert.equal(automaticVisionQualified, false);
 });
@@ -414,6 +413,10 @@ test('accepted extraction uses three independent fixed-endpoint calls and reuses
   });
   assert.equal(revalidateAccepted(accepted, source).members.length, 6);
   assert.equal(
+    revalidateAccepted({ ...accepted, promptVersion: 'x-vision-4' }, source),
+    null
+  );
+  assert.equal(
     revalidateAccepted(accepted, { ...source, text: 'changed' }),
     null
   );
@@ -433,12 +436,6 @@ test('accepted extraction uses three independent fixed-endpoint calls and reuses
   );
   assert.equal(accepted.result.members[0].ability, null);
   assert.equal(JSON.stringify(mock.calls.bodies[2]).includes('Static'), false);
-  const systemText = (call) =>
-    mock.calls.bodies[call].systemInstruction.parts[0].text;
-  assert.ok(systemText(0).includes('additionalProperties'));
-  assert.ok(systemText(1).includes('allocation'));
-  assert.equal(systemText(1).includes('json-schema.org'), false);
-  assert.ok(systemText(1).includes('Showdown'));
   const cachedRun = createVisionRun({
     fetchImpl: async () => {
       throw new Error('cache hit must not fetch');

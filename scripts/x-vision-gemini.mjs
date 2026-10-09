@@ -14,7 +14,7 @@ const base64Of = (bytes) =>
     'base64'
   );
 
-export const body = ({ system, postText, images, maxTokens }) => ({
+export const body = ({ system, schema, postText, images, maxTokens }) => ({
   systemInstruction: { parts: [{ text: system }] },
   contents: [
     {
@@ -33,7 +33,12 @@ export const body = ({ system, postText, images, maxTokens }) => ({
       ],
     },
   ],
-  generationConfig: { maxOutputTokens: maxTokens },
+  generationConfig: {
+    maxOutputTokens: maxTokens,
+    responseFormat: {
+      text: { mimeType: 'APPLICATION_JSON', schema },
+    },
+  },
 });
 
 export const text = (data) =>
