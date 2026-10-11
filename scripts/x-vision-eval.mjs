@@ -1,10 +1,34 @@
-import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
+import {
+  mkdir,
+  readFile,
+  readdir,
+  realpath,
+  writeFile,
+} from 'node:fs/promises';
+import {
+  basename,
+  dirname,
+  isAbsolute,
+  join,
+  relative,
+  resolve,
+  sep,
+} from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { speciesKey, stable, validateFixture } from './x-vision-fixture.mjs';
-import { fetchVisionImage } from './x-vision-input.mjs';
+import {
+  digest,
+  digest as hash,
+  storeAtomic,
+  imageMime,
+  maxImageBytes,
+  normalizeImageUrl,
+} from './x-vision-input.mjs';
 import * as gemini from './x-vision-gemini.mjs';
+import {
+  createEvaluationFetch,
+  sanitizeEvaluationValue as safeValue,
+} from './x-vision-budget.mjs';
 import {
   createVisionRun,
   model,
@@ -13,68 +37,183 @@ import {
   validateExtraction,
 } from './x-vision.mjs';
 
-const fixturePath = resolve('test/fixtures/x-vision.json');
-const reportPath = resolve('.cache/catalog/x-vision/qualification.json');
-const cacheDir = resolve('.cache/catalog');
-const requestCap = Number(process.env.X_VISION_REQUEST_CAP ?? 360);
-if (!Number.isInteger(requestCap) || requestCap < 1)
-  throw new Error('X_VISION_REQUEST_CAP must be a positive integer');
-const ordered = (values) =>
-  [...values].sort((a, b) => a.localeCompare(b, 'en'));
-const hash = (value) => createHash('sha256').update(value).digest('hex');
+const rootDir = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const fixturePath = resolve(rootDir, 'test/fixtures/x-vision.json');
+const defaultCacheDir = resolve(rootDir, '.cache/catalog');
+const sharedQualificationPath = resolve(
+  defaultCacheDir,
+  'x-vision/qualification.json'
+);
+const protectedPaths = ['.cache/catalog', 'src', 'scripts', 'test'].map(
+  (path) => resolve(rootDir, path)
+);
+const manifestSources = [
+  'scripts/x-vision-eval.mjs',
+  'scripts/x-vision-budget.mjs',
+  'scripts/x-vision.mjs',
+  'scripts/x-vision-gemini.mjs',
+  'scripts/x-vision-input.mjs',
+  'scripts/x-vision-fixture.mjs',
+];
 
-function mediaManifest(fixture) {
-  return fixture.records.flatMap((record) =>
-    record.media.map(({ index, url, sha256 }) => ({
-      postId: record.postId,
-      index,
-      url,
-      sha256,
-    }))
+const within = (parent, child) => {
+  const path = relative(parent, child);
+  return (
+    path === '' ||
+    (path !== '..' && !path.startsWith('..' + sep) && !isAbsolute(path))
   );
+};
+
+async function canonicalPath(value) {
+  let current = resolve(value);
+  const suffix = [];
+  for (;;) {
+    try {
+      return resolve(await realpath(current), ...suffix);
+    } catch (error) {
+      if (!['ENOENT', 'ENOTDIR'].includes(error.code)) throw error;
+      const parent = dirname(current);
+      if (parent === current) throw error;
+      suffix.unshift(basename(current));
+      current = parent;
+    }
+  }
 }
 
-async function verifyImages(fixture, { fresh = false } = {}) {
-  const errors = [];
+async function checkedRunDir(value, requireExisting) {
+  if (typeof value !== 'string' || !value.trim())
+    throw new Error('--run-dir requires a nonempty path');
+  let path = await canonicalPath(value);
+  const protectedCanonical = await Promise.all(
+    protectedPaths.map(canonicalPath)
+  );
+  const overlaps = (candidate) =>
+    protectedCanonical.some(
+      (item) => within(item, candidate) || within(candidate, item)
+    );
+  if (overlaps(path)) throw new Error('run directory overlaps protected paths');
+  if (!requireExisting) {
+    await mkdir(path, { recursive: true });
+    path = await realpath(path);
+    if (overlaps(path))
+      throw new Error('run directory overlaps protected paths');
+  }
+  const entries = await readdir(path);
+  if (
+    entries.some(
+      (entry) => !['preflight.json', 'qualification.json'].includes(entry)
+    )
+  )
+    throw new Error(
+      entries.includes('paid.started')
+        ? 'run directory already contains paid.started'
+        : 'run directory contains unexpected entries'
+    );
+  return path;
+}
+
+async function readManifestInputs(sourceCacheDir) {
+  const issues = [];
+  let fixture;
+  let fixtureBytes;
+  try {
+    fixtureBytes = await readFile(fixturePath);
+    fixture = JSON.parse(fixtureBytes.toString('utf8'));
+    issues.push(...validateFixture(fixture));
+  } catch (error) {
+    issues.push('fixture unavailable: ' + error.message);
+  }
   const verified = [];
-  for (const record of fixture.records) {
+  const byUrl = new Map();
+  for (const record of fixture && !issues.length ? fixture.records : []) {
+    let postBytes = 0;
     for (const media of record.media) {
       try {
-        const image = await fetchVisionImage(media.url, { cacheDir, fresh });
-        if (image.sha256.toLowerCase() !== media.sha256.toLowerCase())
-          throw new Error(
-            `hash changed: expected ${media.sha256}, got ${image.sha256}`
-          );
-        if (image.url !== media.url)
-          throw new Error(`image URL changed: ${image.url}`);
+        const url = normalizeImageUrl(media.url);
+        if (url !== media.url) throw new Error('image URL is not normalized');
+        const bytes = await readFile(
+          join(sourceCacheDir, 'x-vision/images', digest(url) + '.bin')
+        );
+        if (bytes.length > maxImageBytes)
+          throw new Error('image exceeds 8 MiB');
+        const mime = imageMime(bytes);
+        if (!mime) throw new Error('unsupported image signature');
+        const sha256 = digest(bytes);
+        if (sha256 !== media.sha256)
+          throw new Error(`hash mismatch: ${sha256} != ${media.sha256}`);
+        postBytes += bytes.length;
+        if (postBytes > gemini.maxPostImageBytes)
+          throw new Error('post images exceed 12 MiB');
+        byUrl.set(url, { bytes, mime, sha256 });
         verified.push({
           postId: record.postId,
           index: media.index,
-          url: media.url,
-          sha256: image.sha256,
+          url,
+          sha256,
+          bytes: bytes.length,
+          mime,
         });
       } catch (error) {
-        errors.push({
-          postId: record.postId,
-          index: media.index,
-          url: media.url,
-          error: error.message,
-        });
+        issues.push(record.postId + '/' + media.index + ': ' + error.message);
       }
     }
   }
-  return { errors, verified };
+  const sources = {};
+  for (const path of manifestSources) {
+    try {
+      sources[path] = hash(await readFile(resolve(rootDir, path)));
+    } catch (error) {
+      issues.push('source unavailable (' + path + '): ' + error.message);
+    }
+  }
+  let sharedQualificationSha256 = null;
+  try {
+    sharedQualificationSha256 = hash(await readFile(sharedQualificationPath));
+  } catch (error) {
+    if (error.code !== 'ENOENT')
+      issues.push('shared qualification unavailable: ' + error.message);
+  }
+  const fixtureSha256 = fixtureBytes ? hash(fixtureBytes) : null;
+  const datasetSha256 = fixture ? hash(stable(fixture)) : null;
+  const mediaManifestSha256 = hash(
+    stable(
+      verified.map(({ postId, index, url, sha256 }) => ({
+        postId,
+        index,
+        url,
+        sha256,
+      }))
+    )
+  );
+  const manifest = fixtureBytes
+    ? {
+        fixtureSha256,
+        datasetSha256,
+        mediaManifestSha256,
+        images: verified,
+        sources,
+        sharedQualificationSha256,
+      }
+    : null;
+  return {
+    fixture,
+    issues,
+    images: { verified, byUrl },
+    fixtureSha256,
+    manifest,
+  };
 }
 
 const cosmeticSuffix =
   /-(?:mega[xyz]?|[xyz]|[fm]|hero|eternal|masterpiece|antique|artisan)$/;
 const comparisonKey = (pokemon) =>
   speciesKey(pokemon).replace(cosmeticSuffix, '');
+const ordered = (values) =>
+  [...values].sort((a, b) => a.localeCompare(b, 'en'));
 const allocationKey = (allocation) => ({
   ...allocation,
   pokemon: comparisonKey(allocation.pokemon),
 });
-
 function compareResult(expected, result) {
   const core = [];
   const optional = [];
@@ -147,9 +286,13 @@ export function scorePhase(label, records, outcomes) {
   };
   for (const record of records) {
     const outcome = outcomes.get(record.postId);
+    const entry = {
+      postId: record.postId,
+      status: outcome ? outcome.status : 'not-run',
+    };
+    result.cases.push(entry);
     if (!outcome) {
       result.errors++;
-      result.cases.push({ postId: record.postId, status: 'not-run' });
       continue;
     }
     if (outcome.status === 'accepted') result.accepted++;
@@ -161,15 +304,10 @@ export function scorePhase(label, records, outcomes) {
     }
     if (record.label === 'negative') {
       if (outcome.status === 'accepted') result.unsafeNegativeAdmissions++;
-      result.cases.push({ postId: record.postId, status: outcome.status });
       continue;
     }
     if (outcome.status !== 'accepted') {
-      result.cases.push({
-        postId: record.postId,
-        status: outcome.status,
-        reason: outcome.reason ?? null,
-      });
+      entry.reason = outcome.reason ?? null;
       continue;
     }
     result.acceptedEligible++;
@@ -184,20 +322,14 @@ export function scorePhase(label, records, outcomes) {
       result.optionalOmissions += mismatch.omitted.length;
       if (!mismatch.core.length && !mismatch.optional.length)
         result.wholeTeamCorrect++;
-      result.cases.push({
-        postId: record.postId,
-        status: 'accepted',
+      Object.assign(entry, {
         coreMismatches: mismatch.core,
         optionalMismatches: mismatch.optional,
         optionalOmissions: mismatch.omitted,
       });
     } catch (error) {
       result.wrongCoreFields++;
-      result.cases.push({
-        postId: record.postId,
-        status: 'accepted',
-        validationError: error.message,
-      });
+      entry.validationError = error.message;
     }
   }
   result.eligibleRecall = eligible.length
@@ -206,158 +338,159 @@ export function scorePhase(label, records, outcomes) {
   return result;
 }
 
-async function readFixture() {
-  return JSON.parse(await readFile(fixturePath, 'utf8'));
+async function writeReport(runDir, report, key = '') {
+  await storeAtomic(
+    join(runDir, 'qualification.json'),
+    JSON.stringify(safeValue(report, key), null, 2) + '\n'
+  );
 }
 
-async function writeReport(report) {
-  await mkdir(resolve(reportPath, '..'), { recursive: true });
-  const temp = `${reportPath}.tmp`;
-  await writeFile(temp, `${JSON.stringify(report, null, 2)}\n`);
-  await rename(temp, reportPath);
-}
-
-async function preflight({ freshImages = false } = {}) {
-  let fixture;
+export async function preflight({
+  runDir,
+  sourceCacheDir = defaultCacheDir,
+  requireExisting = false,
+} = {}) {
+  let path;
   try {
-    fixture = await readFixture();
+    path = await checkedRunDir(runDir, requireExisting);
   } catch (error) {
     return {
       fixture: null,
-      issues: [`fixture unavailable: ${error.message}`],
-      images: { errors: [], verified: [] },
-      fixtureSha256: null,
-      mediaSha256: null,
+      issues: [error.message],
+      images: { verified: [], byUrl: new Map() },
+      runDir: null,
+      manifest: null,
+      ready: false,
     };
   }
-  const issues = validateFixture(fixture);
-  if (issues.length) {
-    return {
-      fixture,
-      issues,
-      images: { errors: [], verified: [] },
-      fixtureSha256: hash(stable(fixture)),
-      mediaSha256: hash(stable(mediaManifest(fixture))),
-    };
+  const result = await readManifestInputs(resolve(sourceCacheDir));
+  const preflightPath = join(path, 'preflight.json');
+  let saved;
+  try {
+    saved = JSON.parse(await readFile(preflightPath, 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT')
+      result.issues.push('saved preflight is invalid: ' + error.message);
   }
-  const images = await verifyImages(fixture, { fresh: freshImages });
-  return {
-    fixture,
-    issues: images.errors.map(
-      (item) => `${item.postId}/${item.index}: ${item.error}`
-    ),
-    images,
-    fixtureSha256: hash(stable(fixture)),
-    mediaSha256: hash(stable(images.verified)),
-  };
+  if (saved) {
+    const savedHash = saved.manifest ? hash(stable(saved.manifest)) : null;
+    if (
+      saved.manifestSha256 !== savedHash ||
+      stable(saved.manifest) !== stable(result.manifest)
+    )
+      result.issues.push('saved preflight manifest mismatch');
+    else result.savedManifestSha256 = savedHash;
+  } else if (requireExisting) {
+    result.issues.push('matching preflight.json is required');
+  } else if (!result.issues.length && result.manifest) {
+    const record = {
+      manifest: result.manifest,
+      manifestSha256: hash(stable(result.manifest)),
+    };
+    try {
+      await writeFile(preflightPath, JSON.stringify(record, null, 2) + '\n', {
+        flag: 'wx',
+      });
+      result.savedManifestSha256 = record.manifestSha256;
+    } catch (error) {
+      if (error.code !== 'EEXIST')
+        result.issues.push('cannot save preflight: ' + error.message);
+      else result.issues.push('preflight.json appeared during validation');
+    }
+  }
+  result.runDir = path;
+  result.sourceCacheDir = resolve(sourceCacheDir);
+  result.ready = result.issues.length === 0;
+  return result;
 }
-
-function baseReport(preflightResult) {
+function baseReport(
+  preflightResult,
+  { requestCap = 0, runDir = preflightResult.runDir } = {}
+) {
   const fixture = preflightResult.fixture;
-  const counts = fixture
-    ? Object.fromEntries(
-        ['calibration', 'holdout'].map((split) => [
-          split,
-          Object.fromEntries(
-            ['eligible', 'negative'].map((label) => [
-              label,
-              fixture.records.filter(
-                (record) => record.split === split && record.label === label
-              ).length,
-            ])
-          ),
-        ])
-      )
-    : null;
   return {
     generatedAt: new Date().toISOString(),
     status: preflightResult.issues.length ? 'not-ready' : 'ready',
     passed: false,
     fixtureVersion: fixture?.fixtureVersion ?? null,
-    datasetSha256: preflightResult.fixtureSha256,
-    mediaManifestSha256: preflightResult.mediaSha256,
-    counts,
+    fixtureSha256: preflightResult.fixtureSha256,
     coverageGaps: fixture?.coverageGaps ?? [],
-    extractor: { model, promptVersion, schemaVersion },
+    extractor: {
+      model,
+      promptVersion,
+      schemaVersion,
+      maxImageBytes,
+      maxPostImageBytes: gemini.maxPostImageBytes,
+      maxCallsPerPost: 3,
+      outputTokens: { triage: 16384, detail: 32768 },
+    },
     preflight: {
-      ready: preflightResult.issues.length === 0,
+      ready: preflightResult.ready,
       issues: preflightResult.issues,
       mediaCount: preflightResult.images.verified.length,
-      mediaErrors: preflightResult.images.errors,
+      manifestSha256: preflightResult.savedManifestSha256 ?? null,
     },
-    paid: {
-      requestCap,
-      requests: 0,
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0,
-      refusals: 0,
-    },
+    paid: { requestCap },
     phases: [],
+    reportPath: runDir ? join(runDir, 'qualification.json') : null,
   };
 }
 
-function addStats(total, current) {
-  for (const key of [
-    'posts',
-    'accepted',
-    'rejected',
-    'errors',
-    'withheld',
-    'cached',
-    'requests',
-    'promptTokens',
-    'completionTokens',
-    'reasoningTokens',
-    'totalTokens',
-  ])
-    total[key] += current[key] ?? 0;
-  total.stopReason ??= current.stopReason;
-}
-
-async function evaluatePhase(createRun, records, phase, requestCount) {
+async function evaluatePhase(records, phase, state) {
   const outcomes = new Map();
-  const stats = {
-    posts: 0,
-    accepted: 0,
-    rejected: 0,
-    errors: 0,
-    withheld: 0,
-    cached: 0,
-    requests: 0,
-    promptTokens: 0,
-    completionTokens: 0,
-    reasoningTokens: 0,
-    totalTokens: 0,
-    stopReason: null,
+  const stopped = () =>
+    state.signal.aborted ||
+    state.guard.snapshot().stopReason ||
+    state.productionStopReason ||
+    state.runnerFailure;
+  const scored = {
+    ...scorePhase(phase, records, outcomes),
+    evaluatedCount: 0,
+    complete: false,
+    outcomes: {},
   };
-  for (let offset = 0; offset < records.length; offset += 20) {
-    const batch = records.slice(offset, offset + 20);
-    const run = createRun(batch.length);
-    for (const record of batch) {
+  state.report.phases.push(scored);
+  let run;
+  for (let index = 0; index < records.length && !stopped(); index++) {
+    if (index % 20 === 0)
+      run = createVisionRun({
+        key: state.key,
+        fetchImpl: state.guard.fetchImpl,
+        cacheDir: resolve(state.runDir, phase, 'cache'),
+        postLimit: Math.min(20, records.length - index),
+        callLimit: 60,
+      });
+    const record = records[index];
+    state.context = { phase, postId: record.postId };
+    try {
       const post = {
         id: record.postId,
         url: record.postUrl,
         text: '',
-        media: record.media.map(({ index, url }) => ({ index, original: url })),
+        media: record.media.map(({ index, url, sha256 }) => ({
+          index,
+          original: url,
+          sha256,
+        })),
       };
-      try {
-        outcomes.set(record.postId, await run.evaluate(post, { fresh: true }));
-      } catch (error) {
-        outcomes.set(record.postId, { status: 'error', reason: error.message });
-      }
-      if (run.stats().stopReason || requestCount() >= requestCap) break;
+      outcomes.set(record.postId, await run.evaluate(post, { fresh: true }));
+    } catch (error) {
+      state.runnerFailure = scrubString(error.message, state.key);
+      outcomes.set(record.postId, {
+        status: 'error',
+        reason: state.runnerFailure,
+      });
     }
-    addStats(stats, run.stats());
-    if (stats.stopReason || requestCount() >= requestCap) break;
+    state.productionStopReason ??= run.stats().stopReason;
+    Object.assign(scored, scorePhase(phase, records, outcomes), {
+      evaluatedCount: outcomes.size,
+      complete: outcomes.size === records.length && !stopped(),
+      outcomes: Object.fromEntries(outcomes),
+    });
+    updatePaid(state.report, state.guard.snapshot());
+    await writeReport(state.runDir, state.report, state.key);
   }
-  const scored = scorePhase(phase, records, outcomes);
-  scored.stats = stats;
-  return scored;
 }
-
-const makeRun = (key, fetchImpl) => (postLimit) =>
-  createVisionRun({ key, fetchImpl, cacheDir, postLimit, callLimit: 60 });
 
 export const costOf = (usage) => ({
   pricePerMillionTokens: gemini.price,
@@ -368,361 +501,300 @@ export const costOf = (usage) => ({
     1e6,
 });
 
-function paidBlock(counter) {
-  const summed = (field) =>
-    counter.calls.reduce((total, call) => total + call.usage[field], 0);
+const scrubString = (value, key) => safeValue(String(value ?? ''), key);
+
+function updatePaid(report, snapshot) {
+  const usage = snapshot.usage ?? {};
+  const known = costOf({
+    promptTokens: usage.promptTokenCount ?? 0,
+    completionTokens:
+      (usage.candidatesTokenCount ?? 0) + (usage.thoughtsTokenCount ?? 0),
+  });
+  report.paid = {
+    ...report.paid,
+    ...snapshot,
+    knownCostUsd: known.usd,
+    cost: snapshot.totalCostUsd == null ? null : known,
+  };
+}
+
+async function inspectPreservation(preflightResult) {
+  const current = await readManifestInputs(preflightResult.sourceCacheDir);
+  let saved;
+  try {
+    saved = JSON.parse(
+      await readFile(join(preflightResult.runDir, 'preflight.json'), 'utf8')
+    );
+  } catch {
+    saved = null;
+  }
+  const savedMatches =
+    Boolean(saved?.manifest) &&
+    saved.manifestSha256 === preflightResult.savedManifestSha256 &&
+    stable(saved.manifest) === stable(preflightResult.manifest);
+  const same =
+    !current.issues.length &&
+    savedMatches &&
+    stable(current.manifest) === stable(preflightResult.manifest) &&
+    hash(stable(current.manifest)) === preflightResult.savedManifestSha256;
   return {
+    success: same,
+    issues: same
+      ? []
+      : current.issues.length
+        ? current.issues
+        : ['preflight manifest changed'],
+    manifestSha256: current.manifest ? hash(stable(current.manifest)) : null,
+  };
+}
+
+async function executePaidMode(state) {
+  const {
+    mode,
+    key,
+    budgetUsd,
     requestCap,
-    requests: counter.requests,
-    promptTokens: summed('promptTokens'),
-    completionTokens: summed('completionTokens'),
-    reasoningTokens: summed('reasoningTokens'),
-  };
-}
-
-function costBlock(paid, scored) {
-  const cost = costOf(paid);
-  return {
-    ...cost,
-    perRecord: scored.records ? cost.usd / scored.records : null,
-    perAcceptedTeam: scored.wholeTeamCorrect
-      ? cost.usd / scored.wholeTeamCorrect
-      : null,
-  };
-}
-
-const callFields = (call) => ({
-  truncated: call.truncated,
-  blank: call.blank,
-  elapsedMs: call.elapsedMs,
-  promptTokens: call.usage.promptTokens,
-  completionTokens: call.usage.completionTokens,
-  reasoningTokens: call.usage.reasoningTokens,
-});
-
-async function modelCall(response, elapsedMs) {
-  const data = await response
-    .clone()
-    .json()
-    .catch(() => null);
-  return {
-    truncated: gemini.truncated(data),
-    blank: (gemini.text(data) ?? '').trim() === '',
-    usage: gemini.usage(data),
-    elapsedMs,
-  };
-}
-
-function guardedFetch(counter) {
-  return async (input, init) => {
-    const url = new URL(typeof input === 'string' ? input : input.url);
-    if (url.href !== gemini.url) {
-      if (url.protocol !== 'https:' || url.hostname !== 'pbs.twimg.com')
-        throw new Error('blocked unexpected network destination ' + url.origin);
-      return fetch(input, init);
+    preflightResult,
+    report,
+    signal,
+    runDir,
+  } = state;
+  const remoteFetch = async (input, init) => {
+    if (!state.paidStarted) {
+      const preservation = await inspectPreservation(preflightResult);
+      state.preservationChecks.push(preservation);
+      if (!preservation.success) {
+        state.preservationIssue = true;
+        throw new Error('preflight inputs changed before first paid request');
+      }
+      if (signal.aborted || init.signal?.aborted)
+        throw new Error('request aborted');
+      await writeFile(join(runDir, 'paid.started'), 'started\n', {
+        flag: 'wx',
+      });
+      state.paidStarted = true;
     }
-    if (counter.requests >= requestCap)
-      throw new Error('paid request cap ' + requestCap + ' reached');
-    counter.requests++;
-    const started = Date.now();
-    const response = await fetch(input, init);
-    counter.calls.push(await modelCall(response, Date.now() - started));
-    return response;
+    if (signal.aborted || init.signal?.aborted)
+      throw new Error('request aborted');
+    return fetch(input, init);
   };
-}
-
-async function live(preflightResult, report) {
-  if (!preflightResult.fixture || preflightResult.issues.length) return report;
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    report.status = 'blocked-no-key';
-    report.preflight.keyAvailable = false;
-    return report;
-  }
-  report.preflight.keyAvailable = true;
-  const counter = { requests: 0, calls: [] };
-  const createRun = makeRun(key, guardedFetch(counter));
+  state.guard = createEvaluationFetch({
+    key,
+    images: preflightResult.images.byUrl,
+    remoteFetch,
+    requestCap,
+    budgetUsd,
+    context: () => state.context,
+    signal,
+  });
   const all = preflightResult.fixture.records;
-  for (const [phase, records] of [
-    ['calibration', all.filter((record) => record.split === 'calibration')],
-    ['holdout-1', all.filter((record) => record.split === 'holdout')],
-    ['holdout-2', all.filter((record) => record.split === 'holdout')],
-  ]) {
-    const scored = await evaluatePhase(
-      createRun,
-      records,
-      phase,
-      () => counter.requests
-    );
-    report.phases.push(scored);
-    report.paid = {
-      requestCap,
-      requests: counter.requests,
-      promptTokens: report.phases.reduce(
-        (sum, item) => sum + item.stats.promptTokens,
-        0
-      ),
-      completionTokens: report.phases.reduce(
-        (sum, item) => sum + item.stats.completionTokens,
-        0
-      ),
-      reasoningTokens: report.phases.reduce(
-        (sum, item) => sum + item.stats.reasoningTokens,
-        0
-      ),
-      totalTokens: report.phases.reduce(
-        (sum, item) => sum + item.stats.totalTokens,
-        0
-      ),
-      refusals: report.phases.reduce((sum, item) => sum + item.refusals, 0),
-    };
-    report.paid.cost = costOf(report.paid);
-    report.status = 'in-progress';
-    await writeReport(report);
-    if (scored.stats.stopReason || counter.requests >= requestCap) break;
+  const holdout = all.filter((record) => record.split === 'holdout');
+  const phases =
+    mode.type === 'live'
+      ? [
+          [
+            'calibration',
+            all.filter((record) => record.split === 'calibration'),
+          ],
+          ['holdout-1', holdout],
+          ['holdout-2', holdout],
+        ]
+      : mode.type === 'probe'
+        ? [['probe', all.slice(0, mode.count)]]
+        : [[mode.split, all.filter((record) => record.split === mode.split)]];
+  for (const [phase, records] of phases) {
+    await evaluatePhase(records, phase, state);
+    await writeReport(runDir, report, key);
   }
-  const holdouts = report.phases.filter((phase) =>
-    phase.label.startsWith('holdout-')
-  );
-  report.passed =
-    report.phases.length === 3 &&
-    holdouts.length === 2 &&
-    holdouts.every(
-      (phase) =>
-        phase.unsafeNegativeAdmissions === 0 &&
-        phase.wrongCoreFields === 0 &&
-        phase.fabricatedOptionalFields === 0 &&
-        phase.eligibleRecall >= 0.8
-    ) &&
-    report.paid.requests <= requestCap;
-  report.status = report.passed ? 'qualified' : 'failed';
-  await writeReport(report);
-  return report;
 }
 
-function printReport(report) {
-  console.log(
-    JSON.stringify(
-      {
-        status: report.status,
-        passed: report.passed,
-        fixtureVersion: report.fixtureVersion,
-        counts: report.counts,
-        coverageGaps: report.coverageGaps,
-        datasetSha256: report.datasetSha256,
-        mediaManifestSha256: report.mediaManifestSha256,
-        preflight: report.preflight,
-        paid: report.paid,
-        phases: report.phases.map(
-          ({
-            label,
-            records,
-            eligible,
-            negatives,
-            wholeTeamCorrect,
-            eligibleRecall,
-            unsafeNegativeAdmissions,
-            wrongCoreFields,
-            fabricatedOptionalFields,
-            refusals,
-            errors,
-            errorReasons,
-            stats,
-          }) => ({
-            label,
-            records,
-            eligible,
-            negatives,
-            wholeTeamCorrect,
-            eligibleRecall,
-            unsafeNegativeAdmissions,
-            wrongCoreFields,
-            fabricatedOptionalFields,
-            refusals,
-            errors,
-            errorReasons,
-            stats,
-          })
-        ),
-        reportPath,
-      },
-      null,
-      2
-    )
-  );
-}
-
-async function probe(preflightResult, count) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    console.log(
-      JSON.stringify({ status: 'blocked-no-key', probe: count }, null, 2)
-    );
-    process.exitCode = 1;
-    return;
-  }
-  if (!preflightResult.fixture || preflightResult.issues.length) {
-    console.log(
-      JSON.stringify(
-        { status: 'not-ready', probe: count, issues: preflightResult.issues },
-        null,
-        2
-      )
-    );
-    process.exitCode = 1;
-    return;
-  }
-  const records = preflightResult.fixture.records.slice(0, count);
-  const counter = { requests: 0, calls: [] };
-  const scored = await evaluatePhase(
-    makeRun(key, guardedFetch(counter)),
-    records,
-    'probe',
-    () => counter.requests
-  );
-  const paid = paidBlock(counter);
-  console.log(
-    JSON.stringify(
-      {
-        status: scored.errors ? 'probe-failed' : 'probe-ok',
-        probe: count,
-        preflight: ready(preflightResult),
-        paid,
-        cost: costBlock(paid, scored),
-        calls: counter.calls.map(callFields),
-        score: scored,
-      },
-      null,
-      2
-    )
-  );
-  if (scored.errors) process.exitCode = 1;
-}
-
-function ready(preflightResult) {
-  return {
-    ready: preflightResult.issues.length === 0,
-    mediaCount: preflightResult.images.verified.length,
+function finishPaidReport(state, preservation) {
+  const { report, mode, signal, guard } = state;
+  const snapshot = guard.snapshot();
+  updatePaid(report, snapshot);
+  report.preservation = {
+    ...preservation,
+    success: preservation.success && !state.preservationIssue,
+    checks: state.preservationChecks,
   };
+  report.interrupted = state.interrupted;
+  report.productionStopReason = state.productionStopReason ?? null;
+  if (signal.aborted || snapshot.stopCategory === 'interrupted')
+    report.status = 'incomplete-interrupted';
+  else if (!report.preservation.success)
+    report.status = 'incomplete-preservation';
+  else if (snapshot.stopCategory === 'budget')
+    report.status = 'incomplete-budget';
+  else if (
+    snapshot.stopReason ||
+    state.productionStopReason ||
+    state.runnerFailure ||
+    snapshot.totalCostUsd == null ||
+    snapshot.unsettledMicrodollars ||
+    snapshot.unknownCallIds.length ||
+    !report.phases.length ||
+    report.phases.some((phase) => !phase.complete)
+  )
+    report.status = 'incomplete-provider';
+  else if (mode.type === 'live') {
+    const holdouts = report.phases.filter((phase) =>
+      phase.label.startsWith('holdout-')
+    );
+    report.passed =
+      report.phases.length === 3 &&
+      report.phases.reduce((sum, phase) => sum + phase.evaluatedCount, 0) ===
+        100 &&
+      holdouts.length === 2 &&
+      holdouts.every(
+        (phase) =>
+          phase.unsafeNegativeAdmissions === 0 &&
+          phase.wrongCoreFields === 0 &&
+          phase.fabricatedOptionalFields === 0 &&
+          phase.eligibleRecall >= 0.8
+      );
+    report.status = report.passed ? 'qualified' : 'failed';
+  } else
+    report.status = report.phases[0].errors
+      ? mode.type + '-failed'
+      : mode.type + '-ok';
 }
 
-async function split(preflightResult, value) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) {
-    console.log(
-      JSON.stringify({ status: 'blocked-no-key', split: value }, null, 2)
-    );
-    process.exitCode = 1;
-    return;
+function parseArgs(args) {
+  const usage =
+    'Usage: node scripts/x-vision-eval.mjs [--live | --probe N | --split calibration|holdout] --run-dir PATH';
+  let runDir;
+  let mode;
+  for (let index = 0; index < args.length; index++) {
+    const arg = args[index];
+    if (arg === '--run-dir') {
+      const value = args[++index];
+      if (runDir !== undefined || !value || value.startsWith('--'))
+        throw new Error(usage);
+      runDir = value;
+    } else if (mode) throw new Error(usage);
+    else if (arg === '--live') mode = { type: 'live' };
+    else if (arg === '--probe') {
+      const value = args[++index];
+      const count = Number(value);
+      if (!/^[1-9][0-9]*$/.test(value ?? '') || !Number.isSafeInteger(count))
+        throw new Error(usage);
+      mode = { type: 'probe', count };
+    } else if (arg === '--split') {
+      const split = args[++index];
+      if (!['calibration', 'holdout'].includes(split)) throw new Error(usage);
+      mode = { type: 'split', split };
+    } else throw new Error(usage);
   }
-  if (!preflightResult.fixture || preflightResult.issues.length) {
-    console.log(
-      JSON.stringify(
-        { status: 'not-ready', split: value, issues: preflightResult.issues },
-        null,
-        2
-      )
+  if (!runDir?.trim()) throw new Error(usage);
+  return { runDir, mode };
+}
+function paidOptions(mode) {
+  if (!mode) return { requestCap: 0, budgetUsd: null };
+  const raw = process.env.X_VISION_REQUEST_CAP ?? '300';
+  if (!/^[0-9]+$/.test(raw))
+    throw new Error('X_VISION_REQUEST_CAP must be an integer');
+  const options = {
+    requestCap: Number(raw),
+    budgetUsd: process.env.X_VISION_BUDGET_USD,
+  };
+  try {
+    createEvaluationFetch({ key: 'offline-validation', ...options });
+  } catch (error) {
+    throw new Error(
+      error.message
+        .replaceAll('requestCap', 'X_VISION_REQUEST_CAP')
+        .replaceAll('budgetUsd', 'X_VISION_BUDGET_USD'),
+      { cause: error }
     );
-    process.exitCode = 1;
-    return;
   }
-  const records = preflightResult.fixture.records.filter(
-    (record) => record.split === value
-  );
-  const counter = { requests: 0, calls: [] };
-  const scored = await evaluatePhase(
-    makeRun(key, guardedFetch(counter)),
-    records,
-    value,
-    () => counter.requests
-  );
-  const paid = paidBlock(counter);
-  console.log(
-    JSON.stringify(
-      {
-        status: scored.errors ? 'split-failed' : 'split-ok',
-        split: value,
-        model,
-        preflight: ready(preflightResult),
-        paid,
-        cost: costBlock(paid, scored),
-        calls: counter.calls.map(callFields),
-        score: scored,
-      },
-      null,
-      2
-    )
-  );
-  if (scored.errors) process.exitCode = 1;
+  return options;
 }
 
 async function main() {
-  const args = process.argv.slice(2);
-  const usage =
-    'Usage: node scripts/x-vision-eval.mjs [--live] [--probe N] [--split calibration|holdout]';
-  const probeAt = args.indexOf('--probe');
-  const probeCount = probeAt === -1 ? null : Number(args[probeAt + 1]);
-  const splitAt = args.indexOf('--split');
-  const splitValue = splitAt === -1 ? null : args[splitAt + 1];
-  const liveRequested = args.includes('--live');
-  const consumed = new Set();
-  for (const at of [probeAt, splitAt]) {
-    if (at === -1) continue;
-    consumed.add(at);
-    consumed.add(at + 1);
-  }
-  const extras = args.filter((arg, index) => !consumed.has(index));
-  const modes =
-    (probeAt === -1 ? 0 : 1) +
-    (splitAt === -1 ? 0 : 1) +
-    (liveRequested ? 1 : 0);
-  if (
-    extras.some((arg) => arg !== '--live') ||
-    (probeAt !== -1 && (!Number.isInteger(probeCount) || probeCount < 1)) ||
-    (splitAt !== -1 && !['calibration', 'holdout'].includes(splitValue)) ||
-    modes > 1
-  )
-    throw new Error(usage);
-  const keyAvailable = Boolean(process.env.GEMINI_API_KEY?.trim());
-  const preflightResult = await preflight({
-    freshImages:
-      keyAvailable && (liveRequested || probeAt !== -1 || splitAt !== -1),
-  });
-  if (probeAt !== -1) {
-    await probe(preflightResult, probeCount);
-    return;
-  }
-  if (splitAt !== -1) {
-    await split(preflightResult, splitValue);
-    return;
-  }
-  const report = baseReport(preflightResult);
-  if (liveRequested) {
-    report.preflight.keyAvailable = keyAvailable;
-    if (!keyAvailable) {
+  const controller = new AbortController();
+  const state = {
+    signal: controller.signal,
+    preservationChecks: [],
+  };
+  const interrupt = (name) => {
+    state.interrupted = name;
+    controller.abort(name);
+  };
+  const onSigint = () => interrupt('SIGINT');
+  const onSigterm = () => interrupt('SIGTERM');
+  try {
+    const options = parseArgs(process.argv.slice(2));
+    Object.assign(state, { mode: options.mode, ...paidOptions(options.mode) });
+    state.preflightResult = await preflight({
+      runDir: options.runDir,
+      requireExisting: Boolean(options.mode),
+    });
+    state.runDir = state.preflightResult.runDir;
+    const report = (state.report = baseReport(state.preflightResult, state));
+    report.mode = state.mode ?? null;
+    if (!state.mode || state.preflightResult.issues.length) return;
+    state.key = process.env.GEMINI_API_KEY?.trim() ?? '';
+    report.preflight.keyAvailable = Boolean(state.key);
+    if (!state.key) {
       report.status = 'blocked-no-key';
-      report.preflight.issues.push(
-        'GEMINI_API_KEY is required for live qualification'
+      return;
+    }
+    process.on('SIGINT', onSigint);
+    process.on('SIGTERM', onSigterm);
+    report.status = 'in-progress';
+    await writeReport(state.runDir, report, state.key);
+    await executePaidMode(state);
+  } catch (error) {
+    state.runnerFailure = scrubString(error.message, state.key);
+    if (state.report) {
+      state.report.failure = state.runnerFailure;
+      state.report.status = state.signal.aborted
+        ? 'incomplete-interrupted'
+        : 'incomplete-provider';
+    }
+    console.error('X vision evaluation failed: ' + state.runnerFailure);
+    process.exitCode = 1;
+  } finally {
+    try {
+      if (state.guard) {
+        let preservation;
+        try {
+          preservation = await inspectPreservation(state.preflightResult);
+        } catch (error) {
+          preservation = {
+            success: false,
+            issues: [scrubString(error.message, state.key)],
+            manifestSha256: null,
+          };
+        }
+        state.preservationChecks.push(preservation);
+        finishPaidReport(state, preservation);
+      }
+      if (state.report) {
+        if (state.runDir)
+          await writeReport(state.runDir, state.report, state.key);
+        console.log(
+          JSON.stringify(safeValue(state.report, state.key), null, 2)
+        );
+        if (
+          !['ready', 'qualified', 'probe-ok', 'split-ok'].includes(
+            state.report.status
+          )
+        )
+          process.exitCode = 1;
+      }
+    } catch (error) {
+      console.error(
+        'X vision report persistence failed: ' +
+          scrubString(error.message, state.key)
       );
-    } else if (!preflightResult.issues.length) {
-      await live(preflightResult, report);
+      process.exitCode = 1;
+    } finally {
+      process.off('SIGINT', onSigint);
+      process.off('SIGTERM', onSigterm);
     }
   }
-  await writeReport(report);
-  printReport(report);
-  if (report.status !== 'ready' && report.status !== 'qualified')
-    process.exitCode = 1;
-  if (report.status === 'failed') process.exitCode = 1;
 }
 
-if (
-  process.argv[1] &&
-  resolve(process.argv[1]) === fileURLToPath(import.meta.url)
-) {
-  try {
-    await main();
-  } catch (error) {
-    console.error(`X vision evaluation failed: ${error.message}`);
-    process.exitCode = 1;
-  }
-}
+if (resolve(process.argv[1] ?? '') === fileURLToPath(import.meta.url))
+  await main();

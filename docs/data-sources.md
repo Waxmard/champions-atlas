@@ -248,8 +248,9 @@ through `generationConfig.responseFormat.text`. The prompts, request schemas, an
 local validation use the same Zod definitions. Local strict validation, domain
 checks, and agreement between both independent detailed reads remain mandatory.
 Native schema constraints do not establish that image text is legible or that an
-extracted value is true. Live endpoint and schema compatibility, and extraction
-quality, remain unverified until a separately authorized bounded live probe.
+extracted value is true. The bounded native compatibility probe on 2026-10-09
+verified one calibration post, not overall extraction quality or enforcement of
+every JSON Schema keyword.
 
 Accepted output is cached under the ignored `.cache/catalog/x-vision/` and keyed by
 input fingerprint, model, prompt version, and schema version, so an unchanged post
@@ -263,8 +264,8 @@ The paid portion calls `gemini-3.8-flash` with per-image
 `MEDIA_RESOLUTION_ULTRA_HIGH` and needs `GEMINI_API_KEY`. It is
 bounded by `X_VISION_LIMIT` evaluated posts and `X_VISION_CALL_LIMIT` model
 requests per run, separate from the `X_POST_LIMIT` status-lookup cap. The
-qualification runner also honours `X_VISION_REQUEST_CAP` (default 360) so a run
-can be limited to the remaining paid budget. Inline image data is sent in the
+qualification runner requires `X_VISION_BUDGET_USD` for paid modes and honours
+`X_VISION_REQUEST_CAP` (default and maximum 300). Inline image data is sent in the
 request itself, and the provider caps the whole request (prompt plus inline
 images) at 20 MB, so the client refuses a post whose images exceed 12 MiB. The
 deploy workflows cap vision at 20 posts and 60 requests but do not pass the
@@ -273,13 +274,35 @@ browser tests never receive it and never call the model. A run without the key
 withholds extraction with a summary line instead of recording a dummy success,
 and existing validated teams stay usable.
 
-Automatic screenshot publication is disabled until the opt-in live qualification
-(`npm run eval:x-images -- --live`, run outside ordinary tests and CI) passes. The
-same runner takes `--probe N`, which evaluates the first `N` fixture records,
-prints per-call finish reasons, tokens, and latency, and never writes the
-qualification verdict. The shipped `automaticVisionQualified` flag is `false`, so
-a validated screenshot team is not yet published from the catalog import on its
-own.
+Run offline preflight with `npm run eval:x-images -- --run-dir /path/to/empty-run`.
+Every invocation requires an explicit isolated `--run-dir`. Preflight validates
+the cached fixture images without downloading them and pins source, fixture,
+image, and shared qualification hashes in immutable `preflight.json`. Repeat
+preflight immediately before reading the key. Paid modes require that matching
+preflight and refuse a directory containing evidence of a previous paid attempt.
+
+Outside ordinary tests and CI, use `--live` for calibration and two independent
+holdout passes, `--probe N` for the first `N` fixture records, or
+`--split calibration|holdout` for one split. Set `X_VISION_BUDGET_USD` to a positive
+decimal with at most six fractional digits. Before each generation, the runner
+counts the actual native request and reserves doubled counted input plus the
+unchanged full output ceiling. Admission compares known reported usage and
+unsettled reservations with the budget. Valid usage reconciles the reservation;
+lifetime reservations remain diagnostics, not actual spend. This is not a provider
+invoice guarantee.
+
+The run writes per-post evidence and private phase caches beneath its run
+directory, never replacing the shared qualification report. Budget or token
+refusal, provider or usage failure, interruption, and preservation mismatch leave
+an incomplete report with `passed=false` and exit 1. Unknown usage retains its
+reservation and leaves total measured cost unknown. No automatic retry, resumption,
+or stitching of separate runs is allowed. Probe and split results cannot qualify
+publication. A full run must complete all 100 evaluations and both holdouts must
+meet the unchanged quality gates.
+
+Automatic screenshot publication requires separate authorization even after a
+qualification passes. The shipped `automaticVisionQualified` flag remains `false`,
+so a validated screenshot team is not published from the catalog import on its own.
 
 Screenshot-derived teams carry `setSource: 'screenshot'`, a stable
 `x-image-<postId>` ID, no sheet ID, an empty `pasteUrl`, `replicaCode: null`, empty
