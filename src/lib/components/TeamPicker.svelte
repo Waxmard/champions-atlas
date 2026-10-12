@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { tick, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import { Combobox } from 'bits-ui';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -24,8 +24,8 @@
     busy = $state(false);
   let selectedId = $derived(value);
   let inputEl = $state<HTMLInputElement | null>(null),
-    fieldEl = $state<HTMLElement | null>(null);
-  let quiet = false;
+    fieldEl = $state<HTMLElement | null>(null),
+    contentEl = $state<HTMLElement | null>(null);
   const selected = $derived(teams.find((team) => team.id === value));
   const options = $derived(open ? rankSavedTeams(teams, field) : teams);
   const roster = (team: SavedTeam) =>
@@ -33,8 +33,41 @@
 
   $effect(() => {
     if (open) untrack(() => (field = ''));
-    else field = selected?.name ?? '';
   });
+
+  $effect(() => {
+    if (!open) return;
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target || fieldEl?.contains(target) || contentEl?.contains(target))
+        return;
+      closeMenu();
+    };
+    window.addEventListener('pointerdown', onPointerDown, true);
+    return () => window.removeEventListener('pointerdown', onPointerDown, true);
+  });
+
+  function openMenu() {
+    open = true;
+    field = '';
+  }
+
+  function closeMenu() {
+    open = false;
+    field = '';
+  }
+
+  function toggleTrigger() {
+    if (open) closeMenu();
+    else openMenu();
+  }
+
+  function closeOnEscape(event: KeyboardEvent) {
+    if (event.key === 'Escape' && open) {
+      event.preventDefault();
+      closeMenu();
+    }
+  }
 
   async function choose(next: string) {
     if (!next || next === value || busy) {
@@ -47,26 +80,12 @@
     } finally {
       busy = false;
       selectedId = value;
-      open = false;
-      field = '';
-      await tick();
-      field = selected?.name ?? '';
+      closeMenu();
     }
   }
 
   export function focus() {
-    quiet = true;
     inputEl?.focus();
-    quiet = false;
-  }
-
-  function toggleTrigger(event: MouseEvent) {
-    event.preventDefault();
-    const willOpen = !(open && document.activeElement === inputEl);
-    quiet = true;
-    inputEl?.focus();
-    quiet = false;
-    open = willOpen;
   }
 </script>
 
@@ -78,6 +97,7 @@
     bind:value={selectedId}
     inputValue={field}
     onValueChange={choose}
+    allowDeselect={false}
     {disabled}
   >
     <div
@@ -92,23 +112,30 @@
       <Combobox.Input
         {id}
         bind:ref={inputEl}
-        placeholder={selected?.name ?? ''}
+        placeholder="Search or scroll saved teams"
         autocomplete="off"
-        onfocus={() => {
-          if (!quiet) open = true;
+        onclick={() => {
+          if (!open) openMenu();
         }}
-        oninput={(event) => (field = event.currentTarget.value)}
-        onclick={() => (open = true)}
-        onblur={() => (open = false)}
+        oninput={(event) => {
+          field = event.currentTarget.value;
+          if (!open) openMenu();
+        }}
+        onkeydown={closeOnEscape}
         class="w-full min-w-0 bg-transparent text-base outline-none"
-      />
+      >
+        {#snippet child({ props })}
+          <input {...props} value={field} />
+        {/snippet}
+      </Combobox.Input>
       <button
         type="button"
         aria-label="Show saved teams"
         aria-haspopup="listbox"
         aria-expanded={open}
-        onpointerdown={toggleTrigger}
-        onclick={(event) => event.detail === 0 && toggleTrigger(event)}
+        onpointerdown={(event) => event.stopPropagation()}
+        onclick={toggleTrigger}
+        onkeydown={closeOnEscape}
         class="absolute top-1/2 right-0.5 grid size-11 -translate-y-1/2 place-items-center rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <ChevronDown class="size-5" aria-hidden="true" />
@@ -116,6 +143,7 @@
     </div>
     <Combobox.Portal>
       <Combobox.Content
+        bind:ref={contentEl}
         customAnchor={fieldEl}
         sideOffset={6}
         onpointerdown={(event) => event.preventDefault()}
