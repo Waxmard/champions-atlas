@@ -215,7 +215,10 @@ test('completed editor changes navigate without an unsaved warning', async ({
     warned = true;
     await dialog.dismiss();
   });
-  await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Browse', exact: true })
+    .click();
   await expect(page).toHaveURL((url) => url.pathname === '/');
   await expect(page.getByLabel('Regulation')).toHaveValue('M-B');
   await expect(page.getByRole('combobox', { name: 'Sort teams' })).toHaveValue(
@@ -597,7 +600,9 @@ test('background navigation clicks retain the editor', async ({
   });
   await expect(editor).toBeVisible();
   const url = page.url();
-  const browse = page.getByRole('link', { name: 'Browse teams', exact: true });
+  const browse = page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Browse', exact: true });
   const box = await browse.boundingBox();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await expect(editor).toBeVisible();

@@ -201,7 +201,10 @@ test(
     expect(restored.id).toBe(before.id);
     expect(restored.original).toEqual(before.original);
     expect(restored.sources).toEqual(before.sources);
-    await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
+    await page
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('link', { name: 'Browse', exact: true })
+      .click();
     await expect(page).toHaveURL(browseUrl);
     for (const member of fixture.members)
       await expect(

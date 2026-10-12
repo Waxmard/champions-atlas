@@ -26,7 +26,6 @@
     storageError = $state(''),
     status = $state(''),
     pendingId = $state('');
-  let browseLink = $state<HTMLElement | null>(null);
   const catalogIds = $derived(
     new Set((data.catalog.teams as Team[]).map((team) => team.id))
   );
@@ -137,7 +136,9 @@
     const next = document.querySelectorAll<HTMLElement>('[data-wishlist-use]')[
       Math.min(index, entries.length - 1)
     ];
-    (next ?? browseLink)?.focus();
+    (
+      next ?? document.querySelector<HTMLElement>('nav[aria-label="Main"] a')
+    )?.focus();
   }
 </script>
 
@@ -155,14 +156,6 @@
       Teams to try later. Use a team to move it to My teams.
     </p>
   </header>
-  <div class="mt-4 flex flex-wrap gap-2.5">
-    <Button
-      bind:ref={browseLink}
-      href={resolve('/?browse=all')}
-      variant="outline"
-      class="min-h-11 px-4">Browse teams</Button
-    >
-  </div>
   <p
     role="status"
     aria-live="polite"
