@@ -1,9 +1,8 @@
 <script lang="ts">
-  import { base } from '$app/paths';
-  import { normalize } from '$lib/catalog';
+  import { localImageSrc } from '$lib/assets';
 
   let { item, size = 24 }: { item: string; size?: number } = $props();
-  const src = $derived(item ? `${base}/items/${normalize(item)}.png` : '');
+  const src = $derived(localImageSrc('items', item));
   let failedSrc = $state('');
 </script>
 

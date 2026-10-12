@@ -3,7 +3,7 @@ import type { Page, Locator, Dialog } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 import { newSavedTeam } from '../src/lib/workbench';
 import type { SavedTeam } from '../src/lib/workbench';
-import type { Team } from '../src/lib/catalog';
+import { browsePokemon, type Team } from '../src/lib/catalog';
 
 const fixtureCatalog = catalog as { teams: Team[] };
 const fixture = fixtureCatalog.teams.find((team) =>
@@ -203,7 +203,7 @@ test('completed changes autosave together before Done and Restore original rever
   for (const member of fixture.members)
     await expect(
       page.getByRole('button', {
-        name: `Remove ${member.pokemon}`,
+        name: `Remove ${browsePokemon(member.pokemon)}`,
         exact: true,
       })
     ).toBeVisible();

@@ -96,6 +96,12 @@ Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
 
+The app renders decorative sprites and item icons only when their PNG files exist
+in the local asset inventory captured at development server startup or build time. Missing
+sprites render nothing; missing item icons show a dash. Names remain visible, and
+absent files trigger no image requests. Restart the development server or rebuild
+after synchronizing additional images. Importer download failures remain visible.
+
 Preview imports request live source refreshes with `CHECK_SHEET=1` and enable
 `ALLOW_STALE_SOURCE_CACHE=1`. If a refresh fails with an eligible transient HTTP
 or network error, the importer warns and reuses validated raw source cache,
