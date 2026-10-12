@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/Waxmard/champions-atlas/compare/v1.4.0...v1.5.0) (2026-10-12)
+
+
+### Features
+
+* rank teams by credential merit and hide custom rules ([#36](https://github.com/Waxmard/champions-atlas/issues/36)) ([abfd6c4](https://github.com/Waxmard/champions-atlas/commit/abfd6c478f666dc04dc0e11a088445f8f6397adc))
+
 ## [1.4.0](https://github.com/Waxmard/champions-atlas/compare/v1.3.0...v1.4.0) (2026-10-07)
 
 
