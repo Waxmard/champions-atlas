@@ -1,15 +1,15 @@
 # Product specification
 
-## Purpose
-
 Champion's Atlas helps its owner choose Pokémon Champions doubles teams on a
 phone. Existing spreadsheets are awkward to browse, and missingNO loses filters
 when opening a team. Version 1 succeeds by making discovery reliable and fast.
 
-This document records the planning conversation. It does not imply that every
-planned source integration or game-rule validation has been implemented; the
-Poch.ms integration below shipped after planning, and
-[data sources](data-sources.md) describes the current import.
+This document records agreed behavior that lives nowhere else: what each version
+covers, the similarity, suggestion, and benchmark rules, and the acceptance
+criteria. Import and result-ordering rules are in
+[data sources](data-sources.md), the synced record model is in
+[Firebase deployment and sync](firebase.md), and user-facing behavior, tooling,
+and commands are in the [README](../README.md) and `AGENTS.md`.
 
 ## Version 1
 
@@ -19,142 +19,74 @@ Poch.ms integration below shipped after planning, and
   on the team.
 - Attach item, move, and ability constraints to the selected Pokémon. A matching
   item on a different teammate does not satisfy that constraint.
-- In Browse, a base Pokémon and its Mega share one selectable identity. Mawile and Mawile-Mega share Mawile; Floette-Eternal, Floette-Eternal-Mega, and Floette-Mega share Floette-Eternal. Ordinary Floette remains separate. Held item starts at Any item; an optional stone constraint applies to that same actual team member. This Browse identity does not change imported species/forms, exports, or battle calculations. Legacy filters canonicalize to the shared identity while retaining explicit constraints; duplicate aliases remain invalid.
-- Default Browse to the current regulation; make older regulations available through All regulations.
-- Prioritize relevant results using the ordering below.
+- In Browse, a base Pokémon and its Mega share one selectable identity. Mawile
+  and Mawile-Mega share Mawile; Floette-Eternal, Floette-Eternal-Mega, and
+  Floette-Mega share Floette-Eternal. Ordinary Floette remains separate. Held
+  item starts at Any item; an optional stone constraint applies to that same
+  actual team member. This Browse identity does not change imported
+  species/forms, exports, or battle calculations. Legacy filters canonicalize to
+  the shared identity while retaining explicit constraints; duplicate aliases
+  remain invalid.
+- Default Browse to the current regulation; make older regulations available
+  through All regulations.
+- Prioritize relevant results with the ordering in [data sources](data-sources.md).
 - Show available team sets, original sources, result evidence, paste links, and
   copyable rental/replica codes when published.
-- Preserve filters, sorting, and scroll position when opening teams and returning.
-  Back to teams stays visible while browsing a team.
+- Preserve filters, sorting, and scroll position when opening teams and
+  returning. Back to teams stays visible while browsing a team.
 - Encode filters in the URL so a refresh or shared link restores the selection.
 - Save current team(s) locally. Favorites and cross-device sync are not required.
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
   silently modify imported teams.
+- Known custom-rule teams stay hidden from Browse by default; **Include
+  custom-rule teams** reveals them, while automatic recommendations always
+  exclude them. The identification rule is in [data sources](data-sources.md).
 
 Tournament details support team selection, not a separate tournament-browsing
 product. A compact result label is sufficient.
 
-## Ranking
-
-Browse ranks teams by regulation certainty, achievement band, and credential
-merit. Unknown-regulation teams follow known-regulation teams. Within known
-regulations, current regulation breaks equal achievement-band ties; stronger
-historical credentials can still outrank current lower-band results. Current
-Master Ball 1 outranks historical Champion Tier, while current Champion Tier
-outranks current Master Ball 1. Historical Champion Tier or Master Ball 1
-outranks current Master Ball 2. Master Ball 2 outranks Master Ball 3 and 4.
-
-The achievement bands are Champion Tier or Champions global, peak, or
-season-finish positions 1–100, then Master Ball 1; qualifying major-event
-finishes; Master Ball 2, Champions positions 101–1,000, then Showdown positions
-1–100; supported community finishes; Master Ball 3, Master Ball 4, then
-unspecified Master Ball in the current regulation; other reported results; and no
-result. Listed Worlds events qualify through 32nd place, and listed Regional
-Championship events through eighth place. Explicit top-cut claims qualify only
-for those listed majors. Other tournament results receive community priority
-only when the published field has at least 32 entrants and the finish is in the
-top quarter, capped at eighth. Unknown or smaller fields do not receive this
-priority. The importer retains a positive published entrant count when
-available; it does not estimate field size from imported teams.
-
-Major-event classification uses exact normalized event names: Worlds, Worlds
-2026, Worlds 2026 San Francisco, Baltimore Regional 2027, and Frankfurt Regional
-Championships. Other names, including Baltimore Regional Challenge, do not
-receive major priority by keyword. Event names, placements, entrant counts, and
-ladder labels remain source claims, not independently verified results. Ladder
-positions keep their platform context; ratings and tier labels are not converted
-across platforms or into global positions.
-
-Known custom-rule teams are hidden from Browse by default. **Include custom-rule
-teams** reveals them in Browse, but automatic recommendations always exclude them,
-regardless of that option. The identified Mudkip's Marsh Pit #6 records remain
-available through direct links, retain their source details, and can still be
-saved or used as teams. Unknown restrictions do not imply that an unclassified
-event follows standard rules.
-
-Within a band, the comparator uses credential merit: major-event tier, finish
-bound, and known field size; community finish-to-field ratio; or the applicable
-ladder category and numeric position. A supplied recommendation tiebreak follows
-merit; publication time and ID settle remaining ties. **Newest shared** is a
-date-only sort.
-
-## Data requirements
-
-- Keep original source links, publication/fetch dates, game, battle format,
-  regulation, and result evidence.
-- Keep unknown fields unknown, including spreads, placements, and a source's
-  regulation when it publishes none.
-- Interpret result labels in context: a tournament's "Champion" is not the
-  Champions ladder tier; Showdown "Peak 3rd" is not an in-game Champions rank.
-  Keep source-reported entrant counts distinct from imported team counts.
-- Merge exact duplicates while retaining source evidence and distinct set variants.
-  Sharing six species alone does not establish identical builds.
-- A repeated import should not multiply teams. A failed refresh should preserve
-  the last successful catalog and expose its freshness.
-- Resolve current regulation and legality from verified rules. Historical legality
-  does not establish present legality or present competitive strength.
-- Verify source reuse conditions and cache fetched data before automated ingestion.
-
-### Source research snapshot: 2026-09-11
-
-| Source                                                                                                                   | Verified during planning                                                                                                                                                                   | Remaining checks                                                                                            |
-| ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------- |
-| [VGCPastes M-C](https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw/edit#gid=2001945654) | CSV export returned 81 teams with paste links, species, items, dates, sources, and replica metadata. Only four rows had rank metadata.                                                     | Fetch and parse paste contents; historical tabs; reuse conditions; schema changes.                          |
-| [Limitless API](https://docs.limitlesstcg.com/developer/tournaments.html)                                                | A sampled M-C event returned 71 submitted teamlists with items, abilities, moves, and natures; 39 entries had placements.                                                                  | Event completion, regulation/platform mapping, coverage, missing result handling.                           |
-| [poch.ms](https://poch.ms/en/leaderboard)                                                                                | Published page carries inline structured JSON. The importer reads it for M-A, M-B, and M-C doubles tournament entries and doubles social teams; social regulation stays literal `Unknown`. | Implemented; full sets, achievement evidence, cached access, and personal-use reuse conditions are settled. |
-| [VGC History](https://vgchistory.com/data)                                                                               | Documents structured standings/team-sheet files and permits cached reuse.                                                                                                                  | Champions event coverage and sample imports.                                                                |
-| [MetaVGC](https://metavgc.com/teams/tournaments)                                                                         | Lists tournament teams and describes available set fields/pastes.                                                                                                                          | Stable ingestion interface and reuse conditions.                                                            |
-| [PokéKit](https://poke.itlibra.com/en/opendata)                                                                          | Offers reusable JSON/CSV aggregate Showdown statistics.                                                                                                                                    | Later use only; aggregate spreads are not proof of an individual team's build or Champions ladder finish.   |
-
-Poch.ms supplies tournament and social coverage, including X-linked social
-reports. Keep that existing coverage; this policy adds no paid API, scraper,
-or subscription.
+Sources researched during planning and not imported: Limitless API, VGC History,
+and MetaVGC. PokéKit stays later-use only, because aggregate spreads are not
+proof of an individual team's build or a Champions ladder finish. This policy
+adds no paid API, scraper, or subscription.
 
 ## Version 1.5: similar teams and editing
 
-The workflow in **My teams** saves an immutable original and an editable copy.
-Catalog originals retain the full published sets and source metadata available
-when saved. Custom originals are starting teams without public source claims;
-legacy originals are never backfilled from a refreshed catalog.
+**My teams** saves an immutable original and an editable copy. Catalog originals
+retain the full published sets and source metadata available when saved. Custom
+originals are starting teams without public source claims; legacy originals are
+never backfilled from a refreshed catalog.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
-save immediately; invalid interim EV allocations remain uncommitted. **Done**
-flushes and closes, while **Close** can discard only remaining unsaved input.
-There is no separate Apply step. The set editor can revert one Pokémon to the
-set it had when the editor opened; reverting discards that set's changes and
-closes the editor. The immutable original and the current team
-synchronize across devices.
+save immediately; invalid interim EV allocations remain uncommitted. There is no
+separate Apply step. The set editor can revert one Pokémon to the set it had when
+the editor opened; reverting discards that set's changes and closes the editor.
+
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
-remote change or recreate a deleted team.
-
-**Original & history** compares the current team with the original and restores
-the original, including name and roster order, without changing the saved ID or
-source history. Individual
-original-slot restores leave the other five sets untouched and enforce duplicate
-Pokémon and replacement Mega restrictions. Set-text editing and export remain
-available; structured changes preserve supported untouched raw lines.
+remote change or recreate a deleted team. The immutable original and the current
+team synchronize across devices.
 
 Saved teams can be deleted after confirmation. If the deleted team was active,
 the next saved team becomes active; deleting the last one returns to the empty
 My teams view. Deletion also discards unsaved edits to that team. The app
-remembers the last successfully visited browse, team-detail, or My teams URL
-for a bare-root reload and returns to it after sign-in. Explicit links take
+remembers the last successfully visited browse, team-detail, or My teams URL for
+a bare-root reload and returns to it after sign-in. Explicit links take
 precedence, and a missing remembered detail falls back to browsing. The main
-navigation remains visible while scrolling, and selecting a Pokémon clears
-its search input for the next choice.
+navigation remains visible while scrolling, and selecting a Pokémon clears its
+search input for the next choice.
 
 An explicit saved-team link with no saved teams keeps its URL and shows a
-missing-team notice. Resuming a deleted saved team opens the empty My teams
-view and clears its active selection.
+missing-team notice. Resuming a deleted saved team opens the empty My teams view
+and clears its active selection.
 
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
 fields and moves next, then uses result ordering for ties. All regulations are
-included. Replacement sets favor retaining the chosen Pokémon and its set details,
-then use source-team ranking for ties, with duplicate sets
-collapsed and species already in another slot excluded. Sources need not match
-the fixed five members exactly. Source result claims are not attributed to the
-user's edited team. Exact forms remain distinct.
+included. Replacement sets favor retaining the chosen Pokémon and its set
+details, then use source-team ranking for ties, with duplicate sets collapsed and
+species already in another slot excluded. Sources need not match the fixed five
+members exactly. Source result claims are not attributed to the user's edited
+team. Exact forms remain distinct.
 
 - One Pokémon toggle replaces individual item, move, and ability locks.
 - Show concrete differences for the proposed single-slot replacement.
@@ -193,28 +125,22 @@ level-50 Speed.
 Inferred archetype and role tags are enrichment, never evidence: they carry no
 result label and never outrank a sourced result. They break ties among teams that
 already share the same teammates and set details and are equally proven; the
-keyword half of that tiebreak works without them.
+keyword half of that tiebreak works without them. See
+[data sources](data-sources.md) for how they are generated and validated.
 
 Custom import starts in **My teams** with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
-ability, nature, EVs, and four unique moves. Team building happens in
+ability, nature, EVs, and four unique moves, and happens in
 [Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder);
 Champion's Atlas accepts its exported text only. Imported text becomes the
-immutable original snapshot; nickname, gender, and unknown lines remain intact,
-while IVs, level, and Tera Type are omitted from displayed and exported Champions
-text. Custom teams are saved locally under the current regulation with legality
-unverified and no published source claims. File, URL, screenshot, rental-code,
-legality, and cross-device import are out of scope.
+immutable original snapshot, where nickname, gender, and unknown lines remain
+intact; IVs, level, and Tera Type are omitted from displayed and exported
+Champions text. Custom teams are saved locally under the current regulation with
+legality unverified and no published source claims. File, URL, screenshot,
+rental-code, legality, and cross-device import are out of scope.
 
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.
-
-Signed-in devices sync saved teams through Cloud Firestore. Sequential saves
-update the same saved team on every device, and filters, navigation, and the
-active team stay on the device that set them. A device that changes a team
-before it sees another device's change to the same team keeps its own edit under
-that team's ID and preserves the displaced version as a separate recovered team.
-See [Firebase deployment and sync](firebase.md).
 
 **Wishlist** is a bookmark collection over the same saved-team records: a record
 without a collection belongs to My teams, and a `wishlist` record is excluded
@@ -233,51 +159,15 @@ character-subsequence tiers, requiring every whitespace-separated term to match.
 
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
-- Cross-device sync (implemented for saved teams).
 - Native iOS app.
 
-Version 1 has no Supabase dependency. Storage providers, free-tier terms, and
-authentication should be reconsidered when sync becomes necessary.
+## Stack
 
-## Development stack
-
-Svelte and SvelteKit are selected. Gaining more experience with Svelte is an
+Svelte and SvelteKit are selected, and gaining more experience with Svelte is an
 explicit project goal. Use SvelteKit routing for team details and URL-based
-filter state.
-
-The confirmed component and styling stack is daisyUI with Tailwind CSS, using
-Bits UI primitives for accessible interactions. Maintained libraries handle CSV
-parsing (csv-parse), saved-team validation (Zod), and class merging
-(tailwind-merge and clsx). Add components as needed and customize their source
-to suit the app.
-
-Use ESLint with eslint-plugin-svelte, Prettier with its Svelte and Tailwind
-plugins, and svelte-check. This is an agreed exception to mw-kit's Biome default
-because Svelte-aware tooling is preferred over experimental component support.
-
-The foundation includes Node 24 LTS via mise, npm, Lefthook, GitHub Actions, and
-Dependabot. The browser includes a cached M-C/M-B VGCPastes import,
-Pokémon/set filters, credential ordering and custom-rule discovery filtering, and team details with URL and
-Back/Forward preservation. My teams adds local storage, comparison, set-text
-editing, and export. Desktop/mobile browser checks run in CI. Legality validation
-and PWA installation remain unimplemented. Firebase Hosting serves the production
-SPA; its workflow imports and deploys on pushes to main and on a daily schedule.
-
-The catalog is generated locally and ignored by Git. Dev/build/typecheck import
-it when missing and reuse it otherwise; refreshing is explicit. A clean checkout
-requires network access or a populated source cache for its first import.
-Catalog bootstrap also caches decorative Pokémon and item images locally. Missing
-images do not block catalog generation, and visible names remain authoritative.
-
-## Delivery sequence
-
-1. Establish the agreed UI and development tooling foundation (implemented).
-2. Validate representative current and historical source records, including
-   missing fields and results. Establish current-legality data and remaining
-   ranking examples.
-3. Build one complete browse/filter/detail/back flow with real imported teams (implemented).
-4. Finalize result ordering and add PWA behavior; local current-team storage is implemented.
-5. Verify and refine the initial comparison/editing workflow against acceptance criteria.
+filter state; keep editable UI components under `src/lib/components/ui`. The
+confirmed toolchain, its agreed exception to mw-kit's Biome default, and the
+commands live in the [README](../README.md) and `AGENTS.md`.
 
 ## Acceptance criteria
 
@@ -286,7 +176,8 @@ images do not block catalog generation, and visible names remain authoritative.
 - Forms and Megas match the explicit selection consistently.
 - Opening several teams and returning preserves filters, sort, and scroll.
 - Reloading a filtered URL restores its filters.
-- Ranking checks reproduce every agreed comparison above.
+- Ranking checks reproduce every agreed comparison in
+  [data sources](data-sources.md).
 - Old regulations remain discoverable and visibly labeled.
 - Unknown placements, tiers, spreads, and legality are not fabricated.
 - Reimporting does not create duplicate teams or erase valid cached data on failure.
