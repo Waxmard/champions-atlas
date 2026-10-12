@@ -1,6 +1,18 @@
 # Champion's Atlas
 
-Find your next Pokémon Champions doubles team.
+Champion's Atlas is a SvelteKit app for finding, editing, and saving
+Pokémon Champions doubles teams. It combines set filters with
+credential-based ordering without claiming legality validation.
+
+```mermaid
+flowchart LR
+  sources[Catalog sources] --> importer[Importer]
+  importer --> catalog[Bundled catalog]
+  catalog --> browser[Team browser]
+  browser --> saved[Saved teams]
+```
+
+## Overview
 
 A personal-first, mobile-friendly team browser that combines Pokémon and set
 filters with regulation-aware result ordering. Browse without a team in mind,
@@ -16,15 +28,15 @@ installation remain unimplemented. See
 ## Development
 
 ```sh
-mise install
-npm ci
-npm run dev
+mise install      # Install the project’s Node runtime.
+npm ci            # Install locked dependencies and Git hooks.
+npm run dev       # Start the local development server.
 ```
 
 Use the Node 24 LTS environment selected by mise. `npm ci` installs Lefthook hooks.
 
 ```sh
-make ci
+make ci           # Run lint, formatting, types, build, and Node tests.
 ```
 
 This runs ESLint, Prettier verification, `svelte-check`, the production build,
@@ -39,6 +51,18 @@ npm run test:e2e
 These cover desktop and mobile filtering, details, Back/Forward, reload, and
 invalid links, saving, comparison, editing, and export against the production build.
 Use `npm run format` to format files and `npm run preview` to serve a built app.
+
+## Layout
+
+| Path          | What                                                  |
+| ------------- | ----------------------------------------------------- |
+| `src/routes/` | Pages and global styles                               |
+| `src/lib/`    | Components, team logic, and generated catalog         |
+| `scripts/`    | Catalog import, enrichment, and maintenance commands  |
+| `test/`       | Node tests and built-app smoke checks                 |
+| `e2e/`        | Desktop and mobile browser tests                      |
+| `static/`     | App icons and cached Pokémon assets                   |
+| `docs/`       | Product behavior, data sources, and deployment guides |
 
 ## Catalog
 
