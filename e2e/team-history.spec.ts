@@ -751,7 +751,7 @@ test(
         name: `Revert ${before.members[index].pokemon} changes`,
         exact: true,
       });
-    await expect(revert()).toBeDisabled();
+    await expect(revert()).toHaveCount(0);
     const editor = await edit(page);
     await enter(editor, 'Item', 'Choice Band');
     await editor.getByRole('button', { name: 'Done', exact: true }).click();
@@ -776,12 +776,12 @@ test(
     expect(after.members[weavileIndex].item).not.toBe(originalWeavile.item);
     expect(after.members[weavileIndex].set).toBe(seeded.set);
     expect(after.members[0].item).toBe('Eject Button');
-    await expect(revert()).toBeDisabled();
+    await expect(revert()).toHaveCount(0);
     await page.reload();
     await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
       before.name
     );
-    await expect(revert()).toBeDisabled();
+    await expect(revert()).toHaveCount(0);
     expect((await stored(page)).members[weavileIndex].item).toBe('Loaded Dice');
   }
 );

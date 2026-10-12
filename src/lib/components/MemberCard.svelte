@@ -138,13 +138,16 @@
   </div>
 
   {#if editable}
-    <div class="mt-2 flex flex-wrap justify-between gap-1 border-t pt-1.5">
-      {#if onrevert}<Button
+    <div
+      class="mt-2 flex flex-wrap {onrevert && !revertDisabled
+        ? 'justify-between'
+        : 'justify-end'} gap-1 border-t pt-1.5"
+    >
+      {#if onrevert && !revertDisabled}<Button
           variant="ghost"
           size="sm"
           class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
           aria-label={`Revert ${member.pokemon} changes`}
-          disabled={revertDisabled}
           aria-describedby={revertReason
             ? `revert-reason-${member.pokemon}`
             : undefined}

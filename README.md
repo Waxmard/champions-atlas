@@ -137,6 +137,10 @@ input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
 
+The card’s **Revert changes** action appears only when it can restore that slot
+to its state when you opened the team. It stays hidden for unchanged sets,
+while editing or deleting, and when restoring would cause a roster conflict.
+
 Expand **Original & history** to compare your current team with the original and
 restore the original, including name, sets, and roster order. **Restore original
 set** changes only that slot and is unavailable when it would duplicate a
