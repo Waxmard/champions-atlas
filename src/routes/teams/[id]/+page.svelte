@@ -85,12 +85,16 @@
 </svelte:head>
 
 <main id="main" class="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-  <a
-    href={resolve(`/?${page.url.searchParams}`)}
-    onclick={back}
-    class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
-    ><ArrowLeft class="size-4" aria-hidden="true" />Back to teams</a
+  <div
+    class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
   >
+    <a
+      href={resolve(`/?${page.url.searchParams}`)}
+      onclick={back}
+      class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
+      ><ArrowLeft class="size-4" aria-hidden="true" />Back to teams</a
+    >
+  </div>
 
   <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
     <span

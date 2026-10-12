@@ -353,6 +353,33 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     };
   });
   expect(skipTarget.targetTop).toBeGreaterThanOrEqual(skipTarget.headerBottom);
+
+  // A bare "/" resumes the last visited page, so enter Browse by its own URL.
+  await page.goto('/?browse=all');
+  await page
+    .getByRole('region', { name: 'Matching teams' })
+    .getByRole('article')
+    .first()
+    .getByRole('link')
+    .click();
+  await expect(page).toHaveURL(/\/teams\//);
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: viewport.height });
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight)
+    );
+    const box = await page
+      .getByRole('link', { name: 'Back to teams' })
+      .boundingBox();
+    expect(box).not.toBeNull();
+    if (!box) throw new Error('The team Back link is missing.');
+    const { header } = await shellBounds();
+    expect(box.y).toBeGreaterThanOrEqual(header.bottom);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBeLessThanOrEqual(width);
+  }
 });
 
 test('custom-rule visibility and browse state survive navigation', async ({

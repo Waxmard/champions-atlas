@@ -25,6 +25,7 @@ Poch.ms integration below shipped after planning, and
 - Show available team sets, original sources, result evidence, paste links, and
   copyable rental/replica codes when published.
 - Preserve filters, sorting, and scroll position when opening teams and returning.
+  Back to teams stays visible while browsing a team.
 - Encode filters in the URL so a refresh or shared link restores the selection.
 - Save current team(s) locally. Favorites and cross-device sync are not required.
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
