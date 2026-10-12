@@ -59,8 +59,7 @@ never backfilled from a refreshed catalog.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately; invalid interim EV allocations remain uncommitted. There is no
-separate Apply step. The set editor can revert one Pokémon to the set it had when
-the editor opened; reverting discards that set's changes and closes the editor.
+separate Apply step.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
@@ -150,8 +149,8 @@ only in use leaves that team untouched. Using a bookmarked team promotes the
 same record, retaining its ID, original snapshot, sets, and sources, and separate
 My teams copies are never merged. Removal rejects a record that is no longer a
 bookmark so a stale Wishlist control cannot delete a promoted team. Both
-collections share the 50-record storage ceiling and synchronize through the same
-full-record path. The My teams picker shows only in-use teams and searches the
+collections share the same storage ceiling and sync path (see
+[storage and sync](firebase.md)). The My teams picker shows only in-use teams and searches the
 current team name and each member's species with exact, prefix, substring, and
 character-subsequence tiers, requiring every whitespace-separated term to match.
 

@@ -132,7 +132,7 @@ Custom imports require an item, ability, nature, EVs, and four unique moves for
 every Pokémon. They have no published result claims; legality is unverified.
 
 Choose **Wishlist** on a catalog card to bookmark a team without adding it to
-My teams. **Wishlist** in the main navigation lists those bookmarks. **Use this
+My teams. **Wishlist** on **My teams** lists those bookmarks. **Use this
 team** there, in Browse, or on a team page moves the same saved team into
 My teams; **Remove from Wishlist** deletes only the bookmark. A bookmark whose
 source team left the catalog stays usable and shows its saved roster without

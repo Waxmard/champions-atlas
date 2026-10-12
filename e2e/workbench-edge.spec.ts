@@ -77,7 +77,7 @@ test(
       exact: true,
     });
     await weavile
-      .getByRole('button', { name: 'Edit Weavile set text', exact: true })
+      .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
       .click();
     const editor = page.getByRole('dialog', {
       name: 'Edit Weavile set',
@@ -622,7 +622,7 @@ test('visibility changes keep move and item edits mounted', async ({
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit set for Weavile', exact: true })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',

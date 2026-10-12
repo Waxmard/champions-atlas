@@ -54,8 +54,9 @@ export function browsePokemon(name: string): string {
     )
   )
     return 'Floette-Eternal';
-  return name.replace(/-Mega(?:-[XY])?$/i, '');
+  return name.replace(/[- ]mega(?:[- ][xy])?$/i, '');
 }
+export const pokemonId = (name: string) => normalize(browsePokemon(name));
 export function isPasteUrl(value: string): boolean {
   return (
     value === value.trim() &&
@@ -114,8 +115,7 @@ export function matchesTeam(
   return filters.every((filter) =>
     team.members.some(
       (member) =>
-        normalize(browsePokemon(member.pokemon)) ===
-          normalize(browsePokemon(filter.pokemon)) &&
+        pokemonId(member.pokemon) === pokemonId(filter.pokemon) &&
         (!filter.item ||
           normalize(member.item || '') === normalize(filter.item)) &&
         (!filter.ability ||
@@ -400,7 +400,7 @@ export function getMemberOptions(
   pokemon: string,
   field: 'item' | 'ability' | 'move'
 ): string[] {
-  const identity = normalize(browsePokemon(pokemon));
+  const identity = pokemonId(pokemon);
   const key = `${identity}:${field}`;
   let result = optionsCache.get(key);
   if (!result) {
@@ -408,9 +408,7 @@ export function getMemberOptions(
       ...new Set(
         teams.flatMap((team) =>
           team.members
-            .filter(
-              (member) => normalize(browsePokemon(member.pokemon)) === identity
-            )
+            .filter((member) => pokemonId(member.pokemon) === identity)
             .flatMap((member) =>
               field === 'move'
                 ? member.moves

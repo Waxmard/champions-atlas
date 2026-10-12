@@ -9,6 +9,7 @@
   import { pushNow, sync } from '$lib/sync.svelte';
   import {
     removeWishlistedTeam,
+    SavedTeamError,
     useWishlistedTeam,
   } from '$lib/team-collections';
   import {
@@ -83,7 +84,7 @@
       promoted = useWishlistedTeam(localStorage, entry.id);
     } catch (error) {
       status =
-        error instanceof Error && /Wishlist/.test(error.message)
+        error instanceof SavedTeamError
           ? error.message
           : 'Could not move this team to My teams. Check browser storage access and available space. Your Wishlist was not changed.';
       pendingId = '';
@@ -114,6 +115,7 @@
 
   async function remove(entry: SavedTeam) {
     if (pendingId) return;
+    if (!confirm(`Remove “${entry.name}” from Wishlist?`)) return;
     pendingId = entry.id;
     status = '';
     const index = entries.findIndex(({ id }) => id === entry.id);
@@ -121,7 +123,7 @@
       removeWishlistedTeam(localStorage, entry.id);
     } catch (error) {
       status =
-        error instanceof Error && /Wishlist/.test(error.message)
+        error instanceof SavedTeamError
           ? error.message
           : 'Could not remove this team. Existing saved teams have been left untouched.';
       pendingId = '';

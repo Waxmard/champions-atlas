@@ -63,7 +63,13 @@ async function edit(
   field: 'item' | 'moves' | 'EVs' | 'set text' | 'set' = 'item'
 ) {
   await currentSlot(page)
-    .getByRole('button', { name: `Edit Weavile ${field}`, exact: true })
+    .getByRole('button', {
+      name:
+        field === 'set' || field === 'set text'
+          ? `Edit ${field} for Weavile`
+          : `Edit Weavile ${field}`,
+      exact: true,
+    })
     .click();
   const editor = page.getByRole('dialog');
   await expect(editor).toBeVisible();
@@ -472,7 +478,7 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   await expect(editor).toHaveCount(0);
   await expect(
     currentSlot(page).getByRole('button', {
-      name: 'Edit Weavile set text',
+      name: 'Edit set text for Weavile',
       exact: true,
     })
   ).toBeFocused();
@@ -751,7 +757,7 @@ test(
     await seed(page, before);
     const revert = (index = weavileIndex) =>
       currentSlot(page, index).getByRole('button', {
-        name: `Revert ${before.members[index].pokemon} changes`,
+        name: `Revert changes for ${before.members[index].pokemon}`,
         exact: true,
       });
     await expect(revert()).toHaveCount(0);

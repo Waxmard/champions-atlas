@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Copy from '@lucide/svelte/icons/copy';
@@ -18,14 +17,13 @@
     regulationLabel,
     type Team,
   } from '$lib/catalog';
+  import { exportPaste, type SavedTeam } from '$lib/workbench';
   import {
-    activeTeamKey,
-    exportPaste,
-    readSavedTeams,
-    type SavedTeam,
-  } from '$lib/workbench';
-  import { addCatalogToWishlist, useCatalogTeam } from '$lib/team-collections';
-  import { pushNow, sync } from '$lib/sync.svelte';
+    openCatalogTeam,
+    readSavedTeamsState,
+    wishlistCatalogTeam,
+  } from '$lib/saved-team-actions';
+  import { sync } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -59,58 +57,30 @@
     if (ready) refreshSaved();
   });
   function refreshSaved() {
-    try {
-      saved = readSavedTeams(localStorage);
-      savedError = '';
-    } catch {
-      savedError =
-        'Saved teams could not be read, so Wishlist and Use are unavailable. Check browser storage access.';
-    }
+    const state = readSavedTeamsState();
+    saved = state.saved;
+    savedError = state.error;
   }
-  const saveFailure =
-    'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
   function wishlist() {
     if (pending) return;
     pending = true;
     status = actionError = '';
-    try {
-      addCatalogToWishlist(localStorage, team);
-      void pushNow();
+    const error = wishlistCatalogTeam(team);
+    if (error) actionError = error;
+    else {
       refreshSaved();
       status = 'Added to Wishlist.';
-    } catch {
-      actionError = saveFailure;
-    } finally {
-      pending = false;
     }
+    pending = false;
   }
   async function useTeam() {
     if (pending) return;
     pending = true;
     status = actionError = '';
-    try {
-      let entry: SavedTeam;
-      try {
-        entry = useCatalogTeam(localStorage, team);
-      } catch {
-        actionError = saveFailure;
-        return;
-      }
-      void pushNow();
-      refreshSaved();
-      try {
-        localStorage.setItem(activeTeamKey, entry.id);
-      } catch {
-        // My Teams reports storage trouble; the explicit ID still opens the team.
-      }
-      try {
-        await goto(resolve(`/my-teams?team=${encodeURIComponent(entry.id)}`));
-      } catch {
-        actionError = 'Could not open My teams. Your team was saved.';
-      }
-    } finally {
-      pending = false;
-    }
+    const error = await openCatalogTeam(team);
+    if (error) actionError = error;
+    else refreshSaved();
+    pending = false;
   }
 
   function back(event: MouseEvent) {

@@ -147,10 +147,7 @@
           variant="ghost"
           size="sm"
           class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
-          aria-label={`Revert ${member.pokemon} changes`}
-          aria-describedby={revertReason
-            ? `revert-reason-${member.pokemon}`
-            : undefined}
+          aria-label={`Revert changes for ${member.pokemon}`}
           onclick={() => onrevert?.()}
         >
           <RotateCcw class="size-3" />
@@ -160,7 +157,7 @@
         variant="ghost"
         size="sm"
         class="min-h-11 gap-1 px-2 text-xs"
-        aria-label={`Edit ${member.pokemon} set`}
+        aria-label={`Edit set for ${member.pokemon}`}
         data-set-field="set"
         disabled={editing}
         onclick={() => onedit?.('set')}
@@ -171,7 +168,7 @@
         variant="ghost"
         size="sm"
         class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
-        aria-label={`Edit ${member.pokemon} set text`}
+        aria-label={`Edit set text for ${member.pokemon}`}
         data-set-field="text"
         disabled={editing}
         onclick={() => onedit?.('text')}
@@ -180,10 +177,7 @@
         <span>Edit set text</span>
       </Button>
     </div>
-    {#if revertReason}<p
-        id={`revert-reason-${member.pokemon}`}
-        class="provenance mt-1"
-      >
+    {#if revertReason}<p class="provenance mt-1">
         {revertReason}
       </p>{/if}
   {/if}

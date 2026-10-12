@@ -10,6 +10,13 @@ import {
 export const teamsInUse = (saved: SavedTeam[]) =>
   saved.filter((team) => team.collection !== 'wishlist');
 
+export class SavedTeamError extends Error {}
+
+const saveAndGet = (
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  team: SavedTeam
+): SavedTeam => saveTeam(storage, team).find((entry) => entry.id === team.id)!;
+
 export function resolveSavedTeamId(
   saved: SavedTeam[],
   requestedId: string | null,
@@ -35,9 +42,7 @@ export function addCatalogToWishlist(
   );
   if (existing) return existing;
   const candidate = { ...newSavedTeam(team), collection: 'wishlist' as const };
-  return saveTeam(storage, candidate).find(
-    (entry) => entry.id === candidate.id
-  )!;
+  return saveAndGet(storage, candidate);
 }
 
 export function useWishlistedTeam(
@@ -47,10 +52,12 @@ export function useWishlistedTeam(
   const saved = readSavedTeams(storage);
   const entry = saved.find((team) => team.id === id);
   if (!entry)
-    throw new Error('This Wishlist team is no longer saved. Refresh the list.');
+    throw new SavedTeamError(
+      'This Wishlist team is no longer saved. Refresh the list.'
+    );
   if (entry.collection !== 'wishlist') return entry;
   const promoted = { ...entry, collection: 'my-teams' as const };
-  return saveTeam(storage, promoted).find((team) => team.id === id)!;
+  return saveAndGet(storage, promoted);
 }
 
 export function useCatalogTeam(
@@ -63,9 +70,7 @@ export function useCatalogTeam(
   );
   if (bookmarked) return useWishlistedTeam(storage, bookmarked.id);
   const candidate = newSavedTeam(team);
-  return saveTeam(storage, candidate).find(
-    (entry) => entry.id === candidate.id
-  )!;
+  return saveAndGet(storage, candidate);
 }
 
 export function removeWishlistedTeam(
@@ -76,8 +81,18 @@ export function removeWishlistedTeam(
   const entry = saved.find((team) => team.id === id);
   if (!entry) return saved;
   if (entry.collection !== 'wishlist')
-    throw new Error('This team is no longer in Wishlist. Refresh the list.');
+    throw new SavedTeamError(
+      'This team is no longer in Wishlist. Refresh the list.'
+    );
   return deleteTeam(storage, id);
+}
+
+export function liveInUseTeam(
+  storage: Pick<Storage, 'getItem'>,
+  id: string
+): SavedTeam | null {
+  const latest = readSavedTeams(storage).find((team) => team.id === id);
+  return latest && latest.collection !== 'wishlist' ? latest : null;
 }
 
 const subsequence = (query: string, field: string) => {

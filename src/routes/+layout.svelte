@@ -110,9 +110,8 @@
 
   function defaultDestination(): string {
     try {
-      const teams = readSavedTeams(localStorage);
       const id = resolveSavedTeamId(
-        teams,
+        teamsInUse(readSavedTeams(localStorage)),
         null,
         localStorage.getItem(activeTeamKey)
       );

@@ -92,7 +92,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     (key) => localStorage.getItem(key),
     storageKey
   );
-  await expect(weavile.locator('img[src*="/items/"]')).toBeVisible();
+  await expect(weavile.locator('[data-item-icon]')).toBeVisible();
   await expect(
     weavile.getByText(originalWeavile.item!, { exact: true })
   ).toBeVisible();
@@ -121,7 +121,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await expect(editor).toHaveCount(0);
 
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit set for Weavile', exact: true })
     .click();
   editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
   await expectOverviewHub(editor);
@@ -216,7 +216,7 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   );
 
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
+    .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
     .click();
   editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
   const raw = editor.getByRole('textbox', {
@@ -646,7 +646,7 @@ test('structured edits survive a trip through the Showdown text view', async ({
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
+    .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
@@ -690,7 +690,10 @@ test('leaving the Showdown text view untouched keeps the original set', async ({
     exact: true,
   });
   await glimmora
-    .getByRole('button', { name: 'Edit Glimmora-Mega set text', exact: true })
+    .getByRole('button', {
+      name: 'Edit set text for Glimmora-Mega',
+      exact: true,
+    })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Glimmora-Mega set',

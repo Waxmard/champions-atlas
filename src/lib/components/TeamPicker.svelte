@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
   import { Combobox } from 'bits-ui';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
@@ -32,10 +31,6 @@
     team.members.map((member) => member.pokemon);
 
   $effect(() => {
-    if (open) untrack(() => (field = ''));
-  });
-
-  $effect(() => {
     if (!open) return;
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
@@ -58,6 +53,7 @@
   }
 
   function toggleTrigger() {
+    if (disabled) return;
     if (open) closeMenu();
     else openMenu();
   }
@@ -90,7 +86,11 @@
 </script>
 
 <div class="max-w-xl">
-  <label class="term block" for={id}>Saved team</label>
+  <label class="term block" for={id}>
+    Saved team<span class="sr-only">
+      {selected ? `, currently ${selected.name}` : ''}
+    </span>
+  </label>
   <Combobox.Root
     type="single"
     bind:open
@@ -133,6 +133,7 @@
         aria-label="Show saved teams"
         aria-haspopup="listbox"
         aria-expanded={open}
+        {disabled}
         onpointerdown={(event) => event.stopPropagation()}
         onclick={toggleTrigger}
         onkeydown={closeOnEscape}

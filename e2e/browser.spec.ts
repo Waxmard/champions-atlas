@@ -141,7 +141,7 @@ test(
     await expect(
       page
         .getByRole('region', { name: 'Pokémon sets' })
-        .locator('img[src*="/items/"]')
+        .locator('[data-item-icon]')
         .first()
     ).toBeVisible();
     await page.getByRole('link', { name: 'Back to teams' }).click();

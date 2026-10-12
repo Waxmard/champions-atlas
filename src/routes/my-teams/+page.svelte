@@ -38,7 +38,11 @@
     type SavedTeam,
   } from '$lib/workbench';
   import { pushNow, sync } from '$lib/sync.svelte';
-  import { resolveSavedTeamId, teamsInUse } from '$lib/team-collections';
+  import {
+    liveInUseTeam,
+    resolveSavedTeamId,
+    teamsInUse,
+  } from '$lib/team-collections';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -203,6 +207,7 @@
   let picker = $state<{ focus: () => void } | undefined>();
   let pickerPress = false;
   async function selectTeam(id: string): Promise<boolean> {
+    persistIfDirty();
     try {
       await goto(
         (resolve('/my-teams') +
@@ -232,14 +237,8 @@
   ): boolean {
     if (!draft) return false;
     try {
-      const latest = readSavedTeams(localStorage).find(
-        ({ id }) => id === draft!.id
-      );
-      if (
-        !latest ||
-        latest.collection === 'wishlist' ||
-        contentSnapshot(latest) !== baseline
-      ) {
+      const latest = liveInUseTeam(localStorage, draft!.id);
+      if (!latest || contentSnapshot(latest) !== baseline) {
         stale = true;
         message =
           'This team changed elsewhere. Close and reopen the editor before saving.';
@@ -333,12 +332,15 @@
   function revertSlot(index: number) {
     const target = visitBaseline?.members[index];
     if (!target || !canRevertSlot(index)) return;
-    persistChange((team) => ({
-      ...team,
-      members: team.members.map((existing, slot) =>
-        slot === index ? structuredClone($state.snapshot(target)) : existing
-      ),
-    }));
+    if (
+      persistChange((team) => ({
+        ...team,
+        members: team.members.map((existing, slot) =>
+          slot === index ? structuredClone($state.snapshot(target)) : existing
+        ),
+      }))
+    )
+      void tick().then(() => focusSetField(index, 'pokemon'));
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -451,10 +453,7 @@
     }
     let remaining: SavedTeam[];
     try {
-      const latest = readSavedTeams(localStorage).find(
-        (team) => team.id === id
-      );
-      if (!latest || latest.collection === 'wishlist') {
+      if (!liveInUseTeam(localStorage, id)) {
         message =
           'This team changed elsewhere. Reopen My teams before deleting.';
         deleting = false;
@@ -578,8 +577,30 @@
         current
       )}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
+        <header class="flex items-start gap-3 border-b pb-4">
+          <div class="min-w-0">
+            <h2
+              class="text-[0.9375rem] leading-tight font-bold wrap-break-word text-base-content/70"
+            >
+              {draft.name}
+            </h2>
+            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+              <span
+                class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+                >{regulationLabel(draft.original.regulation)}</span
+              >
+              {#if originalResult}
+                <span
+                  class="stamp"
+                  data-grade={evidenceGrade(originalResult.level)}
+                  >Original result: {originalResult.label}</span
+                >
+              {/if}
+            </div>
+          </div>
+        </header>
         <ul
-          class="grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6"
+          class="mt-4 grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6"
           aria-label="Team roster"
         >
           {#each draft.members as member, index (index)}
@@ -606,28 +627,6 @@
             </li>
           {/each}
         </ul>
-        <header class="mt-4 flex items-start gap-3 border-y py-4">
-          <div class="min-w-0">
-            <h2
-              class="text-[0.9375rem] leading-tight font-bold wrap-break-word text-base-content/70"
-            >
-              {draft.name}
-            </h2>
-            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span
-                class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
-                >{regulationLabel(draft.original.regulation)}</span
-              >
-              {#if originalResult}
-                <span
-                  class="stamp"
-                  data-grade={evidenceGrade(originalResult.level)}
-                  >Original result: {originalResult.label}</span
-                >
-              {/if}
-            </div>
-          </div>
-        </header>
         <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
           <label class="term block w-full max-w-xl"
             >Team name<input
