@@ -21,10 +21,11 @@
   import {
     activeTeamKey,
     exportPaste,
-    newSavedTeam,
-    saveTeam,
+    readSavedTeams,
+    type SavedTeam,
   } from '$lib/workbench';
-  import { pushNow } from '$lib/sync.svelte';
+  import { addCatalogToWishlist, useCatalogTeam } from '$lib/team-collections';
+  import { pushNow, sync } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -39,19 +40,76 @@
   );
   let ready = $state(false);
   let copyStatus = $state('');
+  let saved = $state.raw<SavedTeam[]>([]);
+  let savedError = $state('');
+  let actionError = $state('');
+  let status = $state('');
+  let pending = $state(false);
+  const wishlisted = $derived(
+    saved.some(
+      (entry) =>
+        entry.collection === 'wishlist' && entry.original.id === team.id
+    )
+  );
   onMount(() => {
     ready = true;
   });
-  function useTeam() {
+  $effect(() => {
+    void sync.revision;
+    if (ready) refreshSaved();
+  });
+  function refreshSaved() {
     try {
-      const saved = newSavedTeam(team);
-      saveTeam(localStorage, saved);
-      localStorage.setItem(activeTeamKey, saved.id);
-      void pushNow();
-      void goto(resolve(`/my-teams?team=${saved.id}`));
+      saved = readSavedTeams(localStorage);
+      savedError = '';
     } catch {
-      copyStatus =
-        'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+      savedError =
+        'Saved teams could not be read, so Wishlist and Use are unavailable. Check browser storage access.';
+    }
+  }
+  const saveFailure =
+    'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+  function wishlist() {
+    if (pending) return;
+    pending = true;
+    status = actionError = '';
+    try {
+      addCatalogToWishlist(localStorage, team);
+      void pushNow();
+      refreshSaved();
+      status = 'Added to Wishlist.';
+    } catch {
+      actionError = saveFailure;
+    } finally {
+      pending = false;
+    }
+  }
+  async function useTeam() {
+    if (pending) return;
+    pending = true;
+    status = actionError = '';
+    try {
+      let entry: SavedTeam;
+      try {
+        entry = useCatalogTeam(localStorage, team);
+      } catch {
+        actionError = saveFailure;
+        return;
+      }
+      void pushNow();
+      refreshSaved();
+      try {
+        localStorage.setItem(activeTeamKey, entry.id);
+      } catch {
+        // My Teams reports storage trouble; the explicit ID still opens the team.
+      }
+      try {
+        await goto(resolve(`/my-teams?team=${encodeURIComponent(entry.id)}`));
+      } catch {
+        actionError = 'Could not open My teams. Your team was saved.';
+      }
+    } finally {
+      pending = false;
     }
   }
 
@@ -121,8 +179,16 @@
     </p>{/if}
 
   <div class="mt-6 flex flex-wrap gap-2.5">
-    <Button class="min-h-11 px-4" disabled={!ready} onclick={useTeam}
-      >Use this team</Button
+    <Button
+      class="min-h-11 px-4"
+      disabled={!ready || savedError !== '' || pending}
+      onclick={useTeam}>Use this team</Button
+    >
+    <Button
+      variant="outline"
+      class="min-h-11 px-4"
+      disabled={!ready || savedError !== '' || pending || wishlisted}
+      onclick={wishlist}>{wishlisted ? 'Wishlisted' : 'Wishlist'}</Button
     >
     {#if isPasteUrl(team.pasteUrl)}<Button
         href={team.pasteUrl}
@@ -154,6 +220,14 @@
   <p role="status" aria-live="polite" class="mt-2 min-h-6 text-[0.9375rem]">
     {copyStatus}
   </p>
+  <p role="status" aria-live="polite" class="sr-only">{status}</p>
+  {#if savedError || actionError}<p
+      role="alert"
+      class="text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
+      {savedError || actionError}
+    </p>{/if}
   {#if team.replicaCode}<p class="provenance">
       Replica code:
       <code class="font-mono text-sm text-base-content select-all"

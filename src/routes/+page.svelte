@@ -2,7 +2,7 @@
   import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { SvelteURLSearchParams } from 'svelte/reactivity';
+  import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
   import { onMount } from 'svelte';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
@@ -16,7 +16,14 @@
     TYPE_COLORS,
     type PokemonType,
   } from '$lib/types';
-  import { browseStorageKey } from '$lib/workbench';
+  import {
+    activeTeamKey,
+    browseStorageKey,
+    readSavedTeams,
+    type SavedTeam,
+  } from '$lib/workbench';
+  import { addCatalogToWishlist, useCatalogTeam } from '$lib/team-collections';
+  import { pushNow, sync } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
@@ -38,6 +45,18 @@
   let storageError = $state(false);
   let typeOpen = $state(false);
   let ready = $state(false);
+  let saved = $state.raw<SavedTeam[]>([]);
+  let savedError = $state('');
+  let actionError = $state('');
+  let status = $state('');
+  const pending = new SvelteSet<string>();
+  const wishlisted = $derived(
+    new Set(
+      saved
+        .filter((entry) => entry.collection === 'wishlist')
+        .map((entry) => entry.original.id)
+    )
+  );
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const historicalRegulations = $derived(
@@ -194,6 +213,64 @@
   onMount(() => {
     ready = true;
   });
+  $effect(() => {
+    void sync.revision;
+    if (ready) refreshSaved();
+  });
+  function refreshSaved() {
+    try {
+      saved = readSavedTeams(localStorage);
+      savedError = '';
+    } catch {
+      savedError =
+        'Saved teams could not be read, so Wishlist and Use are unavailable. Check browser storage access.';
+    }
+  }
+  const saveFailure =
+    'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+  function wishlist(team: Team) {
+    if (pending.has(team.id)) return;
+    pending.add(team.id);
+    status = actionError = '';
+    try {
+      addCatalogToWishlist(localStorage, team);
+      void pushNow();
+      refreshSaved();
+      status = 'Added to Wishlist.';
+    } catch {
+      actionError = saveFailure;
+    } finally {
+      pending.delete(team.id);
+    }
+  }
+  async function use(team: Team) {
+    if (pending.has(team.id)) return;
+    pending.add(team.id);
+    status = actionError = '';
+    try {
+      let entry: SavedTeam;
+      try {
+        entry = useCatalogTeam(localStorage, team);
+      } catch {
+        actionError = saveFailure;
+        return;
+      }
+      void pushNow();
+      refreshSaved();
+      try {
+        localStorage.setItem(activeTeamKey, entry.id);
+      } catch {
+        // My Teams reports storage trouble; the explicit ID still opens the team.
+      }
+      try {
+        await goto(resolve(`/my-teams?team=${encodeURIComponent(entry.id)}`));
+      } catch {
+        actionError = 'Could not open My teams. Your team was saved.';
+      }
+    } finally {
+      pending.delete(team.id);
+    }
+  }
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(page.url.searchParams, next));
   }
@@ -276,6 +353,14 @@
   {#if storageError}<p role="status" aria-live="polite" class="provenance mt-2">
       Filters can't be remembered on this device.
     </p>{/if}
+  {#if savedError || actionError}<p
+      role="alert"
+      class="mt-2 text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
+      {savedError || actionError}
+    </p>{/if}
+  <p role="status" aria-live="polite" class="sr-only">{status}</p>
 
   <div class="mt-4">
     <button
@@ -512,7 +597,26 @@
             currentRegulation={current}
             showRegulation={regulation === 'all'}
             query={page.url.search}
-          />{/each}
+          >
+            {#snippet actions()}
+              {@const busy =
+                !ready || savedError !== '' || pending.has(team.id)}
+              <Button
+                type="button"
+                variant="outline"
+                class="min-h-11 px-4"
+                disabled={busy || wishlisted.has(team.id)}
+                onclick={() => wishlist(team)}
+                >{wishlisted.has(team.id) ? 'Wishlisted' : 'Wishlist'}</Button
+              >
+              <Button
+                type="button"
+                class="min-h-11 px-4"
+                disabled={busy}
+                onclick={() => use(team)}>Use this team</Button
+              >
+            {/snippet}
+          </TeamCard>{/each}
       </div>
       {#if pageCount > 1}
         <nav

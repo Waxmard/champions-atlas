@@ -300,7 +300,10 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
     (key) => JSON.parse(localStorage.getItem(key)!),
     storageKey
   );
-  const removedId = await page.getByLabel('Saved team').inputValue();
+  const removedId = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    activeTeamKey
+  );
   const remainingId = before.find(
     (team: { id: string }) => team.id !== removedId
   )!.id;
@@ -313,7 +316,7 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
 
   expect(dialogMessage).toContain('This cannot be undone.');
   await expect(page).toHaveURL('/my-teams?team=' + remainingId);
-  await expect(page.getByLabel('Saved team')).toHaveValue(remainingId);
+  await expect(page.locator('[data-team-picker]')).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Team deleted.');
   await expect(
     page.getByRole('region', { name: 'Weavile set', exact: true })
@@ -330,7 +333,9 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
 
   await page.reload();
   await expect(page).toHaveURL('/my-teams?team=' + remainingId);
-  await expect(page.getByLabel('Saved team')).toHaveValue(remainingId);
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
+  ).toBe(remainingId);
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!),
@@ -404,7 +409,7 @@ test('QoL deletion write failure preserves the draft and stored team', async ({
   expect(
     await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
   ).toBe(activeBefore);
-  await expect(page.getByLabel('Saved team')).toHaveValue(activeBefore!);
+  await expect(page).toHaveURL('/my-teams?team=' + activeBefore);
 });
 
 test('set edit commits on save and reopening my-teams restores active team', async ({

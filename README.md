@@ -9,7 +9,9 @@ flowchart LR
   sources[Catalog sources] --> importer[Importer]
   importer --> catalog[Bundled catalog]
   catalog --> browser[Team browser]
+  browser --> wishlist[Wishlist]
   browser --> saved[Saved teams]
+  wishlist --> saved
 ```
 
 ## Overview
@@ -128,6 +130,18 @@ in **My teams** and paste a complete six-Pokémon export from
 [Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder).
 Custom imports require an item, ability, nature, EVs, and four unique moves for
 every Pokémon. They have no published result claims; legality is unverified.
+
+Choose **Wishlist** on a catalog card to bookmark a team without adding it to
+My teams. **Wishlist** in the main navigation lists those bookmarks. **Use this
+team** there, in Browse, or on a team page moves the same saved team into
+My teams; **Remove from Wishlist** deletes only the bookmark. A bookmark whose
+source team left the catalog stays usable and shows its saved roster without
+catalog details. Bookmarks never appear in the My teams picker.
+
+**My teams** selects among in-use teams with an icon-first search field. Type a
+team name or any of its Pokémon to filter and rank the list, then choose a result
+with the arrow keys and Enter; Escape restores the current team without renaming
+it.
 
 Select a field on a saved team card to edit its set. Completed text saves on blur
 or Enter; selections and suggestions save immediately when the whole set is

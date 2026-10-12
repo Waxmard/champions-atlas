@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
@@ -17,11 +18,15 @@
     currentRegulation,
     showRegulation,
     query,
+    actions,
+    detailAvailable = true,
   }: {
     team: Team;
     currentRegulation: string;
     showRegulation: boolean;
     query: string;
+    actions?: Snippet;
+    detailAvailable?: boolean;
   } = $props();
   const result = $derived(bestEvidence(team, currentRegulation));
   const grade = $derived(evidenceGrade(result.level));
@@ -49,55 +54,63 @@
   }
 </script>
 
+{#snippet content()}
+  <div class="flex items-baseline justify-between gap-3">
+    {#if showRegulation}<span class="term"
+        >{regulationLabel(team.regulation)}</span
+      >{/if}
+    <span class="provenance ml-auto shrink-0">{team.publishedAt}</span>
+  </div>
+  <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
+    {team.name}
+  </h2>
+  <ul class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3" aria-label="Team members">
+    {#each team.members as member, index (index)}
+      <li
+        class="flex min-w-0 flex-col items-center px-0.5 text-center"
+        style="--type-color: {TYPE_COLORS[getPokemonTypes(member.pokemon)[0]]}"
+      >
+        <div class="roster-sprite">
+          <PokemonSprite pokemon={member.pokemon} size={40} />
+        </div>
+        <p class="mt-1 text-[0.8125rem] leading-tight wrap-break-word">
+          {member.pokemon}
+        </p>
+      </li>
+    {/each}
+  </ul>
+  <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
+    <div class="min-w-0">
+      <span class="stamp" data-grade={grade}>{result.label}</span>
+      {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
+          {evidenceContext}
+        </p>{/if}
+      {#if custom}<p class="term mt-1">Custom rules</p>{/if}
+    </div>
+    {#if detailAvailable}<ArrowUpRight
+        class="mt-0.5 size-4 shrink-0 text-base-content/60"
+        aria-hidden="true"
+      />{/if}
+  </div>
+{/snippet}
+
 <article
   class="plate relative min-w-0 overflow-hidden transition-colors duration-200 hover:border-primary"
 >
-  <a
-    href={resolve(`/teams/${team.id}${query}`)}
-    onclick={open}
-    class="block rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
-  >
-    <div class="flex items-baseline justify-between gap-3">
-      {#if showRegulation}<span class="term"
-          >{regulationLabel(team.regulation)}</span
-        >{/if}
-      <span class="provenance ml-auto shrink-0">{team.publishedAt}</span>
-    </div>
-    <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
-      {team.name}
-    </h2>
-    <ul
-      class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3"
-      aria-label="Team members"
+  {#if detailAvailable}
+    <a
+      href={resolve(`/teams/${team.id}${query}`)}
+      onclick={open}
+      class="block rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
     >
-      {#each team.members as member, index (index)}
-        <li
-          class="flex min-w-0 flex-col items-center px-0.5 text-center"
-          style="--type-color: {TYPE_COLORS[
-            getPokemonTypes(member.pokemon)[0]
-          ]}"
-        >
-          <div class="roster-sprite">
-            <PokemonSprite pokemon={member.pokemon} size={40} />
-          </div>
-          <p class="mt-1 text-[0.8125rem] leading-tight wrap-break-word">
-            {member.pokemon}
-          </p>
-        </li>
-      {/each}
-    </ul>
-    <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
-      <div class="min-w-0">
-        <span class="stamp" data-grade={grade}>{result.label}</span>
-        {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
-            {evidenceContext}
-          </p>{/if}
-        {#if custom}<p class="term mt-1">Custom rules</p>{/if}
-      </div>
-      <ArrowUpRight
-        class="mt-0.5 size-4 shrink-0 text-base-content/60"
-        aria-hidden="true"
-      />
+      {@render content()}
+    </a>
+  {:else}
+    <div class="p-4">{@render content()}</div>
+  {/if}
+  {#if actions}
+    <div class="flex flex-wrap gap-2 border-t px-4 py-3">
+      {@render actions()}
     </div>
-  </a>
+  {/if}
 </article>

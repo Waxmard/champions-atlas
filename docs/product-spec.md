@@ -216,6 +216,19 @@ before it sees another device's change to the same team keeps its own edit under
 that team's ID and preserves the displaced version as a separate recovered team.
 See [Firebase deployment and sync](firebase.md).
 
+**Wishlist** is a bookmark collection over the same saved-team records: a record
+without a collection belongs to My teams, and a `wishlist` record is excluded
+from My teams selection, its active-team fallback, and deletion. Adding a catalog
+team that is already bookmarked returns the existing bookmark; adding one that is
+only in use leaves that team untouched. Using a bookmarked team promotes the
+same record, retaining its ID, original snapshot, sets, and sources, and separate
+My teams copies are never merged. Removal rejects a record that is no longer a
+bookmark so a stale Wishlist control cannot delete a promoted team. Both
+collections share the 50-record storage ceiling and synchronize through the same
+full-record path. The My teams picker shows only in-use teams and searches the
+current team name and each member's species with exact, prefix, substring, and
+character-subsequence tiers, requiring every whitespace-separated term to match.
+
 ## Version 2 and later
 
 - AI integration and separately verified subscription/API billing options.

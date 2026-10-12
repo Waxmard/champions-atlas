@@ -9,11 +9,8 @@
   import type { ResolvedPathname } from '$app/types';
   import { initSync, pushNow, signOut, sync } from '$lib/sync.svelte';
   import { claimAutoReload, watchForUpdate } from '$lib/app-version';
-  import {
-    activeTeamKey,
-    readSavedTeams,
-    resolveSavedTeamId,
-  } from '$lib/workbench';
+  import { activeTeamKey, readSavedTeams } from '$lib/workbench';
+  import { resolveSavedTeamId, teamsInUse } from '$lib/team-collections';
 
   let { children } = $props();
   const isHome = $derived(page.url.pathname === resolve('/'));
@@ -25,6 +22,9 @@
       page.url.pathname.startsWith(
         resolve('/teams/[id]', { id: 'x' }).slice(0, -1)
       )
+  );
+  const isWishlist = $derived(
+    page.url.pathname.startsWith(resolve('/wishlist'))
   );
   const isLogin = $derived(page.url.pathname === resolve('/login'));
   const brandHref = $derived(
@@ -68,6 +68,7 @@
       if (
         path !== resolve('/') &&
         path !== resolve('/my-teams') &&
+        path !== resolve('/wishlist') &&
         path !== resolve('/my-teams/new') &&
         !(
           path.startsWith(detailPrefix) &&
@@ -161,7 +162,9 @@
       if (selected) {
         try {
           if (
-            !readSavedTeams(localStorage).some((team) => team.id === selected)
+            !teamsInUse(readSavedTeams(localStorage)).some(
+              (team) => team.id === selected
+            )
           )
             destination = resolve('/my-teams');
         } catch {
@@ -304,7 +307,7 @@
       </a>
       <nav
         aria-label="Main"
-        class="col-span-2 row-start-2 grid grid-cols-2 gap-1 sm:order-2 sm:flex sm:items-center"
+        class="col-span-2 row-start-2 grid grid-cols-3 gap-1 sm:order-2 sm:flex sm:items-center"
       >
         <a
           href={brandHref}
@@ -312,6 +315,13 @@
           class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isBrowse
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">Browse</a
+        >
+        <a
+          href={resolve('/wishlist')}
+          aria-current={isWishlist ? 'page' : undefined}
+          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isWishlist
+            ? 'bg-info text-info-content'
+            : 'text-primary hover:bg-info'}">Wishlist</a
         >
         <a
           href={resolve('/my-teams')}
