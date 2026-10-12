@@ -120,7 +120,9 @@ legacy originals are never backfilled from a refreshed catalog.
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately; invalid interim EV allocations remain uncommitted. **Done**
 flushes and closes, while **Close** can discard only remaining unsaved input.
-There is no separate Apply step. The immutable original and the current team
+There is no separate Apply step. The set editor can revert one Pokémon to the
+set it had when the editor opened; reverting discards that set's changes and
+closes the editor. The immutable original and the current team
 synchronize across devices.
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a

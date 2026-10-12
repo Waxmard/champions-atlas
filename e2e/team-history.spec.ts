@@ -728,3 +728,35 @@ test('an unknown original EV spread is not a restorable slot change', async ({
     slot.getByRole('button', { name: 'Restore original set', exact: true })
   ).toBeEnabled();
 });
+
+test('reverting a set discards only that Pokémon’s session changes', async ({
+  page,
+}) => {
+  const before = newSavedTeam(fixture);
+  await seed(page, before);
+  const revert = (editor: Locator) =>
+    editor.getByRole('button', { name: 'Revert changes', exact: true });
+  const editor = await edit(page);
+  await expect(revert(editor)).toBeDisabled();
+  await enter(editor, 'Item', 'Reverted later');
+  await expect
+    .poll(async () => (await stored(page)).members[weavileIndex].item)
+    .toBe('Reverted later');
+  await expect(revert(editor)).toBeEnabled();
+  await revert(editor).click();
+  await expect(editor).toHaveCount(0);
+  const after = await stored(page);
+  expect(after.members[weavileIndex].item).toBe(originalWeavile.item);
+  expect(after.members[weavileIndex].set).toBe(originalWeavile.set);
+  expect(after.original).toEqual(before.original);
+
+  const reopened = await edit(page);
+  await reopened.getByLabel('Item', { exact: true }).fill('Never saved');
+  await expect(revert(reopened)).toBeEnabled();
+  await revert(reopened).click();
+  await expect(reopened).toHaveCount(0);
+  await page.reload();
+  expect((await stored(page)).members[weavileIndex].item).toBe(
+    originalWeavile.item
+  );
+});
