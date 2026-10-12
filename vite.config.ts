@@ -1,9 +1,24 @@
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
+import { fileURLToPath } from 'node:url';
+import { withE2eCatalog } from './e2e/catalog-fixture.ts';
 
 export default defineConfig({
   plugins: [
+    process.env.E2E_CATALOG_FIXTURE === '1' && {
+      name: 'e2e-catalog-fixture',
+      apply: 'build',
+      enforce: 'pre',
+      transform(code, id) {
+        if (
+          id.split('?')[0] !==
+          fileURLToPath(new URL('./src/lib/data/catalog.json', import.meta.url))
+        )
+          return;
+        return JSON.stringify(withE2eCatalog(JSON.parse(code)));
+      },
+    },
     tailwindcss(),
     sveltekit(),
     {

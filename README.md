@@ -44,12 +44,15 @@ and importer/filter/ranking tests plus a server-rendering smoke test.
 `npm test` requires a build first. Browser checks run separately and in CI:
 
 ```sh
-npx playwright install chromium
+npx playwright install chromium webkit
 npm run test:e2e
 ```
 
 These cover desktop and mobile filtering, details, Back/Forward, reload, and
-invalid links, saving, comparison, editing, and export against the production build.
+invalid links, saving, comparison, editing, and export against an E2E build.
+`npm run test:e2e` disables Firebase and enables `E2E_CATALOG_FIXTURE=1` to
+isolate a deterministic custom-rule roster in the bundled catalog. The overlay
+does not modify generated catalog data or normal production builds.
 Use `npm run format` to format files and `npm run preview` to serve a built app.
 
 ## Layout

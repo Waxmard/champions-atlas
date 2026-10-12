@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { customRulesTeam } from './catalog-fixture.ts';
 
 test('sprite cards, responsive filters, and external attribution work', async ({
   page,
@@ -354,16 +355,6 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
   expect(skipTarget.targetTop).toBeGreaterThanOrEqual(skipTarget.headerBottom);
 });
 
-type CatalogTeam = {
-  id: string;
-  name: string;
-  regulation: string;
-  members: { pokemon: string }[];
-  reports: { event: string; rank: string; entrants?: number }[];
-};
-
-const customRulesTeamId = 'poch-tournament-6ab431f2e905c1db68748c9c-1';
-
 test('custom-rule visibility and browse state survive navigation', async ({
   page,
 }, testInfo) => {
@@ -372,13 +363,14 @@ test('custom-rule visibility and browse state survive navigation', async ({
       new URL('../src/lib/data/catalog.json', import.meta.url),
       'utf8'
     )
-  ) as { currentRegulation: string; teams: CatalogTeam[] };
-  const team = catalog.teams.find((entry) => entry.id === customRulesTeamId);
-  if (!team) throw new Error('The retained custom-rule team is missing.');
+  ) as { currentRegulation: string };
+  const team = customRulesTeam;
   const entrants = team.reports.find(
     (report) => report.entrants !== undefined
   )?.entrants;
-  const filters = new URLSearchParams();
+  const filters = new URLSearchParams({
+    regulation: catalog.currentRegulation,
+  });
   for (const member of team.members)
     filters.append('member', JSON.stringify([member.pokemon, '', '', '']));
 
@@ -414,7 +406,7 @@ test('custom-rule visibility and browse state survive navigation', async ({
   else await card.getByRole('link').click();
   await expect
     .poll(() => new URL(page.url()).pathname)
-    .toBe(`/teams/${customRulesTeamId}`);
+    .toBe(`/teams/${customRulesTeam.id}`);
   await expect(
     page.getByText('Custom-rule event:', { exact: false })
   ).toBeVisible();
@@ -490,7 +482,7 @@ test('custom-rule visibility and browse state survive navigation', async ({
   const seededId = seeded[0]?.id;
   expect(seededId).toBeTruthy();
 
-  await page.goto(`/teams/${customRulesTeamId}`);
+  await page.goto(`/teams/${customRulesTeam.id}`);
   await expect(
     page.getByText('Custom-rule event:', { exact: false })
   ).toBeVisible();
