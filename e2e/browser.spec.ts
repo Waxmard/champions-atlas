@@ -311,6 +311,7 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     .getByRole('article')
     .first();
   await firstCard.getByRole('link').first().click();
+  await expect(page.getByRole('link', { name: 'Back to teams' })).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Use this team' })
   ).toBeEnabled();
@@ -441,6 +442,7 @@ test('custom-rule visibility and browse state survive navigation', async ({
   await expect
     .poll(() => new URL(page.url()).pathname)
     .toBe(`/teams/${customRulesTeam.id}`);
+  await expect(page.getByRole('link', { name: 'Back to teams' })).toBeVisible();
   await expect(
     page.getByText('Custom-rule event:', { exact: false })
   ).toBeVisible();
@@ -508,6 +510,7 @@ test('custom-rule visibility and browse state survive navigation', async ({
   const ordinary = cards.first();
   if (testInfo.project.use.isMobile) await ordinary.getByRole('link').tap();
   else await ordinary.getByRole('link').click();
+  await expect(page.getByRole('link', { name: 'Back to teams' })).toBeVisible();
   await expect(useTeam).toBeEnabled();
   await useTeam.click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);

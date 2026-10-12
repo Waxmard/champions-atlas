@@ -530,6 +530,9 @@
       variant="outline"
       class="min-h-11 px-4">Browse teams</Button
     >
+    <Button href={resolve('/wishlist')} variant="outline" class="min-h-11 px-4"
+      >Wishlist</Button
+    >
   </div>
   {#if storageError}<p
       role="alert"

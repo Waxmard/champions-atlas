@@ -23,9 +23,6 @@
         resolve('/teams/[id]', { id: 'x' }).slice(0, -1)
       )
   );
-  const isWishlist = $derived(
-    page.url.pathname.startsWith(resolve('/wishlist'))
-  );
   const isLogin = $derived(page.url.pathname === resolve('/login'));
   const brandHref = $derived(
     isHome || page.url.pathname.startsWith(resolve('/teams/'))
@@ -307,7 +304,7 @@
       </a>
       <nav
         aria-label="Main"
-        class="col-span-2 row-start-2 grid grid-cols-3 gap-1 sm:order-2 sm:flex sm:items-center"
+        class="col-span-2 row-start-2 grid grid-cols-2 gap-1 sm:order-2 sm:flex sm:items-center"
       >
         <a
           href={brandHref}
@@ -315,13 +312,6 @@
           class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isBrowse
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">Browse</a
-        >
-        <a
-          href={resolve('/wishlist')}
-          aria-current={isWishlist ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isWishlist
-            ? 'bg-info text-info-content'
-            : 'text-primary hover:bg-info'}">Wishlist</a
         >
         <a
           href={resolve('/my-teams')}
