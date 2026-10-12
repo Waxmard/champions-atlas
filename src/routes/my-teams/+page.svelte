@@ -44,6 +44,7 @@
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
     baseline = $state('');
+  let visitBaseline = $state<{ id: string; members: Member[] } | null>(null);
   let ready = $state(false),
     message = $state(''),
     storageError = $state('');
@@ -118,6 +119,12 @@
       const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
       baseline = entry ? contentSnapshot(entry) : '';
+      if (!entry) visitBaseline = null;
+      else if (visitBaseline?.id !== entry.id)
+        visitBaseline = {
+          id: entry.id,
+          members: structuredClone($state.snapshot(entry.members)),
+        };
       if (entry && activeOverride === undefined)
         localStorage.setItem(activeTeamKey, entry.id);
       if (!entry && activeOverride === undefined && !saved.length)
@@ -274,6 +281,34 @@
         ),
       };
     });
+  }
+  function slotRevertReason(index: number): string {
+    const target = visitBaseline?.members[index];
+    if (!draft || !target) return '';
+    const conflict = rosterConflict(target, draft.members, index);
+    if (conflict === 'duplicate')
+      return `${target.pokemon} is already in another slot. Change that Pokémon first, then revert.`;
+    if (conflict === 'mega')
+      return 'Reverting this set would keep more than two Mega Pokémon. Change one of them first, then revert.';
+    return '';
+  }
+  function canRevertSlot(index: number): boolean {
+    const target = visitBaseline?.members[index];
+    if (!draft || editing || deleting || !target) return false;
+    return (
+      canonicalSnapshot(target) !== canonicalSnapshot(draft.members[index]) &&
+      !slotRevertReason(index)
+    );
+  }
+  function revertSlot(index: number) {
+    const target = visitBaseline?.members[index];
+    if (!target || !canRevertSlot(index)) return;
+    persistChange((team) => ({
+      ...team,
+      members: team.members.map((existing, slot) =>
+        slot === index ? structuredClone($state.snapshot(target)) : existing
+      ),
+    }));
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -659,6 +694,9 @@
                 editable={true}
                 {editing}
                 onedit={(field) => openSetEditor(index, field)}
+                onrevert={() => revertSlot(index)}
+                revertDisabled={!canRevertSlot(index)}
+                revertReason={slotRevertReason(index)}
               />
             </section>
           {/each}

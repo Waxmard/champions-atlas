@@ -729,34 +729,51 @@ test('an unknown original EV spread is not a restorable slot change', async ({
   ).toBeEnabled();
 });
 
-test('reverting a set discards only that Pokémon’s session changes', async ({
+test('a card revert restores that slot to its state when the team was opened', async ({
   page,
 }) => {
   const before = newSavedTeam(fixture);
+  before.members[weavileIndex] = {
+    ...structuredClone(before.members[weavileIndex]),
+    item: 'Loaded Dice',
+  };
+  const seeded = before.members[weavileIndex];
   await seed(page, before);
-  const revert = (editor: Locator) =>
-    editor.getByRole('button', { name: 'Revert changes', exact: true });
+  const revert = (index = weavileIndex) =>
+    currentSlot(page, index).getByRole('button', {
+      name: `Revert ${before.members[index].pokemon} changes`,
+      exact: true,
+    });
+  await expect(revert()).toBeDisabled();
   const editor = await edit(page);
-  await expect(revert(editor)).toBeDisabled();
-  await enter(editor, 'Item', 'Reverted later');
+  await enter(editor, 'Item', 'Choice Band');
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await currentSlot(page, 0)
+    .getByRole('button', { name: 'Edit Glimmora-Mega item', exact: true })
+    .click();
+  const other = page.getByRole('dialog');
+  await expect(other).toBeVisible();
+  await enter(other, 'Item', 'Eject Button');
+  await other.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(other).toHaveCount(0);
   await expect
     .poll(async () => (await stored(page)).members[weavileIndex].item)
-    .toBe('Reverted later');
-  await expect(revert(editor)).toBeEnabled();
-  await revert(editor).click();
-  await expect(editor).toHaveCount(0);
+    .toBe('Choice Band');
+  await expect(revert()).toBeEnabled();
+  await revert().click();
+  await expect
+    .poll(async () => (await stored(page)).members[weavileIndex].item)
+    .toBe('Loaded Dice');
   const after = await stored(page);
-  expect(after.members[weavileIndex].item).toBe(originalWeavile.item);
-  expect(after.members[weavileIndex].set).toBe(originalWeavile.set);
-  expect(after.original).toEqual(before.original);
-
-  const reopened = await edit(page);
-  await reopened.getByLabel('Item', { exact: true }).fill('Never saved');
-  await expect(revert(reopened)).toBeEnabled();
-  await revert(reopened).click();
-  await expect(reopened).toHaveCount(0);
+  expect(after.members[weavileIndex].item).not.toBe(originalWeavile.item);
+  expect(after.members[weavileIndex].set).toBe(seeded.set);
+  expect(after.members[0].item).toBe('Eject Button');
+  await expect(revert()).toBeDisabled();
   await page.reload();
-  expect((await stored(page)).members[weavileIndex].item).toBe(
-    originalWeavile.item
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    before.name
   );
+  await expect(revert()).toBeDisabled();
+  expect((await stored(page)).members[weavileIndex].item).toBe('Loaded Dice');
 });

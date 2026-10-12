@@ -1,6 +1,5 @@
 <script lang="ts">
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import EvWorkbench from '$lib/components/EvWorkbench.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -88,7 +87,6 @@
   let rawText = $state(setText(initialMember));
   let textBaseline = $state(setText(initialMember));
   let replacement = $state<Member | null>(null);
-  let discarded = false;
   let activeSuggestions = $state<string | null>(
     initialView === 'pokemon' ? 'pokemon' : null
   );
@@ -115,10 +113,6 @@
     (currentView === 'text' && rawText !== textBaseline) ||
       canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields) ||
       replacement !== null
-  );
-  const initialSnapshot = canonicalSnapshot(fields(initialMember));
-  const changedSinceOpen = $derived(
-    dirty || canonicalSnapshot(fields(accepted)) !== initialSnapshot
   );
   const originalMember = $derived(
     originalMemberFor(draftMember, originalMembers)
@@ -328,7 +322,6 @@
     event.preventDefault();
   }
   function commit(): boolean {
-    if (discarded) return true;
     if (!dirty) {
       clearError();
       return true;
@@ -392,12 +385,6 @@
   function done() {
     if (flush()) onclose();
     else focusError();
-  }
-  function revertChanges() {
-    if (!accept(structuredClone($state.snapshot(initialMember)))) return;
-    // Teardown blurs the focused input; that commit must not re-save the edit.
-    discarded = true;
-    onclose();
   }
   export function requestClose(): boolean {
     if (activeSuggestions) {
@@ -766,32 +753,21 @@
     <p role="status" aria-live="polite" class="provenance mb-3">
       {dirty ? 'Unsaved input.' : 'Saved on this device.'}
     </p>
-    <div class="flex flex-wrap items-center gap-2">
+    <div class="flex justify-end gap-2">
       <Button
         variant="outline"
-        class="h-11 min-h-11 gap-1.5 px-4"
-        disabled={!changedSinceOpen}
+        class="h-11 min-h-11 px-4"
         onpointerdown={keepFocus}
-        onclick={revertChanges}
+        onclick={() => {
+          activeSuggestions = null;
+          if (requestClose()) onclose();
+        }}>Close</Button
       >
-        <RotateCcw class="size-4" /> Revert changes
-      </Button>
-      <div class="ml-auto flex gap-2">
-        <Button
-          variant="outline"
-          class="h-11 min-h-11 px-4"
-          onpointerdown={keepFocus}
-          onclick={() => {
-            activeSuggestions = null;
-            if (requestClose()) onclose();
-          }}>Close</Button
-        >
-        <Button
-          class="h-11 min-h-11 px-4"
-          onpointerdown={keepFocus}
-          onclick={done}>Done</Button
-        >
-      </div>
+      <Button
+        class="h-11 min-h-11 px-4"
+        onpointerdown={keepFocus}
+        onclick={done}>Done</Button
+      >
     </div>
   </footer>
 </div>
