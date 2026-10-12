@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import {
   compareTeams,
+  isCustomRulesTeam,
   isPasteUrl,
   normalize,
   type Member,
@@ -151,6 +152,7 @@ const reportSchema = z.object({
   event: textSchema,
   rank: textSchema,
   sourceUrl: textSchema,
+  entrants: z.number().int().positive().optional(),
 });
 const originalSchema = z.looseObject({
   id: textSchema,
@@ -373,12 +375,10 @@ export function catalogSuggestions(
     : target;
   const normTarget = normalize(targetMember.pokemon);
   const baseTarget = basePokemon(targetMember.pokemon);
-
   const items = new Map<string, CatalogSuggestion>();
   const abilities = new Map<string, CatalogSuggestion>();
   const moves = new Map<string, CatalogSuggestion>();
   const natures = new Map<string, CatalogSuggestion>();
-
   const add = (
     values: Map<string, CatalogSuggestion>,
     value: string | null,
@@ -402,11 +402,10 @@ export function catalogSuggestions(
       values.set(key, entry);
     }
   };
-
   const eq = (a: string | null, b: string | null) =>
     Boolean(a && b && normalize(a) === normalize(b));
-
   for (const team of teams) {
+    if (isCustomRulesTeam(team)) continue;
     const isCurrent = team.regulation === currentRegulation;
     let teamSim = 0;
     if (teammates.length) {
@@ -414,7 +413,6 @@ export function catalogSuggestions(
         if (team.members.some((m) => eq(m.pokemon, t.pokemon))) teamSim += 3;
       }
     }
-
     for (const member of team.members) {
       const normMember = normalize(member.pokemon);
       const match =
@@ -508,6 +506,7 @@ export function pokemonSuggestions(
   tags?: TeamTagsIndex,
   query = ''
 ): PokemonSuggestion[] {
+  teams = teams.filter((team) => !isCustomRulesTeam(team));
   const excludeSpecies = new Set(teammates.map((t) => normalize(t.pokemon)));
   if (excludePokemon) {
     excludeSpecies.add(normalize(excludePokemon));
@@ -718,6 +717,7 @@ function catalogSpreadIndex(
   if (cached && cached.regulation === regulation) return cached.bySpecies;
   const bySpecies = new Map<string, Map<string, CatalogSpreadOption>>();
   for (const team of teams) {
+    if (isCustomRulesTeam(team)) continue;
     const isCurrent = team.regulation === regulation;
     for (const member of team.members) {
       const values = parseChampionsSpread(member.spread);

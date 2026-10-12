@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   deploy-preview:
-    if: contains(github.event.pull_request.labels.*.name, 'deploy-preview')
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-preview') }}
     runs-on: ubuntu-24.04
     environment: preview
     steps:
@@ -32,6 +32,7 @@ jobs:
         run: npm run import:catalog
         env:
           CHECK_SHEET: '1'
+          ALLOW_STALE_SOURCE_CACHE: '1'
       - name: Enrich team tags
         run: |
           if [ -z "$TYPESAFE_API_KEY" ]; then

@@ -1,4 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
+import { customRulesTeam } from './catalog-fixture.ts';
 
 test('sprite cards, responsive filters, and external attribution work', async ({
   page,
@@ -351,4 +353,149 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     };
   });
   expect(skipTarget.targetTop).toBeGreaterThanOrEqual(skipTarget.headerBottom);
+});
+
+test('custom-rule visibility and browse state survive navigation', async ({
+  page,
+}, testInfo) => {
+  const catalog = JSON.parse(
+    readFileSync(
+      new URL('../src/lib/data/catalog.json', import.meta.url),
+      'utf8'
+    )
+  ) as { currentRegulation: string };
+  const team = customRulesTeam;
+  const entrants = team.reports.find(
+    (report) => report.entrants !== undefined
+  )?.entrants;
+  const filters = new URLSearchParams({
+    regulation: catalog.currentRegulation,
+  });
+  for (const member of team.members)
+    filters.append('member', JSON.stringify([member.pokemon, '', '', '']));
+
+  const toggle = page.getByRole('checkbox', {
+    name: 'Include custom-rule teams',
+  });
+  const cards = page
+    .getByRole('region', { name: 'Matching teams' })
+    .getByRole('article');
+
+  await page.goto(`/?${filters}`);
+  await expect(toggle).toBeVisible();
+  await expect(toggle).not.toBeChecked();
+  await expect(
+    page.getByRole('heading', { name: 'No matching teams' })
+  ).toBeVisible();
+
+  await toggle.check();
+  await expect(page).toHaveURL(/custom=1/);
+  await expect(cards).toHaveCount(1);
+  const card = cards.first();
+  await expect(card.getByRole('heading')).toHaveText(team.name);
+  await expect(card.getByText('Custom rules', { exact: true })).toBeVisible();
+  await expect(card.locator('p.provenance')).toHaveText(
+    entrants === undefined
+      ? /Marsh Pit #6/
+      : new RegExp(`Marsh Pit #6 \\(${entrants} players\\)`)
+  );
+  await expect(card.locator('.stamp[data-grade="reported"]')).toBeVisible();
+  await expect(card.locator('.stamp[data-grade="strong"]')).toHaveCount(0);
+
+  if (testInfo.project.use.isMobile) await card.getByRole('link').tap();
+  else await card.getByRole('link').click();
+  await expect
+    .poll(() => new URL(page.url()).pathname)
+    .toBe(`/teams/${customRulesTeam.id}`);
+  await expect(
+    page.getByText('Custom-rule event:', { exact: false })
+  ).toBeVisible();
+  await expect(
+    page.getByText('Hidden from normal recommendations.', { exact: false })
+  ).toBeVisible();
+  await expect(page.locator('.stamp[data-grade="strong"]')).toHaveCount(0);
+  const useTeam = page.getByRole('button', {
+    name: 'Use this team',
+    exact: true,
+  });
+  await expect(useTeam).toBeEnabled();
+  if (entrants !== undefined)
+    await expect(page.getByText(`${entrants} players`).first()).toBeVisible();
+
+  await page.getByRole('link', { name: 'Back to teams' }).click();
+  await expect(toggle).toBeChecked();
+  await expect(cards).toHaveCount(1);
+
+  await page.reload();
+  await expect(toggle).toBeChecked();
+  await expect(cards).toHaveCount(1);
+
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Browse', exact: true })
+    .click();
+  await expect.poll(() => new URL(page.url()).pathname).toBe('/');
+  await expect(page).toHaveURL(/custom=1/);
+  await expect(toggle).toBeChecked();
+  await expect(cards).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Clear filters' }).first().click();
+  await expect(page).not.toHaveURL(/custom=1/);
+  await expect(toggle).not.toBeChecked();
+  await expect(page.getByText('Marsh Pit #6', { exact: false })).toHaveCount(0);
+
+  await page.goto('/');
+  await page.evaluate(
+    (currentRegulation) =>
+      localStorage.setItem(
+        'champions-atlas:browse:v1',
+        new URLSearchParams([
+          ['member', JSON.stringify(['Garchomp', '', '', ''])],
+          ['regulation', currentRegulation],
+          ['sort', 'priority'],
+        ]).toString()
+      ),
+    catalog.currentRegulation
+  );
+  await page.goto('/?custom=1');
+  await expect(toggle).toBeChecked();
+  await expect(page).not.toHaveURL(/member=/);
+  await page.goto('/?custom=0');
+  await expect(toggle).not.toBeChecked();
+
+  const savedTeams = () =>
+    page.evaluate<{ id: string; name: string }[]>(
+      () =>
+        JSON.parse(
+          localStorage.getItem('champions-atlas:teams:v1') ?? '[]'
+        ) as { id: string; name: string }[]
+    );
+
+  const ordinary = cards.first();
+  if (testInfo.project.use.isMobile) await ordinary.getByRole('link').tap();
+  else await ordinary.getByRole('link').click();
+  await expect(useTeam).toBeEnabled();
+  await useTeam.click();
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
+  const seeded = await savedTeams();
+  expect(seeded).toHaveLength(1);
+  const seededId = seeded[0]?.id;
+  expect(seededId).toBeTruthy();
+
+  await page.goto(`/teams/${customRulesTeam.id}`);
+  await expect(
+    page.getByText('Custom-rule event:', { exact: false })
+  ).toBeVisible();
+  await expect(useTeam).toBeEnabled();
+  await useTeam.click();
+  await expect(page).toHaveURL(/\/my-teams\?team=/);
+  const saved = await savedTeams();
+  expect(saved).toHaveLength(2);
+  expect(saved.some((entry) => entry.id === seededId)).toBe(true);
+  expect(saved.some((entry) => entry.name === team.name)).toBe(true);
+  await page.goBack();
+  await expect(useTeam).toBeEnabled();
+  await expect(
+    page.getByText('Custom-rule event:', { exact: false })
+  ).toBeVisible();
 });

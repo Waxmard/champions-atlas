@@ -20,7 +20,7 @@ Poch.ms integration below shipped after planning, and
 - Attach item, move, and ability constraints to the selected Pokémon. A matching
   item on a different teammate does not satisfy that constraint.
 - Support explicit forms and Mega selections.
-- Include older regulations by default, labeling each team's original regulation.
+- Default Browse to the current regulation; make older regulations available through All regulations.
 - Prioritize relevant results using the ordering below.
 - Show available team sets, original sources, result evidence, paste links, and
   copyable rental/replica codes when published.
@@ -35,49 +35,47 @@ product. A compact result label is sufficient.
 
 ## Ranking
 
-The agreed high-level order is:
+Browse ranks teams by regulation certainty, achievement band, and credential
+merit. Unknown-regulation teams follow known-regulation teams. Within known
+regulations, current regulation breaks equal achievement-band ties; stronger
+historical credentials can still outrank current lower-band results. Current
+Master Ball 1 outranks historical Champion Tier, while current Champion Tier
+outranks current Master Ball 1. Historical Champion Tier or Master Ball 1
+outranks current Master Ball 2. Master Ball 2 outranks Master Ball 3 and 4.
 
-1. Current-regulation teams with qualifying results.
-2. Proven older-regulation teams.
-3. Current-regulation teams with unknown results.
+The achievement bands are Champion Tier or Champions global, peak, or
+season-finish positions 1–100, then Master Ball 1; qualifying major-event
+finishes; Master Ball 2, Champions positions 101–1,000, then Showdown positions
+1–100; supported community finishes; Master Ball 3, Master Ball 4, then
+unspecified Master Ball in the current regulation; other reported results; and no
+result. Listed Worlds events qualify through 32nd place, and listed Regional
+Championship events through eighth place. Explicit top-cut claims qualify only
+for those listed majors. Other tournament results receive community priority
+only when the published field has at least 32 entrants and the finish is in the
+top quarter, capped at eighth. Unknown or smaller fields do not receive this
+priority. The importer retains a positive published entrant count when
+available; it does not estimate field size from imported teams.
 
-Other entries remain available with lower priority and accurate labels. Within a
-regulation, strong tournament finishes lead, followed by high ladder achievements,
-lower ladder achievements, and other tournament entries or unknown results.
-Participation alone does not make a team proven. Top cut is a strong indicator;
-event size, significance, placement, and recency should inform tournament ordering.
-A team whose source publishes no regulation stays in an `Unknown` group that sorts
-below every known regulation, so its reported results do not make it look current.
+Major-event classification uses exact normalized event names: Worlds, Worlds
+2026, Worlds 2026 San Francisco, Baltimore Regional 2027, and Frankfurt Regional
+Championships. Other names, including Baltimore Regional Challenge, do not
+receive major priority by keyword. Event names, placements, entrant counts, and
+ladder labels remain source claims, not independently verified results. Ladder
+positions keep their platform context; ratings and tier labels are not converted
+across platforms or into global positions.
 
-Current-regulation relevance outweighs stronger historical results when the
-current team has qualifying evidence. Early in M-C, reaching Master Ball qualifies
-for discovery because higher-tier result coverage is sparse. This is a
-regulation-specific policy, not a permanent Master Ball cutoff for every season.
+Known custom-rule teams are hidden from Browse by default. **Include custom-rule
+teams** reveals them in Browse, but automatic recommendations always exclude them,
+regardless of that option. The identified Mudkip's Marsh Pit #6 records remain
+available through direct links, retain their source details, and can still be
+saved or used as teams. Unknown restrictions do not imply that an unclassified
+event follows standard rules.
 
-Both Pokémon Champions and Pokémon Showdown ladder achievements count. Label the
-platform, and distinguish peak rank, season finish, rating, and tier reached.
-Do not directly compare raw ratings across platforms or seasons.
-
-The owner described Champions tiers approximately as Champions = top 100,
-Rank 1 = top 1,000, and Rank 2 = top 10,000. These are planning context, not verified
-thresholds to encode. Store the reported tier and its evidence. Rank 2 eligibility
-remains optional outside the early-regulation fallback.
-
-### Agreed comparison examples
-
-| Candidates                                  | Higher priority      |
-| ------------------------------------------- | -------------------- |
-| M-B major top cut versus M-C Master Ball    | M-C Master Ball      |
-| Similar tournament finishes in M-B and M-C  | M-C                  |
-| M-B Champions tier versus M-C Master Ball   | M-C Master Ball      |
-| M-C Showdown peak #3 versus M-C Master Ball | M-C Showdown peak #3 |
-| M-C Master Ball versus M-C unknown results  | M-C Master Ball      |
-| Proven M-B team versus M-C unknown results  | Proven M-B team      |
-
-Exact tournament cutoffs, ordering between comparable high ladder achievements,
-and placement of teams requiring adaptation remain to be finalized. The browser's
-preliminary comparator and its limits are documented in [data sources](data-sources.md).
-Use concrete examples to settle these rather than an unexplained weighted score.
+Within a band, the comparator uses credential merit: major-event tier, finish
+bound, and known field size; community finish-to-field ratio; or the applicable
+ladder category and numeric position. A supplied recommendation tiebreak follows
+merit; publication time and ID settle remaining ties. **Newest shared** is a
+date-only sort.
 
 ## Data requirements
 
@@ -87,6 +85,7 @@ Use concrete examples to settle these rather than an unexplained weighted score.
   regulation when it publishes none.
 - Interpret result labels in context: a tournament's "Champion" is not the
   Champions ladder tier; Showdown "Peak 3rd" is not an in-game Champions rank.
+  Keep source-reported entrant counts distinct from imported team counts.
 - Merge exact duplicates while retaining source evidence and distinct set variants.
   Sharing six species alone does not establish identical builds.
 - A repeated import should not multiply teams. A failed refresh should preserve
@@ -106,9 +105,9 @@ Use concrete examples to settle these rather than an unexplained weighted score.
 | [MetaVGC](https://metavgc.com/teams/tournaments)                                                                         | Lists tournament teams and describes available set fields/pastes.                                                                                                                          | Stable ingestion interface and reuse conditions.                                                            |
 | [PokéKit](https://poke.itlibra.com/en/opendata)                                                                          | Offers reusable JSON/CSV aggregate Showdown statistics.                                                                                                                                    | Later use only; aggregate spreads are not proof of an individual team's build or Champions ladder finish.   |
 
-Start by validating VGCPastes and Limitless imports. Add a supplementary ladder
-source if their result metadata cannot meet discovery needs. Direct X ingestion
-is not a version 1 requirement.
+Poch.ms supplies tournament and social coverage, including X-linked social
+reports. Keep that existing coverage; this policy adds no paid API, scraper,
+or subscription.
 
 ## Version 1.5: similar teams and editing
 
@@ -242,11 +241,11 @@ because Svelte-aware tooling is preferred over experimental component support.
 
 The foundation includes Node 24 LTS via mise, npm, Lefthook, GitHub Actions, and
 Dependabot. The browser includes a cached M-C/M-B VGCPastes import,
-Pokémon/set filters, preliminary result ordering, and team details with URL and
+Pokémon/set filters, credential ordering and custom-rule discovery filtering, and team details with URL and
 Back/Forward preservation. My teams adds local storage, comparison, set-text
 editing, and export. Desktop/mobile browser checks run in CI. Legality validation
-and PWA installation remain unimplemented. Deployment and
-data-refresh hosting are not selected yet.
+and PWA installation remain unimplemented. Firebase Hosting serves the production
+SPA; its workflow imports and deploys on pushes to main and on a daily schedule.
 
 The catalog is generated locally and ignored by Git. Dev/build/typecheck import
 it when missing and reuse it otherwise; refreshing is explicit. A clean checkout

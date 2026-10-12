@@ -5,7 +5,12 @@ import {
   resolveBattleForm,
   type BattleForm,
 } from './battle-forms.ts';
-import { normalize, type Member, type Team } from './catalog.ts';
+import {
+  isCustomRulesTeam,
+  normalize,
+  type Member,
+  type Team,
+} from './catalog.ts';
 import {
   NATURES,
   championsSpreadTotal,
@@ -85,7 +90,9 @@ export function buildBenchmarkIndex(
   teams: Team[],
   regulation: string
 ): BenchmarkIndex {
-  const currentTeams = teams.filter((team) => team.regulation === regulation);
+  const currentTeams = teams.filter(
+    (team) => team.regulation === regulation && !isCustomRulesTeam(team)
+  );
   const teamIds = new Set(currentTeams.map((team) => team.id));
   const entries = new Map<
     string,

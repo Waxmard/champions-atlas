@@ -144,7 +144,7 @@ test('chunked Flight records admit the published M-C tournament without executin
   assert.equal(team.pasteNotes, null);
   assert.ok(!Object.hasOwn(team, 'pasteError'));
   assert.deepEqual(team.reports, [
-    { event: tournament.event, rank: '2nd', sourceUrl: pochUrl },
+    { event: tournament.event, rank: '2nd', sourceUrl: pochUrl, entrants: 62 },
     collected,
   ]);
   const raichu = team.members[0];
@@ -387,13 +387,13 @@ test('social events use placement with zero/null/missing fallback and never emit
   for (const place of [-1, 1.5, '2', '', '$f:place'])
     assert.equal(rejected({ ...placed, place }).reason, 'invalid_position');
 });
-
 test('tournament ordinal labels preserve placement without inferring top cut or participation', () => {
   const placements = [1, 2, 3, 4, 11, 12, 13, 21, 22, 23, 111];
   const rows = [...placements, 0, null, undefined].map((placement, index) => ({
     ...clone(tournament),
     id: `place-${index}`,
     placement,
+    players: null,
   }));
   const teams = parsePoch(page(rows)).teams;
   assert.equal(

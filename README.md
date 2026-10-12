@@ -1,13 +1,25 @@
 # Champion's Atlas
 
-Find your next Pokémon Champions doubles team.
+Champion's Atlas is a SvelteKit app for finding, editing, and saving
+Pokémon Champions doubles teams. It combines set filters with
+credential-based ordering without claiming legality validation.
+
+```mermaid
+flowchart LR
+  sources[Catalog sources] --> importer[Importer]
+  importer --> catalog[Bundled catalog]
+  catalog --> browser[Team browser]
+  browser --> saved[Saved teams]
+```
+
+## Overview
 
 A personal-first, mobile-friendly team browser that combines Pokémon and set
 filters with regulation-aware result ordering. Browse without a team in mind,
 find teams around a preferred core, and keep your current teams locally.
 
 The browser includes a VGCPastes M-C/M-B snapshot, combined Pokémon and set
-filters, preliminary result ordering, and team details. Filters, sorting, and
+filters, credential-based result ordering, and team details. Filters, sorting, and
 browsing position survive opening a team and returning. Saved teams, similarity
 comparison, and set-text editing work locally. Legality validation and PWA
 installation remain unimplemented. See
@@ -16,15 +28,15 @@ installation remain unimplemented. See
 ## Development
 
 ```sh
-mise install
-npm ci
-npm run dev
+mise install      # Install the project’s Node runtime.
+npm ci            # Install locked dependencies and Git hooks.
+npm run dev       # Start the local development server.
 ```
 
 Use the Node 24 LTS environment selected by mise. `npm ci` installs Lefthook hooks.
 
 ```sh
-make ci
+make ci           # Run lint, formatting, types, build, and Node tests.
 ```
 
 This runs ESLint, Prettier verification, `svelte-check`, the production build,
@@ -32,13 +44,28 @@ and importer/filter/ranking tests plus a server-rendering smoke test.
 `npm test` requires a build first. Browser checks run separately and in CI:
 
 ```sh
-npx playwright install chromium
+npx playwright install chromium webkit
 npm run test:e2e
 ```
 
 These cover desktop and mobile filtering, details, Back/Forward, reload, and
-invalid links, saving, comparison, editing, and export against the production build.
+invalid links, saving, comparison, editing, and export against an E2E build.
+`npm run test:e2e` disables Firebase and enables `E2E_CATALOG_FIXTURE=1` to
+isolate a deterministic custom-rule roster in the bundled catalog. The overlay
+does not modify generated catalog data or normal production builds.
 Use `npm run format` to format files and `npm run preview` to serve a built app.
+
+## Layout
+
+| Path          | What                                                  |
+| ------------- | ----------------------------------------------------- |
+| `src/routes/` | Pages and global styles                               |
+| `src/lib/`    | Components, team logic, and generated catalog         |
+| `scripts/`    | Catalog import, enrichment, and maintenance commands  |
+| `test/`       | Node tests and built-app smoke checks                 |
+| `e2e/`        | Desktop and mobile browser tests                      |
+| `static/`     | App icons and cached Pokémon assets                   |
+| `docs/`       | Product behavior, data sources, and deployment guides |
 
 ## Catalog
 
@@ -69,8 +96,18 @@ Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
 
-See [data sources and ranking limits](docs/data-sources.md). No scheduled
-refresh or additional source integration is configured.
+Preview imports request live source refreshes with `CHECK_SHEET=1` and enable
+`ALLOW_STALE_SOURCE_CACHE=1`. If a refresh fails with an eligible transient HTTP
+or network error, the importer warns and reuses validated raw source cache,
+including spreadsheet CSVs. Existing request retries remain unchanged.
+Missing, unreadable, invalid, or oversized fallback
+cache still fails the source load. Fresh validation and cache-write failures stay
+fatal; mandatory-source failures stop the import without replacing the catalog.
+Production, CI, and local imports remain strict unless you explicitly set this
+flag. It does not change offline behavior or impose a cache age limit.
+
+See [data sources and ranking limits](docs/data-sources.md) for source
+interpretation, ranking, and catalog freshness.
 
 ## Save, compare, and edit
 

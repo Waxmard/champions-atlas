@@ -12,11 +12,14 @@ import {
   syncSprites,
   validateIndex,
 } from './sync-assets.mjs';
-import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
+import {
+  battleSpecies,
+  cosmeticForms,
+  resolveBattleForm,
+} from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import {
   devonCorpUrl,
-  fetchWithRetry,
   parseDevonCorp,
   parseVictoryRoad,
   parseVrPaste,
@@ -24,6 +27,7 @@ import {
 } from './catalog-sources.mjs';
 import { reportsWithLadderNotes } from './catalog-results.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
+import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
@@ -192,9 +196,11 @@ export function deduplicate(teams) {
 export function enrich(team, data) {
   const sets = parsePaste(data.paste);
   const members = team.members.map((member) => {
+    const memberKey =
+      cosmeticForms[base(member.pokemon)] ?? base(member.pokemon);
     const matches = sets.filter(
       (set) =>
-        base(set.pokemon) === base(member.pokemon) &&
+        (cosmeticForms[base(set.pokemon)] ?? base(set.pokemon)) === memberKey &&
         slug(set.item || '') === slug(member.item || '')
     );
     if (matches.length !== 1)
@@ -268,7 +274,10 @@ function rosterMatches(members, expectedSpecies) {
     )
   )
     throw errorWithReason('invalid_roster', 'Invalid published roster');
-  const canonical = (name) => battleSpecies(name)?.name || name;
+  const canonical = (name) => {
+    const species = battleSpecies(name)?.name || name;
+    return cosmeticForms[normalize(species)] ?? species;
+  };
   const actual = members
     .map((member) => normalize(canonical(resolvedPokemon(member))))
     .sort();
@@ -448,32 +457,22 @@ async function main() {
     throw new Error('PASTE_LIMIT must be a non-negative integer');
   const checkSheet = process.env.CHECK_SHEET === '1';
   await mkdir(cache, { recursive: true });
-  async function fetchCached(
+  function fetchCached(
     name,
     address,
-    validate = () => {},
-    refresh = false
+    validate,
+    refresh = false,
+    { fetchOptions, missingMessage } = {}
   ) {
-    const path = resolve(cache, name);
-    if (!refresh) {
-      try {
-        const cached = await readFile(path, 'utf8');
-        validate(cached);
-        return cached;
-      } catch (error) {
-        if (error.code !== 'ENOENT' && process.env.OFFLINE === '1') throw error;
-      }
-    }
-    if (process.env.OFFLINE === '1')
-      throw new Error(`Missing cached file: ${name}`);
-    const response = await fetchWithRetry(address, { redirect: 'error' });
-    if (!response.ok) throw new Error(`${response.status} fetching ${address}`);
-    const text = await response.text();
-    if (text.length > 5000000)
-      throw new Error('Source response exceeds size limit');
-    validate(text);
-    await writeFile(path, text);
-    return text;
+    return fetchCachedSource(name, address, {
+      cache,
+      validate,
+      refresh,
+      offline: process.env.OFFLINE === '1',
+      allowStale: process.env.ALLOW_STALE_SOURCE_CACHE === '1',
+      fetchOptions,
+      missingMessage,
+    });
   }
   async function restoreSprites(teams) {
     try {
@@ -511,11 +510,12 @@ async function main() {
   }
   const teams = [];
   const csvs = [];
+  const indexRefresh = process.env.REFRESH === '1' || checkSheet;
   for (const [regulation, gid] of Object.entries(tabs)) {
     // Google CSV exports redirect to a Google-hosted download endpoint.
     const address = `${sheet}/export?format=csv&gid=${gid}`;
     let csv = null;
-    if (process.env.REFRESH !== '1' && !checkSheet) {
+    if (!indexRefresh) {
       try {
         csv = await readFile(resolve(cache, `${regulation}.csv`), 'utf8');
       } catch (error) {
@@ -523,20 +523,20 @@ async function main() {
       }
     }
     if (csv === null) {
-      if (process.env.OFFLINE === '1')
-        throw new Error(`Missing cached sheet: ${regulation}`);
-      const response = await fetchWithRetry(address);
-      if (!response.ok)
-        throw new Error(`Sheet fetch failed: ${response.status}`);
-      csv = await response.text();
-      if (csv.length > 5000000) throw new Error('Sheet exceeds size limit');
-      parseSheet(csv, regulation);
-      await writeFile(resolve(cache, `${regulation}.csv`), csv);
+      csv = await fetchCached(
+        `${regulation}.csv`,
+        address,
+        (text) => parseSheet(text, regulation),
+        true,
+        {
+          fetchOptions: { redirect: 'follow' },
+          missingMessage: `Missing cached sheet: ${regulation}`,
+        }
+      );
     }
     csvs.push(csv);
     teams.push(...parseSheet(csv, regulation));
   }
-  const indexRefresh = process.env.REFRESH === '1' || checkSheet;
   const victoryRoadHtml = await fetchCached(
     'victory-road.html',
     victoryRoadUrl,
