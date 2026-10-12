@@ -45,12 +45,18 @@ and importer/filter/ranking tests plus a server-rendering smoke test.
 
 ```sh
 npx playwright install chromium webkit
-npm run test:e2e
+npm run test:e2e:smoke # Run eight critical scenarios across 15 browser cases.
+npm run test:e2e       # Run the full browser suite.
 ```
 
 These cover desktop and mobile filtering, details, Back/Forward, reload, and
 invalid links, saving, comparison, editing, and export against an E2E build.
-`npm run test:e2e` disables Firebase and enables `E2E_CATALOG_FIXTURE=1` to
+CI runs smoke coverage on pull requests and pushes to `main`. To run the full
+suite remotely, select **Actions → CI → Run workflow**. Every CI event retains
+`make ci`, Chromium and WebKit installation, and failure traces. Deployment
+workflows run independently of CI.
+
+Both browser commands disable Firebase and enable `E2E_CATALOG_FIXTURE=1` to
 isolate a deterministic custom-rule roster in the bundled catalog. The overlay
 does not modify generated catalog data or normal production builds.
 Use `npm run format` to format files and `npm run preview` to serve a built app.
