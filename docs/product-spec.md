@@ -19,7 +19,7 @@ Poch.ms integration below shipped after planning, and
   on the team.
 - Attach item, move, and ability constraints to the selected Pokémon. A matching
   item on a different teammate does not satisfy that constraint.
-- Support explicit forms and Mega selections.
+- In Browse, a base Pokémon and its Mega share one selectable identity. Mawile and Mawile-Mega share Mawile; Floette-Eternal, Floette-Eternal-Mega, and Floette-Mega share Floette-Eternal. Ordinary Floette remains separate. Held item starts at Any item; an optional stone constraint applies to that same actual team member. This Browse identity does not change imported species/forms, exports, or battle calculations. Legacy filters canonicalize to the shared identity while retaining explicit constraints; duplicate aliases remain invalid.
 - Default Browse to the current regulation; make older regulations available through All regulations.
 - Prioritize relevant results using the ordering below.
 - Show available team sets, original sources, result evidence, paste links, and

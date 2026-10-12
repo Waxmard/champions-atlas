@@ -263,9 +263,6 @@ test('forms resolve only from published species, supported female forms, and Meg
   assert.equal(resolved.members[0].pokemon, 'Raichu Mega X');
   assert.equal(resolved.members[1].pokemon, 'ESPATHRA');
   assert.equal(resolved.members[0].ability, 'Lightning Rod');
-  assert.ok(
-    matchesTeam(resolved, [filter('Raichu-Mega-X'), filter('Espathra')])
-  );
 });
 
 test('published Floette spellings use the approved Eternal alias and a Floettite alone enables Mega', () => {

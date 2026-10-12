@@ -25,6 +25,7 @@
     compareTeams,
     getMemberOptions,
     isCustomRulesTeam,
+    browsePokemon,
     normalize,
     type MemberFilter,
     type Team,
@@ -74,7 +75,9 @@
   const allPokemon = $derived(
     [
       ...new Set(
-        teams.flatMap((team) => team.members.map((member) => member.pokemon))
+        teams.flatMap((team) =>
+          team.members.map((member) => browsePokemon(member.pokemon))
+        )
       ),
     ].sort()
   );
@@ -82,7 +85,9 @@
     allPokemon.filter(
       (pokemon) =>
         !filters.some(
-          (filter) => normalize(filter.pokemon) === normalize(pokemon)
+          (filter) =>
+            normalize(browsePokemon(filter.pokemon)) ===
+            normalize(browsePokemon(pokemon))
         )
     )
   );
@@ -193,19 +198,20 @@
     navigate(writeFilters(page.url.searchParams, next));
   }
   function addPokemon(pokemon: string) {
+    pokemon = browsePokemon(pokemon);
     if (
       filters.length >= 6 ||
-      filters.some((filter) => normalize(filter.pokemon) === normalize(pokemon))
+      filters.some(
+        (filter) =>
+          normalize(browsePokemon(filter.pokemon)) === normalize(pokemon)
+      )
     )
       return;
-    const items = /-Mega(?:-[A-Z])?$/i.test(pokemon)
-      ? options(pokemon, 'item')
-      : [];
     changeFilters([
       ...filters,
       {
         pokemon,
-        item: items.length === 1 ? items[0] : '',
+        item: '',
         ability: '',
         move: '',
       },
