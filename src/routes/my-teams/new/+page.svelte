@@ -30,9 +30,7 @@
 
 <svelte:head><title>Add custom team — Champion's Atlas</title></svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <header
-    class="flex flex-wrap items-center justify-between gap-4 border-b pb-4"
-  >
+  <header class="border-b pb-4">
     <div>
       <h1
         class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
@@ -51,9 +49,6 @@
         >, then paste its exported text. No legality check.
       </p>
     </div>
-    <Button href={resolve('/my-teams')} variant="outline" class="min-h-11">
-      Back to My teams
-    </Button>
   </header>
 
   <form aria-label="Custom team import" class="mt-6 max-w-3xl" onsubmit={save}>

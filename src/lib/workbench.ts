@@ -34,20 +34,6 @@ export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
 export const browseStorageKey = 'champions-atlas:browse:v1';
 
-export function resolveSavedTeamId(
-  saved: SavedTeam[],
-  requestedId: string | null,
-  activeId: string | null
-): string | null {
-  const fallbackId =
-    (activeId && saved.find((team) => team.id === activeId)?.id) ??
-    saved[0]?.id ??
-    null;
-  return requestedId && saved.some((team) => team.id === requestedId)
-    ? requestedId
-    : fallbackId;
-}
-
 export function setText(member: Member) {
   return (
     (member.set && normalizeSet(member.set)) ||
@@ -182,6 +168,7 @@ const savedTeamSchema = z.object({
   changeSlot: z.number().int().min(0).max(5).nullable().default(null),
   sources: z.array(sourceSchema).max(100),
   origin: z.enum(['catalog', 'custom']).optional(),
+  collection: z.enum(['my-teams', 'wishlist']).optional(),
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;

@@ -9,6 +9,7 @@
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import FileText from '@lucide/svelte/icons/file-text';
+  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 
   export type EditableSetField =
     | 'set'
@@ -27,6 +28,9 @@
     editing?: boolean;
     class?: string;
     onedit?: (field: EditableSetField) => void;
+    onrevert?: () => void;
+    revertDisabled?: boolean;
+    revertReason?: string;
   }
 
   let {
@@ -36,6 +40,9 @@
     editing = false,
     class: className = '',
     onedit,
+    onrevert,
+    revertDisabled = false,
+    revertReason = '',
   }: Props = $props();
 
   const types = $derived(getPokemonTypes(member.pokemon));
@@ -131,12 +138,26 @@
   </div>
 
   {#if editable}
-    <div class="mt-2 flex flex-wrap justify-end gap-1 border-t pt-1.5">
+    <div
+      class="mt-2 flex flex-wrap {onrevert && !revertDisabled
+        ? 'justify-between'
+        : 'justify-end'} gap-1 border-t pt-1.5"
+    >
+      {#if onrevert && !revertDisabled}<Button
+          variant="ghost"
+          size="sm"
+          class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
+          aria-label={`Revert changes for ${member.pokemon}`}
+          onclick={() => onrevert?.()}
+        >
+          <RotateCcw class="size-3" />
+          <span>Revert changes</span>
+        </Button>{/if}
       <Button
         variant="ghost"
         size="sm"
         class="min-h-11 gap-1 px-2 text-xs"
-        aria-label={`Edit ${member.pokemon} set`}
+        aria-label={`Edit set for ${member.pokemon}`}
         data-set-field="set"
         disabled={editing}
         onclick={() => onedit?.('set')}
@@ -147,7 +168,7 @@
         variant="ghost"
         size="sm"
         class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
-        aria-label={`Edit ${member.pokemon} set text`}
+        aria-label={`Edit set text for ${member.pokemon}`}
         data-set-field="text"
         disabled={editing}
         onclick={() => onedit?.('text')}
@@ -156,6 +177,9 @@
         <span>Edit set text</span>
       </Button>
     </div>
+    {#if revertReason}<p class="provenance mt-1">
+        {revertReason}
+      </p>{/if}
   {/if}
 </div>
 

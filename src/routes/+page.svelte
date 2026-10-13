@@ -2,7 +2,7 @@
   import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { SvelteURLSearchParams } from 'svelte/reactivity';
+  import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
   import { onMount } from 'svelte';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
@@ -16,7 +16,13 @@
     TYPE_COLORS,
     type PokemonType,
   } from '$lib/types';
-  import { browseStorageKey } from '$lib/workbench';
+  import { browseStorageKey, type SavedTeam } from '$lib/workbench';
+  import {
+    openCatalogTeam,
+    readSavedTeamsState,
+    wishlistCatalogTeam,
+  } from '$lib/saved-team-actions';
+  import { sync } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
   import {
     readFilters,
@@ -25,7 +31,8 @@
     compareTeams,
     getMemberOptions,
     isCustomRulesTeam,
-    normalize,
+    browsePokemon,
+    pokemonId,
     type MemberFilter,
     type Team,
   } from '$lib/catalog';
@@ -37,6 +44,18 @@
   let storageError = $state(false);
   let typeOpen = $state(false);
   let ready = $state(false);
+  let saved = $state.raw<SavedTeam[]>([]);
+  let savedError = $state('');
+  let actionError = $state('');
+  let status = $state('');
+  const pending = new SvelteSet<string>();
+  const wishlisted = $derived(
+    new Set(
+      saved
+        .filter((entry) => entry.collection === 'wishlist')
+        .map((entry) => entry.original.id)
+    )
+  );
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const historicalRegulations = $derived(
@@ -74,7 +93,9 @@
   const allPokemon = $derived(
     [
       ...new Set(
-        teams.flatMap((team) => team.members.map((member) => member.pokemon))
+        teams.flatMap((team) =>
+          team.members.map((member) => browsePokemon(member.pokemon))
+        )
       ),
     ].sort()
   );
@@ -82,7 +103,7 @@
     allPokemon.filter(
       (pokemon) =>
         !filters.some(
-          (filter) => normalize(filter.pokemon) === normalize(pokemon)
+          (filter) => pokemonId(filter.pokemon) === pokemonId(pokemon)
         )
     )
   );
@@ -189,23 +210,51 @@
   onMount(() => {
     ready = true;
   });
+  $effect(() => {
+    void sync.revision;
+    if (ready) refreshSaved();
+  });
+  function refreshSaved() {
+    const state = readSavedTeamsState();
+    saved = state.saved;
+    savedError = state.error;
+  }
+  function wishlist(team: Team) {
+    if (pending.has(team.id)) return;
+    pending.add(team.id);
+    status = actionError = '';
+    const error = wishlistCatalogTeam(team);
+    if (error) actionError = error;
+    else {
+      refreshSaved();
+      status = 'Added to Wishlist.';
+    }
+    pending.delete(team.id);
+  }
+  async function use(team: Team) {
+    if (pending.has(team.id)) return;
+    pending.add(team.id);
+    status = actionError = '';
+    const error = await openCatalogTeam(team);
+    if (error) actionError = error;
+    else refreshSaved();
+    pending.delete(team.id);
+  }
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(page.url.searchParams, next));
   }
   function addPokemon(pokemon: string) {
+    pokemon = browsePokemon(pokemon);
     if (
       filters.length >= 6 ||
-      filters.some((filter) => normalize(filter.pokemon) === normalize(pokemon))
+      filters.some((filter) => pokemonId(filter.pokemon) === pokemonId(pokemon))
     )
       return;
-    const items = /-Mega(?:-[A-Z])?$/i.test(pokemon)
-      ? options(pokemon, 'item')
-      : [];
     changeFilters([
       ...filters,
       {
         pokemon,
-        item: items.length === 1 ? items[0] : '',
+        item: '',
         ability: '',
         move: '',
       },
@@ -270,6 +319,14 @@
   {#if storageError}<p role="status" aria-live="polite" class="provenance mt-2">
       Filters can't be remembered on this device.
     </p>{/if}
+  {#if savedError || actionError}<p
+      role="alert"
+      class="mt-2 text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
+      {savedError || actionError}
+    </p>{/if}
+  <p role="status" aria-live="polite" class="sr-only">{status}</p>
 
   <div class="mt-4">
     <button
@@ -506,7 +563,26 @@
             currentRegulation={current}
             showRegulation={regulation === 'all'}
             query={page.url.search}
-          />{/each}
+          >
+            {#snippet actions()}
+              {@const busy =
+                !ready || savedError !== '' || pending.has(team.id)}
+              <Button
+                type="button"
+                variant="outline"
+                class="min-h-11 px-4"
+                disabled={busy || wishlisted.has(team.id)}
+                onclick={() => wishlist(team)}
+                >{wishlisted.has(team.id) ? 'Wishlisted' : 'Wishlist'}</Button
+              >
+              <Button
+                type="button"
+                class="min-h-11 px-4"
+                disabled={busy}
+                onclick={() => use(team)}>Use this team</Button
+              >
+            {/snippet}
+          </TeamCard>{/each}
       </div>
       {#if pageCount > 1}
         <nav

@@ -33,88 +33,90 @@ async function saveWeavileItem(page: Page, item: string) {
   await expect(weavile.getByText(item, { exact: true })).toBeVisible();
 }
 
-test('import, edit, reload, compare, and export a custom team', async ({
-  page,
-}) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  await page.goto('/my-teams');
-  await page.getByRole('link', { name: 'Add custom team' }).click();
-  const teambuilder = page.getByRole('link', {
-    name: 'Pokémon Showdown Teambuilder',
-  });
-  await expect(teambuilder).toHaveAttribute(
-    'href',
-    'https://play.pokemonshowdown.com/teambuilder'
-  );
-  await expect(teambuilder).toHaveAttribute('target', '_blank');
-  await page.getByLabel('Team name', { exact: true }).fill('My custom team');
-  await page.getByLabel('Team text', { exact: true }).fill(peter.paste!);
-  await page.getByRole('button', { name: 'Save custom team' }).click();
-  await expect(page).toHaveURL(/\/my-teams\?team=/);
-  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    'My custom team'
-  );
-  await expect(
-    page.getByText('Original & history', { exact: true })
-  ).toBeVisible();
+test(
+  'import, edit, reload, compare, and export a custom team',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto('/my-teams');
+    await page.getByRole('link', { name: 'Add custom team' }).click();
+    const teambuilder = page.getByRole('link', {
+      name: 'Pokémon Showdown Teambuilder',
+    });
+    await expect(teambuilder).toHaveAttribute(
+      'href',
+      'https://play.pokemonshowdown.com/teambuilder'
+    );
+    await expect(teambuilder).toHaveAttribute('target', '_blank');
+    await page.getByLabel('Team name', { exact: true }).fill('My custom team');
+    await page.getByLabel('Team text', { exact: true }).fill(peter.paste!);
+    await page.getByRole('button', { name: 'Save custom team' }).click();
+    await expect(page).toHaveURL(/\/my-teams\?team=/);
+    await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+      'My custom team'
+    );
+    await expect(
+      page.getByText('Original & history', { exact: true })
+    ).toBeVisible();
 
-  const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
-  expect(stored.original.pasteUrl).toBe('');
-  expect(stored.sources).toEqual([]);
-  const storedWeavile = stored.original.members.find(
-    (member: { pokemon: string }) => member.pokemon === 'Weavile'
-  );
-  expect(storedWeavile.item).toBe(
-    peter.members.find((member) => member.pokemon === 'Weavile')!.item
-  );
-  const weavile = page.getByRole('region', {
-    name: 'Weavile set',
-    exact: true,
-  });
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile set text', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  const set = editor.getByRole('textbox', {
-    name: 'Showdown set text',
-    exact: true,
-  });
-  await set.fill(
-    (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
-  );
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  const saved = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
-  expect(
-    saved.members.find(
+    const stored = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)!)[0],
+      storageKey
+    );
+    expect(stored.original.pasteUrl).toBe('');
+    expect(stored.sources).toEqual([]);
+    const storedWeavile = stored.original.members.find(
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
-    ).ability
-  ).toBe('Custom Ability');
-  await page.reload();
-  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    'My custom team'
-  );
-  await expect(page.getByRole('region', { name: 'Similar teams' })).toHaveCount(
-    0
-  );
-  await page.getByRole('button', { name: 'Copy team text' }).click();
-  await expect(page.getByLabel('Export text')).toHaveValue(/Custom Ability/);
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= innerWidth
-    )
-  ).toBe(true);
-  expect(errors).toEqual([]);
-});
+    );
+    expect(storedWeavile.item).toBe(
+      peter.members.find((member) => member.pokemon === 'Weavile')!.item
+    );
+    const weavile = page.getByRole('region', {
+      name: 'Weavile set',
+      exact: true,
+    });
+    await weavile
+      .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
+      .click();
+    const editor = page.getByRole('dialog', {
+      name: 'Edit Weavile set',
+      exact: true,
+    });
+    const set = editor.getByRole('textbox', {
+      name: 'Showdown set text',
+      exact: true,
+    });
+    await set.fill(
+      (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
+    );
+    await editor.getByRole('button', { name: 'Done', exact: true }).click();
+    const saved = await page.evaluate(
+      (key) => JSON.parse(localStorage.getItem(key)!)[0],
+      storageKey
+    );
+    expect(
+      saved.members.find(
+        (member: { pokemon: string }) => member.pokemon === 'Weavile'
+      ).ability
+    ).toBe('Custom Ability');
+    await page.reload();
+    await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+      'My custom team'
+    );
+    await expect(
+      page.getByRole('region', { name: 'Similar teams' })
+    ).toHaveCount(0);
+    await page.getByRole('button', { name: 'Copy team text' }).click();
+    await expect(page.getByLabel('Export text')).toHaveValue(/Custom Ability/);
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth
+      )
+    ).toBe(true);
+    expect(errors).toEqual([]);
+  }
+);
 
 test('unknown and long card fields stay usable without phone overflow', async ({
   page,
@@ -213,7 +215,10 @@ test('completed editor changes navigate without an unsaved warning', async ({
     warned = true;
     await dialog.dismiss();
   });
-  await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
+  await page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Browse', exact: true })
+    .click();
   await expect(page).toHaveURL((url) => url.pathname === '/');
   await expect(page.getByLabel('Regulation')).toHaveValue('M-B');
   await expect(page.getByRole('combobox', { name: 'Sort teams' })).toHaveValue(
@@ -239,25 +244,27 @@ test('invalid custom import never changes local storage', async ({ page }) => {
   ).toBe(before);
 });
 
-test('corrupt storage is reported and kept; missing local IDs do not show another team', async ({
-  page,
-}) => {
-  await page.goto('/my-teams?team=missing');
-  await expect(
-    page.getByRole('heading', { name: 'My teams', exact: true })
-  ).toBeVisible();
-  await expect(page).toHaveURL(/\/my-teams\?team=missing$/);
-  await expect(page.getByLabel('Saved team')).toHaveCount(0);
-  await page.evaluate(
-    (key) => localStorage.setItem(key, '{broken'),
-    storageKey
-  );
-  await page.reload();
-  await expect(page.getByRole('alert')).toBeVisible();
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), storageKey)
-  ).toBe('{broken');
-});
+test(
+  'corrupt storage is reported and kept; missing local IDs do not show another team',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await page.goto('/my-teams?team=missing');
+    await expect(
+      page.getByRole('heading', { name: 'My teams', exact: true })
+    ).toBeVisible();
+    await expect(page).toHaveURL(/\/my-teams\?team=missing$/);
+    await expect(page.getByLabel('Saved team')).toHaveCount(0);
+    await page.evaluate(
+      (key) => localStorage.setItem(key, '{broken'),
+      storageKey
+    );
+    await page.reload();
+    await expect(page.getByRole('alert')).toBeVisible();
+    expect(
+      await page.evaluate((key) => localStorage.getItem(key), storageKey)
+    ).toBe('{broken');
+  }
+);
 
 test('QoL deletion cancel keeps saved changes and both saved copies', async ({
   page,
@@ -296,7 +303,10 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
     (key) => JSON.parse(localStorage.getItem(key)!),
     storageKey
   );
-  const removedId = await page.getByLabel('Saved team').inputValue();
+  const removedId = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    activeTeamKey
+  );
   const remainingId = before.find(
     (team: { id: string }) => team.id !== removedId
   )!.id;
@@ -309,7 +319,7 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
 
   expect(dialogMessage).toContain('This cannot be undone.');
   await expect(page).toHaveURL('/my-teams?team=' + remainingId);
-  await expect(page.getByLabel('Saved team')).toHaveValue(remainingId);
+  await expect(page.locator('[data-team-picker]')).toBeVisible();
   await expect(page.getByRole('status')).toHaveText('Team deleted.');
   await expect(
     page.getByRole('region', { name: 'Weavile set', exact: true })
@@ -326,7 +336,9 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
 
   await page.reload();
   await expect(page).toHaveURL('/my-teams?team=' + remainingId);
-  await expect(page.getByLabel('Saved team')).toHaveValue(remainingId);
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
+  ).toBe(remainingId);
   expect(
     await page.evaluate(
       (key) => JSON.parse(localStorage.getItem(key)!),
@@ -400,7 +412,7 @@ test('QoL deletion write failure preserves the draft and stored team', async ({
   expect(
     await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
   ).toBe(activeBefore);
-  await expect(page.getByLabel('Saved team')).toHaveValue(activeBefore!);
+  await expect(page).toHaveURL('/my-teams?team=' + activeBefore);
 });
 
 test('set edit commits on save and reopening my-teams restores active team', async ({
@@ -588,7 +600,9 @@ test('background navigation clicks retain the editor', async ({
   });
   await expect(editor).toBeVisible();
   const url = page.url();
-  const browse = page.getByRole('link', { name: 'Browse teams', exact: true });
+  const browse = page
+    .getByRole('navigation', { name: 'Main' })
+    .getByRole('link', { name: 'Browse', exact: true });
   const box = await browse.boundingBox();
   await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
   await expect(editor).toBeVisible();
@@ -608,7 +622,7 @@ test('visibility changes keep move and item edits mounted', async ({
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit Weavile set', exact: true })
+    .getByRole('button', { name: 'Edit set for Weavile', exact: true })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',

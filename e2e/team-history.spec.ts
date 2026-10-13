@@ -3,7 +3,7 @@ import type { Page, Locator, Dialog } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 import { newSavedTeam } from '../src/lib/workbench';
 import type { SavedTeam } from '../src/lib/workbench';
-import type { Team } from '../src/lib/catalog';
+import { browsePokemon, type Team } from '../src/lib/catalog';
 
 const fixtureCatalog = catalog as { teams: Team[] };
 const fixture = fixtureCatalog.teams.find((team) =>
@@ -63,7 +63,13 @@ async function edit(
   field: 'item' | 'moves' | 'EVs' | 'set text' | 'set' = 'item'
 ) {
   await currentSlot(page)
-    .getByRole('button', { name: `Edit Weavile ${field}`, exact: true })
+    .getByRole('button', {
+      name:
+        field === 'set' || field === 'set text'
+          ? `Edit ${field} for Weavile`
+          : `Edit Weavile ${field}`,
+      exact: true,
+    })
     .click();
   const editor = page.getByRole('dialog');
   await expect(editor).toBeVisible();
@@ -90,129 +96,136 @@ async function restore(page: Page, panel: Locator, button: string) {
   ]);
 }
 
-test('completed changes autosave together before Done and Restore original reverts them', async ({
-  page,
-}) => {
-  const params = new URLSearchParams({
-    browse: 'all',
-    regulation: fixture.regulation,
-  });
-  for (const member of fixture.members)
-    params.append('member', JSON.stringify([member.pokemon, '', '', '']));
-  await page.goto('/?' + params);
-  await expect(
-    page.getByRole('button', { name: 'Remove Weavile', exact: true })
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Clear filters', exact: true })
-  ).toBeEnabled();
-  await page
-    .getByRole('combobox', { name: 'Sort teams', exact: true })
-    .selectOption('priority');
-  await expect(page).toHaveURL(
-    (url) => url.searchParams.get('sort') === 'priority'
-  );
-  await expect(page.getByLabel('Regulation')).toHaveValue(fixture.regulation);
-  const browseUrl = page.url();
-  const results = page
-    .getByRole('region', { name: 'Matching teams', exact: true })
-    .getByRole('article');
-  const fixtureLink = results
-    .locator(`a[href^="/teams/${fixture.id}"]`)
-    .first();
-  await expect(fixtureLink).toBeVisible();
-  const resultNames = await results.getByRole('heading').allTextContents();
-  await fixtureLink.click();
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
-  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    fixture.name
-  );
-  const before = await stored(page);
-  const editor = await edit(page);
-  await expect(editor.getByLabel('Item', { exact: true })).toBeFocused();
-  await enter(editor, 'Item', 'History custom item');
-  await editor.getByLabel('Nature', { exact: true }).selectOption('Timid');
-  await editor
-    .getByRole('button', { name: 'Back to overview', exact: true })
-    .click();
-  await editor.getByRole('button', { name: 'Edit moves', exact: true }).click();
-  await enter(editor, 'Move 1', 'History custom move');
-  await expect
-    .poll(async () => (await stored(page)).members[weavileIndex].moves[0])
-    .toBe('History custom move');
-  const edited = await stored(page);
-  expect(edited.history).toBeUndefined();
-  expect(edited.original).toEqual(before.original);
-  expect(edited.members.filter((_, index) => index !== weavileIndex)).toEqual(
-    before.members.filter((_, index) => index !== weavileIndex)
-  );
-  expect(edited.members[weavileIndex].set).toContain(
-    'Weavile (M) @ History custom item'
-  );
-  await expect(
-    page.getByRole('button', { name: /^Apply|^Discard changes to/ })
-  ).toHaveCount(0);
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor).toHaveCount(0);
-  await page.reload();
-  expect((await stored(page)).members).toEqual(edited.members);
-  const panel = await openHistory(page);
-  await expect(
-    panel.getByRole('region', { name: 'Version comparison', exact: true })
-  ).toBeVisible();
-  await expect(panel.getByText('Glimmora-Mega', { exact: true })).toHaveCount(
-    0
-  );
-  await expect(
-    panel.getByText(
-      `Item: ${originalWeavile.item} → ${edited.members[weavileIndex].item}`,
-      { exact: true }
-    )
-  ).toBeVisible();
-  await expect(
-    panel.getByText(
-      `Moves: ${originalWeavile.moves[0]} → History custom move`,
-      { exact: true }
-    )
-  ).toBeVisible();
-  await expect(
-    panel.getByText(
-      `Moves: ${originalWeavile.moves.join(', ')} → ${edited.members[weavileIndex].moves.join(', ')}`,
-      { exact: true }
-    )
-  ).toHaveCount(0);
-  await expect(
-    panel.getByText('Source sheet IDs: MB809', { exact: false })
-  ).toBeVisible();
-  if (fixture.creator)
+test(
+  'completed changes autosave together before Done and Restore original reverts them',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    const params = new URLSearchParams({
+      browse: 'all',
+      regulation: fixture.regulation,
+    });
+    for (const member of fixture.members)
+      params.append('member', JSON.stringify([member.pokemon, '', '', '']));
+    await page.goto('/?' + params);
     await expect(
-      panel.getByText(fixture.creator, { exact: true })
+      page.getByRole('button', { name: 'Remove Weavile', exact: true })
     ).toBeVisible();
-  await restore(page, panel, 'Restore original');
-  expect((await stored(page)).members).toEqual(before.members);
-  await page.reload();
-  await openHistory(page);
-  const restored = await stored(page);
-  expect(restored.id).toBe(before.id);
-  expect(restored.original).toEqual(before.original);
-  expect(restored.sources).toEqual(before.sources);
-  await page.getByRole('link', { name: 'Browse teams', exact: true }).click();
-  await expect(page).toHaveURL(browseUrl);
-  for (const member of fixture.members)
     await expect(
-      page.getByRole('button', {
-        name: `Remove ${member.pokemon}`,
-        exact: true,
-      })
+      page.getByRole('button', { name: 'Clear filters', exact: true })
+    ).toBeEnabled();
+    await page
+      .getByRole('combobox', { name: 'Sort teams', exact: true })
+      .selectOption('priority');
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get('sort') === 'priority'
+    );
+    await expect(page.getByLabel('Regulation')).toHaveValue(fixture.regulation);
+    const browseUrl = page.url();
+    const results = page
+      .getByRole('region', { name: 'Matching teams', exact: true })
+      .getByRole('article');
+    const fixtureLink = results
+      .locator(`a[href^="/teams/${fixture.id}"]`)
+      .first();
+    await expect(fixtureLink).toBeVisible();
+    const resultNames = await results.getByRole('heading').allTextContents();
+    await fixtureLink.click();
+    await page
+      .getByRole('button', { name: 'Use this team', exact: true })
+      .click();
+    await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+      fixture.name
+    );
+    const before = await stored(page);
+    const editor = await edit(page);
+    await expect(editor.getByLabel('Item', { exact: true })).toBeFocused();
+    await enter(editor, 'Item', 'History custom item');
+    await editor.getByLabel('Nature', { exact: true }).selectOption('Timid');
+    await editor
+      .getByRole('button', { name: 'Back to overview', exact: true })
+      .click();
+    await editor
+      .getByRole('button', { name: 'Edit moves', exact: true })
+      .click();
+    await enter(editor, 'Move 1', 'History custom move');
+    await expect
+      .poll(async () => (await stored(page)).members[weavileIndex].moves[0])
+      .toBe('History custom move');
+    const edited = await stored(page);
+    expect(edited.history).toBeUndefined();
+    expect(edited.original).toEqual(before.original);
+    expect(edited.members.filter((_, index) => index !== weavileIndex)).toEqual(
+      before.members.filter((_, index) => index !== weavileIndex)
+    );
+    expect(edited.members[weavileIndex].set).toContain(
+      'Weavile (M) @ History custom item'
+    );
+    await expect(
+      page.getByRole('button', { name: /^Apply|^Discard changes to/ })
+    ).toHaveCount(0);
+    await editor.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    await page.reload();
+    expect((await stored(page)).members).toEqual(edited.members);
+    const panel = await openHistory(page);
+    await expect(
+      panel.getByRole('region', { name: 'Version comparison', exact: true })
     ).toBeVisible();
-  await expect(page.getByLabel('Regulation')).toHaveValue(fixture.regulation);
-  await expect(
-    page.getByRole('combobox', { name: 'Sort teams', exact: true })
-  ).toHaveValue('priority');
-  await expect(results.getByRole('heading')).toHaveText(resultNames);
-});
+    await expect(panel.getByText('Glimmora-Mega', { exact: true })).toHaveCount(
+      0
+    );
+    await expect(
+      panel.getByText(
+        `Item: ${originalWeavile.item} → ${edited.members[weavileIndex].item}`,
+        { exact: true }
+      )
+    ).toBeVisible();
+    await expect(
+      panel.getByText(
+        `Moves: ${originalWeavile.moves[0]} → History custom move`,
+        { exact: true }
+      )
+    ).toBeVisible();
+    await expect(
+      panel.getByText(
+        `Moves: ${originalWeavile.moves.join(', ')} → ${edited.members[weavileIndex].moves.join(', ')}`,
+        { exact: true }
+      )
+    ).toHaveCount(0);
+    await expect(
+      panel.getByText('Source sheet IDs: MB809', { exact: false })
+    ).toBeVisible();
+    if (fixture.creator)
+      await expect(
+        panel.getByText(fixture.creator, { exact: true })
+      ).toBeVisible();
+    await restore(page, panel, 'Restore original');
+    expect((await stored(page)).members).toEqual(before.members);
+    await page.reload();
+    await openHistory(page);
+    const restored = await stored(page);
+    expect(restored.id).toBe(before.id);
+    expect(restored.original).toEqual(before.original);
+    expect(restored.sources).toEqual(before.sources);
+    await page
+      .getByRole('navigation', { name: 'Main' })
+      .getByRole('link', { name: 'Browse', exact: true })
+      .click();
+    await expect(page).toHaveURL(browseUrl);
+    for (const member of fixture.members)
+      await expect(
+        page.getByRole('button', {
+          name: `Remove ${browsePokemon(member.pokemon)}`,
+          exact: true,
+        })
+      ).toBeVisible();
+    await expect(page.getByLabel('Regulation')).toHaveValue(fixture.regulation);
+    await expect(
+      page.getByRole('combobox', { name: 'Sort teams', exact: true })
+    ).toHaveValue('priority');
+    await expect(results.getByRole('heading')).toHaveText(resultNames);
+  }
+);
 
 test('a custom starting team has no public provenance and Restore original discards the rename', async ({
   page,
@@ -465,7 +478,7 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   await expect(editor).toHaveCount(0);
   await expect(
     currentSlot(page).getByRole('button', {
-      name: 'Edit Weavile set text',
+      name: 'Edit set text for Weavile',
       exact: true,
     })
   ).toBeFocused();
@@ -473,72 +486,74 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   expect((await stored(page)).members).toEqual(valid.members);
 });
 
-test('failed writes retain form input for retry; Escape dismisses suggestions before closing', async ({
-  page,
-}) => {
-  await saveFixture(page);
-  const editor = await edit(page);
-  await enter(editor, 'Item', 'First durable autosave');
-  const accepted = await stored(page);
-  await page.evaluate((key) => {
-    const original = Storage.prototype.setItem;
-    Object.defineProperty(window, '__restoreHistoryStorage', {
-      configurable: true,
-      value: () => {
-        Storage.prototype.setItem = original;
-      },
+test(
+  'failed writes retain form input for retry; Escape dismisses suggestions before closing',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    await saveFixture(page);
+    const editor = await edit(page);
+    await enter(editor, 'Item', 'First durable autosave');
+    const accepted = await stored(page);
+    await page.evaluate((key) => {
+      const original = Storage.prototype.setItem;
+      Object.defineProperty(window, '__restoreHistoryStorage', {
+        configurable: true,
+        value: () => {
+          Storage.prototype.setItem = original;
+        },
+      });
+      Storage.prototype.setItem = function (name, value) {
+        if (name === key)
+          throw new DOMException('Quota exceeded', 'QuotaExceededError');
+        original.call(this, name, value);
+      };
+    }, storageKey);
+    await enter(editor, 'Item', 'Retained failed input');
+    await expect(
+      editor.getByText(
+        'Could not save this input. Your edits are still here. Close and reopen the editor, then try again.',
+        {
+          exact: true,
+        }
+      )
+    ).toBeVisible();
+    expect((await stored(page)).members).toEqual(accepted.members);
+    await editor.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(editor).toBeVisible();
+    await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
+      'Retained failed input'
+    );
+    await page.evaluate(() => {
+      if (
+        !('__restoreHistoryStorage' in window) ||
+        typeof window.__restoreHistoryStorage !== 'function'
+      )
+        throw new Error('Storage restore hook missing');
+      window.__restoreHistoryStorage();
     });
-    Storage.prototype.setItem = function (name, value) {
-      if (name === key)
-        throw new DOMException('Quota exceeded', 'QuotaExceededError');
-      original.call(this, name, value);
-    };
-  }, storageKey);
-  await enter(editor, 'Item', 'Retained failed input');
-  await expect(
-    editor.getByText(
-      'Could not save this input. Your edits are still here. Close and reopen the editor, then try again.',
-      {
+    await editor.getByLabel('Item', { exact: true }).press('Enter');
+    await expect
+      .poll(async () => (await stored(page)).members[weavileIndex].item)
+      .toBe('Retained failed input');
+    await editor.getByLabel('Item', { exact: true }).click();
+    await expect(
+      editor.getByLabel('Item suggestions', { exact: true })
+    ).toBeVisible();
+    await editor.getByLabel('Item', { exact: true }).press('Escape');
+    await expect(editor).toBeVisible();
+    await expect(
+      editor.getByLabel('Item suggestions', { exact: true })
+    ).toHaveCount(0);
+    await editor.press('Escape');
+    await expect(editor).toHaveCount(0);
+    await expect(
+      currentSlot(page).getByRole('button', {
+        name: 'Edit Weavile item',
         exact: true,
-      }
-    )
-  ).toBeVisible();
-  expect((await stored(page)).members).toEqual(accepted.members);
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor).toBeVisible();
-  await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
-    'Retained failed input'
-  );
-  await page.evaluate(() => {
-    if (
-      !('__restoreHistoryStorage' in window) ||
-      typeof window.__restoreHistoryStorage !== 'function'
-    )
-      throw new Error('Storage restore hook missing');
-    window.__restoreHistoryStorage();
-  });
-  await editor.getByLabel('Item', { exact: true }).press('Enter');
-  await expect
-    .poll(async () => (await stored(page)).members[weavileIndex].item)
-    .toBe('Retained failed input');
-  await editor.getByLabel('Item', { exact: true }).click();
-  await expect(
-    editor.getByLabel('Item suggestions', { exact: true })
-  ).toBeVisible();
-  await editor.getByLabel('Item', { exact: true }).press('Escape');
-  await expect(editor).toBeVisible();
-  await expect(
-    editor.getByLabel('Item suggestions', { exact: true })
-  ).toHaveCount(0);
-  await editor.press('Escape');
-  await expect(editor).toHaveCount(0);
-  await expect(
-    currentSlot(page).getByRole('button', {
-      name: 'Edit Weavile item',
-      exact: true,
-    })
-  ).toBeFocused();
-});
+      })
+    ).toBeFocused();
+  }
+);
 
 test('legacy provenance keeps retained evidence and never links unsupported URLs', async ({
   page,
@@ -728,3 +743,54 @@ test('an unknown original EV spread is not a restorable slot change', async ({
     slot.getByRole('button', { name: 'Restore original set', exact: true })
   ).toBeEnabled();
 });
+
+test(
+  'a card revert restores that slot to its state when the team was opened',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    const before = newSavedTeam(fixture);
+    before.members[weavileIndex] = {
+      ...structuredClone(before.members[weavileIndex]),
+      item: 'Loaded Dice',
+    };
+    const seeded = before.members[weavileIndex];
+    await seed(page, before);
+    const revert = (index = weavileIndex) =>
+      currentSlot(page, index).getByRole('button', {
+        name: `Revert changes for ${before.members[index].pokemon}`,
+        exact: true,
+      });
+    await expect(revert()).toHaveCount(0);
+    const editor = await edit(page);
+    await enter(editor, 'Item', 'Choice Band');
+    await editor.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(editor).toHaveCount(0);
+    await currentSlot(page, 0)
+      .getByRole('button', { name: 'Edit Glimmora-Mega item', exact: true })
+      .click();
+    const other = page.getByRole('dialog');
+    await expect(other).toBeVisible();
+    await enter(other, 'Item', 'Eject Button');
+    await other.getByRole('button', { name: 'Done', exact: true }).click();
+    await expect(other).toHaveCount(0);
+    await expect
+      .poll(async () => (await stored(page)).members[weavileIndex].item)
+      .toBe('Choice Band');
+    await expect(revert()).toBeEnabled();
+    await revert().click();
+    await expect
+      .poll(async () => (await stored(page)).members[weavileIndex].item)
+      .toBe('Loaded Dice');
+    const after = await stored(page);
+    expect(after.members[weavileIndex].item).not.toBe(originalWeavile.item);
+    expect(after.members[weavileIndex].set).toBe(seeded.set);
+    expect(after.members[0].item).toBe('Eject Button');
+    await expect(revert()).toHaveCount(0);
+    await page.reload();
+    await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+      before.name
+    );
+    await expect(revert()).toHaveCount(0);
+    expect((await stored(page)).members[weavileIndex].item).toBe('Loaded Dice');
+  }
+);

@@ -1,7 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
-  import { goto } from '$app/navigation';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Copy from '@lucide/svelte/icons/copy';
@@ -18,13 +17,13 @@
     regulationLabel,
     type Team,
   } from '$lib/catalog';
+  import { exportPaste, type SavedTeam } from '$lib/workbench';
   import {
-    activeTeamKey,
-    exportPaste,
-    newSavedTeam,
-    saveTeam,
-  } from '$lib/workbench';
-  import { pushNow } from '$lib/sync.svelte';
+    openCatalogTeam,
+    readSavedTeamsState,
+    wishlistCatalogTeam,
+  } from '$lib/saved-team-actions';
+  import { sync } from '$lib/sync.svelte';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -39,20 +38,49 @@
   );
   let ready = $state(false);
   let copyStatus = $state('');
+  let saved = $state.raw<SavedTeam[]>([]);
+  let savedError = $state('');
+  let actionError = $state('');
+  let status = $state('');
+  let pending = $state(false);
+  const wishlisted = $derived(
+    saved.some(
+      (entry) =>
+        entry.collection === 'wishlist' && entry.original.id === team.id
+    )
+  );
   onMount(() => {
     ready = true;
   });
-  function useTeam() {
-    try {
-      const saved = newSavedTeam(team);
-      saveTeam(localStorage, saved);
-      localStorage.setItem(activeTeamKey, saved.id);
-      void pushNow();
-      void goto(resolve(`/my-teams?team=${saved.id}`));
-    } catch {
-      copyStatus =
-        'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+  $effect(() => {
+    void sync.revision;
+    if (ready) refreshSaved();
+  });
+  function refreshSaved() {
+    const state = readSavedTeamsState();
+    saved = state.saved;
+    savedError = state.error;
+  }
+  function wishlist() {
+    if (pending) return;
+    pending = true;
+    status = actionError = '';
+    const error = wishlistCatalogTeam(team);
+    if (error) actionError = error;
+    else {
+      refreshSaved();
+      status = 'Added to Wishlist.';
     }
+    pending = false;
+  }
+  async function useTeam() {
+    if (pending) return;
+    pending = true;
+    status = actionError = '';
+    const error = await openCatalogTeam(team);
+    if (error) actionError = error;
+    else refreshSaved();
+    pending = false;
   }
 
   function back(event: MouseEvent) {
@@ -85,12 +113,16 @@
 </svelte:head>
 
 <main id="main" class="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
-  <a
-    href={resolve(`/?${page.url.searchParams}`)}
-    onclick={back}
-    class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
-    ><ArrowLeft class="size-4" aria-hidden="true" />Back to teams</a
+  <div
+    class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
   >
+    <a
+      href={resolve(`/?${page.url.searchParams}`)}
+      onclick={back}
+      class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
+      ><ArrowLeft class="size-4" aria-hidden="true" />Back to teams</a
+    >
+  </div>
 
   <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
     <span
@@ -117,8 +149,16 @@
     </p>{/if}
 
   <div class="mt-6 flex flex-wrap gap-2.5">
-    <Button class="min-h-11 px-4" disabled={!ready} onclick={useTeam}
-      >Use this team</Button
+    <Button
+      class="min-h-11 px-4"
+      disabled={!ready || savedError !== '' || pending}
+      onclick={useTeam}>Use this team</Button
+    >
+    <Button
+      variant="outline"
+      class="min-h-11 px-4"
+      disabled={!ready || savedError !== '' || pending || wishlisted}
+      onclick={wishlist}>{wishlisted ? 'Wishlisted' : 'Wishlist'}</Button
     >
     {#if isPasteUrl(team.pasteUrl)}<Button
         href={team.pasteUrl}
@@ -150,6 +190,14 @@
   <p role="status" aria-live="polite" class="mt-2 min-h-6 text-[0.9375rem]">
     {copyStatus}
   </p>
+  <p role="status" aria-live="polite" class="sr-only">{status}</p>
+  {#if savedError || actionError}<p
+      role="alert"
+      class="text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
+      {savedError || actionError}
+    </p>{/if}
   {#if team.replicaCode}<p class="provenance">
       Replica code:
       <code class="font-mono text-sm text-base-content select-all"

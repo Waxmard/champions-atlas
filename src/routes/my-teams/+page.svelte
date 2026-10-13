@@ -6,6 +6,7 @@
   import { page } from '$app/state';
   import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
+  import TeamPicker from '$lib/components/TeamPicker.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
   import X from '@lucide/svelte/icons/x';
@@ -31,19 +32,24 @@
     isMegaSpecies,
     MAX_TEAM_MEGAS,
     readSavedTeams,
-    resolveSavedTeamId,
     rosterConflict,
     saveTeam,
     swapSuggestions,
     type SavedTeam,
   } from '$lib/workbench';
   import { pushNow, sync } from '$lib/sync.svelte';
+  import {
+    liveInUseTeam,
+    resolveSavedTeamId,
+    teamsInUse,
+  } from '$lib/team-collections';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
     baseline = $state('');
+  let visitBaseline = $state<{ id: string; members: Member[] } | null>(null);
   let ready = $state(false),
     message = $state(''),
     storageError = $state('');
@@ -108,7 +114,7 @@
     navigate = true
   ) {
     try {
-      saved = readSavedTeams(localStorage);
+      saved = teamsInUse(readSavedTeams(localStorage));
       storageError = '';
       const activeId =
         activeOverride === undefined
@@ -118,6 +124,12 @@
       const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
       baseline = entry ? contentSnapshot(entry) : '';
+      if (!entry) visitBaseline = null;
+      else if (visitBaseline?.id !== entry.id)
+        visitBaseline = {
+          id: entry.id,
+          members: structuredClone($state.snapshot(entry.members)),
+        };
       if (entry && activeOverride === undefined)
         localStorage.setItem(activeTeamKey, entry.id);
       if (!entry && activeOverride === undefined && !saved.length)
@@ -192,6 +204,32 @@
     if (willUnload) return;
     if (dirty && !confirm('Discard unsaved input?')) cancel();
   });
+  let picker = $state<{ focus: () => void } | undefined>();
+  let pickerPress = false;
+  async function selectTeam(id: string): Promise<boolean> {
+    persistIfDirty();
+    try {
+      await goto(
+        (resolve('/my-teams') +
+          '?team=' +
+          encodeURIComponent(id)) as ResolvedPathname
+      );
+    } catch {
+      message = 'Could not open that team. Your current team is unchanged.';
+      return false;
+    }
+    await tick();
+    return draft?.id === id;
+  }
+  function blurName(event: FocusEvent) {
+    const target = event.relatedTarget;
+    if (
+      pickerPress ||
+      (target instanceof Element && target.closest('[data-team-picker]'))
+    )
+      return;
+    saveTeamName();
+  }
 
   function persistChange(
     patch: (team: SavedTeam) => SavedTeam,
@@ -199,9 +237,7 @@
   ): boolean {
     if (!draft) return false;
     try {
-      const latest = readSavedTeams(localStorage).find(
-        ({ id }) => id === draft!.id
-      );
+      const latest = liveInUseTeam(localStorage, draft!.id);
       if (!latest || contentSnapshot(latest) !== baseline) {
         stale = true;
         message =
@@ -210,7 +246,7 @@
       }
       const next = patch(latest);
       const pendingName = draft.name;
-      saved = saveTeam(localStorage, next);
+      saved = teamsInUse(saveTeam(localStorage, next));
       const persisted = saved.find(({ id }) => id === next.id)!;
       baseline = contentSnapshot(persisted);
       draft = structuredClone($state.snapshot(persisted));
@@ -274,6 +310,37 @@
         ),
       };
     });
+  }
+  function slotRevertReason(index: number): string {
+    const target = visitBaseline?.members[index];
+    if (!draft || !target) return '';
+    const conflict = rosterConflict(target, draft.members, index);
+    if (conflict === 'duplicate')
+      return `${target.pokemon} is already in another slot. Change that Pokémon first, then revert.`;
+    if (conflict === 'mega')
+      return 'Reverting this set would keep more than two Mega Pokémon. Change one of them first, then revert.';
+    return '';
+  }
+  function canRevertSlot(index: number): boolean {
+    const target = visitBaseline?.members[index];
+    if (!draft || editing || deleting || !target) return false;
+    return (
+      canonicalSnapshot(target) !== canonicalSnapshot(draft.members[index]) &&
+      !slotRevertReason(index)
+    );
+  }
+  function revertSlot(index: number) {
+    const target = visitBaseline?.members[index];
+    if (!target || !canRevertSlot(index)) return;
+    if (
+      persistChange((team) => ({
+        ...team,
+        members: team.members.map((existing, slot) =>
+          slot === index ? structuredClone($state.snapshot(target)) : existing
+        ),
+      }))
+    )
+      void tick().then(() => focusSetField(index, 'pokemon'));
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -386,7 +453,13 @@
     }
     let remaining: SavedTeam[];
     try {
-      remaining = deleteTeam(localStorage, id);
+      if (!liveInUseTeam(localStorage, id)) {
+        message =
+          'This team changed elsewhere. Reopen My teams before deleting.';
+        deleting = false;
+        return;
+      }
+      remaining = teamsInUse(deleteTeam(localStorage, id));
     } catch {
       message =
         'Could not delete team. Existing saved teams have been left untouched.';
@@ -427,11 +500,9 @@
     void pushNow();
     deleting = false;
     await tick();
-    document
-      .querySelector<HTMLElement>(
-        replacement ? 'select' : 'a[href$="/my-teams/new"]'
-      )
-      ?.focus();
+    if (replacement) picker?.focus();
+    else
+      document.querySelector<HTMLElement>('a[href$="/my-teams/new"]')?.focus();
   }
 </script>
 
@@ -453,10 +524,8 @@
     <Button href={resolve('/my-teams/new')} class="min-h-11 px-4"
       >Add custom team</Button
     >
-    <Button
-      href={resolve('/?browse=all')}
-      variant="outline"
-      class="min-h-11 px-4">Browse teams</Button
+    <Button href={resolve('/wishlist')} variant="outline" class="min-h-11 px-4"
+      >Wishlist</Button
     >
   </div>
   {#if storageError}<p
@@ -471,24 +540,22 @@
     </p>
   {:else if !storageError}
     {#if saved.length}
-      <label class="term mt-6 block max-w-xl"
-        >Saved team
-        <div
-          class="mt-2 overflow-hidden rounded-[var(--radius-field)] focus-within:ring-2 focus-within:ring-primary"
-        >
-          <select
-            class="select min-h-11 w-full sm:text-sm"
-            value={draft?.id || ''}
-            onchange={(event) => {
-              void goto(resolve(`/my-teams?team=${event.currentTarget.value}`));
-            }}
-          >
-            {#each saved as team (team.id)}<option value={team.id}
-                >{team.name}</option
-              >{/each}
-          </select>
-        </div>
-      </label>
+      <div
+        class="mt-6"
+        data-team-picker
+        onpointerdowncapture={() => {
+          pickerPress = true;
+          setTimeout(() => (pickerPress = false));
+        }}
+      >
+        <TeamPicker
+          bind:this={picker}
+          teams={saved}
+          value={draft?.id ?? ''}
+          onselect={selectTeam}
+          disabled={editing || deleting}
+        />
+      </div>
     {:else}
       <p class="plate mt-8 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
         No saved teams yet. Open a catalog team and choose “Use this team”.
@@ -512,7 +579,9 @@
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <header class="flex items-start gap-3 border-b pb-4">
           <div class="min-w-0">
-            <h2 class="text-lg leading-tight font-extrabold wrap-break-word">
+            <h2
+              class="text-[0.9375rem] leading-tight font-bold wrap-break-word text-base-content/70"
+            >
               {draft.name}
             </h2>
             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -558,13 +627,13 @@
             </li>
           {/each}
         </ul>
-        <div class="flex flex-wrap items-end justify-between gap-4">
+        <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
           <label class="term block w-full max-w-xl"
             >Team name<input
               class="input mt-2 min-h-11 w-full sm:text-sm"
               maxlength="200"
               bind:value={draft.name}
-              onblur={saveTeamName}
+              onblur={blurName}
               onkeydown={(e) => {
                 if (e.key === 'Enter') e.currentTarget.blur();
               }}
@@ -659,6 +728,9 @@
                 editable={true}
                 {editing}
                 onedit={(field) => openSetEditor(index, field)}
+                onrevert={() => revertSlot(index)}
+                revertDisabled={!canRevertSlot(index)}
+                revertReason={slotRevertReason(index)}
               />
             </section>
           {/each}

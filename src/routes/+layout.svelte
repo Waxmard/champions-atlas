@@ -9,11 +9,8 @@
   import type { ResolvedPathname } from '$app/types';
   import { initSync, pushNow, signOut, sync } from '$lib/sync.svelte';
   import { claimAutoReload, watchForUpdate } from '$lib/app-version';
-  import {
-    activeTeamKey,
-    readSavedTeams,
-    resolveSavedTeamId,
-  } from '$lib/workbench';
+  import { activeTeamKey, readSavedTeams } from '$lib/workbench';
+  import { resolveSavedTeamId, teamsInUse } from '$lib/team-collections';
 
   let { children } = $props();
   const isHome = $derived(page.url.pathname === resolve('/'));
@@ -68,6 +65,7 @@
       if (
         path !== resolve('/') &&
         path !== resolve('/my-teams') &&
+        path !== resolve('/wishlist') &&
         path !== resolve('/my-teams/new') &&
         !(
           path.startsWith(detailPrefix) &&
@@ -112,9 +110,8 @@
 
   function defaultDestination(): string {
     try {
-      const teams = readSavedTeams(localStorage);
       const id = resolveSavedTeamId(
-        teams,
+        teamsInUse(readSavedTeams(localStorage)),
         null,
         localStorage.getItem(activeTeamKey)
       );
@@ -161,7 +158,9 @@
       if (selected) {
         try {
           if (
-            !readSavedTeams(localStorage).some((team) => team.id === selected)
+            !teamsInUse(readSavedTeams(localStorage)).some(
+              (team) => team.id === selected
+            )
           )
             destination = resolve('/my-teams');
         } catch {

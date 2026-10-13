@@ -9,7 +9,9 @@ flowchart LR
   sources[Catalog sources] --> importer[Importer]
   importer --> catalog[Bundled catalog]
   catalog --> browser[Team browser]
+  browser --> wishlist[Wishlist]
   browser --> saved[Saved teams]
+  wishlist --> saved
 ```
 
 ## Overview
@@ -45,12 +47,18 @@ and importer/filter/ranking tests plus a server-rendering smoke test.
 
 ```sh
 npx playwright install chromium webkit
-npm run test:e2e
+npm run test:e2e:smoke # Run eight critical scenarios across 15 browser cases.
+npm run test:e2e       # Run the full browser suite.
 ```
 
 These cover desktop and mobile filtering, details, Back/Forward, reload, and
 invalid links, saving, comparison, editing, and export against an E2E build.
-`npm run test:e2e` disables Firebase and enables `E2E_CATALOG_FIXTURE=1` to
+CI runs smoke coverage on pull requests and pushes to `main`. To run the full
+suite remotely, select **Actions → CI → Run workflow**. Every CI event retains
+`make ci`, Chromium and WebKit installation, and failure traces. Deployment
+workflows run independently of CI.
+
+Both browser commands disable Firebase and enable `E2E_CATALOG_FIXTURE=1` to
 isolate a deterministic custom-rule roster in the bundled catalog. The overlay
 does not modify generated catalog data or normal production builds.
 Use `npm run format` to format files and `npm run preview` to serve a built app.
@@ -96,6 +104,12 @@ Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
 
+The app renders decorative sprites and item icons only when their PNG files exist
+in the local asset inventory captured at development server startup or build time. Missing
+sprites render nothing; missing item icons show a dash. Names remain visible, and
+absent files trigger no image requests. Restart the development server or rebuild
+after synchronizing additional images. Importer download failures remain visible.
+
 Preview imports request live source refreshes with `CHECK_SHEET=1` and enable
 `ALLOW_STALE_SOURCE_CACHE=1`. If a refresh fails with an eligible transient HTTP
 or network error, the importer warns and reuses validated raw source cache,
@@ -117,6 +131,18 @@ in **My teams** and paste a complete six-Pokémon export from
 Custom imports require an item, ability, nature, EVs, and four unique moves for
 every Pokémon. They have no published result claims; legality is unverified.
 
+Choose **Wishlist** on a catalog card to bookmark a team without adding it to
+My teams. **Wishlist** on **My teams** lists those bookmarks. **Use this
+team** there, in Browse, or on a team page moves the same saved team into
+My teams; **Remove from Wishlist** deletes only the bookmark. A bookmark whose
+source team left the catalog stays usable and shows its saved roster without
+catalog details. Bookmarks never appear in the My teams picker.
+
+**My teams** selects among in-use teams with an icon-first search field. Type a
+team name or any of its Pokémon to filter and rank the list, then choose a result
+with the arrow keys and Enter; Escape restores the current team without renaming
+it.
+
 Select a field on a saved team card to edit its set. Completed text saves on blur
 or Enter; selections and suggestions save immediately when the whole set is
 valid. Changed EV spreads must total 66 points. **Done** saves valid pending input
@@ -124,6 +150,10 @@ and closes the editor; **Close** offers to discard only invalid or failed-write
 input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
+
+The card’s **Revert changes** action appears only when it can restore that slot
+to its state when you opened the team. It stays hidden for unchanged sets,
+while editing or deleting, and when restoring would cause a roster conflict.
 
 Expand **Original & history** to compare your current team with the original and
 restore the original, including name, sets, and roster order. **Restore original

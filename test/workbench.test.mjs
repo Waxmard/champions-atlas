@@ -12,9 +12,9 @@ import {
   setText,
   storageKey,
   catalogSuggestions,
-  resolveSavedTeamId,
   swapSuggestions,
 } from '../src/lib/workbench.ts';
+import { resolveSavedTeamId } from '../src/lib/team-collections.ts';
 import {
   championsSpreadTotal,
   formatChampionsSpread,

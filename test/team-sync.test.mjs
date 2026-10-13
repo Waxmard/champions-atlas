@@ -146,3 +146,93 @@ test('invalid teams and overflow never mutate inputs', () => {
   assert.equal(local[0].name, 'Local');
   assert.equal(remote[0].name, 'Remote');
 });
+test('Wishlist metadata survives sync snapshots and merge promotion', () => {
+  const bookmark = {
+    ...team('wish'),
+    collection: 'wishlist',
+    sources: [
+      { name: 'Source', pasteUrl: 'https://pokepast.es/abcdef1234567890' },
+    ],
+  };
+  const snapshot = teamsSnapshot([bookmark]);
+  assert.match(snapshot, /wishlist/);
+  const promoted = { ...bookmark, collection: 'my-teams' };
+  assert.equal(
+    merge([bookmark], [promoted], [bookmark])[0].collection,
+    'my-teams'
+  );
+  const staleDelete = merge([bookmark], [], [promoted]);
+  assert.equal(staleDelete[0].collection, 'my-teams');
+});
+
+const wishlisted = (id, name = id) => ({
+  ...team(id, name),
+  collection: 'wishlist',
+  sources: [
+    { name: 'Source', pasteUrl: 'https://pokepast.es/abcdef1234567890' },
+  ],
+});
+
+test('sequential same-ID promotion converges in both directions', () => {
+  const base = [wishlisted('wish')];
+  const promoted = [{ ...base[0], collection: 'my-teams' }];
+  assert.deepEqual(merge(base, base, promoted), promoted);
+  assert.deepEqual(merge(base, promoted, base), promoted);
+  assert.deepEqual(merge(promoted, promoted, promoted), promoted);
+  assert.deepEqual(merge(base, promoted, promoted), promoted);
+  assert.equal(
+    teamsSnapshot(merge(base, promoted, base)),
+    teamsSnapshot(promoted)
+  );
+});
+
+test('promotion versus stale Wishlist deletion recovers the promoted team intact', () => {
+  const base = [wishlisted('wish')];
+  const promoted = [{ ...base[0], collection: 'my-teams' }];
+  const ids = new Map();
+  const recovered = merge(base, [], promoted, ids);
+  assert.equal(recovered.length, 1);
+  assert.notEqual(recovered[0].id, 'wish');
+  assert.equal(recovered[0].name, 'wish (recovered)');
+  assert.equal(recovered[0].collection, 'my-teams');
+  assert.deepEqual(recovered[0].original, promoted[0].original);
+  assert.deepEqual(recovered[0].members, promoted[0].members);
+  assert.deepEqual(recovered[0].sources, promoted[0].sources);
+  assert.deepEqual(merge(base, [], promoted, ids), recovered);
+  assert.deepEqual(merge(recovered, recovered, recovered), recovered);
+  assert.deepEqual(merge(base, promoted, []), promoted);
+});
+
+test('recovered conflicting teams keep each side collection', () => {
+  const base = [wishlisted('wish')];
+  const localEdit = [{ ...base[0], name: 'Local rename' }];
+  const remotePromoted = [{ ...base[0], collection: 'my-teams' }];
+  const result = merge(base, localEdit, remotePromoted);
+  assert.equal(result.length, 2);
+  assert.deepEqual(
+    result.map(({ id, name, collection }) => ({ id, name, collection })),
+    [
+      { id: 'wish', name: 'Local rename', collection: 'wishlist' },
+      {
+        id: result[1].id,
+        name: 'wish (recovered)',
+        collection: 'my-teams',
+      },
+    ]
+  );
+  assert.notEqual(result[1].id, 'wish');
+  assert.deepEqual(result[1].sources, base[0].sources);
+});
+
+test('first adoption recovery retains Wishlist collection on the displaced team', () => {
+  const cloud = { ...wishlisted('one', 'Cloud'), collection: 'my-teams' };
+  const local = wishlisted('one', 'Local');
+  const merged = merge(null, [local], [cloud]);
+  assert.deepEqual(
+    merged.map(({ name, collection }) => ({ name, collection })),
+    [
+      { name: 'Cloud', collection: 'my-teams' },
+      { name: 'Local (recovered)', collection: 'wishlist' },
+    ]
+  );
+});

@@ -47,6 +47,16 @@ export const normalize = (text: string) =>
     .replace(/♂/g, 'm')
     .replace(/[^a-z0-9]/g, '');
 
+export function browsePokemon(name: string): string {
+  if (
+    ['floetteeternal', 'floetteeternalmega', 'floettemega'].includes(
+      normalize(name)
+    )
+  )
+    return 'Floette-Eternal';
+  return name.replace(/[- ]mega(?:[- ][xy])?$/i, '');
+}
+export const pokemonId = (name: string) => normalize(browsePokemon(name));
 export function isPasteUrl(value: string): boolean {
   return (
     value === value.trim() &&
@@ -72,12 +82,13 @@ export function readFilters(params: URLSearchParams): MemberFilter[] {
       !tuple[0]
     )
       throw new Error('Invalid Pokémon filter link.');
-    const key = normalize(tuple[0]);
+    const pokemon = browsePokemon(tuple[0]);
+    const key = normalize(pokemon);
     if (!key || selected.has(key))
       throw new Error('Invalid or duplicate Pokémon filter.');
     selected.add(key);
     return {
-      pokemon: tuple[0],
+      pokemon,
       item: tuple[1],
       ability: tuple[2],
       move: tuple[3],
@@ -90,7 +101,10 @@ export function writeFilters(params: URLSearchParams, filters: MemberFilter[]) {
   result.delete('member');
   result.delete('page');
   for (const { pokemon, item, ability, move } of filters)
-    result.append('member', JSON.stringify([pokemon, item, ability, move]));
+    result.append(
+      'member',
+      JSON.stringify([browsePokemon(pokemon), item, ability, move])
+    );
   return result;
 }
 
@@ -101,7 +115,7 @@ export function matchesTeam(
   return filters.every((filter) =>
     team.members.some(
       (member) =>
-        normalize(member.pokemon) === normalize(filter.pokemon) &&
+        pokemonId(member.pokemon) === pokemonId(filter.pokemon) &&
         (!filter.item ||
           normalize(member.item || '') === normalize(filter.item)) &&
         (!filter.ability ||
@@ -386,16 +400,15 @@ export function getMemberOptions(
   pokemon: string,
   field: 'item' | 'ability' | 'move'
 ): string[] {
-  const key = `${normalize(pokemon)}:${field}`;
+  const identity = pokemonId(pokemon);
+  const key = `${identity}:${field}`;
   let result = optionsCache.get(key);
   if (!result) {
     result = [
       ...new Set(
         teams.flatMap((team) =>
           team.members
-            .filter(
-              (member) => normalize(member.pokemon) === normalize(pokemon)
-            )
+            .filter((member) => pokemonId(member.pokemon) === identity)
             .flatMap((member) =>
               field === 'move'
                 ? member.moves

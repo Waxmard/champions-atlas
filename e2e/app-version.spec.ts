@@ -53,34 +53,36 @@ test('a changed build reloads once and then prompts instead of reloading again',
   expect(loads()).toBe(2);
 });
 
-test('a resumed app with an open editor prompts instead of reloading', async ({
-  page,
-}) => {
-  let buildId = 'e2e';
-  await page.route('**/version.json', (route) =>
-    route.fulfill({ json: { buildId } })
-  );
-  const loads = countDocumentLoads(page);
-  await page.goto('/teams/' + peter.id);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
-  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    peter.name
-  );
-  await page
-    .getByRole('button', { name: 'Edit Weavile item', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expect(editor).toBeVisible();
+test(
+  'a resumed app with an open editor prompts instead of reloading',
+  { tag: '@smoke' },
+  async ({ page }) => {
+    let buildId = 'e2e';
+    await page.route('**/version.json', (route) =>
+      route.fulfill({ json: { buildId } })
+    );
+    const loads = countDocumentLoads(page);
+    await page.goto('/teams/' + peter.id);
+    await page
+      .getByRole('button', { name: 'Use this team', exact: true })
+      .click();
+    await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+      peter.name
+    );
+    await page
+      .getByRole('button', { name: 'Edit Weavile item', exact: true })
+      .click();
+    const editor = page.getByRole('dialog', {
+      name: 'Edit Weavile set',
+      exact: true,
+    });
+    await expect(editor).toBeVisible();
 
-  buildId = 'newer-build';
-  await resume(page);
+    buildId = 'newer-build';
+    await resume(page);
 
-  await expect(reloadButton(page)).toBeVisible();
-  await expect(editor).toBeVisible();
-  expect(loads()).toBe(1);
-});
+    await expect(reloadButton(page)).toBeVisible();
+    await expect(editor).toBeVisible();
+    expect(loads()).toBe(1);
+  }
+);

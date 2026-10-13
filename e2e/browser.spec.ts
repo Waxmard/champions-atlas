@@ -54,121 +54,128 @@ test('sprite cards, responsive filters, and external attribution work', async ({
   }
 });
 
-test('multi-Pokémon item filters survive details, Back, Forward, and reload', async ({
-  page,
-}, testInfo) => {
-  const errors: string[] = [];
-  page.on('pageerror', (error) => errors.push(error.message));
-  const openMobileFilters = async () => {};
-  await page.goto('/');
-  await openMobileFilters();
-  const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
-  const incineroar = page.getByRole('option', {
-    name: 'Incineroar',
-    exact: true,
-  });
-  await expect(async () => {
-    await picker.fill('Incineroar');
-    await expect(incineroar).toBeVisible({ timeout: 1_000 });
-  }).toPass({ timeout: 15_000 });
-  await incineroar.click();
-  await expect(picker).toHaveValue('');
-  await expect(
-    page.getByRole('button', { name: 'Remove Incineroar', exact: true })
-  ).toBeVisible();
-  await picker.fill('Rillaboom');
-  await expect(
-    page.getByRole('option', { name: 'Rillaboom', exact: true })
-  ).toBeVisible();
-  await picker.press('ArrowDown');
-  await picker.press('Enter');
-  await expect(
-    page.getByRole('button', { name: 'Remove Rillaboom', exact: true })
-  ).toBeVisible();
-  await expect(picker).toHaveValue('');
-  await page
-    .getByRole('region', { name: 'Incineroar constraints' })
-    .getByLabel('Held item')
-    .selectOption('Sitrus Berry');
-  await page
-    .getByRole('combobox', { name: 'Sort teams' })
-    .selectOption('recent');
-  const query = new URL(page.url()).search;
-  expect(new URLSearchParams(query).getAll('member')).toHaveLength(2);
-  const cards = page
-    .getByRole('region', { name: 'Matching teams' })
-    .getByRole('article');
-  await expect(cards.first()).toBeVisible();
-  const count = await cards.count();
-  for (let i = 0; i < count; i++) {
+test(
+  'multi-Pokémon item filters survive details, Back, Forward, and reload',
+  { tag: '@smoke' },
+  async ({ page }, testInfo) => {
+    const errors: string[] = [];
+    page.on('pageerror', (error) => errors.push(error.message));
+    const openMobileFilters = async () => {};
+    await page.goto('/');
+    await openMobileFilters();
+    const picker = page.getByRole('combobox', { name: 'Add Pokémon filter' });
+    const incineroar = page.getByRole('option', {
+      name: 'Incineroar',
+      exact: true,
+    });
+    await expect(async () => {
+      await picker.fill('Incineroar');
+      await expect(incineroar).toBeVisible({ timeout: 1_000 });
+    }).toPass({ timeout: 15_000 });
+    await incineroar.click();
+    await expect(picker).toHaveValue('');
     await expect(
-      cards.nth(i).getByText('Incineroar', { exact: true })
+      page.getByRole('button', { name: 'Remove Incineroar', exact: true })
     ).toBeVisible();
+    await picker.fill('Rillaboom');
     await expect(
-      cards.nth(i).getByText('Rillaboom', { exact: true })
+      page.getByRole('option', { name: 'Rillaboom', exact: true })
     ).toBeVisible();
-  }
-  await cards.first().scrollIntoViewIfNeeded();
-  const scroll = await page.evaluate(() => scrollY);
-  const firstName = await cards.first().getByRole('heading').innerText();
-  const detailHref = await cards.first().getByRole('link').getAttribute('href');
-  expect(detailHref).toBeTruthy();
-  await page.screenshot({
-    path: testInfo.outputPath('filtered-catalog.png'),
-    fullPage: false,
-  });
-  if (testInfo.project.use.isMobile) {
-    await cards.first().getByRole('link').tap();
-  } else {
-    await cards.first().getByRole('link').click();
-  }
-  await expect(page).toHaveURL(
-    new RegExp(`${detailHref!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
-  );
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
-  await expect(
-    page.getByRole('heading', { name: 'Results & sources' })
-  ).toBeVisible();
-  const published = page.getByText('Published paste text').locator('..');
-  await published.locator('summary').click();
-  await expect(published.locator('pre')).not.toContainText('Level:');
-  await expect(published.locator('pre')).not.toContainText('Tera Type:');
-  await expect(published.locator('pre')).not.toContainText('IVs:');
-  await expect(
-    page
-      .getByRole('region', { name: 'Pokémon sets' })
-      .locator('img[src*="/items/"]')
-      .first()
-  ).toBeVisible();
-  await page.getByRole('link', { name: 'Back to teams' }).click();
-  await openMobileFilters();
-  await expect(page).toHaveURL(
-    new RegExp(`\\?${query.slice(1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
-  );
-  await expect(
-    page
+    await picker.press('ArrowDown');
+    await picker.press('Enter');
+    await expect(
+      page.getByRole('button', { name: 'Remove Rillaboom', exact: true })
+    ).toBeVisible();
+    await expect(picker).toHaveValue('');
+    await page
       .getByRole('region', { name: 'Incineroar constraints' })
       .getByLabel('Held item')
-  ).toHaveValue('Sitrus Berry');
-  await expect.poll(() => page.evaluate(() => scrollY)).toBeCloseTo(scroll, -1);
-  await page.goForward();
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
-  await page.goBack();
-  await page.reload();
-  await openMobileFilters();
-  await expect(
-    page.getByRole('button', { name: 'Remove Rillaboom', exact: true })
-  ).toBeVisible();
-  await expect(page.getByRole('combobox', { name: 'Sort teams' })).toHaveValue(
-    'recent'
-  );
-  expect(
-    await page.evaluate(
-      () => document.documentElement.scrollWidth <= window.innerWidth
-    )
-  ).toBe(true);
-  expect(errors).toEqual([]);
-});
+      .selectOption('Sitrus Berry');
+    await page
+      .getByRole('combobox', { name: 'Sort teams' })
+      .selectOption('recent');
+    const query = new URL(page.url()).search;
+    expect(new URLSearchParams(query).getAll('member')).toHaveLength(2);
+    const cards = page
+      .getByRole('region', { name: 'Matching teams' })
+      .getByRole('article');
+    await expect(cards.first()).toBeVisible();
+    const count = await cards.count();
+    for (let i = 0; i < count; i++) {
+      await expect(
+        cards.nth(i).getByText('Incineroar', { exact: true })
+      ).toBeVisible();
+      await expect(
+        cards.nth(i).getByText('Rillaboom', { exact: true })
+      ).toBeVisible();
+    }
+    await cards.first().scrollIntoViewIfNeeded();
+    const scroll = await page.evaluate(() => scrollY);
+    const firstName = await cards.first().getByRole('heading').innerText();
+    const detailHref = await cards
+      .first()
+      .getByRole('link')
+      .getAttribute('href');
+    expect(detailHref).toBeTruthy();
+    await page.screenshot({
+      path: testInfo.outputPath('filtered-catalog.png'),
+      fullPage: false,
+    });
+    if (testInfo.project.use.isMobile) {
+      await cards.first().getByRole('link').tap();
+    } else {
+      await cards.first().getByRole('link').click();
+    }
+    await expect(page).toHaveURL(
+      new RegExp(`${detailHref!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+    );
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
+    await expect(
+      page.getByRole('heading', { name: 'Results & sources' })
+    ).toBeVisible();
+    const published = page.getByText('Published paste text').locator('..');
+    await published.locator('summary').click();
+    await expect(published.locator('pre')).not.toContainText('Level:');
+    await expect(published.locator('pre')).not.toContainText('Tera Type:');
+    await expect(published.locator('pre')).not.toContainText('IVs:');
+    await expect(
+      page
+        .getByRole('region', { name: 'Pokémon sets' })
+        .locator('[data-item-icon]')
+        .first()
+    ).toBeVisible();
+    await page.getByRole('link', { name: 'Back to teams' }).click();
+    await openMobileFilters();
+    await expect(page).toHaveURL(
+      new RegExp(`\\?${query.slice(1).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+    );
+    await expect(
+      page
+        .getByRole('region', { name: 'Incineroar constraints' })
+        .getByLabel('Held item')
+    ).toHaveValue('Sitrus Berry');
+    await expect
+      .poll(() => page.evaluate(() => scrollY))
+      .toBeCloseTo(scroll, -1);
+    await page.goForward();
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
+    await page.goBack();
+    await page.reload();
+    await openMobileFilters();
+    await expect(
+      page.getByRole('button', { name: 'Remove Rillaboom', exact: true })
+    ).toBeVisible();
+    await expect(
+      page.getByRole('combobox', { name: 'Sort teams' })
+    ).toHaveValue('recent');
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth
+      )
+    ).toBe(true);
+    expect(errors).toEqual([]);
+  }
+);
 
 test('invalid filters stay explicit; team deep links and missing teams work', async ({
   page,
@@ -304,6 +311,7 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     .getByRole('article')
     .first();
   await firstCard.getByRole('link').first().click();
+  await expect(page.getByRole('link', { name: 'Back to teams' })).toBeVisible();
   await expect(
     page.getByRole('button', { name: 'Use this team' })
   ).toBeEnabled();
@@ -353,6 +361,33 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     };
   });
   expect(skipTarget.targetTop).toBeGreaterThanOrEqual(skipTarget.headerBottom);
+
+  // A bare "/" resumes the last visited page, so enter Browse by its own URL.
+  await page.goto('/?browse=all');
+  await page
+    .getByRole('region', { name: 'Matching teams' })
+    .getByRole('article')
+    .first()
+    .getByRole('link')
+    .click();
+  await expect(page).toHaveURL(/\/teams\//);
+  for (const width of [320, 390]) {
+    await page.setViewportSize({ width, height: viewport.height });
+    await page.evaluate(() =>
+      window.scrollTo(0, document.documentElement.scrollHeight)
+    );
+    const box = await page
+      .getByRole('link', { name: 'Back to teams' })
+      .boundingBox();
+    expect(box).not.toBeNull();
+    if (!box) throw new Error('The team Back link is missing.');
+    const { header } = await shellBounds();
+    expect(box.y).toBeGreaterThanOrEqual(header.bottom);
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth)
+    ).toBeLessThanOrEqual(width);
+  }
 });
 
 test('custom-rule visibility and browse state survive navigation', async ({
@@ -407,6 +442,7 @@ test('custom-rule visibility and browse state survive navigation', async ({
   await expect
     .poll(() => new URL(page.url()).pathname)
     .toBe(`/teams/${customRulesTeam.id}`);
+  await expect(page.getByRole('link', { name: 'Back to teams' })).toBeVisible();
   await expect(
     page.getByText('Custom-rule event:', { exact: false })
   ).toBeVisible();
@@ -474,6 +510,7 @@ test('custom-rule visibility and browse state survive navigation', async ({
   const ordinary = cards.first();
   if (testInfo.project.use.isMobile) await ordinary.getByRole('link').tap();
   else await ordinary.getByRole('link').click();
+  await expect(page.getByRole('link', { name: 'Back to teams' })).toBeVisible();
   await expect(useTeam).toBeEnabled();
   await useTeam.click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);
