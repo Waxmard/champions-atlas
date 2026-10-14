@@ -58,6 +58,15 @@ function validateCurrentSets(value: unknown): CurrentSet[] {
   return result.data;
 }
 
+function serializeCurrentSets(sets: CurrentSet[]) {
+  const serialized = JSON.stringify(sets);
+  if (serialized === undefined) throw new Error(readError);
+  return {
+    serialized,
+    validated: validateCurrentSets(JSON.parse(serialized)),
+  };
+}
+
 function sameEntry(a: CurrentSet | undefined, b: CurrentSet | undefined) {
   return a === undefined
     ? b === undefined
@@ -76,25 +85,60 @@ export function readCurrentSets(
   }
 }
 
-export function saveCurrentSet(
+export function saveCurrentSets(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
-  member: Member
-): CurrentSet[] {
+  members: Member[],
+  confirmOverwrite: (overwritten: CurrentSet[]) => boolean
+): CurrentSet[] | null {
   const current = readCurrentSets(storage);
-  const entry = {
-    id: pokemonId(member.pokemon),
-    member: structuredClone(member),
-  };
-  const index = current.findIndex(({ id }) => id === entry.id);
-  const candidate = [...current];
-  if (index === -1) candidate.push(entry);
-  else candidate[index] = entry;
+  const incoming = members.map((member) => {
+    const snapshot = structuredClone(member);
+    if (typeof snapshot?.pokemon !== 'string') throw new Error(readError);
+    return { id: pokemonId(snapshot.pokemon), member: snapshot };
+  });
+  const incomingIds = new Set<string>();
+  for (const { id } of incoming) {
+    if (incomingIds.has(id))
+      throw new Error('Cannot save two sets for the same Pokémon at once.');
+    incomingIds.add(id);
+  }
+  if (incoming.length === 0) return current;
 
-  const serialized = JSON.stringify(candidate);
-  if (serialized === undefined) throw new Error(readError);
-  const validated = validateCurrentSets(JSON.parse(serialized));
-  if (currentSetsSnapshot(current) === currentSetsSnapshot(validated))
-    return current;
+  const currentById = new Map(current.map((entry) => [entry.id, entry]));
+  const incomingById = new Map(incoming.map((entry) => [entry.id, entry]));
+  const candidate = new Map(currentById);
+  for (const entry of incoming) candidate.set(entry.id, entry);
+  serializeCurrentSets([...candidate.values()]);
+
+  const overwritten = incoming
+    .flatMap(({ id }) => {
+      const existing = currentById.get(id);
+      return existing !== undefined &&
+        !sameEntry(existing, incomingById.get(id))
+        ? [structuredClone(existing)]
+        : [];
+    })
+    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  if (overwritten.length > 0 && !confirmOverwrite(overwritten)) return null;
+
+  const latest = readCurrentSets(storage);
+  const latestById = new Map(latest.map((entry) => [entry.id, entry]));
+  for (const entry of incoming) {
+    const latestEntry = latestById.get(entry.id);
+    if (
+      !sameEntry(currentById.get(entry.id), latestEntry) &&
+      !sameEntry(latestEntry, entry)
+    )
+      throw new Error(
+        'Current Pokémon sets changed while confirming. Try saving again.'
+      );
+  }
+
+  const merged = new Map(latest.map((entry) => [entry.id, entry]));
+  for (const entry of incoming) merged.set(entry.id, entry);
+  const { serialized, validated } = serializeCurrentSets([...merged.values()]);
+  if (currentSetsSnapshot(latest) === currentSetsSnapshot(validated))
+    return latest;
   storage.setItem(currentSetsKey, serialized);
   return validated;
 }

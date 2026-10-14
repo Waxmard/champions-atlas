@@ -7,7 +7,7 @@ import {
   mergeCurrentSets,
   readCurrentSets,
   reuseCurrentSet,
-  saveCurrentSet,
+  saveCurrentSets,
   stageCurrentSets,
 } from '../src/lib/current-sets.ts';
 import {
@@ -43,6 +43,9 @@ function memoryStorage(initial = null, setError = null) {
     },
     get writes() {
       return writes;
+    },
+    replace(next) {
+      value = next;
     },
     storage: {
       getItem(key) {
@@ -101,7 +104,9 @@ test('current-set saves share Browse identities, preserve snapshots, and skip id
   const store = memoryStorage();
   const mawile = member('Mawile');
   const mawileBefore = structuredClone(mawile);
-  saveCurrentSet(store.storage, mawile);
+  saveCurrentSets(store.storage, [mawile], () =>
+    assert.fail('new snapshots should not prompt')
+  );
   assert.equal(store.writes, 1);
   const mega = member('Mawile-Mega', {
     item: 'Mawilite',
@@ -109,7 +114,13 @@ test('current-set saves share Browse identities, preserve snapshots, and skip id
     metadata: { source: 'saved' },
   });
   const megaBefore = structuredClone(mega);
-  let sets = saveCurrentSet(store.storage, mega);
+  let sets = saveCurrentSets(store.storage, [mega], (overwritten) => {
+    assert.deepEqual(
+      overwritten.map(({ id }) => id),
+      ['mawile']
+    );
+    return true;
+  });
   assert.equal(store.writes, 2);
   assert.equal(sets.length, 1);
   assert.equal(sets[0].id, 'mawile');
@@ -118,14 +129,24 @@ test('current-set saves share Browse identities, preserve snapshots, and skip id
   assert.deepEqual(mega, megaBefore);
 
   const second = member('Pikachu');
-  sets = saveCurrentSet(store.storage, second);
+  sets = saveCurrentSets(store.storage, [second], () =>
+    assert.fail('new snapshots should not prompt')
+  );
   assert.deepEqual(sets.map(({ id }) => id).sort(), ['mawile', 'pikachu']);
-  saveCurrentSet(store.storage, structuredClone(second));
+  saveCurrentSets(store.storage, [structuredClone(second)], () =>
+    assert.fail('identical snapshots should not prompt')
+  );
   assert.equal(store.writes, 3);
 
   const replacement = member('Mawile', { item: 'New item' });
   const replacementBefore = structuredClone(replacement);
-  sets = saveCurrentSet(store.storage, replacement);
+  sets = saveCurrentSets(store.storage, [replacement], (overwritten) => {
+    assert.deepEqual(
+      overwritten.map(({ id }) => id),
+      ['mawile']
+    );
+    return true;
+  });
   assert.equal(store.writes, 4);
   assert.equal(sets.length, 2);
   assert.deepEqual(sets.find(({ id }) => id === 'mawile').member, replacement);
@@ -133,9 +154,23 @@ test('current-set saves share Browse identities, preserve snapshots, and skip id
   assert.deepEqual(replacement, replacementBefore);
   assert.deepEqual(mega, megaBefore);
 
-  saveCurrentSet(store.storage, member('Floette'));
-  saveCurrentSet(store.storage, member('Floette-Eternal'));
-  saveCurrentSet(store.storage, member('Floette-Eternal-Mega'));
+  saveCurrentSets(store.storage, [member('Floette')], () =>
+    assert.fail('new snapshots should not prompt')
+  );
+  saveCurrentSets(store.storage, [member('Floette-Eternal')], () =>
+    assert.fail('new snapshots should not prompt')
+  );
+  saveCurrentSets(
+    store.storage,
+    [member('Floette-Eternal-Mega')],
+    (overwritten) => {
+      assert.deepEqual(
+        overwritten.map(({ id }) => id),
+        ['floetteeternal']
+      );
+      return true;
+    }
+  );
   sets = readCurrentSets(store.storage);
   assert.equal(sets.filter(({ id }) => id === 'floette').length, 1);
   assert.equal(sets.filter(({ id }) => id === 'floetteeternal').length, 1);
@@ -143,7 +178,247 @@ test('current-set saves share Browse identities, preserve snapshots, and skip id
     sets.find(({ id }) => id === 'floetteeternal').member.pokemon,
     'Floette-Eternal-Mega'
   );
-  assert.deepEqual(readCurrentSets({ getItem: () => null }), []);
+  const writes = store.writes;
+  assert.deepEqual(
+    saveCurrentSets(store.storage, [], () =>
+      assert.fail('empty saves should not prompt')
+    ),
+    sets
+  );
+  assert.equal(store.writes, writes);
+});
+
+test('bulk current-set saves six new snapshots with one write', () => {
+  const unrelated = member('Ditto', {
+    set: 'Ditto @ Leftovers\n- Protect',
+    metadata: { source: 'unrelated' },
+  });
+  const store = memoryStorage(serialized(unrelated));
+  const members = [
+    'Pikachu',
+    'Eevee',
+    'Gengar',
+    'Snorlax',
+    'Sylveon',
+    'Weavile',
+  ].map((pokemon) =>
+    member(pokemon, { metadata: { source: 'batch' }, set: `${pokemon} set` })
+  );
+  const before = structuredClone(members);
+  const saved = saveCurrentSets(store.storage, members, () =>
+    assert.fail('new snapshots should not prompt')
+  );
+
+  assert.equal(store.writes, 1);
+  assert.equal(saved.length, 7);
+  assert.deepEqual(saved.find(({ id }) => id === 'ditto').member, unrelated);
+  for (const value of members)
+    assert.deepEqual(
+      saved.find(({ id }) => id === pokemonId(value.pokemon)).member,
+      value
+    );
+  assert.deepEqual(members, before);
+});
+
+test('bulk current-set saves confirm only changed entries and cancel atomically', () => {
+  const original = serialized(
+    member('Weavile', { item: 'Old item' }),
+    member('Eevee', { ability: 'Old ability' }),
+    member('Pikachu'),
+    member('Ditto', { set: 'Exact unrelated text' })
+  );
+  const incoming = [
+    member('Sylveon'),
+    member('Weavile', {
+      item: 'New item',
+      set: 'Weavile @ New item\n- Protect',
+      metadata: { source: 'batch' },
+    }),
+    member('Pikachu'),
+    member('Eevee', { ability: 'New ability', nature: null, spread: null }),
+  ];
+  const before = structuredClone(incoming);
+  const expectedIds = ['eevee', 'weavile'];
+  const accepted = memoryStorage(original);
+  let confirmations = 0;
+  const result = saveCurrentSets(accepted.storage, incoming, (overwritten) => {
+    confirmations += 1;
+    assert.deepEqual(
+      overwritten.map(({ id }) => id),
+      expectedIds
+    );
+    overwritten[0].member.ability = 'callback mutation';
+    overwritten.reverse();
+    return true;
+  });
+  assert.equal(confirmations, 1);
+  assert.equal(accepted.writes, 1);
+  assert.deepEqual(incoming, before);
+  assert.deepEqual(
+    result.find(({ id }) => id === 'weavile').member,
+    incoming[1]
+  );
+  assert.deepEqual(result.find(({ id }) => id === 'eevee').member, incoming[3]);
+  assert.deepEqual(
+    result.find(({ id }) => id === 'ditto').member,
+    member('Ditto', { set: 'Exact unrelated text' })
+  );
+  assert.deepEqual(
+    result.find(({ id }) => id === 'sylveon').member,
+    incoming[0]
+  );
+
+  const cancelled = memoryStorage(original);
+  let cancelConfirmations = 0;
+  assert.equal(
+    saveCurrentSets(cancelled.storage, incoming, (overwritten) => {
+      cancelConfirmations += 1;
+      assert.deepEqual(
+        overwritten.map(({ id }) => id),
+        expectedIds
+      );
+      return false;
+    }),
+    null
+  );
+  assert.equal(cancelConfirmations, 1);
+  assert.equal(cancelled.value, original);
+  assert.equal(cancelled.writes, 0);
+});
+
+test('bulk current-set saves reject duplicate Browse identities', () => {
+  const original = serialized(member('Ditto'));
+  for (const members of [
+    [member('Mawile'), member('Mawile-Mega')],
+    [member('Floette-Eternal'), member('Floette-Eternal-Mega')],
+  ]) {
+    const store = memoryStorage(original);
+    const before = structuredClone(members);
+    assert.throws(
+      () =>
+        saveCurrentSets(store.storage, members, () =>
+          assert.fail('duplicate identities should not prompt')
+        ),
+      {
+        message: 'Cannot save two sets for the same Pokémon at once.',
+      }
+    );
+    assert.deepEqual(members, before);
+    assert.equal(store.value, original);
+    assert.equal(store.writes, 0);
+  }
+});
+
+test('bulk current-set saves keep ordinary Floette separate from Eternal', () => {
+  const store = memoryStorage();
+  const members = [member('Floette'), member('Floette-Eternal')];
+  const saved = saveCurrentSets(store.storage, members, () =>
+    assert.fail('distinct new snapshots should not prompt')
+  );
+  assert.deepEqual(saved.map(({ id }) => id).sort(), [
+    'floette',
+    'floetteeternal',
+  ]);
+  assert.deepEqual(saved.map(({ member: value }) => value.pokemon).sort(), [
+    'Floette',
+    'Floette-Eternal',
+  ]);
+  assert.equal(store.writes, 1);
+});
+
+test('bulk current-set saves propagate confirmation errors without writing', () => {
+  const original = serialized(member('Weavile', { item: 'Old item' }));
+  const store = memoryStorage(original);
+  const confirmationError = new Error('confirmation failed');
+  assert.throws(
+    () =>
+      saveCurrentSets(
+        store.storage,
+        [member('Weavile', { item: 'New item' })],
+        () => {
+          throw confirmationError;
+        }
+      ),
+    (error) => error === confirmationError
+  );
+  assert.equal(store.value, original);
+  assert.equal(store.writes, 0);
+});
+
+test('bulk current-set saves reject affected races and retain unrelated changes', () => {
+  const original = serialized(
+    member('Weavile', { item: 'Old item' }),
+    member('Ditto', { item: 'Original unrelated item' })
+  );
+  const desired = member('Weavile', { item: 'New item' });
+  const raceMessage =
+    'Current Pokémon sets changed while confirming. Try saving again.';
+
+  const affected = memoryStorage(original);
+  const concurrentAffected = serialized(
+    member('Weavile', { item: 'Concurrent item' }),
+    member('Ditto', { item: 'Original unrelated item' })
+  );
+  assert.throws(
+    () =>
+      saveCurrentSets(affected.storage, [desired], () => {
+        affected.replace(concurrentAffected);
+        return true;
+      }),
+    { message: raceMessage }
+  );
+  assert.equal(affected.value, concurrentAffected);
+  assert.equal(affected.writes, 0);
+
+  const newSlot = memoryStorage(original);
+  const concurrentNewSlot = serialized(
+    member('Weavile', { item: 'Old item' }),
+    member('Ditto', { item: 'Original unrelated item' }),
+    member('Sylveon', { item: 'Concurrent item' })
+  );
+  assert.throws(
+    () =>
+      saveCurrentSets(newSlot.storage, [desired, member('Sylveon')], () => {
+        newSlot.replace(concurrentNewSlot);
+        return true;
+      }),
+    { message: raceMessage }
+  );
+  assert.equal(newSlot.value, concurrentNewSlot);
+  assert.equal(newSlot.writes, 0);
+
+  const unrelated = memoryStorage(original);
+  const concurrentUnrelated = serialized(
+    member('Weavile', { item: 'Old item' }),
+    member('Ditto', { item: 'Concurrent unrelated item' }),
+    member('Gengar')
+  );
+  const merged = saveCurrentSets(unrelated.storage, [desired], () => {
+    unrelated.replace(concurrentUnrelated);
+    return true;
+  });
+  assert.equal(unrelated.writes, 1);
+  assert.deepEqual(merged.find(({ id }) => id === 'weavile').member, desired);
+  assert.deepEqual(
+    merged.find(({ id }) => id === 'ditto').member,
+    member('Ditto', { item: 'Concurrent unrelated item' })
+  );
+  assert.deepEqual(
+    merged.find(({ id }) => id === 'gengar').member,
+    member('Gengar')
+  );
+
+  const alreadyDesired = memoryStorage(original);
+  const concurrentDesired = serialized(
+    desired,
+    member('Ditto', { item: 'Concurrent unrelated item' })
+  );
+  const unchanged = saveCurrentSets(alreadyDesired.storage, [desired], () => {
+    alreadyDesired.replace(concurrentDesired);
+    return true;
+  });
+  assert.equal(alreadyDesired.writes, 0);
+  assert.deepEqual(unchanged, JSON.parse(concurrentDesired));
 });
 
 test('current-set registry rejects unreadable data without replacing its original bytes', () => {
@@ -168,7 +443,16 @@ test('current-set registry rejects unreadable data without replacing its origina
   ];
   for (const original of invalid) {
     const store = memoryStorage(original);
-    assert.throws(() => readCurrentSets(store.storage), { message: readError });
+    assert.throws(() => readCurrentSets(store.storage), {
+      message: readError,
+    });
+    assert.throws(
+      () =>
+        saveCurrentSets(store.storage, [member('Newmon')], () =>
+          assert.fail('unreadable data should not prompt')
+        ),
+      { message: readError }
+    );
     assert.equal(store.value, original);
     assert.equal(store.writes, 0);
   }
@@ -182,7 +466,10 @@ test('current-set registry rejects unreadable data without replacing its origina
   );
   const fullBytes = fullStore.value;
   assert.throws(
-    () => saveCurrentSet(fullStore.storage, member('Overflowmon')),
+    () =>
+      saveCurrentSets(fullStore.storage, [member('Overflowmon')], () =>
+        assert.fail('overflow should not prompt')
+      ),
     { message: readError }
   );
   assert.equal(fullStore.value, fullBytes);
@@ -193,10 +480,16 @@ test('current-set registry rejects unreadable data without replacing its origina
   });
   const candidateStore = memoryStorage(serialized(member('Existing')));
   const original = candidateStore.value;
+  const invalidMembers = [member('Newmon'), oversizedMoveName];
+  const invalidMembersBefore = structuredClone(invalidMembers);
   assert.throws(
-    () => saveCurrentSet(candidateStore.storage, oversizedMoveName),
+    () =>
+      saveCurrentSets(candidateStore.storage, invalidMembers, () =>
+        assert.fail('invalid snapshots should not prompt')
+      ),
     { message: readError }
   );
+  assert.deepEqual(invalidMembers, invalidMembersBefore);
   assert.equal(candidateStore.value, original);
   assert.equal(candidateStore.writes, 0);
 });
@@ -216,7 +509,10 @@ test('current-set storage errors propagate and failed writes leave stored bytes 
     },
   };
   assert.throws(
-    () => saveCurrentSet(inaccessible, member('Newmon')),
+    () =>
+      saveCurrentSets(inaccessible, [member('Newmon')], () =>
+        assert.fail('inaccessible storage should not prompt')
+      ),
     (error) => error === denied
   );
   assert.equal(bytes, original);
@@ -225,7 +521,10 @@ test('current-set storage errors propagate and failed writes leave stored bytes 
   const quota = new Error('quota exceeded');
   const store = memoryStorage(original, quota);
   assert.throws(
-    () => saveCurrentSet(store.storage, member('Newmon')),
+    () =>
+      saveCurrentSets(store.storage, [member('Newmon')], () =>
+        assert.fail('new snapshots should not prompt')
+      ),
     (error) => error === quota
   );
   assert.equal(store.value, original);

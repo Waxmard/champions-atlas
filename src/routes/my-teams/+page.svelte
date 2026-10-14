@@ -6,6 +6,7 @@
   import { page } from '$app/state';
   import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
+  import CurrentSetSaveButton from '$lib/components/CurrentSetSaveButton.svelte';
   import TeamPicker from '$lib/components/TeamPicker.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -507,6 +508,7 @@
 </script>
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
+
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
   <header>
     <h1
@@ -640,6 +642,11 @@
             /></label
           >
           <div class="flex flex-wrap gap-2">
+            <CurrentSetSaveButton
+              teamId={draft.id}
+              {baseline}
+              disabled={editing || deleting || stale}
+            />
             <Button
               variant="outline"
               class="min-h-11"
@@ -731,6 +738,13 @@
                 onrevert={() => revertSlot(index)}
                 revertDisabled={!canRevertSlot(index)}
                 revertReason={slotRevertReason(index)}
+              />
+              <CurrentSetSaveButton
+                teamId={draft.id}
+                {baseline}
+                pokemon={member.pokemon}
+                memberIndex={index}
+                disabled={editing || deleting || stale}
               />
             </section>
           {/each}

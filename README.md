@@ -153,12 +153,16 @@ input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
 
-**Save as current [Pokémon] set** stores one explicit snapshot per Browse
-identity, shared by a base Pokémon and its Mega. Ordinary Floette and
-Floette-Eternal have separate snapshots. Saving flushes valid pending input;
-invalid or failed saves keep the editor open. A later explicit save replaces
-that snapshot. Team edits do not update it, and deleting a team does not delete
-it. The app does not seed snapshots from teams or keep history. Reuse the saved
+In the **My teams** overview, **Save as current [Pokémon] set** stores that
+Pokémon's committed set. **Save All Sets** stores the selected team's six sets
+in one operation. These actions are unavailable while editing. Replacing
+different saved content asks for confirmation once; new or identical snapshots
+do not prompt. Canceling saves nothing.
+
+Snapshots use one slot per Browse identity, shared by a base Pokémon and its
+Mega. Ordinary Floette and Floette-Eternal have separate slots. Team edits do
+not update snapshots, and deleting a team does not delete them. The app does
+not seed snapshots from teams or keep history. In the editor, reuse the saved
 EVs and nature, moves, or whole set; selective reuse changes only those fields,
 while whole-set reuse restores the saved form, item, and raw set text.
 

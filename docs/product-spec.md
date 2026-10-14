@@ -70,11 +70,19 @@ uncommitted.
 
 Save and reuse one explicit current set per Browse identity. A base Pokémon and
 its Mega share a slot; ordinary Floette and Floette-Eternal remain separate.
-Saving flushes valid pending editor input and stores a snapshot independent of
-teams. Invalid input or a failed team save prevents the snapshot and keeps the
-editor open. A later explicit save replaces that species' snapshot. Team edits
-do not update it, and deleting a team does not delete it. The app does not
-auto-seed current sets from teams or keep snapshot history.
+Save individual committed sets or **Save All Sets** from the selected team's
+**My teams** overview, never from the editor. Saving is unavailable while
+editing and never flushes pending editor input or a pending team name. Confirm
+once only when replacing different existing snapshots; new and identical
+snapshots do not prompt. Canceling a bulk save preserves every slot, including
+new ones. Validate the entire batch before confirmation and write it atomically,
+retaining unrelated snapshots. Reject stale teams, account changes, duplicate
+incoming Browse identities, and conflicting affected-slot changes during
+confirmation without overwriting data.
+
+Snapshots remain independent of teams. Team edits do not update them, and
+deleting a team does not delete them. The app does not auto-seed current sets
+from teams or keep snapshot history.
 
 When a snapshot exists, you can reuse its EVs and nature, moves, or whole set.
 Selective reuse changes only the selected fields. Whole-set reuse restores the

@@ -6,11 +6,10 @@
     currentSetsKey,
     readCurrentSets,
     reuseCurrentSet,
-    saveCurrentSet,
     type CurrentSet,
     type CurrentSetScope,
   } from '$lib/current-sets';
-  import { pushNow, sync } from '$lib/sync.svelte';
+  import { sync } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
 
   interface Props {
@@ -24,11 +23,9 @@
   let { member, view, onflush, getmember, onreuse }: Props = $props();
   let sets = $state<CurrentSet[] | null>(null);
   let registryError = $state('');
-  let statusMessage = $state('');
   const ownerKey = 'champions-atlas:sync-owner:v2';
   const ownershipError =
     'Sync account changed in another tab. Reopen the editor to continue.';
-  const readErrorPrefix = 'Current Pokémon sets could not be read.';
   const currentSet = $derived(
     sets?.find(({ id }) => id === pokemonId(member.pokemon)) ?? null
   );
@@ -39,11 +36,6 @@
   const canReuseMoves = $derived(!!currentSet?.member.moves.length);
   function errorMessage(error: unknown) {
     return error instanceof Error ? error.message : String(error);
-  }
-
-  function clearReadError() {
-    if (!registryError.startsWith('Could not save the current set.'))
-      registryError = '';
   }
 
   function ownerMatches() {
@@ -59,15 +51,13 @@
     try {
       if (!ownerMatches()) {
         sets = null;
-        statusMessage = '';
         registryError = '';
         return;
       }
       sets = readCurrentSets(localStorage);
-      clearReadError();
+      registryError = '';
     } catch (error) {
       sets = null;
-      statusMessage = '';
       registryError = errorMessage(error);
     }
   }
@@ -89,31 +79,7 @@
     return () => window.removeEventListener('storage', onStorage);
   });
 
-  function save() {
-    statusMessage = '';
-    try {
-      if (!ownerMatches()) {
-        refreshRegistry();
-        registryError = ownershipError;
-        return;
-      }
-      if (!onflush()) return;
-      const member = $state.snapshot(getmember());
-      const next = saveCurrentSet(localStorage, member);
-      sets = next;
-      registryError = '';
-      statusMessage = `Current ${browsePokemon(member.pokemon)} set saved on this device.`;
-      void pushNow();
-    } catch (error) {
-      const detail = errorMessage(error);
-      registryError = detail.startsWith(readErrorPrefix)
-        ? detail
-        : `Could not save the current set. Existing current-set data was not replaced. ${detail}`;
-    }
-  }
-
   function reuse(scope: CurrentSetScope) {
-    statusMessage = '';
     try {
       if (!ownerMatches()) {
         refreshRegistry();
@@ -124,7 +90,7 @@
       const current = $state.snapshot(getmember());
       const latest = readCurrentSets(localStorage);
       sets = latest;
-      clearReadError();
+      registryError = '';
       const saved = latest.find(({ id }) => id === pokemonId(current.pokemon));
       if (!saved) return;
       if (scope === 'evs' && !canReuseSavedSpread(saved.member)) return;
@@ -156,14 +122,6 @@
     Current {browsePokemon(member.pokemon)} set
   </h3>
   <div class="flex flex-wrap gap-2">
-    <Button
-      variant="outline"
-      class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
-      onpointerdown={keepFocus}
-      onclick={save}
-    >
-      Save as current {browsePokemon(member.pokemon)} set
-    </Button>
     {#if currentSet && view === 'overview'}
       <Button
         variant="outline"
@@ -231,7 +189,4 @@
       {registryError}
     </p>
   {/if}
-  <p role="status" aria-live="polite" class="provenance min-h-5">
-    {statusMessage}
-  </p>
 </section>
