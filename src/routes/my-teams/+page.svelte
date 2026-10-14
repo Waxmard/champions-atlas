@@ -769,13 +769,6 @@
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={data.tags as TeamTagsIndex}
-        ownTeams={saved.map(({ id, name, original, members }) => ({
-          id,
-          name,
-          regulation: original.regulation,
-          members,
-        }))}
-        excludeOwnTeamId={draft.id}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}

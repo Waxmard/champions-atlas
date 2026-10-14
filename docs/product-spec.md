@@ -35,7 +35,7 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Preserve filters, sorting, and scroll position when opening teams and
   returning. Back to teams stays visible while browsing a team.
 - Encode filters in the URL so a refresh or shared link restores the selection.
-- Save current team(s) locally. Favorites and cross-device sync are not required.
+- Save current teams locally. Account sync is described in Version 1.5.
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
   silently modify imported teams.
 - Known custom-rule teams stay hidden from Browse by default; **Include
@@ -60,6 +60,26 @@ never backfilled from a refreshed catalog.
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately; invalid interim EV allocations remain uncommitted. There is no
 separate Apply step.
+
+The EV slider keeps its native keyboard controls and vertical page scrolling,
+with a 44-pixel touch target across its full height. **Fill** adds or removes
+points from the selected stat to reach 66 total, within that stat's 0–32 bounds.
+It never changes another stat. If the selected stat cannot absorb the full
+difference, the remaining under- or over-budget total stays visible and
+uncommitted.
+
+Save and reuse one explicit current set per Browse identity. A base Pokémon and
+its Mega share a slot; ordinary Floette and Floette-Eternal remain separate.
+Saving flushes valid pending editor input and stores a snapshot independent of
+teams. Invalid input or a failed team save prevents the snapshot and keeps the
+editor open. A later explicit save replaces that species' snapshot. Team edits
+do not update it, and deleting a team does not delete it. The app does not
+auto-seed current sets from teams or keep snapshot history.
+
+When a snapshot exists, you can reuse its EVs and nature, moves, or whole set.
+Selective reuse changes only the selected fields. Whole-set reuse restores the
+saved form, item, and raw set text, subject to normal editor and roster
+validation.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
@@ -97,15 +117,15 @@ adaptation is not implemented. The two-Mega limit applies to Pokémon replacemen
 suggestions.
 
 EV spread suggestions begin with the immutable original nature/spread pair when
-it is complete, standard, and resolves to the current battle form. Spreads from
-other saved teams follow, then common catalog spreads for the resolved form,
-with exact duplicate pairs removed. Original field suggestions use exact Pokémon
-identity or a successfully resolved matching battle form, never unrelated base
-forms. Catalog counts are not inflated by original recommendations.
-When an observed complete pair matches the immutable original nature, at least
-one matching option remains visible through the catalog and combined list limits,
-even after you change the edited nature. Borrowed spreads retain their own source
-labels; they do not fill in unpublished original EVs.
+it is complete, standard, and resolves to the current battle form. Common catalog
+spreads for the resolved form follow, with exact duplicate pairs removed.
+Original field suggestions use exact Pokémon identity or a successfully resolved
+matching battle form, never unrelated base forms. Catalog counts are not inflated
+by original recommendations. When an observed complete pair matches the
+immutable original nature, at least one matching option remains visible through
+the catalog and combined list limits, even after you change the edited nature.
+Original suggestions precede ranked catalog suggestions, and both retain their
+source labels; they do not fill in unpublished original EVs.
 You can also ask one benchmark question: survive a named move from a named
 opponent, take a KO, or outspeed. The opponent's set is
 the most common recorded current-regulation set for that species, filtered by

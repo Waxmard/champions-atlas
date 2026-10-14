@@ -145,11 +145,22 @@ it.
 
 Select a field on a saved team card to edit its set. Completed text saves on blur
 or Enter; selections and suggestions save immediately when the whole set is
-valid. Changed EV spreads must total 66 points. **Done** saves valid pending input
-and closes the editor; **Close** offers to discard only invalid or failed-write
+valid. Changed EV spreads must total 66 points. The full-height EV slider retains
+keyboard controls and vertical scrolling; **Fill** adjusts only the selected
+stat toward 66, within its 0–32 bounds. **Done** saves valid pending input and
+closes the editor; **Close** offers to discard only invalid or failed-write
 input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
+
+**Save as current [Pokémon] set** stores one explicit snapshot per Browse
+identity, shared by a base Pokémon and its Mega. Ordinary Floette and
+Floette-Eternal have separate snapshots. Saving flushes valid pending input;
+invalid or failed saves keep the editor open. A later explicit save replaces
+that snapshot. Team edits do not update it, and deleting a team does not delete
+it. The app does not seed snapshots from teams or keep history. Reuse the saved
+EVs and nature, moves, or whole set; selective reuse changes only those fields,
+while whole-set reuse restores the saved form, item, and raw set text.
 
 The card’s **Revert changes** action appears only when it can restore that slot
 to its state when you opened the team. It stays hidden for unchanged sets,
@@ -165,8 +176,8 @@ Original source metadata is kept when saving a catalog team and shown as evidenc
 for the original, not the edited version. Older saved teams show only metadata
 they retained. Custom teams show their starting team without public source claims.
 Original field and complete EV/nature suggestions lead the corresponding lists;
-other saved-team spreads and catalog spreads follow without duplicate pairs.
-Benchmark answers and **Speed tiers** retain their existing mechanics and limits.
+catalog suggestions follow without duplicate pairs. Benchmark answers and
+**Speed tiers** retain their existing mechanics and limits.
 
 **Copy team text** exports current sets, normalizing EVs out of 32 and omitting
 IVs, level, and Tera Type for Pokémon Champions. Unknown fields are omitted.
@@ -175,10 +186,11 @@ catalog refreshes on the same browser origin; clearing browser storage removes
 them. Saving requires available browser storage. Only unsaved input prompts
 before navigation. Browse filters and position remain device-local.
 
-When Firebase is configured, Google sign-in synchronizes saved teams and their
-originals across devices. Without configuration the app runs local-only. See
-[Firebase deployment and sync](docs/firebase.md) for the per-team data model and
-the rules-before-client release requirement.
+When Firebase is configured, Google sign-in synchronizes saved teams, their
+originals, and current Pokémon set snapshots across devices. Without
+configuration the app runs local-only. See [Firebase deployment and sync](docs/firebase.md)
+for the separate current-set registry and rules-before-client release
+requirement.
 
 ## Stack
 

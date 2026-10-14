@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    balanceChampionsStat,
     CHAMPIONS_STATS,
     championsSpreadTotal,
     formatChampionsSpread,
@@ -8,6 +9,7 @@
     parseChampionsSpread,
     NATURES,
     type ChampionsSpread,
+    type ChampionsStat,
   } from '$lib/paste';
   import { resolveBattleForm } from '$lib/battle-forms';
   import type { BenchmarkIndex } from '$lib/benchmarks';
@@ -78,8 +80,53 @@
   }
   function commitDraft() {
     if (!draft) return;
-    onspreadchange(formatChampionsSpread(draft));
+    const next = formatChampionsSpread(draft);
     draft = null;
+    onspreadchange(next);
+  }
+  export function flush(): void {
+    commitDraft();
+  }
+  function setFromPointer(
+    event: PointerEvent,
+    input: HTMLInputElement,
+    stat: ChampionsStat
+  ) {
+    const rect = input.getBoundingClientRect();
+    const style = getComputedStyle(input);
+    const configuredThumb = Number.parseFloat(
+      style.getPropertyValue('--range-thumb-size')
+    );
+    const thumbSize = Number.isFinite(configuredThumb) ? configuredThumb : 16;
+    const travel = rect.width - thumbSize;
+    if (travel <= 0) return;
+    const fraction = Math.max(
+      0,
+      Math.min(1, (event.clientX - rect.left - thumbSize / 2) / travel)
+    );
+    setStat(
+      stat,
+      Math.round(32 * (style.direction === 'rtl' ? 1 - fraction : fraction))
+    );
+  }
+  function startPointer(event: PointerEvent, stat: ChampionsStat) {
+    if (!event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    const input = event.currentTarget as HTMLInputElement;
+    input.focus();
+    input.setPointerCapture(event.pointerId);
+    setFromPointer(event, input, stat);
+  }
+  function movePointer(event: PointerEvent, stat: ChampionsStat) {
+    const input = event.currentTarget as HTMLInputElement;
+    if (input.hasPointerCapture(event.pointerId))
+      setFromPointer(event, input, stat);
+  }
+  function finishPointer(event: PointerEvent) {
+    const input = event.currentTarget as HTMLInputElement;
+    if (!input.hasPointerCapture(event.pointerId)) return;
+    commitDraft();
+    input.releasePointerCapture(event.pointerId);
   }
 </script>
 
@@ -156,8 +203,8 @@
   <div class="grid divide-y">
     {#each CHAMPIONS_STATS as stat (stat)}
       {@const currentVal = values[stat]}
-      {@const remaining = Math.max(0, 66 - total)}
-      {@const canAdd = Math.min(32 - currentVal, remaining)}
+      {@const target = balanceChampionsStat(values, stat)[stat]}
+      {@const delta = target - currentVal}
       <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
         <!-- Top Row: Stat Badge, Quick Buttons, Input & Suffix -->
         <div class="flex items-center justify-between gap-2">
@@ -200,14 +247,16 @@
               <button
                 type="button"
                 class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
-                disabled={canAdd <= 0}
+                disabled={delta === 0}
                 aria-label={`Fill remaining EVs into ${stat}`}
-                title={canAdd > 0
-                  ? `Add remaining ${canAdd} EVs to ${stat}`
-                  : 'No remaining budget'}
-                onclick={() => update(stat, currentVal + canAdd)}
+                title={delta > 0
+                  ? `Add ${delta} EVs to ${stat}`
+                  : delta < 0
+                    ? `Remove ${-delta} EVs from ${stat}`
+                    : 'No EV changes needed'}
+                onclick={() => update(stat, target)}
               >
-                {canAdd > 0 ? `+${canAdd}` : 'Fill'}
+                {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : 'Fill'}
               </button>
             </div>
           </div>
@@ -236,11 +285,17 @@
           type="range"
           min="0"
           max="32"
+          step="1"
           value={values[stat]}
-          class="range w-full range-xs"
+          class="range h-11 w-full touch-pan-y [--range-thumb-size:16px] range-xs"
+          style:--ev-progress={currentVal / 32}
           oninput={(event) => setStat(stat, event.currentTarget.valueAsNumber)}
           onchange={commitDraft}
           onblur={commitDraft}
+          onpointerdown={(event) => startPointer(event, stat)}
+          onpointermove={(event) => movePointer(event, stat)}
+          onpointerup={finishPointer}
+          onpointercancel={finishPointer}
         />
       </div>
     {/each}
@@ -261,7 +316,7 @@
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Original team first, then your own teams and common catalog spreads.
+      Original team first, then common catalog spreads.
     </p>
   </div>
   {#each spreadSuggestions as option, i (option.spread + option.nature)}
@@ -329,3 +384,24 @@
 </section>
 
 <EvBenchmarkPanel {member} {index} {currentRegulation} {onspreadchange} />
+
+<style>
+  .range {
+    --range-fill: 0;
+    --ev-rail: linear-gradient(
+      calc(90deg * var(--range-dir, 1)),
+      var(--range-progress)
+        calc(
+          var(--range-thumb-size) / 2 + (100% - var(--range-thumb-size)) *
+            var(--ev-progress)
+        ),
+      var(--range-bg) 0
+    );
+  }
+  .range::-webkit-slider-runnable-track {
+    background: var(--ev-rail);
+  }
+  .range::-moz-range-track {
+    background: var(--ev-rail);
+  }
+</style>

@@ -17,7 +17,6 @@ import {
 } from '../src/lib/paste.ts';
 import {
   catalogSpreadSuggestions,
-  ownSpreadSuggestions,
   originalSpreadSuggestion,
 } from '../src/lib/workbench.ts';
 
@@ -597,89 +596,6 @@ test('derived sets filter by item, exclude Choice Scarf and aggregate team count
     { item: 'Choice Scarf', teams: 1 },
   ]);
   assert.equal(deriveBenchmarkSet(index, 'Missingno'), null);
-});
-
-test('own spreads copy a same-species spread from another saved team', () => {
-  const own = [
-    {
-      id: 'alpha',
-      name: 'Alpha',
-      regulation: 'M-C',
-      members: [{ ...raichu, spread: '19 HP / 30 Def / 17 Spe' }, sneasler],
-    },
-    {
-      id: 'beta',
-      name: 'Beta',
-      regulation: 'M-B',
-      members: [{ ...raichu, spread: '18 HP / 24 Def / 24 Spe' }],
-    },
-  ];
-  assert.deepEqual(ownSpreadSuggestions(raichu, own, null), [
-    {
-      teamName: 'Beta',
-      regulation: 'M-B',
-      spread: '18 HP / 24 Def / 24 Spe',
-      nature: 'Timid',
-      deltas: [
-        { stat: 'Def', from: 25, to: 24, delta: -1 },
-        { stat: 'Spe', from: 23, to: 24, delta: 1 },
-      ],
-      movedPoints: 1,
-      speed: 191,
-    },
-    {
-      teamName: 'Alpha',
-      regulation: 'M-C',
-      spread: '19 HP / 30 Def / 17 Spe',
-      nature: 'Timid',
-      deltas: [
-        { stat: 'HP', from: 18, to: 19, delta: 1 },
-        { stat: 'Def', from: 25, to: 30, delta: 5 },
-        { stat: 'Spe', from: 23, to: 17, delta: -6 },
-      ],
-      movedPoints: 6,
-      speed: 183,
-    },
-  ]);
-  assert.deepEqual(
-    ownSpreadSuggestions(raichu, own, 'beta').map(({ teamName }) => teamName),
-    ['Alpha']
-  );
-  assert.deepEqual(
-    ownSpreadSuggestions(
-      {
-        ...raichu,
-        pokemon: 'Raichu-Mega-Y',
-        spread: '18 HP / 24 Def / 24 Spe',
-      },
-      own,
-      null
-    ).map(({ teamName }) => teamName),
-    ['Alpha']
-  );
-  assert.deepEqual(
-    ownSpreadSuggestions(
-      raichu,
-      [
-        {
-          id: 'gamma',
-          name: 'Gamma',
-          regulation: 'M-C',
-          members: [{ ...raichu, spread: '32 HP' }],
-        },
-      ],
-      null
-    ),
-    []
-  );
-  assert.deepEqual(
-    ownSpreadSuggestions(
-      raichu,
-      [{ id: 'delta', name: 'Delta', regulation: 'M-C', members: [raichu] }],
-      null
-    ),
-    []
-  );
 });
 
 test('catalog spreads aggregate teams, prioritize the current regulation, and pair natures', () => {
