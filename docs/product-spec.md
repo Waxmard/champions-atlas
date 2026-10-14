@@ -68,11 +68,14 @@ It never changes another stat. If the selected stat cannot absorb the full
 difference, the remaining under- or over-budget total stays visible and
 uncommitted.
 
-Save and reuse one explicit current set per Browse identity. A base Pokémon and
-its Mega share a slot; ordinary Floette and Floette-Eternal remain separate.
-Save individual committed sets or **Save All Sets** from the selected team's
-**My teams** overview, never from the editor. Saving is unavailable while
-editing and never flushes pending editor input or a pending team name. Confirm
+Record and reuse one explicit **my in-game set** per Browse identity, representing
+the set currently in your Pokémon Champions box. Recording changes only
+Champion's Atlas, never Pokémon Champions, and does not save the team itself.
+A base Pokémon and its Mega share a slot; ordinary Floette and Floette-Eternal
+remain separate. Record individual committed sets or **Set all as my in-game
+sets** from the selected team's **My teams** overview, never from the editor.
+Recording is unavailable while editing and never flushes pending editor input
+or a pending team name. Confirm
 once only when replacing different existing snapshots; new and identical
 snapshots do not prompt. Canceling a bulk save preserves every slot, including
 new ones. Validate the entire batch before confirmation and write it atomically,
@@ -84,7 +87,8 @@ Snapshots remain independent of teams. Team edits do not update them, and
 deleting a team does not delete them. The app does not auto-seed current sets
 from teams or keep snapshot history.
 
-When a snapshot exists, you can reuse its EVs and nature, moves, or whole set.
+When a snapshot exists, you can reuse your in-game EVs and nature, moves, or
+whole set.
 Selective reuse changes only the selected fields. Whole-set reuse restores the
 saved form, item, and raw set text, subject to normal editor and roster
 validation.

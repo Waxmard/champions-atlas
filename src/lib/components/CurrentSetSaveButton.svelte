@@ -87,8 +87,8 @@
         );
         const prompt =
           memberIndex === undefined
-            ? `Replace current sets for ${names.join(', ')}? Other saved Pokémon sets will be kept.`
-            : `Replace the current ${browsePokemon(pokemon ?? members[0].pokemon)} set?`;
+            ? `Replace my in-game sets for ${names.join(', ')}? Other recorded Pokémon sets will be kept.`
+            : `Replace my in-game ${browsePokemon(pokemon ?? members[0].pokemon)} set?`;
         if (!window.confirm(prompt)) return false;
         if (!ownerMatches()) {
           alertMessage = ownershipError;
@@ -99,8 +99,8 @@
       if (!result) return;
       statusMessage =
         memberIndex === undefined
-          ? 'All current team sets saved on this device.'
-          : `Current ${browsePokemon(pokemon ?? members[0].pokemon)} set saved on this device.`;
+          ? "Recorded this team's in-game sets on this device."
+          : `Recorded the in-game ${browsePokemon(pokemon ?? members[0].pokemon)} set on this device.`;
       if (before !== currentSetsSnapshot(result)) void pushNow();
     } catch (caught) {
       const detail = caught instanceof Error ? caught.message : String(caught);
@@ -113,19 +113,28 @@
 </script>
 
 <div
-  class={memberIndex === undefined ? '' : 'border-t border-base-300 px-3 py-3'}
+  class={memberIndex === undefined
+    ? 'max-w-sm min-w-0'
+    : 'border-t border-base-300 px-3 py-3'}
 >
   <Button
     variant="outline"
     class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
     {disabled}
+    aria-describedby={`in-game-sets-description-${teamId}`}
     onpointerdown={keepFocus}
     onclick={save}
   >
     {memberIndex === undefined
-      ? 'Save All Sets'
-      : `Save as current ${browsePokemon(pokemon ?? '')} set`}
+      ? 'Set all as my in-game sets'
+      : `Set as my in-game ${browsePokemon(pokemon ?? '')} set`}
   </Button>
+  {#if memberIndex === undefined}
+    <p id={`in-game-sets-description-${teamId}`} class="provenance mt-2">
+      Record the sets currently in your Pokémon Champions box—one per Pokémon.
+      This doesn’t change anything in the game.
+    </p>
+  {/if}
   <p
     role="alert"
     class="mt-2 min-h-5 text-sm"

@@ -153,18 +153,20 @@ input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
 
-In the **My teams** overview, **Save as current [Pokémon] set** stores that
-Pokémon's committed set. **Save All Sets** stores the selected team's six sets
-in one operation. These actions are unavailable while editing. Replacing
-different saved content asks for confirmation once; new or identical snapshots
-do not prompt. Canceling saves nothing.
+In the **My teams** overview, **Set as my in-game [Pokémon] set** records that
+Pokémon's committed set as the one currently in your Pokémon Champions box.
+**Set all as my in-game sets** records the selected team's six sets in one
+operation. Recording changes only Champion's Atlas, never Pokémon Champions,
+and does not save the team itself. These actions are unavailable while editing.
+Replacing different recorded content asks for confirmation once; new or
+identical snapshots do not prompt. Canceling records nothing.
 
 Snapshots use one slot per Browse identity, shared by a base Pokémon and its
 Mega. Ordinary Floette and Floette-Eternal have separate slots. Team edits do
 not update snapshots, and deleting a team does not delete them. The app does
-not seed snapshots from teams or keep history. In the editor, reuse the saved
-EVs and nature, moves, or whole set; selective reuse changes only those fields,
-while whole-set reuse restores the saved form, item, and raw set text.
+not seed snapshots from teams or keep history. In the editor, reuse your
+in-game EVs and nature, moves, or whole set; selective reuse changes only those
+fields, while whole-set reuse restores the saved form, item, and raw set text.
 
 The card’s **Revert changes** action appears only when it can restore that slot
 to its state when you opened the team. It stays hidden for unchanged sets,

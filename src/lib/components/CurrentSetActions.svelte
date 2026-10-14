@@ -115,11 +115,11 @@
 </script>
 
 <section
-  aria-label="Current Pokémon set"
+  aria-label="My in-game Pokémon set"
   class="mb-4 grid gap-2 border-b border-base-300 pb-4"
 >
   <h3 class="text-sm font-semibold">
-    Current {browsePokemon(member.pokemon)} set
+    My in-game {browsePokemon(member.pokemon)} set
   </h3>
   <div class="flex flex-wrap gap-2">
     {#if currentSet && view === 'overview'}
@@ -128,11 +128,12 @@
         class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
         disabled={!canReuseSpread}
         onpointerdown={keepFocus}
-        onclick={() => reuse('evs')}>Use current EVs and nature</Button
+        onclick={() => reuse('evs')}>Use my in-game EVs and nature</Button
       >
       {#if !canReuseSpread}
         <p class="provenance self-center">
-          The current set has no complete EV spread and standard nature.
+          The recorded in-game set has no complete EV spread and standard
+          nature.
         </p>
       {/if}
       <Button
@@ -140,18 +141,18 @@
         class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
         disabled={!canReuseMoves}
         onpointerdown={keepFocus}
-        onclick={() => reuse('moves')}>Use current moves</Button
+        onclick={() => reuse('moves')}>Use my in-game moves</Button
       >
       {#if !canReuseMoves}
         <p class="provenance self-center">
-          The current set has no saved moves.
+          The recorded in-game set has no moves.
         </p>
       {/if}
       <Button
         variant="outline"
         class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
         onpointerdown={keepFocus}
-        onclick={() => reuse('all')}>Use current set</Button
+        onclick={() => reuse('all')}>Use my in-game set</Button
       >
     {:else if currentSet && view === 'spread'}
       <Button
@@ -159,11 +160,12 @@
         class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
         disabled={!canReuseSpread}
         onpointerdown={keepFocus}
-        onclick={() => reuse('evs')}>Use current EVs and nature</Button
+        onclick={() => reuse('evs')}>Use my in-game EVs and nature</Button
       >
       {#if !canReuseSpread}
         <p class="provenance self-center">
-          The current set has no complete EV spread and standard nature.
+          The recorded in-game set has no complete EV spread and standard
+          nature.
         </p>
       {/if}
     {:else if currentSet && view === 'moves'}
@@ -172,17 +174,19 @@
         class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
         disabled={!canReuseMoves}
         onpointerdown={keepFocus}
-        onclick={() => reuse('moves')}>Use current moves</Button
+        onclick={() => reuse('moves')}>Use my in-game moves</Button
       >
       {#if !canReuseMoves}
         <p class="provenance self-center">
-          The current set has no saved moves.
+          The recorded in-game set has no moves.
         </p>
       {/if}
     {/if}
   </div>
   {#if sets && !currentSet}
-    <p class="provenance">No current set saved.</p>
+    <p class="provenance">
+      No in-game set recorded for {browsePokemon(member.pokemon)}.
+    </p>
   {/if}
   {#if registryError}
     <p role="alert" class="text-sm" style="color: var(--color-error-content)">
