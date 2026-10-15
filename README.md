@@ -158,8 +158,11 @@ Pokémon's committed set as the one currently in your Pokémon Champions box.
 **Set all as my in-game sets** records the selected team's six sets in one
 operation. Recording changes only Champion's Atlas, never Pokémon Champions,
 and does not save the team itself. These actions are unavailable while editing.
-Replacing different recorded content asks for confirmation once; new or
-identical snapshots do not prompt. Canceling records nothing.
+Individual replacements ask for confirmation. Bulk recording shows a checklist
+of different recorded sets, initially unchecked: select one, several, all, or
+none to replace. Unchecked Pokémon keep their recorded sets; selecting none
+still records new Pokémon. New or identical snapshots do not prompt.
+**Cancel** records nothing.
 
 Snapshots use one slot per Browse identity, shared by a base Pokémon and its
 Mega. Ordinary Floette and Floette-Eternal have separate slots. Team edits do

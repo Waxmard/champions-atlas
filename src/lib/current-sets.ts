@@ -11,6 +11,12 @@ export interface CurrentSet {
   member: Member;
 }
 
+export interface CurrentSetSavePlan {
+  current: CurrentSet[];
+  incoming: CurrentSet[];
+  overwritten: CurrentSet[];
+}
+
 export type CurrentSetScope = 'evs' | 'moves' | 'all';
 
 const readError =
@@ -85,11 +91,10 @@ export function readCurrentSets(
   }
 }
 
-export function saveCurrentSets(
-  storage: Pick<Storage, 'getItem' | 'setItem'>,
-  members: Member[],
-  confirmOverwrite: (overwritten: CurrentSet[]) => boolean
-): CurrentSet[] | null {
+export function prepareCurrentSets(
+  storage: Pick<Storage, 'getItem'>,
+  members: Member[]
+): CurrentSetSavePlan {
   const current = readCurrentSets(storage);
   const incoming = members.map((member) => {
     const snapshot = structuredClone(member);
@@ -102,7 +107,6 @@ export function saveCurrentSets(
       throw new Error('Cannot save two sets for the same Pokémon at once.');
     incomingIds.add(id);
   }
-  if (incoming.length === 0) return current;
 
   const currentById = new Map(current.map((entry) => [entry.id, entry]));
   const incomingById = new Map(incoming.map((entry) => [entry.id, entry]));
@@ -119,11 +123,33 @@ export function saveCurrentSets(
         : [];
     })
     .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
-  if (overwritten.length > 0 && !confirmOverwrite(overwritten)) return null;
+  return { current, incoming, overwritten };
+}
 
+export function saveCurrentSets(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  plan: CurrentSetSavePlan,
+  replacementIds: ReadonlySet<string>
+): CurrentSet[] {
+  const offeredIds = new Set(plan.overwritten.map(({ id }) => id));
+  for (const id of replacementIds)
+    if (!offeredIds.has(id))
+      throw new Error(
+        'Cannot replace a Pokémon set that was not offered for replacement.'
+      );
+
+  const skippedIds = new Set(
+    plan.overwritten
+      .filter(({ id }) => !replacementIds.has(id))
+      .map(({ id }) => id)
+  );
+  const eligible = plan.incoming.filter(({ id }) => !skippedIds.has(id));
   const latest = readCurrentSets(storage);
+  if (eligible.length === 0) return latest;
+
+  const currentById = new Map(plan.current.map((entry) => [entry.id, entry]));
   const latestById = new Map(latest.map((entry) => [entry.id, entry]));
-  for (const entry of incoming) {
+  for (const entry of eligible) {
     const latestEntry = latestById.get(entry.id);
     if (
       !sameEntry(currentById.get(entry.id), latestEntry) &&
@@ -134,8 +160,8 @@ export function saveCurrentSets(
       );
   }
 
-  const merged = new Map(latest.map((entry) => [entry.id, entry]));
-  for (const entry of incoming) merged.set(entry.id, entry);
+  const merged = new Map(latestById);
+  for (const entry of eligible) merged.set(entry.id, entry);
   const { serialized, validated } = serializeCurrentSets([...merged.values()]);
   if (currentSetsSnapshot(latest) === currentSetsSnapshot(validated))
     return latest;

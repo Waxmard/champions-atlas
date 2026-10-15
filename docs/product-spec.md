@@ -75,13 +75,15 @@ A base Pokémon and its Mega share a slot; ordinary Floette and Floette-Eternal
 remain separate. Record individual committed sets or **Set all as my in-game
 sets** from the selected team's **My teams** overview, never from the editor.
 Recording is unavailable while editing and never flushes pending editor input
-or a pending team name. Confirm
-once only when replacing different existing snapshots; new and identical
-snapshots do not prompt. Canceling a bulk save preserves every slot, including
-new ones. Validate the entire batch before confirmation and write it atomically,
+or a pending team name. Individual replacements use native confirmation. Bulk
+recording offers one checklist of different existing snapshots, initially
+unchecked. Select one, several, all, or none to replace. Unchecked Pokémon keep
+their latest recorded sets; selecting none still records new snapshots. New and
+identical snapshots do not prompt. Canceling preserves every slot, including new
+ones. Validate the entire batch before the choice and write it atomically,
 retaining unrelated snapshots. Reject stale teams, account changes, duplicate
-incoming Browse identities, and conflicting affected-slot changes during
-confirmation without overwriting data.
+incoming Browse identities, and conflicting eligible-slot changes during the
+choice without overwriting data.
 
 Snapshots remain independent of teams. Team edits do not update them, and
 deleting a team does not delete them. The app does not auto-seed current sets
