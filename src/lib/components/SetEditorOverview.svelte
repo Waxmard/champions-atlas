@@ -59,9 +59,8 @@
       </div>
     </div>
     <Button
-      variant="outline"
-      size="sm"
-      class="h-11 min-h-11 px-3"
+      variant="secondary"
+      size="touch"
       aria-label="Change Pokémon"
       onclick={() => onnavigate('pokemon')}
     >
@@ -71,8 +70,8 @@
 
   {#if originalAvailable}
     <Button
-      variant="outline"
-      class="min-h-11"
+      variant="secondary"
+      size="touch"
       disabled={!!originalReason}
       aria-describedby={originalReason ? 'original-set-reason' : undefined}
       onclick={onoriginal}>Use original set</Button
@@ -207,9 +206,8 @@
 
   <div class="pt-1 text-center">
     <Button
-      variant="ghost"
-      size="sm"
-      class="min-h-11 text-xs text-base-content/70 hover:text-base-content"
+      variant="quiet"
+      size="touch"
       aria-label="Edit Showdown text"
       onclick={() => onnavigate('text')}
     >

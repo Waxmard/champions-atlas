@@ -118,7 +118,7 @@ export function newCustomTeam(
 
 const textSchema = z.string().max(50_000);
 const pasteUrlSchema = textSchema.refine(isPasteUrl);
-const memberSchema = z.looseObject({
+export const memberSchema = z.looseObject({
   pokemon: textSchema.refine((value) => Boolean(normalize(value))),
   item: textSchema.nullable(),
   ability: textSchema.nullable(),
@@ -581,61 +581,6 @@ export function swapSuggestions(
       return true;
     })
     .slice(0, 6);
-}
-
-export interface OwnTeamSet {
-  id: string;
-  name: string;
-  regulation: string;
-  members: Member[];
-}
-
-export interface OwnSpreadSuggestion {
-  teamName: string;
-  regulation: string;
-  spread: string;
-  nature: string;
-  deltas: SpreadDelta[];
-  movedPoints: number;
-  speed: number | null;
-}
-
-export function ownSpreadSuggestions(
-  self: Member,
-  teams: OwnTeamSet[],
-  excludeTeamId: string | null
-): OwnSpreadSuggestion[] {
-  const form = resolveBattleForm(self);
-  if (form.error) return [];
-  const initial = parseChampionsSpread(self.spread);
-  const suggestions: OwnSpreadSuggestion[] = [];
-  for (const team of teams) {
-    if (team.id === excludeTeamId) continue;
-    for (const member of team.members) {
-      if (resolveBattleForm(member).pokemon !== form.pokemon) continue;
-      const spread = parseChampionsSpread(member.spread);
-      if (!isCompleteSpread(spread)) continue;
-      const nature = NATURES.find(
-        (name) => normalize(name) === normalize(member.nature ?? '')
-      );
-      if (!nature) continue;
-      const deltas = spreadDeltas(initial, spread);
-      if (!deltas.length) continue;
-      suggestions.push({
-        teamName: team.name,
-        regulation: team.regulation,
-        spread: formatChampionsSpread(spread),
-        nature,
-        deltas,
-        movedPoints: spreadMoved(deltas) / 2,
-        speed: speedFor(form.pokemon, spread, nature),
-      });
-    }
-  }
-  return suggestions.sort(
-    (a, b) =>
-      a.movedPoints - b.movedPoints || a.teamName.localeCompare(b.teamName)
-  );
 }
 
 interface CatalogSpreadOption {

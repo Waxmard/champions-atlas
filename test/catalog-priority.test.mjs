@@ -13,7 +13,6 @@ import { buildBenchmarkIndex } from '../src/lib/benchmark-index.ts';
 import {
   catalogSuggestions,
   catalogSpreadSuggestions,
-  ownSpreadSuggestions,
   pokemonSuggestions,
   readSavedTeams,
   saveTeam,
@@ -719,24 +718,4 @@ test('custom-rule source teams are excluded from every recommendation boundary w
       (entry) => entry.value === 'Choice Specs' && entry.original
     )
   );
-  const own = ownSpreadSuggestions(
-    rotom,
-    [
-      {
-        id: 'own',
-        name: 'Mine',
-        regulation: 'M-C',
-        members: [
-          {
-            ...rotom,
-            nature: 'Timid',
-            spread: '31 HP / 13 Def / 16 SpD / 6 Spe',
-          },
-        ],
-      },
-    ],
-    null
-  );
-  assert.equal(own.length, 1);
-  assert.equal(own[0].spread, '31 HP / 13 Def / 16 SpD / 6 Spe');
 });

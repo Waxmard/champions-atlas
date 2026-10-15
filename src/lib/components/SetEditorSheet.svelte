@@ -1,5 +1,6 @@
 <script lang="ts">
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import CurrentSetActions from '$lib/components/CurrentSetActions.svelte';
   import EvWorkbench from '$lib/components/EvWorkbench.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -17,16 +18,17 @@
     parseSetBlock,
     updateSetText,
   } from '$lib/paste';
+  import {
+    memberRosterError,
+    memberValidationError,
+  } from '$lib/member-validation';
   import { canonicalSnapshot } from '$lib/team-history';
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import type { TeamTagsIndex } from '$lib/tags';
   import {
     catalogSuggestions,
     originalMemberFor,
-    isMegaSpecies,
-    MAX_TEAM_MEGAS,
     setText,
-    type OwnTeamSet,
   } from '$lib/workbench';
   type EditorView =
     'overview' | 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
@@ -37,8 +39,6 @@
     initialField: EditableSetField;
     teammates?: Member[];
     tagIndex?: TeamTagsIndex;
-    ownTeams?: OwnTeamSet[];
-    excludeOwnTeamId?: string | null;
     originalMembers?: Member[];
     originalSlotMember?: Member;
     onchange: (member: Member) => boolean;
@@ -52,8 +52,6 @@
     initialField,
     teammates = [],
     tagIndex,
-    ownTeams = [],
-    excludeOwnTeamId = null,
     originalMembers = [],
     originalSlotMember,
     onchange,
@@ -99,6 +97,7 @@
   let editorElement = $state<HTMLElement>();
   let contentElement = $state<HTMLElement>();
   let editorHeading = $state<HTMLElement>();
+  let evWorkbench = $state<{ flush: () => void }>();
   const draftMember = $derived<Member>({
     ...accepted,
     pokemon: form.pokemon.trim(),
@@ -215,20 +214,7 @@
     return true;
   }
   function rosterError(next: Member) {
-    if (
-      teammates.some(
-        (teammate) => normalize(teammate.pokemon) === normalize(next.pokemon)
-      )
-    )
-      return 'This Pokémon is already on the team.';
-    if (
-      normalize(next.pokemon) !== normalize(accepted.pokemon) &&
-      isMegaSpecies(next.pokemon) &&
-      teammates.filter((teammate) => isMegaSpecies(teammate.pokemon)).length >=
-        MAX_TEAM_MEGAS
-    )
-      return 'A team can include at most two Mega Pokémon.';
-    return '';
+    return memberRosterError(next, accepted, teammates);
   }
   function chooseSet(next: Member, trusted = false) {
     const candidate = structuredClone($state.snapshot(next));
@@ -266,54 +252,16 @@
       )
       .slice(0, 5);
   }
-  const exactNature = (value: string) =>
-    NATURES.find(
-      (nature) => nature.toLowerCase() === value.trim().toLowerCase()
-    );
-  function validateSpread(spread: string | null, field: EditableSetField) {
-    const value = spread?.trim() || '';
-    if (value === (accepted.spread || '') || (!value && field === 'text'))
-      return true;
-    const parsed = parseChampionsSpread(value);
-    if (!parsed) {
-      showError(field, 'Enter a valid EV spread totaling 66 points.');
-      return false;
-    }
-    const total = championsSpreadTotal(parsed);
-    if (total !== 66) {
-      showError(
-        field,
-        'Changed EV spreads must total 66 points (currently ' + total + ').'
-      );
+  function validateMember(next: Member, mode: 'structured' | 'text') {
+    const validation = memberValidationError(next, accepted, teammates, mode);
+    if (validation) {
+      showError(validation.field, validation.message);
       return false;
     }
     return true;
   }
-  function validateMember(next: Member, mode: 'structured' | 'text') {
-    const reason = rosterError(next);
-    if (reason) {
-      showError(mode === 'text' ? 'text' : 'pokemon', reason);
-      return false;
-    }
-    if (!next.pokemon.trim()) {
-      showError(mode === 'text' ? 'text' : 'pokemon', 'Enter a Pokémon.');
-      return false;
-    }
-    const nature = next.nature?.trim() || '';
-    if (nature && nature !== (accepted.nature || '')) {
-      const standardNature = exactNature(nature);
-      if (!standardNature) {
-        showError(
-          mode === 'text' ? 'text' : 'nature',
-          'Choose a standard nature.'
-        );
-        return false;
-      }
-      next.nature = standardNature;
-    }
-    return validateSpread(next.spread, mode === 'text' ? 'text' : 'spread');
-  }
   export function flush(): boolean {
+    evWorkbench?.flush();
     return commit();
   }
   function keepFocus(event: PointerEvent) {
@@ -464,9 +412,8 @@
       <div class="flex items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
           <Button
-            variant="ghost"
-            size="sm"
-            class="h-11 min-h-11 gap-1 px-2.5 font-medium"
+            variant="quiet"
+            size="touch"
             onclick={backToOverview}
             aria-label="Back to overview"
           >
@@ -503,6 +450,13 @@
     bind:this={contentElement}
     class="min-h-0 flex-auto overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
   >
+    <CurrentSetActions
+      member={accepted}
+      view={currentView}
+      onflush={flush}
+      getmember={() => accepted}
+      onreuse={(next) => chooseSet(next)}
+    />
     {#if currentView === 'overview'}
       <SetEditorOverview
         pokemon={form.pokemon || initialMember.pokemon}
@@ -585,11 +539,10 @@
     {:else if currentView === 'spread'}
       <section aria-label="EV spread" class="grid gap-4">
         <EvWorkbench
+          bind:this={evWorkbench}
           member={draftMember}
           {teams}
           {currentRegulation}
-          {ownTeams}
-          {excludeOwnTeamId}
           {originalMember}
           natureSuggestions={suggestions.natures}
           onspreadchange={(spread, nature) => {
@@ -654,7 +607,8 @@
         </p>
         {#if originalChanged && originalSlotMember}
           <Button
-            variant="outline"
+            variant="secondary"
+            size="touch"
             disabled={!!originalReason}
             data-set-choice
             onpointerdown={(event) => event.preventDefault()}
@@ -675,7 +629,7 @@
                   <button
                     type="button"
                     aria-label={`Use ${option.pokemon} set`}
-                    class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                    class="option-row"
                     data-set-choice
                     onpointerdown={(event) => event.preventDefault()}
                     onclick={() => chooseSet(option.member, true)}
@@ -755,8 +709,8 @@
     </p>
     <div class="flex justify-end gap-2">
       <Button
-        variant="outline"
-        class="h-11 min-h-11 px-4"
+        variant="secondary"
+        size="touch"
         onpointerdown={keepFocus}
         onclick={() => {
           activeSuggestions = null;
@@ -764,7 +718,8 @@
         }}>Close</Button
       >
       <Button
-        class="h-11 min-h-11 px-4"
+        variant="primary"
+        size="touch"
         onpointerdown={keepFocus}
         onclick={done}>Done</Button
       >

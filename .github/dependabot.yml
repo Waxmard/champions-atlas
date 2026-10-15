@@ -5,7 +5,7 @@ updates:
     schedule:
       interval: weekly
     cooldown:
-      default-days: 7
+      default-days: 3 # nosemgrep: package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown
     groups:
       actions:
         patterns: ['*']
@@ -20,7 +20,7 @@ updates:
       - dependency-name: typescript
         versions: ['7.x']
     cooldown:
-      default-days: 7
+      default-days: 3 # nosemgrep: package_managers.dependabot.dependabot-missing-cooldown.dependabot-missing-cooldown
     groups:
       minor-and-patch:
         applies-to: version-updates

@@ -4,8 +4,9 @@
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
-  import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
+  import CurrentSetSaveButton from '$lib/components/CurrentSetSaveButton.svelte';
+  import MemberCurrentSetControls from '$lib/components/MemberCurrentSetControls.svelte';
   import TeamPicker from '$lib/components/TeamPicker.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -507,6 +508,7 @@
 </script>
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
+
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
   <header>
     <h1
@@ -521,12 +523,10 @@
     </p>
   </header>
   <div class="mt-4 flex flex-wrap gap-2.5">
-    <Button href={resolve('/my-teams/new')} class="min-h-11 px-4"
+    <Button href={resolve('/my-teams/new')} variant="primary"
       >Add custom team</Button
     >
-    <Button href={resolve('/wishlist')} variant="outline" class="min-h-11 px-4"
-      >Wishlist</Button
-    >
+    <Button href={resolve('/wishlist')} variant="secondary">Wishlist</Button>
   </div>
   {#if storageError}<p
       role="alert"
@@ -640,15 +640,20 @@
             /></label
           >
           <div class="flex flex-wrap gap-2">
+            <CurrentSetSaveButton
+              teamId={draft.id}
+              {baseline}
+              disabled={editing || deleting || stale}
+            />
             <Button
-              variant="outline"
-              class="min-h-11"
+              variant="secondary"
+              size="touch"
               disabled={editing || deleting}
               onclick={copyPaste}>Copy team text</Button
             >
             <Button
-              variant="outline"
-              class="min-h-11 text-base-content"
+              variant="destructive"
+              size="touch"
               disabled={editing || deleting}
               onclick={removeSelectedTeam}>Delete team</Button
             >
@@ -672,11 +677,11 @@
               use:revealPanel
             >
               <span>{pendingSpecies}</span>
-              <button
-                type="button"
-                class="btn size-11 min-h-11 min-w-11 btn-ghost p-0"
+              <Button
+                variant="quiet"
+                size="icon-touch"
                 aria-label="Clear selected Pokémon"
-                onclick={cancelSpeciesSwap}><X class="size-4" /></button
+                onclick={cancelSpeciesSwap}><X class="size-4" /></Button
               >
             </div>
           {:else if showSwapPicker}
@@ -692,8 +697,7 @@
             </div>
           {:else}
             <Button
-              variant="outline"
-              class="min-h-11"
+              variant="secondary"
               disabled={editing}
               onclick={() => (showSwapPicker = true)}>Change a Pokémon</Button
             >
@@ -723,14 +727,18 @@
                 : 'hover:border-primary/40'}"
               aria-label={`${member.pokemon} set`}
             >
-              <MemberCard
-                {member}
-                editable={true}
+              <MemberCurrentSetControls
+                teamId={draft.id}
+                {baseline}
+                members={draft.members}
+                memberIndex={index}
+                disabled={editing || deleting || stale}
                 {editing}
                 onedit={(field) => openSetEditor(index, field)}
                 onrevert={() => revertSlot(index)}
                 revertDisabled={!canRevertSlot(index)}
                 revertReason={slotRevertReason(index)}
+                onreuse={(next) => saveMember(index, next)}
               />
             </section>
           {/each}
@@ -769,13 +777,6 @@
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={data.tags as TeamTagsIndex}
-        ownTeams={saved.map(({ id, name, original, members }) => ({
-          id,
-          name,
-          regulation: original.regulation,
-          members,
-        }))}
-        excludeOwnTeamId={draft.id}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}

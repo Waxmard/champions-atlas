@@ -465,7 +465,7 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
     .fill('');
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toBeVisible();
-  await expect(editor.getByRole('alert')).toBeFocused();
+  await expect(editor.locator('[role="alert"]:not(:empty)')).toBeFocused();
   await expect(
     editor.getByText('Paste set is missing a Pokémon')
   ).toBeVisible();

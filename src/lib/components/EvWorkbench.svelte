@@ -5,10 +5,8 @@
   import { normalize, type Member, type Team } from '$lib/catalog';
   import {
     catalogSpreadSuggestions,
-    ownSpreadSuggestions,
     originalSpreadSuggestion,
     type CatalogSuggestion,
-    type OwnTeamSet,
     type SpreadSuggestion,
   } from '$lib/workbench';
 
@@ -17,8 +15,6 @@
     teams,
     currentRegulation,
     natureSuggestions,
-    ownTeams,
-    excludeOwnTeamId,
     originalMember,
     onspreadchange,
     onnaturechange,
@@ -27,12 +23,14 @@
     teams: Team[];
     currentRegulation: string;
     natureSuggestions: CatalogSuggestion[];
-    ownTeams: OwnTeamSet[];
-    excludeOwnTeamId: string | null;
     originalMember?: Member;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
   } = $props();
+  let evEditor: { flush: () => void } | undefined;
+  export function flush(): void {
+    evEditor?.flush();
+  }
 
   let cachedTeams: Team[] | undefined;
   let cachedRegulation = '';
@@ -68,23 +66,6 @@
         seen.add(key);
       }
     }
-    for (const option of ownSpreadSuggestions(
-      member,
-      ownTeams,
-      excludeOwnTeamId
-    )) {
-      const key = spreadKey(option.nature, option.spread);
-      if (seen.has(key)) continue;
-      seen.add(key);
-      rows.push({
-        spread: option.spread,
-        nature: option.nature,
-        source: `${option.teamName} · ${option.regulation}`,
-        deltas: option.deltas,
-        movedPoints: option.movedPoints,
-        speed: option.speed,
-      });
-    }
     for (const option of catalogSpreadSuggestions(
       member,
       teams,
@@ -118,6 +99,7 @@
 </script>
 
 <EvEditor
+  bind:this={evEditor}
   {member}
   spread={member.spread || ''}
   nature={member.nature || ''}

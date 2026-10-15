@@ -2,6 +2,7 @@
   import X from '@lucide/svelte/icons/x';
   import ItemIcon from '$lib/components/ItemIcon.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
+  import { Button } from '$lib/components/ui/button';
   import { NATURES } from '$lib/paste';
 
   interface Props {
@@ -79,9 +80,10 @@
           }}
         />
         {#if item}
-          <button
-            type="button"
-            class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+          <Button
+            variant="quiet"
+            size="icon-touch"
+            class="-mr-2"
             aria-label="Clear item"
             tabindex={activeSuggestions === 'item' ? -1 : 0}
             data-detail-choice
@@ -94,7 +96,7 @@
             }}
           >
             <X class="size-4" />
-          </button>
+          </Button>
         {/if}
       </div>
 
@@ -109,7 +111,7 @@
               <li>
                 <button
                   type="button"
-                  class="flex min-h-11 items-center gap-2 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                  class="option-row"
                   data-detail-choice
                   onpointerdown={(event) => event.preventDefault()}
                   onclick={() => {
@@ -165,9 +167,10 @@
           }}
         />
         {#if ability}
-          <button
-            type="button"
-            class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+          <Button
+            variant="quiet"
+            size="icon-touch"
+            class="-mr-2"
             aria-label="Clear ability"
             tabindex={activeSuggestions === 'ability' ? -1 : 0}
             data-detail-choice
@@ -180,7 +183,7 @@
             }}
           >
             <X class="size-4" />
-          </button>
+          </Button>
         {/if}
       </div>
 
@@ -195,7 +198,7 @@
               <li>
                 <button
                   type="button"
-                  class="min-h-11 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                  class="option-row"
                   data-detail-choice
                   onpointerdown={(event) => event.preventDefault()}
                   onclick={() => {

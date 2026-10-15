@@ -41,6 +41,19 @@ export const formatChampionsSpread = (spread: ChampionsSpread) =>
 export const championsSpreadTotal = (spread: ChampionsSpread) =>
   CHAMPIONS_STATS.reduce((total, stat) => total + spread[stat], 0);
 
+export function balanceChampionsStat(
+  values: ChampionsSpread,
+  stat: ChampionsStat
+): ChampionsSpread {
+  return {
+    ...values,
+    [stat]: Math.max(
+      0,
+      Math.min(32, values[stat] + 66 - championsSpreadTotal(values))
+    ),
+  };
+}
+
 export const isCompleteSpread = (
   spread: ChampionsSpread | null
 ): spread is ChampionsSpread =>
