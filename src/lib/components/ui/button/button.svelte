@@ -6,34 +6,30 @@
     HTMLButtonAttributes,
   } from 'svelte/elements';
 
-  export type ButtonVariant =
-    'default' | 'outline' | 'secondary' | 'ghost' | 'destructive' | 'link';
+  export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'destructive';
   export type ButtonSize =
-    'default' | 'xs' | 'sm' | 'lg' | 'icon' | 'icon-xs' | 'icon-sm' | 'icon-lg';
+    'compact' | 'touch' | 'dense' | 'icon-compact' | 'icon-touch';
 
   const variants: Record<ButtonVariant, string> = {
-    default: 'btn-primary',
-    outline: 'btn-outline',
-    secondary: 'btn-soft',
-    ghost: 'btn-ghost',
+    primary: 'btn-primary',
+    secondary: 'btn-outline',
+    quiet:
+      'btn-ghost text-base-content/70 hover:text-base-content disabled:text-base-content/40',
     destructive: 'btn-soft btn-error',
-    link: 'btn-link',
   };
 
   const sizes: Record<ButtonSize, string> = {
-    default: 'btn-md',
-    xs: 'btn-xs',
-    sm: 'btn-sm',
-    lg: 'btn-lg',
-    icon: 'btn-square btn-md',
-    'icon-xs': 'btn-square btn-xs',
-    'icon-sm': 'btn-square btn-sm',
-    'icon-lg': 'btn-square btn-lg',
+    compact: 'h-9 px-3 gap-1.5 max-md:h-auto max-md:min-h-11',
+    touch: 'min-h-11 px-3.5 gap-1.5',
+    // the EV stat row wraps on ≤320px phones; a 36px stepper adds 8px per row
+    dense: 'h-9 gap-1 px-2 max-md:h-7 max-md:min-h-7',
+    'icon-compact': 'size-9 p-0 max-md:size-11',
+    'icon-touch': 'size-11 p-0',
   };
 
   export function buttonVariants({
-    variant = 'default',
-    size = 'default',
+    variant = 'secondary',
+    size = 'compact',
     class: className = '',
   }: {
     variant?: ButtonVariant;
@@ -41,9 +37,9 @@
     class?: HTMLButtonAttributes['class'];
   } = {}): string {
     return twMerge(
-      "btn [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-      variants[variant] || variants.default,
-      sizes[size] || sizes.default,
+      "btn whitespace-nowrap [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+      variants[variant] ?? variants.secondary,
+      sizes[size] ?? sizes.compact,
       clsx(className)
     );
   }
@@ -58,8 +54,8 @@
 <script lang="ts">
   let {
     class: className = '',
-    variant = 'default',
-    size = 'default',
+    variant = 'secondary',
+    size = 'compact',
     ref = $bindable(null),
     href = undefined,
     type = 'button',

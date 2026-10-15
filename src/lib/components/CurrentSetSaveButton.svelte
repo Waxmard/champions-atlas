@@ -191,7 +191,7 @@
     }
   }
 
-  function save(event: MouseEvent) {
+  export function save(event: MouseEvent): void {
     statusMessage = '';
     alertMessage = '';
     if (saving || pendingPlan || disabled) return;
@@ -230,24 +230,18 @@
   }
 </script>
 
-<div
-  class={memberIndex === undefined
-    ? 'max-w-sm min-w-0'
-    : 'border-t border-base-300 px-3 py-3'}
->
-  <Button
-    variant="outline"
-    class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
-    {disabled}
-    aria-describedby={`in-game-sets-description-${teamId}`}
-    onpointerdown={keepFocus}
-    onclick={save}
-  >
-    {memberIndex === undefined
-      ? 'Set all as my in-game sets'
-      : `Set as my in-game ${browsePokemon(pokemon ?? '')} set`}
-  </Button>
+<div class={memberIndex === undefined ? 'max-w-sm min-w-0' : 'px-2.5'}>
   {#if memberIndex === undefined}
+    <Button
+      variant="secondary"
+      size="touch"
+      {disabled}
+      aria-describedby={`in-game-sets-description-${teamId}`}
+      onpointerdown={keepFocus}
+      onclick={save}
+    >
+      Set all as my in-game sets
+    </Button>
     <p id={`in-game-sets-description-${teamId}`} class="provenance mt-2">
       Record the sets currently in your Pokémon Champions box—one per Pokémon.
       This doesn’t change anything in the game.
@@ -255,12 +249,12 @@
   {/if}
   <p
     role="alert"
-    class="mt-2 min-h-5 text-sm"
+    class="mt-2 text-sm empty:mt-0"
     style="color: var(--color-error-content)"
   >
     {alertMessage}
   </p>
-  <p role="status" aria-live="polite" class="provenance mt-2 min-h-5">
+  <p role="status" aria-live="polite" class="provenance mt-2 empty:mt-0">
     {statusMessage}
   </p>
   {#if pendingPlan}
@@ -324,13 +318,18 @@
       >
         <Button
           type="button"
-          variant="outline"
-          class="min-h-11"
+          variant="quiet"
+          size="touch"
           onclick={clearPending}
         >
           Cancel
         </Button>
-        <Button type="button" class="min-h-11" onclick={recordPending}>
+        <Button
+          type="button"
+          variant="primary"
+          size="touch"
+          onclick={recordPending}
+        >
           Record sets
         </Button>
       </footer>

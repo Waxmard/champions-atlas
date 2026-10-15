@@ -196,13 +196,12 @@
                 <div class="flex flex-wrap gap-2">
                   <Button
                     data-wishlist-use
-                    class="min-h-11 px-4"
+                    variant="primary"
                     disabled={!ready || !!pendingId}
                     onclick={() => use(entry)}>Use this team</Button
                   >
                   <Button
-                    variant="outline"
-                    class="min-h-11 px-4"
+                    variant="destructive"
                     disabled={!ready || !!pendingId}
                     onclick={() => remove(entry)}>Remove from Wishlist</Button
                   >

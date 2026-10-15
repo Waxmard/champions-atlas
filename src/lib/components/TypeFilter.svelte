@@ -52,7 +52,7 @@
           <Combobox.Item
             value={type}
             label={type}
-            class="flex min-h-11 cursor-pointer items-center gap-2 border-b border-base-300 px-3 text-sm outline-none last:border-b-0 data-highlighted:bg-base-200 data-highlighted:text-base-content"
+            class="option-row cursor-pointer border-b border-base-300 outline-none last:border-b-0 data-highlighted:bg-base-200 data-highlighted:text-base-content"
             ><img
               src={getTypeIcon(type)}
               alt=""

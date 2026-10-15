@@ -16,6 +16,7 @@
   import type { Member, Team } from '$lib/catalog';
   import { speedBenchmark, speedFor, speedTiers } from '$lib/stats';
   import EvBenchmarkPanel from '$lib/components/EvBenchmarkPanel.svelte';
+  import { Button } from '$lib/components/ui/button';
   import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
 
   let {
@@ -200,25 +201,28 @@
               </span>
             {/if}
             <div class="flex items-center gap-1">
-              <button
-                type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+              <Button
+                variant="quiet"
+                size="dense"
+                class="font-mono text-[11px]"
                 disabled={values[stat] === 0}
                 onclick={() => update(stat, 0)}
               >
                 0
-              </button>
-              <button
-                type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+              </Button>
+              <Button
+                variant="quiet"
+                size="dense"
+                class="font-mono text-[11px]"
                 disabled={values[stat] === 32}
                 onclick={() => update(stat, 32)}
               >
                 32
-              </button>
-              <button
-                type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+              </Button>
+              <Button
+                variant="quiet"
+                size="dense"
+                class="font-mono text-[11px]"
                 disabled={delta === 0}
                 aria-label={`Fill remaining EVs into ${stat}`}
                 title={delta > 0
@@ -229,7 +233,7 @@
                 onclick={() => update(stat, target)}
               >
                 {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : 'Fill'}
-              </button>
+              </Button>
             </div>
           </div>
           <div class="flex items-center gap-1.5">

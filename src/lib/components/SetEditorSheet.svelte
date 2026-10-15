@@ -412,9 +412,8 @@
       <div class="flex items-center justify-between gap-3">
         <div class="flex min-w-0 items-center gap-2">
           <Button
-            variant="ghost"
-            size="sm"
-            class="h-11 min-h-11 gap-1 px-2.5 font-medium"
+            variant="quiet"
+            size="touch"
             onclick={backToOverview}
             aria-label="Back to overview"
           >
@@ -608,7 +607,8 @@
         </p>
         {#if originalChanged && originalSlotMember}
           <Button
-            variant="outline"
+            variant="secondary"
+            size="touch"
             disabled={!!originalReason}
             data-set-choice
             onpointerdown={(event) => event.preventDefault()}
@@ -629,7 +629,7 @@
                   <button
                     type="button"
                     aria-label={`Use ${option.pokemon} set`}
-                    class="flex min-h-11 items-center gap-2.5 px-3 py-2 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+                    class="option-row"
                     data-set-choice
                     onpointerdown={(event) => event.preventDefault()}
                     onclick={() => chooseSet(option.member, true)}
@@ -709,8 +709,8 @@
     </p>
     <div class="flex justify-end gap-2">
       <Button
-        variant="outline"
-        class="h-11 min-h-11 px-4"
+        variant="secondary"
+        size="touch"
         onpointerdown={keepFocus}
         onclick={() => {
           activeSuggestions = null;
@@ -718,7 +718,8 @@
         }}>Close</Button
       >
       <Button
-        class="h-11 min-h-11 px-4"
+        variant="primary"
+        size="touch"
         onpointerdown={keepFocus}
         onclick={done}>Done</Button
       >

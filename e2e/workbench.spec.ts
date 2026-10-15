@@ -226,7 +226,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   const rawValue = await raw.inputValue();
   await raw.fill(rawValue + '\n- Protect');
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor.getByRole('alert')).toContainText('more than four moves');
+  await expect(editor.locator('[role="alert"]:not(:empty)')).toContainText(
+    'more than four moves'
+  );
   await expect(editor).toBeVisible();
   await raw.fill(
     rawValue.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe')
@@ -289,7 +291,9 @@ test('untouched legacy EV spread saves, but changed spread requires 66', async (
   await expectSpreadSubView(editor);
   await editor.getByLabel('HP EV', { exact: true }).fill('31');
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor.getByRole('alert')).toContainText('must total 66');
+  await expect(editor.locator('[role="alert"]:not(:empty)')).toContainText(
+    'must total 66'
+  );
   await expect(editor).toBeVisible();
 });
 
@@ -740,7 +744,7 @@ for (const mutation of ['changed', 'deleted'] as const) {
       await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
         'Uncommitted item'
       );
-      await expect(editor.getByRole('alert')).toContainText(
+      await expect(editor.locator('[role="alert"]:not(:empty)')).toContainText(
         'Could not save this input'
       );
       expect(

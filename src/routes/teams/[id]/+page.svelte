@@ -150,27 +150,24 @@
 
   <div class="mt-6 flex flex-wrap gap-2.5">
     <Button
-      class="min-h-11 px-4"
+      variant="primary"
       disabled={!ready || savedError !== '' || pending}
       onclick={useTeam}>Use this team</Button
     >
     <Button
-      variant="outline"
-      class="min-h-11 px-4"
+      variant="secondary"
       disabled={!ready || savedError !== '' || pending || wishlisted}
       onclick={wishlist}>{wishlisted ? 'Wishlisted' : 'Wishlist'}</Button
     >
     {#if isPasteUrl(team.pasteUrl)}<Button
         href={team.pasteUrl}
-        variant="outline"
-        class="min-h-11 px-4"
+        variant="secondary"
         target="_blank"
         rel="external noreferrer"
         ><ExternalLink aria-hidden="true" />Open original paste</Button
       >{/if}
     {#if paste}<Button
-        variant="outline"
-        class="min-h-11 px-4"
+        variant="secondary"
         onclick={() =>
           copy(
             paste,
@@ -181,8 +178,7 @@
           : 'Copy published sets'}</Button
       >{/if}
     {#if team.replicaCode && team.replicaStatus === '✔'}<Button
-        variant="outline"
-        class="min-h-11 px-4"
+        variant="secondary"
         onclick={() => copy(team.replicaCode || '', 'Replica code')}
         ><Copy aria-hidden="true" />Copy replica code</Button
       >{/if}
@@ -262,8 +258,7 @@
           </div>
           {#if report.sourceUrl}<Button
               href={report.sourceUrl}
-              variant="outline"
-              class="min-h-11"
+              variant="quiet"
               target="_blank"
               rel="external noreferrer"
               ><ExternalLink aria-hidden="true" />Original source</Button

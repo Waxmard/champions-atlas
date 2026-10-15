@@ -329,18 +329,18 @@
   <p role="status" aria-live="polite" class="sr-only">{status}</p>
 
   <div class="mt-4">
-    <button
+    <Button
       type="button"
+      variant="secondary"
       aria-expanded={typeOpen}
       onclick={() => (typeOpen = !typeOpen)}
-      class="btn min-h-11 gap-2 btn-outline"
     >
       <Filter class="size-4 text-base-content/60" aria-hidden="true" />
       Filter by type
       {#if selectedTypes.length}<span class="badge badge-primary"
           >{selectedTypes.length}</span
         >{/if}
-    </button>
+    </Button>
     {#if typeOpen}
       <div class="mt-2">
         <TypeFilter
@@ -360,12 +360,12 @@
             <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
               class="font-medium">{type}</span
             >
-            <button
-              type="button"
+            <Button
+              variant="quiet"
+              size="icon-compact"
               aria-label={`Remove ${type} type filter`}
               onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
-              class="grid size-11 place-items-center rounded-full text-base-content/60 hover:text-base-content"
-              ><X class="size-3.5" aria-hidden="true" /></button
+              ><X class="size-3.5" aria-hidden="true" /></Button
             >
           </span>
         {/each}
@@ -404,9 +404,9 @@
             </div>
             <Button
               type="button"
-              variant="ghost"
-              size="icon"
-              class="size-11 shrink-0"
+              variant="quiet"
+              size="icon-compact"
+              class="shrink-0"
               aria-label={`Remove ${filter.pokemon}`}
               onclick={() =>
                 changeFilters(filters.filter((_, i) => i !== index))}
@@ -550,8 +550,7 @@
       </p>
       {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || includeCustomRules || filterState.error}<Button
           type="button"
-          variant="ghost"
-          class="min-h-11 px-2"
+          variant="quiet"
           disabled={!ready}
           onclick={clearFilters}>Clear filters</Button
         >{/if}
@@ -569,15 +568,14 @@
                 !ready || savedError !== '' || pending.has(team.id)}
               <Button
                 type="button"
-                variant="outline"
-                class="min-h-11 px-4"
+                variant="quiet"
                 disabled={busy || wishlisted.has(team.id)}
                 onclick={() => wishlist(team)}
                 >{wishlisted.has(team.id) ? 'Wishlisted' : 'Wishlist'}</Button
               >
               <Button
                 type="button"
-                class="min-h-11 px-4"
+                variant="primary"
                 disabled={busy}
                 onclick={() => use(team)}>Use this team</Button
               >
@@ -590,8 +588,7 @@
           class="mt-8 flex items-center justify-center gap-4"
         >
           <Button
-            variant="outline"
-            class="min-h-11"
+            variant="secondary"
             disabled={pageNumber === 1}
             onclick={() => changeOption('page', String(pageNumber - 1))}
             >Previous</Button
@@ -600,8 +597,7 @@
             >Page {pageNumber} of {pageCount}</span
           >
           <Button
-            variant="outline"
-            class="min-h-11"
+            variant="secondary"
             disabled={pageNumber === pageCount}
             onclick={() => changeOption('page', String(pageNumber + 1))}
             >Next</Button
@@ -619,8 +615,8 @@
         </p>
         <Button
           type="button"
-          variant="outline"
-          class="mt-5 min-h-11"
+          variant="secondary"
+          class="mt-5"
           disabled={!ready}
           onclick={clearFilters}>Clear filters</Button
         >

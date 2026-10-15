@@ -2,6 +2,7 @@
   import X from '@lucide/svelte/icons/x';
   import TypeMark from '$lib/components/TypeMark.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
+  import { Button } from '$lib/components/ui/button';
   import type { CatalogSuggestion } from '$lib/workbench';
   import { getMoveType, TYPE_COLORS } from '$lib/types';
   let {
@@ -74,15 +75,16 @@
             }
           }}
         />
-        <button
-          type="button"
-          class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+        <Button
+          variant="quiet"
+          size="icon-touch"
+          class="-mr-2"
           aria-label={`Clear move ${index + 1}`}
           tabindex={activeSuggestions !== null ? -1 : 0}
           disabled={!move}
           data-move-choice
           onpointerdown={(event) => event.preventDefault()}
-          onclick={() => onclear(index)}><X class="size-4" /></button
+          onclick={() => onclear(index)}><X class="size-4" /></Button
         >
       </div>
     {/each}
@@ -102,7 +104,7 @@
               type="button"
               data-move-choice
               onpointerdown={(event) => event.preventDefault()}
-              class="flex min-h-11 items-center gap-2.5 px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+              class="option-row"
               style={optionColor
                 ? `border-left: 3px solid ${optionColor};`
                 : ''}

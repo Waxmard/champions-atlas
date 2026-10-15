@@ -2,6 +2,7 @@
   import { Combobox } from 'bits-ui';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import { Button } from '$lib/components/ui/button';
   import { rankSavedTeams } from '$lib/team-collections';
   import type { SavedTeam } from '$lib/workbench';
   import PokemonSprite from './PokemonSprite.svelte';
@@ -128,8 +129,10 @@
           <input {...props} value={field} />
         {/snippet}
       </Combobox.Input>
-      <button
-        type="button"
+      <Button
+        variant="quiet"
+        size="icon-touch"
+        class="absolute top-1/2 right-0.5 -translate-y-1/2"
         aria-label="Show saved teams"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -137,10 +140,9 @@
         onpointerdown={(event) => event.stopPropagation()}
         onclick={toggleTrigger}
         onkeydown={closeOnEscape}
-        class="absolute top-1/2 right-0.5 grid size-11 -translate-y-1/2 place-items-center rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <ChevronDown class="size-5" aria-hidden="true" />
-      </button>
+      </Button>
     </div>
     <Combobox.Portal>
       <Combobox.Content
@@ -156,7 +158,7 @@
               value={team.id}
               label={team.name}
               aria-label={`${team.name}: ${roster(team).join(', ')}`}
-              class="flex min-h-11 cursor-pointer items-center gap-2 border-b border-base-300 px-3 py-2 outline-none last:border-b-0 data-highlighted:bg-base-200 data-highlighted:text-base-content"
+              class="option-row cursor-pointer border-b border-base-300 outline-none last:border-b-0 data-highlighted:bg-base-200 data-highlighted:text-base-content"
             >
               {#snippet children({ selected: isSelected })}
                 <span class="flex min-w-0 flex-1 flex-col gap-1">

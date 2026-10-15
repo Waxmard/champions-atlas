@@ -32,8 +32,9 @@
 
       {#if sync.configured}
         <Button
-          variant="outline"
-          class="min-h-11 w-full gap-3"
+          variant="secondary"
+          size="touch"
+          class="w-full gap-3"
           onclick={signIn}
           disabled={signingIn}
         >

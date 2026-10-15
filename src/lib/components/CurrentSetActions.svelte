@@ -97,7 +97,11 @@
     };
   });
 
-  function reuse(scope: CurrentSetScope) {
+  export function canApply(): boolean {
+    return !disabled && !!currentSet;
+  }
+
+  export function reuse(scope: CurrentSetScope): void {
     if (disabled) return;
     try {
       if (!ownerMatches()) {
@@ -149,7 +153,7 @@
 <section
   aria-label="My in-game Pokémon set"
   class={card
-    ? 'grid gap-2 px-3 pb-3'
+    ? 'px-2.5 pb-1.5'
     : 'mb-4 grid gap-2 border-b border-base-300 pb-4'}
 >
   {#if !card}
@@ -158,18 +162,10 @@
     </h3>
   {/if}
   <div class="flex flex-wrap gap-2">
-    {#if card}
+    {#if currentSet && view === 'overview'}
       <Button
-        variant="outline"
-        class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
-        disabled={disabled || !currentSet}
-        onpointerdown={keepFocus}
-        onclick={() => reuse('all')}>Use my in-game set</Button
-      >
-    {:else if currentSet && view === 'overview'}
-      <Button
-        variant="outline"
-        class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
+        variant="secondary"
+        size="touch"
         disabled={!canReuseSpread}
         onpointerdown={keepFocus}
         onclick={() => reuse('evs')}>Use my in-game EVs and nature</Button
@@ -181,8 +177,8 @@
         </p>
       {/if}
       <Button
-        variant="outline"
-        class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
+        variant="secondary"
+        size="touch"
         disabled={!canReuseMoves}
         onpointerdown={keepFocus}
         onclick={() => reuse('moves')}>Use my in-game moves</Button
@@ -193,15 +189,15 @@
         </p>
       {/if}
       <Button
-        variant="outline"
-        class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
+        variant="secondary"
+        size="touch"
         onpointerdown={keepFocus}
         onclick={() => reuse('all')}>Use my in-game set</Button
       >
     {:else if currentSet && view === 'spread'}
       <Button
-        variant="outline"
-        class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
+        variant="secondary"
+        size="touch"
         disabled={!canReuseSpread}
         onpointerdown={keepFocus}
         onclick={() => reuse('evs')}>Use my in-game EVs and nature</Button
@@ -214,8 +210,8 @@
       {/if}
     {:else if currentSet && view === 'moves'}
       <Button
-        variant="outline"
-        class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
+        variant="secondary"
+        size="touch"
         disabled={!canReuseMoves}
         onpointerdown={keepFocus}
         onclick={() => reuse('moves')}>Use my in-game moves</Button
@@ -234,8 +230,7 @@
   {/if}
   <p
     role="alert"
-    hidden={!registryError}
-    class="text-sm"
+    class="mt-2 text-sm empty:mt-0"
     style="color: var(--color-error-content)"
   >
     {registryError}

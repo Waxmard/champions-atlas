@@ -72,7 +72,7 @@
       </span>
     </label>
     <div class="mt-4 flex flex-wrap items-center gap-3">
-      <Button type="submit" class="min-h-11">Save custom team</Button>
+      <Button type="submit" variant="primary">Save custom team</Button>
       <p class="provenance">
         Saves locally as {data.currentRegulation}; legality remains unverified.
       </p>

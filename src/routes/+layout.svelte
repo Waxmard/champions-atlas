@@ -292,10 +292,7 @@
     <div
       class="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4 sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
     >
-      <a
-        href={brandHref}
-        class="flex min-h-11 items-center rounded-[var(--radius-field)] px-2 text-base-content outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
-      >
+      <a href={brandHref} class="nav-pill text-base-content hover:bg-base-200">
         <span
           class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
           >Champion's Atlas</span
@@ -308,14 +305,14 @@
         <a
           href={brandHref}
           aria-current={isBrowse ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isBrowse
+          class="nav-pill {isBrowse
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">Browse</a
         >
         <a
           href={resolve('/my-teams')}
           aria-current={isMyTeams ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isMyTeams
+          class="nav-pill {isMyTeams
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">My teams</a
         >

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import ItemIcon from '$lib/components/ItemIcon.svelte';
   import MovePill from '$lib/components/MovePill.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -31,6 +32,7 @@
     onrevert?: () => void;
     revertDisabled?: boolean;
     revertReason?: string;
+    actions?: Snippet;
   }
 
   let {
@@ -43,6 +45,7 @@
     onrevert,
     revertDisabled = false,
     revertReason = '',
+    actions,
   }: Props = $props();
 
   const types = $derived(getPokemonTypes(member.pokemon));
@@ -79,9 +82,8 @@
 
     {#if editable}
       <Button
-        variant="outline"
-        size="sm"
-        class="min-h-11 shrink-0 gap-1.5 px-2.5 text-xs"
+        variant="quiet"
+        class="shrink-0"
         aria-label={`Change ${member.pokemon}`}
         data-set-field="pokemon"
         disabled={editing}
@@ -139,14 +141,12 @@
 
   {#if editable}
     <div
-      class="mt-2 flex flex-wrap {onrevert && !revertDisabled
-        ? 'justify-between'
-        : 'justify-end'} gap-1 border-t pt-1.5"
+      data-slot="card-actions"
+      class="mt-1.5 flex flex-wrap items-center gap-1 border-t pt-1"
     >
+      {@render actions?.()}
       {#if onrevert && !revertDisabled}<Button
-          variant="ghost"
-          size="sm"
-          class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
+          variant="quiet"
           aria-label={`Revert changes for ${member.pokemon}`}
           onclick={() => onrevert?.()}
         >
@@ -154,9 +154,7 @@
           <span>Revert changes</span>
         </Button>{/if}
       <Button
-        variant="ghost"
-        size="sm"
-        class="min-h-11 gap-1 px-2 text-xs"
+        variant="quiet"
         aria-label={`Edit set for ${member.pokemon}`}
         data-set-field="set"
         disabled={editing}
@@ -165,9 +163,7 @@
         <span>Edit set</span>
       </Button>
       <Button
-        variant="ghost"
-        size="sm"
-        class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
+        variant="quiet"
         aria-label={`Edit set text for ${member.pokemon}`}
         data-set-field="text"
         disabled={editing}

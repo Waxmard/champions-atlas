@@ -232,6 +232,38 @@
     line-height: 1.5;
     font-variant-numeric: tabular-nums;
   }
+
+  .option-row {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.625rem;
+    padding-inline: 0.75rem;
+    text-align: left;
+    font-size: 0.875rem;
+  }
+  .option-row:hover {
+    background: color-mix(in oklab, var(--color-base-200) 70%, transparent);
+  }
+  .option-row:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+
+  .nav-pill {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-field);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+  .nav-pill:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-primary);
+    outline: none;
+  }
 }
 /* transitions.dev: panel reveal */
 .t-panel-slide {

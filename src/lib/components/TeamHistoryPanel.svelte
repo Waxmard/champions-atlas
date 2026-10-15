@@ -100,8 +100,7 @@
   <div class="mt-3 space-y-5">
     <div class="flex flex-wrap items-end gap-3">
       <Button
-        variant="outline"
-        class="min-h-11"
+        variant="destructive"
         disabled={disabled || identical}
         onclick={() => onrestore()}>Restore original</Button
       >
@@ -128,8 +127,8 @@
               {@const slot = group.slot}
               {@const reason = slotReason(slot)}
               <Button
-                variant="outline"
-                class="mt-2 min-h-11"
+                variant="destructive"
+                class="mt-2"
                 disabled={disabled || !!reason}
                 aria-describedby={reason
                   ? `original-slot-reason-${team.id}-${slot}`
