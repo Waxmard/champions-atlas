@@ -167,8 +167,9 @@ still records new Pokémon. New or identical snapshots do not prompt.
 Snapshots use one slot per Browse identity, shared by a base Pokémon and its
 Mega. Ordinary Floette and Floette-Eternal have separate slots. Team edits do
 not update snapshots, and deleting a team does not delete them. The app does
-not seed snapshots from teams or keep history. In the editor, reuse your
-in-game EVs and nature, moves, or whole set; selective reuse changes only those
+not seed snapshots from teams or keep history. Reuse your in-game EVs and
+nature, moves, or whole set: the editor offers every scope, and each saved set
+card offers **Use my in-game set** directly. Selective reuse changes only those
 fields, while whole-set reuse restores the saved form, item, and raw set text.
 
 The card’s **Revert changes** action appears only when it can restore that slot

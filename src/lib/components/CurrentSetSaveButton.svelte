@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import { browsePokemon, type Member } from '$lib/catalog';
   import {
+    currentSetsChangedEvent,
     currentSetsSnapshot,
     prepareCurrentSets,
     readCurrentSets,
@@ -161,7 +162,10 @@
       } else {
         statusMessage = `Recorded the in-game ${browsePokemon(pokemon ?? plan.incoming[0]!.member.pokemon)} set on this device.`;
       }
-      if (changed) void pushNow();
+      if (changed) {
+        void pushNow();
+        window.dispatchEvent(new Event(currentSetsChangedEvent));
+      }
     } catch (caught) {
       reportError(caught);
     } finally {

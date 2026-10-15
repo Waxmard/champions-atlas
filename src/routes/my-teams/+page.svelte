@@ -7,6 +7,7 @@
   import MemberCard from '$lib/components/MemberCard.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import CurrentSetSaveButton from '$lib/components/CurrentSetSaveButton.svelte';
+  import MemberCurrentSetControls from '$lib/components/MemberCurrentSetControls.svelte';
   import TeamPicker from '$lib/components/TeamPicker.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -739,12 +740,13 @@
                 revertDisabled={!canRevertSlot(index)}
                 revertReason={slotRevertReason(index)}
               />
-              <CurrentSetSaveButton
+              <MemberCurrentSetControls
                 teamId={draft.id}
                 {baseline}
-                pokemon={member.pokemon}
+                members={draft.members}
                 memberIndex={index}
                 disabled={editing || deleting || stale}
+                onreuse={(next) => saveMember(index, next)}
               />
             </section>
           {/each}

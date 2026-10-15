@@ -6,6 +6,8 @@ import { memberSchema } from './workbench.ts';
 
 export const currentSetsKey = 'champions-atlas:current-sets:v1';
 
+export const currentSetsChangedEvent = 'champions-atlas:current-sets-changed';
+
 export interface CurrentSet {
   id: string;
   member: Member;

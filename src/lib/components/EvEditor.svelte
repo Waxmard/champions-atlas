@@ -131,37 +131,9 @@
 </script>
 
 <div
-  class="plate animate-in p-3.5 duration-200 fade-in-0 sm:p-4"
+  class="plate min-w-0 animate-in p-3.5 duration-200 fade-in-0 sm:p-4"
   aria-label="EV editor"
 >
-  <div class="mb-4 space-y-2">
-    <div class="flex items-baseline justify-between gap-3">
-      <div class="flex items-baseline gap-3">
-        <span class="term">Point budget</span>
-        <span class="value font-mono font-semibold">{total}/66 points</span>
-      </div>
-      <div class="flex items-baseline gap-3">
-        {#if total === 66}
-          <span class="value font-semibold">Complete</span>
-        {:else if total < 66}
-          <span class="value">{66 - total} remaining</span>
-        {:else}
-          <span
-            class="value font-semibold"
-            style="color: var(--color-error-content)"
-            >{total - 66} over limit</span
-          >
-        {/if}
-      </div>
-    </div>
-    <div class="h-2 w-full overflow-hidden rounded-full bg-base-300">
-      <div
-        class="h-full bg-primary transition-all duration-200"
-        style="width: {Math.min(100, Math.round((total / 66) * 100))}%"
-      ></div>
-    </div>
-  </div>
-
   <!-- Nature modifies the stats below -->
   <div class="mb-4 grid gap-2 border-b pb-4" aria-label="Nature suggestions">
     <div class="flex flex-wrap items-baseline justify-between gap-3 px-0.5">
@@ -174,7 +146,7 @@
     </div>
     {#if natureSuggestions.length > 0}
       <div class="flex flex-wrap gap-2">
-        {#each natureSuggestions.slice(0, 5) as option (option.value)}
+        {#each natureSuggestions.slice(0, 4) as option (option.value)}
           {@const isSelected = nature === option.value}
           <button
             type="button"
@@ -207,8 +179,8 @@
       {@const delta = target - currentVal}
       <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
         <!-- Top Row: Stat Badge, Quick Buttons, Input & Suffix -->
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <span class="term inline-flex w-12 justify-center">{stat}</span>
             {#if effect && effect.raised === stat}
               <span

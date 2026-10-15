@@ -65,8 +65,8 @@ The EV slider keeps its native keyboard controls and vertical page scrolling,
 with a 44-pixel touch target across its full height. **Fill** adds or removes
 points from the selected stat to reach 66 total, within that stat's 0–32 bounds.
 It never changes another stat. If the selected stat cannot absorb the full
-difference, the remaining under- or over-budget total stays visible and
-uncommitted.
+difference, the differing total stays uncommitted and the editor reports it when
+you finish.
 
 Record and reuse one explicit **my in-game set** per Browse identity, representing
 the set currently in your Pokémon Champions box. Recording changes only
@@ -93,7 +93,8 @@ When a snapshot exists, you can reuse your in-game EVs and nature, moves, or
 whole set.
 Selective reuse changes only the selected fields. Whole-set reuse restores the
 saved form, item, and raw set text, subject to normal editor and roster
-validation.
+validation. The editor offers every scope; each saved set card in **My teams**
+offers whole-set reuse directly.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a

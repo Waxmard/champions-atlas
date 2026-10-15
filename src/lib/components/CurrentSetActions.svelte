@@ -2,7 +2,9 @@
   import { onMount } from 'svelte';
   import { browsePokemon, pokemonId, type Member } from '$lib/catalog';
   import { isCompleteSpread, NATURES, parseChampionsSpread } from '$lib/paste';
+  import { memberValidationError } from '$lib/member-validation';
   import {
+    currentSetsChangedEvent,
     currentSetsKey,
     readCurrentSets,
     reuseCurrentSet,
@@ -15,12 +17,24 @@
   interface Props {
     member: Member;
     view: string;
+    card?: boolean;
+    disabled?: boolean;
+    teammates?: Member[];
     onflush: () => boolean;
     getmember: () => Member;
     onreuse: (next: Member) => void;
   }
 
-  let { member, view, onflush, getmember, onreuse }: Props = $props();
+  let {
+    member,
+    view,
+    card = false,
+    disabled = false,
+    teammates = [],
+    onflush,
+    getmember,
+    onreuse,
+  }: Props = $props();
   let sets = $state<CurrentSet[] | null>(null);
   let registryError = $state('');
   const ownerKey = 'champions-atlas:sync-owner:v2';
@@ -76,10 +90,15 @@
         refreshRegistry();
     }
     window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
+    window.addEventListener(currentSetsChangedEvent, refreshRegistry);
+    return () => {
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener(currentSetsChangedEvent, refreshRegistry);
+    };
   });
 
   function reuse(scope: CurrentSetScope) {
+    if (disabled) return;
     try {
       if (!ownerMatches()) {
         refreshRegistry();
@@ -95,7 +114,20 @@
       if (!saved) return;
       if (scope === 'evs' && !canReuseSavedSpread(saved.member)) return;
       if (scope === 'moves' && !saved.member.moves.length) return;
-      onreuse(reuseCurrentSet(current, saved.member, scope));
+      const candidate = reuseCurrentSet(current, saved.member, scope);
+      if (card) {
+        const validation = memberValidationError(
+          candidate,
+          current,
+          $state.snapshot(teammates),
+          'structured'
+        );
+        if (validation) {
+          registryError = validation.message;
+          return;
+        }
+      }
+      onreuse(candidate);
     } catch (error) {
       sets = null;
       registryError = errorMessage(error);
@@ -116,13 +148,25 @@
 
 <section
   aria-label="My in-game Pokémon set"
-  class="mb-4 grid gap-2 border-b border-base-300 pb-4"
+  class={card
+    ? 'grid gap-2 px-3 pb-3'
+    : 'mb-4 grid gap-2 border-b border-base-300 pb-4'}
 >
-  <h3 class="text-sm font-semibold">
-    My in-game {browsePokemon(member.pokemon)} set
-  </h3>
+  {#if !card}
+    <h3 class="text-sm font-semibold">
+      My in-game {browsePokemon(member.pokemon)} set
+    </h3>
+  {/if}
   <div class="flex flex-wrap gap-2">
-    {#if currentSet && view === 'overview'}
+    {#if card}
+      <Button
+        variant="outline"
+        class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
+        disabled={disabled || !currentSet}
+        onpointerdown={keepFocus}
+        onclick={() => reuse('all')}>Use my in-game set</Button
+      >
+    {:else if currentSet && view === 'overview'}
       <Button
         variant="outline"
         class="h-auto min-h-11 max-w-full px-3 py-2 text-left whitespace-normal"
@@ -188,9 +232,12 @@
       No in-game set recorded for {browsePokemon(member.pokemon)}.
     </p>
   {/if}
-  {#if registryError}
-    <p role="alert" class="text-sm" style="color: var(--color-error-content)">
-      {registryError}
-    </p>
-  {/if}
+  <p
+    role="alert"
+    hidden={!registryError}
+    class="text-sm"
+    style="color: var(--color-error-content)"
+  >
+    {registryError}
+  </p>
 </section>

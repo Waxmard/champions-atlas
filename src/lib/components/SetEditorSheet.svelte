@@ -18,14 +18,16 @@
     parseSetBlock,
     updateSetText,
   } from '$lib/paste';
+  import {
+    memberRosterError,
+    memberValidationError,
+  } from '$lib/member-validation';
   import { canonicalSnapshot } from '$lib/team-history';
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import type { TeamTagsIndex } from '$lib/tags';
   import {
     catalogSuggestions,
     originalMemberFor,
-    isMegaSpecies,
-    MAX_TEAM_MEGAS,
     setText,
   } from '$lib/workbench';
   type EditorView =
@@ -212,20 +214,7 @@
     return true;
   }
   function rosterError(next: Member) {
-    if (
-      teammates.some(
-        (teammate) => normalize(teammate.pokemon) === normalize(next.pokemon)
-      )
-    )
-      return 'This Pokémon is already on the team.';
-    if (
-      normalize(next.pokemon) !== normalize(accepted.pokemon) &&
-      isMegaSpecies(next.pokemon) &&
-      teammates.filter((teammate) => isMegaSpecies(teammate.pokemon)).length >=
-        MAX_TEAM_MEGAS
-    )
-      return 'A team can include at most two Mega Pokémon.';
-    return '';
+    return memberRosterError(next, accepted, teammates);
   }
   function chooseSet(next: Member, trusted = false) {
     const candidate = structuredClone($state.snapshot(next));
@@ -263,52 +252,13 @@
       )
       .slice(0, 5);
   }
-  const exactNature = (value: string) =>
-    NATURES.find(
-      (nature) => nature.toLowerCase() === value.trim().toLowerCase()
-    );
-  function validateSpread(spread: string | null, field: EditableSetField) {
-    const value = spread?.trim() || '';
-    if (value === (accepted.spread || '') || (!value && field === 'text'))
-      return true;
-    const parsed = parseChampionsSpread(value);
-    if (!parsed) {
-      showError(field, 'Enter a valid EV spread totaling 66 points.');
-      return false;
-    }
-    const total = championsSpreadTotal(parsed);
-    if (total !== 66) {
-      showError(
-        field,
-        'Changed EV spreads must total 66 points (currently ' + total + ').'
-      );
+  function validateMember(next: Member, mode: 'structured' | 'text') {
+    const validation = memberValidationError(next, accepted, teammates, mode);
+    if (validation) {
+      showError(validation.field, validation.message);
       return false;
     }
     return true;
-  }
-  function validateMember(next: Member, mode: 'structured' | 'text') {
-    const reason = rosterError(next);
-    if (reason) {
-      showError(mode === 'text' ? 'text' : 'pokemon', reason);
-      return false;
-    }
-    if (!next.pokemon.trim()) {
-      showError(mode === 'text' ? 'text' : 'pokemon', 'Enter a Pokémon.');
-      return false;
-    }
-    const nature = next.nature?.trim() || '';
-    if (nature && nature !== (accepted.nature || '')) {
-      const standardNature = exactNature(nature);
-      if (!standardNature) {
-        showError(
-          mode === 'text' ? 'text' : 'nature',
-          'Choose a standard nature.'
-        );
-        return false;
-      }
-      next.nature = standardNature;
-    }
-    return validateSpread(next.spread, mode === 'text' ? 'text' : 'spread');
   }
   export function flush(): boolean {
     evWorkbench?.flush();
