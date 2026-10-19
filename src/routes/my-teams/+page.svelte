@@ -511,22 +511,26 @@
 
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
   <header>
-    <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-    >
-      My teams
-    </h1>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h1
+        class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+      >
+        My teams
+      </h1>
+      <Button href={resolve('/wishlist')} variant="secondary" size="touch"
+        >Wishlist</Button
+      >
+    </div>
     <p
       class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
     >
       Keep your original. Explore changes. Save your own version.
     </p>
   </header>
-  <div class="mt-4 flex flex-wrap gap-2.5">
-    <Button href={resolve('/my-teams/new')} variant="primary"
+  <div class="mt-4">
+    <Button href={resolve('/my-teams/new')} variant="secondary"
       >Add custom team</Button
     >
-    <Button href={resolve('/wishlist')} variant="secondary">Wishlist</Button>
   </div>
   {#if storageError}<p
       role="alert"
@@ -643,11 +647,13 @@
             <CurrentSetSaveButton
               teamId={draft.id}
               {baseline}
+              members={draft.members}
               disabled={editing || deleting || stale}
             />
             <Button
               variant="secondary"
               size="touch"
+              data-team-action="copy"
               disabled={editing || deleting}
               onclick={copyPaste}>Copy team text</Button
             >
@@ -738,7 +744,6 @@
                 onrevert={() => revertSlot(index)}
                 revertDisabled={!canRevertSlot(index)}
                 revertReason={slotRevertReason(index)}
-                onreuse={(next) => saveMember(index, next)}
               />
             </section>
           {/each}

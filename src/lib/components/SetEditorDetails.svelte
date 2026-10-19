@@ -1,5 +1,8 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
+  import { normalize, type Member } from '$lib/catalog';
+  import type { CurrentSetChoice } from '$lib/current-sets';
+  import type { CatalogSuggestion } from '$lib/workbench';
   import ItemIcon from '$lib/components/ItemIcon.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -10,14 +13,16 @@
     ability: string;
     nature: string;
     activeSuggestions: string | null;
-    filteredItems: Array<{ value: string; original?: true }>;
-    filteredAbilities: Array<{ value: string; original?: true }>;
+    filteredItems: CatalogSuggestion[];
+    filteredAbilities: CatalogSuggestion[];
+    inGameMember?: Member;
     legacyNature: string | null;
     error: string;
     errorField: EditableSetField | null;
     onitemchange: (val: string) => void;
     onabilitychange: (val: string) => void;
     onnaturechange: (val: string) => void;
+    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onopensuggestions: (field: string) => void;
     onclearsuggestions: () => void;
     onclearerror: () => void;
@@ -31,17 +36,24 @@
     activeSuggestions,
     filteredItems,
     filteredAbilities,
+    inGameMember,
     legacyNature,
     error,
     errorField,
     onitemchange,
     onabilitychange,
     onnaturechange,
+    oningame,
     onopensuggestions,
     onclearsuggestions,
     onclearerror,
     oncommit,
   }: Props = $props();
+  const inGameNature = $derived(
+    NATURES.find(
+      (value) => normalize(value) === normalize(inGameMember?.nature ?? '')
+    ) ?? null
+  );
 </script>
 
 <section class="grid gap-5">
@@ -115,6 +127,11 @@
                   data-detail-choice
                   onpointerdown={(event) => event.preventDefault()}
                   onclick={() => {
+                    if (opt.inGame) {
+                      if (inGameMember)
+                        oningame({ kind: 'item' }, inGameMember);
+                      return;
+                    }
                     onitemchange(opt.value);
                     onclearsuggestions();
                     oncommit();
@@ -122,7 +139,12 @@
                 >
                   <ItemIcon item={opt.value} size={20} />
                   <span class="value">{opt.value}</span>
-                  {#if opt.original}<span class="provenance">Original</span
+                  {#if opt.original || opt.inGame}<span class="provenance"
+                      >{opt.original
+                        ? opt.inGame
+                          ? 'Original · In-game'
+                          : 'Original'
+                        : 'In-game'}</span
                     >{/if}
                 </button>
               </li>
@@ -202,13 +224,23 @@
                   data-detail-choice
                   onpointerdown={(event) => event.preventDefault()}
                   onclick={() => {
+                    if (opt.inGame) {
+                      if (inGameMember)
+                        oningame({ kind: 'ability' }, inGameMember);
+                      return;
+                    }
                     onabilitychange(opt.value);
                     onclearsuggestions();
                     oncommit();
                   }}
                 >
-                  {opt.value}{#if opt.original}<span class="provenance ml-2"
-                      >Original</span
+                  {opt.value}{#if opt.original || opt.inGame}<span
+                      class="provenance ml-2"
+                      >{opt.original
+                        ? opt.inGame
+                          ? 'Original · In-game'
+                          : 'Original'
+                        : 'In-game'}</span
                     >{/if}
                 </button>
               </li>
@@ -229,7 +261,13 @@
         value={nature}
         onfocus={onclearsuggestions}
         onchange={(e) => {
-          onnaturechange(e.currentTarget.value);
+          const selected = e.currentTarget.value;
+          if (selected === inGameNature) {
+            if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
+            e.currentTarget.value = nature;
+            return;
+          }
+          onnaturechange(selected);
           onclearerror();
           oncommit();
         }}
@@ -238,8 +276,11 @@
         {#if legacyNature}
           <option value={legacyNature}>{legacyNature}</option>
         {/if}
+        {#if inGameNature && inGameMember}
+          <option value={inGameNature}>{inGameNature} — In-game</option>
+        {/if}
         {#each NATURES as n (n)}
-          <option value={n}>{n}</option>
+          {#if n !== inGameNature}<option value={n}>{n}</option>{/if}
         {/each}
       </select>
     </div>

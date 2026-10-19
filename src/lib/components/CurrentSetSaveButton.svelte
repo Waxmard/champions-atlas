@@ -1,22 +1,29 @@
 <script lang="ts">
+  import Save from '@lucide/svelte/icons/save';
   import { tick } from 'svelte';
   import { browsePokemon, type Member } from '$lib/catalog';
   import {
     currentSetsChangedEvent,
     currentSetsSnapshot,
+    currentSetsWouldChange,
     prepareCurrentSets,
     readCurrentSets,
     saveCurrentSets,
     type CurrentSetSavePlan,
   } from '$lib/current-sets';
+  import {
+    createCurrentSetRegistry,
+    currentSetOwnerMatches,
+  } from '$lib/current-set-registry.svelte';
   import { liveInUseTeam } from '$lib/team-collections';
   import { canonicalSnapshot } from '$lib/team-history';
-  import { pushNow, sync } from '$lib/sync.svelte';
+  import { pushNow } from '$lib/sync.svelte';
   import { Button } from '$lib/components/ui/button';
 
   interface Props {
     teamId: string;
     baseline: string;
+    members: Member[];
     pokemon?: string;
     memberIndex?: number;
     disabled?: boolean;
@@ -25,6 +32,7 @@
   let {
     teamId,
     baseline,
+    members,
     pokemon,
     memberIndex,
     disabled = false,
@@ -34,25 +42,29 @@
   let pendingPlan = $state.raw<CurrentSetSavePlan | null>(null);
   let checkedIds = $state<string[]>([]);
   let dialogTrigger: HTMLButtonElement | null = null;
+  let dialogTriggerWasFocused = false;
   let dialogTitle = $state<HTMLHeadingElement | null>(null);
   let saving = false;
+  const registry = createCurrentSetRegistry();
 
-  const ownerKey = 'champions-atlas:sync-owner:v2';
-  const ownershipError =
-    'Sync account changed in another tab. Reopen My teams to continue.';
   const teamError =
     'This team changed elsewhere. Reopen the team before saving its current sets.';
   const readErrorPrefix = 'Current Pokémon sets could not be read.';
   const raceError =
     'Current Pokémon sets changed while confirming. Try saving again.';
 
-  function ownerMatches() {
-    if (!sync.configured) return true;
-    const owner = localStorage.getItem(ownerKey);
-    const user = sync.user;
-    if (!user) return owner === null;
-    const projectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
-    return !!projectId && owner === `${projectId}:${user.uid}`;
+  export function canRecord(): boolean {
+    if (disabled || registry.sets === null) return false;
+    if (memberIndex !== undefined) {
+      const member = members[memberIndex];
+      return !!member && currentSetsWouldChange(registry.sets, [member]);
+    }
+    return currentSetsWouldChange(registry.sets, members);
+  }
+
+  function hasNewIncoming(plan: CurrentSetSavePlan): boolean {
+    const currentIds = new Set(plan.current.map(({ id }) => id));
+    return plan.incoming.some(({ id }) => !currentIds.has(id));
   }
 
   function liveTeam() {
@@ -74,6 +86,30 @@
     event.preventDefault();
   }
 
+  function focusFallback(): HTMLElement | null {
+    if (memberIndex !== undefined)
+      return (
+        document
+          .getElementById(`pokemon-slot-${memberIndex}`)
+          ?.querySelector<HTMLElement>('[data-set-field="set"]') ?? null
+      );
+    return document.querySelector<HTMLElement>('[data-team-action="copy"]');
+  }
+
+  function restoreFocus(trigger: HTMLButtonElement, wasFocused: boolean) {
+    if (!wasFocused) return;
+    void tick().then(() => {
+      if (trigger.isConnected) return;
+      if (
+        document.activeElement !== trigger &&
+        document.activeElement !== document.body &&
+        document.activeElement !== document.documentElement
+      )
+        return;
+      focusFallback()?.focus();
+    });
+  }
+
   function openDialog(node: HTMLDialogElement) {
     const { scrollX, scrollY } = window;
     const body = document.body;
@@ -85,6 +121,7 @@
       overflow: body.style.overflow,
     };
     const opener = dialogTrigger;
+    const restoreOpenerFocus = dialogTriggerWasFocused;
     body.style.position = 'fixed';
     body.style.top = `-${scrollY}px`;
     body.style.left = `-${scrollX}px`;
@@ -104,8 +141,19 @@
         pendingPlan = null;
         checkedIds = [];
         dialogTrigger = null;
+        dialogTriggerWasFocused = false;
         void tick().then(() => {
-          if (opener?.isConnected) opener.focus();
+          const active = document.activeElement;
+          const focusIsUnclaimed =
+            active === opener ||
+            active === document.body ||
+            active === document.documentElement;
+          if (opener?.isConnected) {
+            if (restoreOpenerFocus && (active === opener || focusIsUnclaimed))
+              opener.focus();
+          } else if (restoreOpenerFocus && focusIsUnclaimed) {
+            focusFallback()?.focus();
+          }
         });
       },
     };
@@ -132,13 +180,16 @@
   function record(
     plan: CurrentSetSavePlan,
     replacementIds: ReadonlySet<string>,
-    checklist: boolean
+    checklist: boolean,
+    trigger?: HTMLButtonElement,
+    triggerWasFocused = false
   ) {
     if (saving) return;
     saving = true;
     try {
-      if (!ownerMatches()) {
-        alertMessage = ownershipError;
+      if (!currentSetOwnerMatches()) {
+        registry.refresh();
+        alertMessage = registry.error;
         return;
       }
       if (!liveTeam()) return;
@@ -165,17 +216,22 @@
       if (changed) {
         void pushNow();
         window.dispatchEvent(new Event(currentSetsChangedEvent));
+      } else {
+        registry.refresh();
       }
     } catch (caught) {
+      registry.refresh();
       reportError(caught);
     } finally {
       saving = false;
+      if (trigger) restoreFocus(trigger, triggerWasFocused);
     }
   }
 
   function recordPending() {
     const plan = pendingPlan;
-    if (!plan || saving) return;
+    if (!plan || saving || (!checkedIds.length && !hasNewIncoming(plan)))
+      return;
     statusMessage = '';
     alertMessage = '';
     const replacementIds = new Set(checkedIds);
@@ -195,43 +251,66 @@
     statusMessage = '';
     alertMessage = '';
     if (saving || pendingPlan || disabled) return;
+    const trigger = event.currentTarget as HTMLButtonElement;
+    const triggerWasFocused = document.activeElement === trigger;
     try {
-      if (!ownerMatches()) {
-        alertMessage = ownershipError;
+      if (!currentSetOwnerMatches()) {
+        registry.refresh();
+        alertMessage = registry.error;
         return;
       }
       const latest = liveTeam();
       if (!latest) return;
-      const members: Member[] =
+      const selectedMembers: Member[] =
         memberIndex === undefined
           ? latest.members
           : [latest.members[memberIndex]!];
-      const plan = prepareCurrentSets(localStorage, members);
+      const plan = prepareCurrentSets(localStorage, selectedMembers);
+      if (!plan.overwritten.length && !hasNewIncoming(plan)) {
+        registry.refresh();
+        statusMessage = 'No in-game sets changed.';
+        restoreFocus(trigger, triggerWasFocused);
+        return;
+      }
       if (memberIndex !== undefined && plan.overwritten.length > 0) {
         if (
           !window.confirm(
-            `Replace my in-game ${browsePokemon(pokemon ?? members[0].pokemon)} set?`
+            `Replace my in-game ${browsePokemon(pokemon ?? selectedMembers[0].pokemon)} set?`
           )
         )
           return;
-        record(plan, new Set(plan.overwritten.map(({ id }) => id)), false);
+        record(
+          plan,
+          new Set(plan.overwritten.map(({ id }) => id)),
+          false,
+          trigger,
+          triggerWasFocused
+        );
         return;
       }
       if (memberIndex === undefined && plan.overwritten.length > 0) {
-        dialogTrigger = event.currentTarget as HTMLButtonElement;
+        dialogTrigger = trigger;
+        dialogTriggerWasFocused = triggerWasFocused;
         checkedIds = [];
         pendingPlan = plan;
         return;
       }
-      record(plan, new Set(plan.overwritten.map(({ id }) => id)), false);
+      record(
+        plan,
+        new Set(plan.overwritten.map(({ id }) => id)),
+        false,
+        trigger,
+        triggerWasFocused
+      );
     } catch (caught) {
+      registry.refresh();
       reportError(caught);
     }
   }
 </script>
 
 <div class={memberIndex === undefined ? 'max-w-sm min-w-0' : 'px-2.5'}>
-  {#if memberIndex === undefined}
+  {#if memberIndex === undefined && canRecord()}
     <Button
       variant="secondary"
       size="touch"
@@ -240,7 +319,8 @@
       onpointerdown={keepFocus}
       onclick={save}
     >
-      Set all as my in-game sets
+      <Save class="size-4" aria-hidden="true" />
+      Record all in-game sets
     </Button>
     <p id={`in-game-sets-description-${teamId}`} class="provenance mt-2">
       Record the sets currently in your Pokémon Champions box—one per Pokémon.
@@ -252,7 +332,7 @@
     class="mt-2 text-sm empty:mt-0"
     style="color: var(--color-error-content)"
   >
-    {alertMessage}
+    {registry.error || alertMessage}
   </p>
   <p role="status" aria-live="polite" class="provenance mt-2 empty:mt-0">
     {statusMessage}
@@ -328,8 +408,10 @@
           type="button"
           variant="primary"
           size="touch"
+          disabled={!checkedIds.length && !hasNewIncoming(pendingPlan)}
           onclick={recordPending}
         >
+          <Save class="size-4" aria-hidden="true" />
           Record sets
         </Button>
       </footer>

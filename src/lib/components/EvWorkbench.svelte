@@ -9,6 +9,7 @@
     type CatalogSuggestion,
     type SpreadSuggestion,
   } from '$lib/workbench';
+  import type { CurrentSetChoice } from '$lib/current-sets';
 
   let {
     member,
@@ -16,16 +17,20 @@
     currentRegulation,
     natureSuggestions,
     originalMember,
+    inGameMember,
     onspreadchange,
     onnaturechange,
+    oningame,
   }: {
     member: Member;
     teams: Team[];
     currentRegulation: string;
     natureSuggestions: CatalogSuggestion[];
     originalMember?: Member;
+    inGameMember?: Member;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
+    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
   } = $props();
   let evEditor: { flush: () => void } | undefined;
   export function flush(): void {
@@ -61,8 +66,26 @@
       originalMember && originalSpreadSuggestion(member, originalMember);
     if (original) {
       const key = spreadKey(original.nature, original.spread);
-      if (!seen.has(key)) {
-        rows.push(original);
+      rows.push(original);
+      seen.add(key);
+    }
+    const inGame =
+      inGameMember && originalSpreadSuggestion(member, inGameMember);
+    if (inGame) {
+      const key = spreadKey(inGame.nature, inGame.spread);
+      const existing = rows.find(
+        (row) => spreadKey(row.nature, row.spread) === key
+      );
+      if (existing) {
+        existing.inGame = true;
+        existing.source = 'Original team · My in-game set';
+      } else {
+        rows.push({
+          ...inGame,
+          source: 'My in-game set',
+          original: undefined,
+          inGame: true,
+        });
         seen.add(key);
       }
     }
@@ -74,16 +97,23 @@
       preferredNature
     )) {
       const key = spreadKey(option.nature, option.spread);
-      if (seen.has(key)) continue;
+      const source =
+        `${option.totalCount} catalog team${option.totalCount === 1 ? '' : 's'}` +
+        (option.currentCount
+          ? ` · ${option.currentCount} in ${currentRegulation}`
+          : '');
+      if (seen.has(key)) {
+        const existing = rows.find(
+          (row) => spreadKey(row.nature, row.spread) === key
+        );
+        if (existing?.inGame) existing.source += ` · ${source}`;
+        continue;
+      }
       seen.add(key);
       rows.push({
         spread: option.spread,
         nature: option.nature,
-        source:
-          `${option.totalCount} catalog team${option.totalCount === 1 ? '' : 's'}` +
-          (option.currentCount
-            ? ` · ${option.currentCount} in ${currentRegulation}`
-            : ''),
+        source,
         deltas: option.deltas,
         movedPoints: option.movedPoints,
         speed: option.speed,
@@ -108,6 +138,8 @@
   {currentRegulation}
   teams={regulationTeams}
   {natureSuggestions}
+  {inGameMember}
   {onspreadchange}
   {onnaturechange}
+  {oningame}
 />

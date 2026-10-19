@@ -62,17 +62,19 @@ async function edit(
   page: Page,
   field: 'item' | 'moves' | 'EVs' | 'set text' | 'set' = 'item'
 ) {
+  const opener =
+    field === 'set text' || field === 'set'
+      ? 'Edit set for Weavile'
+      : `Edit Weavile ${field}`;
   await currentSlot(page)
-    .getByRole('button', {
-      name:
-        field === 'set' || field === 'set text'
-          ? `Edit ${field} for Weavile`
-          : `Edit Weavile ${field}`,
-      exact: true,
-    })
+    .getByRole('button', { name: opener, exact: true })
     .click();
   const editor = page.getByRole('dialog');
   await expect(editor).toBeVisible();
+  if (field === 'set text')
+    await editor
+      .getByRole('button', { name: 'Edit Showdown text', exact: true })
+      .click();
   return editor;
 }
 
@@ -478,7 +480,7 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   await expect(editor).toHaveCount(0);
   await expect(
     currentSlot(page).getByRole('button', {
-      name: 'Edit set text for Weavile',
+      name: 'Edit set for Weavile',
       exact: true,
     })
   ).toBeFocused();

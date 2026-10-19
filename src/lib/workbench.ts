@@ -4,6 +4,7 @@ import {
   isCustomRulesTeam,
   isPasteUrl,
   normalize,
+  pokemonId,
   type Member,
   type Team,
 } from './catalog.ts';
@@ -254,6 +255,7 @@ export interface CatalogSuggestion {
   totalCount: number;
   score?: number;
   original?: true;
+  inGame?: true;
 }
 
 export function originalMemberFor(
@@ -347,7 +349,8 @@ export function catalogSuggestions(
   tags?: TeamTagsIndex,
   pokemonQuery = '',
   originalPokemon = typeof target === 'string' ? target : target.pokemon,
-  originalMember?: Member
+  originalMember?: Member,
+  inGameMember?: Member
 ) {
   const isSimple = typeof target === 'string';
   const targetMember: Member = isSimple
@@ -433,26 +436,34 @@ export function catalogSuggestions(
 
   const original =
     originalMember && originalMemberFor(targetMember, [originalMember]);
+  const inGame =
+    inGameMember &&
+    pokemonId(inGameMember.pokemon) === pokemonId(targetMember.pokemon)
+      ? inGameMember
+      : undefined;
   const rank = (
     values: Map<string, CatalogSuggestion>,
-    originalValues: (string | null)[] = []
+    originalValues: (string | null)[] = [],
+    inGameValues: (string | null)[] = []
   ) => {
     const promoted: CatalogSuggestion[] = [];
-    for (const value of originalValues) {
+    const promote = (value: string | null, source: 'original' | 'inGame') => {
       const key = normalize(value ?? '');
-      if (
-        !value ||
-        !key ||
-        key === 'unknown' ||
-        promoted.some((entry) => normalize(entry.value) === key)
-      )
-        continue;
+      if (!value || !key || key === 'unknown') return;
+      const existing = promoted.find((entry) => normalize(entry.value) === key);
+      if (existing) {
+        if (source === 'original') existing.original = true;
+        else existing.inGame = true;
+        return;
+      }
       promoted.push({
         ...(values.get(key) ?? { value, currentCount: 0, totalCount: 0 }),
-        original: true,
+        ...(source === 'original' ? { original: true } : { inGame: true }),
       });
       values.delete(key);
-    }
+    };
+    originalValues.forEach((value) => promote(value, 'original'));
+    inGameValues.forEach((value) => promote(value, 'inGame'));
     return [
       ...promoted,
       ...[...values.values()].sort(
@@ -464,16 +475,28 @@ export function catalogSuggestions(
       ),
     ];
   };
+  const inGameNature =
+    NATURES.find(
+      (name) => normalize(name) === normalize(inGame?.nature ?? '')
+    ) ?? null;
 
   return {
-    items: rank(items, [original?.item ?? null]),
-    abilities: rank(abilities, [original?.ability ?? null]),
-    moves: rank(moves, original?.moves),
-    natures: rank(natures, [
-      NATURES.find(
-        (name) => normalize(name) === normalize(original?.nature ?? '')
-      ) ?? null,
-    ]),
+    items: rank(items, [original?.item ?? null], [inGame?.item ?? null]),
+    abilities: rank(
+      abilities,
+      [original?.ability ?? null],
+      [inGame?.ability ?? null]
+    ),
+    moves: rank(moves, original?.moves, inGame?.moves),
+    natures: rank(
+      natures,
+      [
+        NATURES.find(
+          (name) => normalize(name) === normalize(original?.nature ?? '')
+        ) ?? null,
+      ],
+      [inGameNature]
+    ),
     pokemon: pokemonSuggestions(
       teammates,
       teams,
@@ -609,6 +632,7 @@ export interface SpreadSuggestion {
   movedPoints: number;
   speed: number | null;
   original?: true;
+  inGame?: true;
 }
 
 export function originalSpreadSuggestion(

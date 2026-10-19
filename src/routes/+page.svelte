@@ -566,19 +566,24 @@
             {#snippet actions()}
               {@const busy =
                 !ready || savedError !== '' || pending.has(team.id)}
-              <Button
-                type="button"
-                variant="quiet"
-                disabled={busy || wishlisted.has(team.id)}
-                onclick={() => wishlist(team)}
-                >{wishlisted.has(team.id) ? 'Wishlisted' : 'Wishlist'}</Button
+              <div
+                class="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2"
               >
-              <Button
-                type="button"
-                variant="primary"
-                disabled={busy}
-                onclick={() => use(team)}>Use this team</Button
-              >
+                <Button
+                  type="button"
+                  variant="quiet"
+                  disabled={busy || wishlisted.has(team.id)}
+                  onclick={() => wishlist(team)}
+                  >{wishlisted.has(team.id) ? 'Wishlisted' : 'Wishlist'}</Button
+                >
+                <Button
+                  type="button"
+                  class="ms-auto"
+                  variant="primary"
+                  disabled={busy}
+                  onclick={() => use(team)}>Use this team</Button
+                >
+              </div>
             {/snippet}
           </TeamCard>{/each}
       </div>

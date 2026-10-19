@@ -79,18 +79,15 @@
       </li>
     {/each}
   </ul>
-  <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
-    <div class="min-w-0">
-      <span class="stamp" data-grade={grade}>{result.label}</span>
-      {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
-          {evidenceContext}
-        </p>{/if}
-      {#if custom}<p class="term mt-1">Custom rules</p>{/if}
-    </div>
-    {#if detailAvailable}<ArrowUpRight
-        class="mt-0.5 size-4 shrink-0 text-base-content/60"
-        aria-hidden="true"
-      />{/if}
+{/snippet}
+
+{#snippet resultEvidence()}
+  <div class="min-w-0">
+    <span class="stamp" data-grade={grade}>{result.label}</span>
+    {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
+        {evidenceContext}
+      </p>{/if}
+    {#if custom}<p class="term mt-1">Custom rules</p>{/if}
   </div>
 {/snippet}
 
@@ -108,9 +105,24 @@
   {:else}
     <div class="p-4">{@render content()}</div>
   {/if}
-  {#if actions}
-    <div class="flex flex-wrap gap-2 border-t px-4 py-3">
-      {@render actions()}
-    </div>
-  {/if}
+  <div class="mx-4 flex flex-col gap-3 border-t py-3">
+    {#if detailAvailable}
+      <a
+        href={resolve(`/teams/${team.id}${query}`)}
+        onclick={open}
+        class="flex min-w-0 items-start justify-between gap-3 rounded-[inherit] outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {@render resultEvidence()}
+        <ArrowUpRight
+          class="mt-0.5 size-4 shrink-0 text-base-content/60"
+          aria-hidden="true"
+        />
+      </a>
+    {:else}
+      <div class="flex min-w-0 items-start justify-between gap-3">
+        {@render resultEvidence()}
+      </div>
+    {/if}
+    {#if actions}<div class="w-full">{@render actions()}</div>{/if}
+  </div>
 </article>

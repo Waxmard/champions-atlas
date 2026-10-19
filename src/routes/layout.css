@@ -32,6 +32,8 @@
   --color-warning: #fff1ba;
   --color-warning-content: #664500;
   --color-error: #ffe4e9;
+  --color-destructive: #a71d39;
+  --color-destructive-content: #ffffff;
   --color-error-content: #a71d39;
   --color-muted: #506580;
   --radius-selector: 9999rem;
@@ -67,6 +69,8 @@
   --color-success-content: #b9f3d9;
   --color-warning: #514420;
   --color-warning-content: #ffe69a;
+  --color-destructive: #ffbdcb;
+  --color-destructive-content: #512d40;
   --color-error: #512d40;
   --color-error-content: #ffbdcb;
   --color-muted: #b3c4dc;

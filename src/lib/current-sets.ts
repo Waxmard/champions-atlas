@@ -19,7 +19,9 @@ export interface CurrentSetSavePlan {
   overwritten: CurrentSet[];
 }
 
-export type CurrentSetScope = 'evs' | 'moves' | 'all';
+export type CurrentSetChoice =
+  | { kind: 'set' | 'item' | 'ability' | 'nature' | 'spread' }
+  | { kind: 'move'; index: number; move: string };
 
 const readError =
   'Current Pokémon sets could not be read. Existing data has been left untouched.';
@@ -79,6 +81,19 @@ function sameEntry(a: CurrentSet | undefined, b: CurrentSet | undefined) {
   return a === undefined
     ? b === undefined
     : b !== undefined && canonicalSnapshot(a) === canonicalSnapshot(b);
+}
+
+export function currentSetsWouldChange(
+  sets: CurrentSet[],
+  members: Member[]
+): boolean {
+  return members.some((member) => {
+    const id = pokemonId(member.pokemon);
+    return !sameEntry(
+      sets.find((entry) => entry.id === id),
+      { id, member }
+    );
+  });
 }
 
 export function readCurrentSets(
@@ -174,19 +189,38 @@ export function saveCurrentSets(
 export function reuseCurrentSet(
   current: Member,
   saved: Member,
-  scope: CurrentSetScope
+  choice: CurrentSetChoice
 ): Member {
   if (pokemonId(current.pokemon) !== pokemonId(saved.pokemon))
     throw new Error('Current set Pokémon does not match the selected Pokémon.');
-  if (scope === 'all') return structuredClone(saved);
+  if (choice.kind === 'set') return structuredClone(saved);
+
   const next = structuredClone(current);
-  if (scope === 'evs') {
+  if (choice.kind === 'item') next.item = saved.item;
+  else if (choice.kind === 'ability') next.ability = saved.ability;
+  else if (choice.kind === 'nature') next.nature = saved.nature;
+  else if (choice.kind === 'spread') {
     next.nature = saved.nature;
     next.spread = saved.spread;
-  } else if (scope === 'moves') {
-    next.moves = structuredClone(saved.moves);
+  } else if (choice.kind === 'move') {
+    const { index, move } = choice;
+    const moveKey = normalize(move);
+    if (
+      !Number.isInteger(index) ||
+      index < 0 ||
+      index > 3 ||
+      !moveKey ||
+      !saved.moves.some((savedMove) => normalize(savedMove) === moveKey)
+    )
+      throw new Error('Invalid in-game move choice.');
+    const slots = Array.from(
+      { length: 4 },
+      (_, slot) => next.moves[slot] ?? ''
+    );
+    slots[index] = move;
+    next.moves = slots.filter(Boolean);
   } else {
-    throw new Error('Unknown current-set reuse scope.');
+    throw new Error('Unknown current-set reuse choice.');
   }
   next.set = updateSetText(current, next);
   return next;

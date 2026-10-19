@@ -1,6 +1,9 @@
 <script lang="ts">
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-  import CurrentSetActions from '$lib/components/CurrentSetActions.svelte';
+  import InGameSetSuggestion from '$lib/components/InGameSetSuggestion.svelte';
+  import SetEditorPokemonSuggestions from '$lib/components/SetEditorPokemonSuggestions.svelte';
+  import { createCurrentSetRegistry } from '$lib/current-set-registry.svelte';
+  import { reuseCurrentSet, type CurrentSetChoice } from '$lib/current-sets';
   import EvWorkbench from '$lib/components/EvWorkbench.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
@@ -10,7 +13,7 @@
   import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
   import TypeBadge from '$lib/components/TypeBadge.svelte';
   import { Button } from '$lib/components/ui/button';
-  import { normalize, type Member, type Team } from '$lib/catalog';
+  import { normalize, pokemonId, type Member, type Team } from '$lib/catalog';
   import {
     championsSpreadTotal,
     NATURES,
@@ -67,6 +70,7 @@
   const MOVE_SLOTS = [0, 1, 2, 3];
   const initialMember = (() => member)();
   const initialView = (() => getInitialView(initialField))();
+  const currentSets = createCurrentSetRegistry();
   const fields = (next: Member) => ({
     pokemon: next.pokemon,
     item: next.item || '',
@@ -116,6 +120,28 @@
   const originalMember = $derived(
     originalMemberFor(draftMember, originalMembers)
   );
+  const inGameMember = $derived(
+    currentSets.sets?.find(
+      (entry) => entry.id === pokemonId(draftMember.pokemon)
+    )?.member
+  );
+  const previewCurrent = $derived<Member>({
+    ...draftMember,
+    set:
+      canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields)
+        ? fieldText
+        : accepted.set,
+  });
+  const inGameReason = $derived(
+    inGameMember
+      ? (memberValidationError(
+          structuredClone($state.snapshot(inGameMember)),
+          accepted,
+          teammates,
+          'structured'
+        )?.message ?? '')
+      : ''
+  );
   const suggestions = $derived(
     catalogSuggestions(
       draftMember,
@@ -125,11 +151,17 @@
       tagIndex,
       pokemonQuery,
       accepted.pokemon,
-      originalMember
+      originalMember,
+      inGameMember
     )
   );
   const norm = (value: string, query: string) =>
     normalize(value).includes(normalize(query));
+  const visibleInGameMember = $derived(
+    inGameMember && norm(inGameMember.pokemon, pokemonQuery)
+      ? inGameMember
+      : null
+  );
   const filteredPokemon = $derived(
     suggestions.pokemon
       .filter((option) => norm(option.pokemon, pokemonQuery))
@@ -216,7 +248,7 @@
   function rosterError(next: Member) {
     return memberRosterError(next, accepted, teammates);
   }
-  function chooseSet(next: Member, trusted = false) {
+  function chooseSet(next: Member, trusted = false, moveSlots?: string[]) {
     const candidate = structuredClone($state.snapshot(next));
     const reason = rosterError(candidate);
     if (reason) {
@@ -226,7 +258,54 @@
     if (!trusted && !validateMember(candidate, 'structured')) return;
     replacement = candidate;
     applyPreFilled(candidate);
-    accept(candidate);
+    if (moveSlots) form.moves = [...moveSlots];
+    accept(candidate, !!moveSlots);
+  }
+  function chooseInGame(choice: CurrentSetChoice, displayed: Member): void {
+    const displayedSnapshot = canonicalSnapshot($state.snapshot(displayed));
+    const moveSlots = MOVE_SLOTS.map((index) => form.moves[index].trim());
+    if (choice.kind === 'set' && !flush()) return;
+
+    const selectedId = pokemonId(displayed.pokemon);
+    const latestSets = currentSets.refresh();
+    if (!latestSets) return;
+    const latestMember = latestSets.find(
+      (entry) => entry.id === selectedId
+    )?.member;
+    if (
+      pokemonId(draftMember.pokemon) !== selectedId ||
+      !latestMember ||
+      canonicalSnapshot($state.snapshot(latestMember)) !== displayedSnapshot
+    ) {
+      showError(
+        'set',
+        'My in-game set changed. Review the updated suggestions and choose again.'
+      );
+      return;
+    }
+
+    try {
+      const current =
+        choice.kind === 'move'
+          ? { ...$state.snapshot(draftMember), moves: [...moveSlots] }
+          : $state.snapshot(draftMember);
+      const candidate = reuseCurrentSet(
+        current,
+        $state.snapshot(latestMember),
+        choice
+      );
+      if (choice.kind === 'set') {
+        chooseSet(candidate);
+      } else {
+        if (choice.kind === 'move') moveSlots[choice.index] = choice.move;
+        chooseSet(candidate, false, moveSlots);
+      }
+    } catch (caught) {
+      showError(
+        'set',
+        caught instanceof Error ? caught.message : 'Invalid in-game choice.'
+      );
+    }
   }
   function chooseMove(index: number, value: string) {
     form.moves[index] = value;
@@ -239,18 +318,23 @@
     commit();
   }
   function moveSuggestions(index: number) {
-    return suggestions.moves
-      .filter(
-        (option) =>
-          norm(option.value, moveQueries[index]) &&
-          !form.moves.some(
-            (move, otherIndex) =>
-              otherIndex !== index &&
-              move &&
-              normalize(move) === normalize(option.value)
-          )
+    const options = suggestions.moves.filter(
+      (option) =>
+        norm(option.value, moveQueries[index]) &&
+        !form.moves.some(
+          (move, otherIndex) =>
+            otherIndex !== index &&
+            move &&
+            normalize(move) === normalize(option.value)
+        )
+    );
+    return options.slice(
+      0,
+      Math.max(
+        5,
+        options.filter((option) => option.original || option.inGame).length
       )
-      .slice(0, 5);
+    );
   }
   function validateMember(next: Member, mode: 'structured' | 'text') {
     const validation = memberValidationError(next, accepted, teammates, mode);
@@ -372,6 +456,17 @@
 </script>
 
 <div bind:this={editorElement} class="flex min-h-0 grow flex-col">
+  {#snippet savedSetSuggestion()}
+    {#if inGameMember}
+      <InGameSetSuggestion
+        current={previewCurrent}
+        saved={inGameMember}
+        reason={inGameReason}
+        onchoose={(displayed) => chooseInGame({ kind: 'set' }, displayed)}
+      />
+    {/if}
+  {/snippet}
+
   <header
     class="shrink-0 border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 sm:pt-5"
   >
@@ -450,13 +545,15 @@
     bind:this={contentElement}
     class="min-h-0 flex-auto overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
   >
-    <CurrentSetActions
-      member={accepted}
-      view={currentView}
-      onflush={flush}
-      getmember={() => accepted}
-      onreuse={(next) => chooseSet(next)}
-    />
+    {#if currentSets.error}
+      <p
+        role="alert"
+        class="mb-3 text-[0.9375rem] leading-relaxed"
+        style="color: var(--color-error-content)"
+      >
+        {currentSets.error}
+      </p>
+    {/if}
     {#if currentView === 'overview'}
       <SetEditorOverview
         pokemon={form.pokemon || initialMember.pokemon}
@@ -467,6 +564,7 @@
         moves={form.moves}
         {currentSpreadTotal}
         {error}
+        inGameSuggestion={inGameMember ? savedSetSuggestion : undefined}
         originalAvailable={originalChanged}
         {originalReason}
         onoriginal={() => {
@@ -488,6 +586,8 @@
         {activeMoveSlot}
         {activeSuggestions}
         moveOptions={moveSuggestions(activeMoveSlot)}
+        {inGameMember}
+        oningame={chooseInGame}
         {error}
         {errorField}
         onfocus={(index) => {
@@ -514,6 +614,8 @@
         {filteredItems}
         {filteredAbilities}
         {legacyNature}
+        {inGameMember}
+        oningame={chooseInGame}
         {error}
         {errorField}
         onitemchange={(val) => {
@@ -545,6 +647,8 @@
           {currentRegulation}
           {originalMember}
           natureSuggestions={suggestions.natures}
+          {inGameMember}
+          oningame={chooseInGame}
           onspreadchange={(spread, nature) => {
             form.spread = spread;
             if (nature) form.nature = nature;
@@ -619,46 +723,13 @@
           {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
         {/if}
         {#if activeSuggestions === 'pokemon'}
-          <section
-            aria-label="Pokémon suggestions"
-            class="plate max-h-72 overflow-y-auto"
-          >
-            <ul role="list" class="divide-y">
-              {#each filteredPokemon as option (option.pokemon)}
-                <li>
-                  <button
-                    type="button"
-                    aria-label={`Use ${option.pokemon} set`}
-                    class="option-row"
-                    data-set-choice
-                    onpointerdown={(event) => event.preventDefault()}
-                    onclick={() => chooseSet(option.member, true)}
-                  >
-                    <PokemonSprite pokemon={option.pokemon} size={32} />
-                    <span class="min-w-0 flex-1">
-                      <span class="flex items-baseline justify-between gap-2">
-                        <span class="truncate font-semibold"
-                          >{option.pokemon}</span
-                        >
-                        <span class="term shrink-0"
-                          >{option.sharedTeammates} shared</span
-                        >
-                      </span>
-                      <span
-                        class="mt-0.5 flex flex-wrap items-baseline gap-x-3"
-                      >
-                        {#each [option.member.item, option.member.ability, option.member.nature].filter(Boolean) as field, fieldIndex (fieldIndex)}
-                          <span class="term truncate">{field}</span>
-                        {/each}
-                      </span>
-                    </span>
-                  </button>
-                </li>
-              {:else}
-                <li class="provenance p-3">No matching suggestions.</li>
-              {/each}
-            </ul>
-          </section>
+          <SetEditorPokemonSuggestions
+            options={filteredPokemon}
+            inGameSuggestion={visibleInGameMember
+              ? savedSetSuggestion
+              : undefined}
+            onchoose={(next) => chooseSet(next, true)}
+          />
         {/if}
         {#if error && errorField === 'pokemon'}
           <p

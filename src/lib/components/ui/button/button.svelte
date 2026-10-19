@@ -15,7 +15,8 @@
     secondary: 'btn-outline',
     quiet:
       'btn-ghost text-base-content/70 hover:text-base-content disabled:text-base-content/40',
-    destructive: 'btn-soft btn-error',
+    destructive:
+      '[--btn-color:var(--color-destructive)] [--btn-fg:var(--color-destructive-content)]',
   };
 
   const sizes: Record<ButtonSize, string> = {

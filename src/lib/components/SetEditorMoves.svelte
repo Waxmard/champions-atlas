@@ -1,5 +1,7 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
+  import type { Member } from '$lib/catalog';
+  import type { CurrentSetChoice } from '$lib/current-sets';
   import TypeMark from '$lib/components/TypeMark.svelte';
   import type { EditableSetField } from '$lib/components/MemberCard.svelte';
   import { Button } from '$lib/components/ui/button';
@@ -10,11 +12,13 @@
     activeMoveSlot,
     activeSuggestions,
     moveOptions,
+    inGameMember,
     error,
     errorField,
     onfocus,
     onchange,
     onchoose,
+    oningame,
     onclear,
     oncommit,
   }: {
@@ -22,11 +26,13 @@
     activeMoveSlot: number;
     activeSuggestions: string | null;
     moveOptions: CatalogSuggestion[];
+    inGameMember?: Member;
     error: string;
     errorField: EditableSetField | null;
     onfocus: (index: number) => void;
     onchange: (index: number, value: string) => void;
     onchoose: (index: number, value: string) => void;
+    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onclear: (index: number) => void;
     oncommit: () => void;
   } = $props();
@@ -108,10 +114,27 @@
               style={optionColor
                 ? `border-left: 3px solid ${optionColor};`
                 : ''}
-              onclick={() => onchoose(activeMoveSlot, option.value)}
+              onclick={() => {
+                if (option.inGame) {
+                  if (inGameMember)
+                    oningame(
+                      {
+                        kind: 'move',
+                        index: activeMoveSlot,
+                        move: option.value,
+                      },
+                      inGameMember
+                    );
+                } else onchoose(activeMoveSlot, option.value);
+              }}
               ><TypeMark type={optionType} size="md" /><span class="value"
                 >{option.value}</span
-              >{#if option.original}<span class="provenance">Original</span
+              >{#if option.original || option.inGame}<span class="provenance"
+                  >{option.original
+                    ? option.inGame
+                      ? 'Original · In-game'
+                      : 'Original'
+                    : 'In-game'}</span
                 >{/if}</button
             >
           </li>

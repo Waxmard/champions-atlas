@@ -299,9 +299,6 @@ test('a spread another saved team runs saves immediately', async ({ page }) => {
   const suggestions = page
     .getByRole('dialog', { name: `Edit ${pokemon} set`, exact: true })
     .getByRole('region', { name: 'EV spread suggestions' });
-  await expect(suggestions).toContainText(
-    'Original team first, then your own teams and common catalog spreads.'
-  );
   const row = suggestions.getByRole('button', {
     name: `Use Timid spread 18 HP / 26 Def / 22 Spe`,
     exact: true,
@@ -357,9 +354,6 @@ test('catalog spreads fill the list when no saved team runs the Pokémon', async
   const suggestions = editor.getByRole('region', {
     name: 'EV spread suggestions',
   });
-  await expect(suggestions).toContainText(
-    'then your own teams and common catalog spreads'
-  );
   const row = suggestions
     .getByRole('button', { name: /^Use .+ spread .+$/ })
     .filter({ hasText: 'catalog team' })

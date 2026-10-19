@@ -7,7 +7,6 @@ import {
   mergeCurrentSets,
   prepareCurrentSets,
   readCurrentSets,
-  reuseCurrentSet,
   saveCurrentSets,
   stageCurrentSets,
 } from '../src/lib/current-sets.ts';
@@ -622,75 +621,6 @@ test('current-set storage errors propagate and failed writes leave stored bytes 
       entry(legacy),
     ]);
   }
-});
-
-test('selective reuse changes only its fields and preserves current raw lines and metadata', () => {
-  const current = member('Rotom-Wash', {
-    item: 'Leftovers',
-    ability: 'Levitate',
-    nature: 'Bold',
-    spread: '32 HP / 32 Def / 2 SpD',
-    moves: ['Protect', 'Will-O-Wisp'],
-    set: [
-      'Bongo (Rotom-Wash) @ Leftovers',
-      'Ability: Levitate',
-      'EVs: 32 HP / 32 Def / 2 SpD',
-      'Bold Nature',
-      '- Protect',
-      '- Will-O-Wisp',
-      'Hidden Power: Ice',
-    ].join('\n'),
-    metadata: { keep: true },
-  });
-  const saved = member('Rotom-Wash-Mega', {
-    item: 'Choice Specs',
-    ability: 'Different Ability',
-    nature: 'Modest',
-    spread: '32 SpA / 32 Spe / 2 HP',
-    moves: ['Hydro Pump', 'Thunderbolt'],
-    set: 'Rotom-Wash-Mega @ Choice Specs\n- Hydro Pump',
-  });
-  const before = structuredClone(current);
-  const savedBefore = structuredClone(saved);
-  const evs = reuseCurrentSet(current, saved, 'evs');
-  assert.equal(evs.pokemon, current.pokemon);
-  assert.equal(evs.item, current.item);
-  assert.equal(evs.ability, current.ability);
-  assert.equal(evs.nature, saved.nature);
-  assert.equal(evs.spread, saved.spread);
-  assert.deepEqual(evs.moves, current.moves);
-  assert.deepEqual(evs.metadata, current.metadata);
-  assert.equal(evs.set.split('\n')[0], 'Bongo (Rotom-Wash) @ Leftovers');
-  assert.ok(evs.set.split('\n').includes('Hidden Power: Ice'));
-  assert.ok(evs.set.split('\n').includes('EVs: 32 SpA / 32 Spe / 2 HP'));
-  assert.ok(evs.set.split('\n').includes('Modest Nature'));
-
-  const moves = reuseCurrentSet(current, saved, 'moves');
-  assert.deepEqual(moves.moves, saved.moves);
-  assert.equal(moves.item, current.item);
-  assert.equal(moves.ability, current.ability);
-  assert.equal(moves.nature, current.nature);
-  assert.equal(moves.spread, current.spread);
-  assert.equal(moves.set.split('\n')[0], 'Bongo (Rotom-Wash) @ Leftovers');
-  assert.ok(moves.set.split('\n').includes('Hidden Power: Ice'));
-  assert.ok(moves.set.split('\n').includes('EVs: 32 HP / 32 Def / 2 SpD'));
-  assert.ok(moves.set.split('\n').includes('Bold Nature'));
-  assert.deepEqual(
-    moves.set.split('\n').filter((line) => line.startsWith('- ')),
-    ['- Hydro Pump', '- Thunderbolt']
-  );
-  assert.deepEqual(moves.metadata, current.metadata);
-
-  const all = reuseCurrentSet(current, saved, 'all');
-  assert.deepEqual(all, saved);
-  assert.notStrictEqual(all, saved);
-  assert.notStrictEqual(all.moves, saved.moves);
-  assert.deepEqual(current, before);
-  assert.deepEqual(saved, savedBefore);
-  assert.throws(
-    () => reuseCurrentSet(current, member('Rotom-Heat'), 'evs'),
-    /does not match/
-  );
 });
 
 test('current-set snapshots ignore order and merges reconcile whole entries without deletions', () => {

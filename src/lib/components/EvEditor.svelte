@@ -18,6 +18,7 @@
   import EvBenchmarkPanel from '$lib/components/EvBenchmarkPanel.svelte';
   import { Button } from '$lib/components/ui/button';
   import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
+  import type { CurrentSetChoice } from '$lib/current-sets';
 
   let {
     member,
@@ -28,8 +29,10 @@
     currentRegulation,
     teams,
     natureSuggestions,
+    inGameMember,
     onspreadchange,
     onnaturechange,
+    oningame,
   }: {
     member: Member;
     spread: string;
@@ -39,8 +42,10 @@
     currentRegulation: string;
     teams: Team[];
     natureSuggestions: CatalogSuggestion[];
+    inGameMember?: Member;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
+    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
   } = $props();
 
   let draft = $state<ChampionsSpread | null>(null);
@@ -154,13 +159,30 @@
             class="min-h-11 rounded-[var(--radius-selector)] border px-3 text-[0.8125rem] transition-colors {isSelected
               ? 'border-primary font-semibold'
               : 'border-base-300 hover:bg-base-200/70'}"
-            aria-label={`Use ${option.value} nature${option.original ? ' (original)' : ''}`}
-            onclick={() => onnaturechange(option.value)}
+            aria-label={`Use ${option.value} nature${
+              option.original
+                ? option.inGame
+                  ? ' (original and in-game)'
+                  : ' (original)'
+                : option.inGame
+                  ? ' (in-game)'
+                  : ''
+            }`}
+            onclick={() => {
+              if (option.inGame) {
+                if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
+              } else onnaturechange(option.value);
+            }}
           >
             {option.value}
-            {#if option.original}<span
+            {#if option.original || option.inGame}<span
                 class="provenance ml-2"
-                aria-hidden="true">Original</span
+                aria-hidden="true"
+                >{option.original
+                  ? option.inGame
+                    ? 'Original · In-game'
+                    : 'Original'
+                  : 'In-game'}</span
               >{/if}
           </button>
         {/each}
@@ -292,7 +314,7 @@
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Original team first, then common catalog spreads.
+      Original team first, then your in-game set and common catalog spreads.
     </p>
   </div>
   {#each spreadSuggestions as option, i (option.spread + option.nature)}
@@ -308,16 +330,25 @@
       option.spread
         ? 'font-semibold'
         : ''}"
-      aria-label={'Use ' + option.nature + ' spread ' + option.spread}
+      aria-label={'Use ' +
+        option.nature +
+        ' spread ' +
+        option.spread +
+        (option.inGame
+          ? option.original
+            ? ' (original team and in-game set)'
+            : ' (in-game set)'
+          : '')}
       aria-describedby={'ev-suggestion-details-' + i}
-      onclick={() => onspreadchange(option.spread, option.nature)}
+      onclick={() => {
+        if (option.inGame) {
+          if (inGameMember) oningame({ kind: 'spread' }, inGameMember);
+        } else onspreadchange(option.spread, option.nature);
+      }}
     >
       <span id={'ev-suggestion-details-' + i} class="sr-only"
         >{option.source} · {option.movedPoints} points moved</span
       >
-      {#if option.original}<span class="provenance" aria-hidden="true"
-          >Original</span
-        >{/if}
       {@render chips(option.spread)}
       <span class="value"
         >{option.nature} · {formatSpreadDelta(option.deltas)}</span

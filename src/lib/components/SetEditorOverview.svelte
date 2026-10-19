@@ -1,4 +1,6 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import FileText from '@lucide/svelte/icons/file-text';
   import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
@@ -10,6 +12,7 @@
   import { Button } from '$lib/components/ui/button';
 
   interface Props {
+    inGameSuggestion?: Snippet;
     pokemon: string;
     item: string;
     ability: string;
@@ -37,6 +40,7 @@
     error,
     originalAvailable = false,
     originalReason = '',
+    inGameSuggestion,
     onoriginal,
     onnavigate,
   }: Props = $props();
@@ -79,6 +83,14 @@
     {#if originalReason}<p id="original-set-reason" class="provenance">
         {originalReason}
       </p>{/if}
+  {/if}
+
+  {#if inGameSuggestion}
+    <section aria-label="Set suggestions" class="plate">
+      <ul role="list">
+        {@render inGameSuggestion()}
+      </ul>
+    </section>
   {/if}
   <button
     type="button"

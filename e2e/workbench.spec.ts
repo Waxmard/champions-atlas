@@ -16,21 +16,16 @@ const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
 
 async function expectOverviewHub(editor: Locator) {
-  await expect(
-    editor.getByRole('button', { name: 'Change Pokémon', exact: true })
-  ).toBeVisible();
-  await expect(
-    editor.getByRole('button', {
-      name: 'Edit item, ability, and nature',
-      exact: true,
-    })
-  ).toBeVisible();
-  await expect(
-    editor.getByRole('button', { name: 'Edit moves', exact: true })
-  ).toBeVisible();
-  await expect(
-    editor.getByRole('button', { name: 'Edit EV spread', exact: true })
-  ).toBeVisible();
+  for (const name of [
+    'Change Pokémon',
+    'Edit item, ability, and nature',
+    'Edit moves',
+    'Edit EV spread',
+  ]) {
+    await expect(
+      editor.getByRole('button', { name, exact: true })
+    ).toBeVisible();
+  }
 }
 async function expectMovesSubView(editor: Locator) {
   for (const slot of [1, 2, 3, 4]) {
@@ -216,9 +211,12 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   );
 
   await weavile
-    .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
+    .getByRole('button', { name: 'Edit set for Weavile', exact: true })
     .click();
   editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
+  await editor
+    .getByRole('button', { name: 'Edit Showdown text', exact: true })
+    .click();
   const raw = editor.getByRole('textbox', {
     name: 'Showdown set text',
     exact: true,
@@ -650,12 +648,15 @@ test('structured edits survive a trip through the Showdown text view', async ({
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
+    .getByRole('button', { name: 'Edit set for Weavile', exact: true })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
+  await editor
+    .getByRole('button', { name: 'Edit Showdown text', exact: true })
+    .click();
   await editor
     .getByRole('button', { name: 'Back to overview', exact: true })
     .click();
@@ -694,15 +695,15 @@ test('leaving the Showdown text view untouched keeps the original set', async ({
     exact: true,
   });
   await glimmora
-    .getByRole('button', {
-      name: 'Edit set text for Glimmora-Mega',
-      exact: true,
-    })
+    .getByRole('button', { name: 'Edit set for Glimmora-Mega', exact: true })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Glimmora-Mega set',
     exact: true,
   });
+  await editor
+    .getByRole('button', { name: 'Edit Showdown text', exact: true })
+    .click();
   await editor
     .getByRole('button', { name: 'Back to overview', exact: true })
     .click();

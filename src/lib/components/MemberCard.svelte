@@ -9,7 +9,6 @@
   import type { Member } from '$lib/catalog';
   import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
-  import FileText from '@lucide/svelte/icons/file-text';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 
   export type EditableSetField =
@@ -142,7 +141,7 @@
   {#if editable}
     <div
       data-slot="card-actions"
-      class="mt-1.5 flex flex-wrap items-center gap-1 border-t pt-1"
+      class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-1"
     >
       {@render actions?.()}
       {#if onrevert && !revertDisabled}<Button
@@ -161,16 +160,6 @@
         onclick={() => onedit?.('set')}
       >
         <span>Edit set</span>
-      </Button>
-      <Button
-        variant="quiet"
-        aria-label={`Edit set text for ${member.pokemon}`}
-        data-set-field="text"
-        disabled={editing}
-        onclick={() => onedit?.('text')}
-      >
-        <FileText class="size-3" />
-        <span>Edit set text</span>
       </Button>
     </div>
     {#if revertReason}<p class="provenance mt-1">

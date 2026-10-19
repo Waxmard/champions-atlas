@@ -77,12 +77,15 @@ test(
       exact: true,
     });
     await weavile
-      .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
+      .getByRole('button', { name: 'Edit set for Weavile', exact: true })
       .click();
     const editor = page.getByRole('dialog', {
       name: 'Edit Weavile set',
       exact: true,
     });
+    await editor
+      .getByRole('button', { name: 'Edit Showdown text', exact: true })
+      .click();
     const set = editor.getByRole('textbox', {
       name: 'Showdown set text',
       exact: true,
@@ -320,7 +323,9 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
   expect(dialogMessage).toContain('This cannot be undone.');
   await expect(page).toHaveURL('/my-teams?team=' + remainingId);
   await expect(page.locator('[data-team-picker]')).toBeVisible();
-  await expect(page.getByRole('status')).toHaveText('Team deleted.');
+  await expect(page.locator('main > p[role="status"]')).toHaveText(
+    'Team deleted.'
+  );
   await expect(
     page.getByRole('region', { name: 'Weavile set', exact: true })
   ).not.toContainText('Delete-only draft item');
@@ -400,7 +405,7 @@ test('QoL deletion write failure preserves the draft and stored team', async ({
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Delete team', exact: true }).click();
 
-  await expect(page.getByRole('status')).toHaveText(
+  await expect(page.locator('main > p[role="status"]')).toHaveText(
     'Could not delete team. Existing saved teams have been left untouched.'
   );
   await expect(

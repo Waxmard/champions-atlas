@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { differences, restoreTeam } from '../src/lib/team-history.ts';
+import {
+  differences,
+  memberSnapshotDiff,
+  restoreTeam,
+} from '../src/lib/team-history.ts';
 import {
   catalogSuggestions,
   originalMemberFor,
@@ -111,6 +115,80 @@ test('diff is identity aligned, needs a known selected value, and reports no ful
   ]);
   assert.deepEqual(swap(['Protect', 'Fake Out'], ['fakeout', 'Protect']), []);
   assert.deepEqual(swap([], ['Protect']), []);
+});
+
+test('snapshot preview reports missing scalars, exact form, and ordered moves', () => {
+  assert.deepEqual(
+    memberSnapshotDiff(
+      member('Rotom-Wash', { moves: ['Protect', 'Knock Off'] }),
+      member('Rotom-Wash-Mega', {
+        item: 'Choice Band',
+        ability: 'Levitate',
+        nature: 'Jolly',
+        spread: '32 Spe',
+        moves: ['Knock Off', 'Protect'],
+      })
+    ),
+    [
+      {
+        field: 'Pokémon',
+        before: 'Rotom-Wash',
+        after: 'Rotom-Wash-Mega',
+      },
+      { field: 'Item', before: 'Unknown', after: 'Choice Band' },
+      { field: 'Ability', before: 'Unknown', after: 'Levitate' },
+      { field: 'Nature', before: 'Unknown', after: 'Jolly' },
+      { field: 'EVs', before: 'Unknown', after: '32 Spe' },
+      {
+        field: 'Moves',
+        before: 'Protect, Knock Off',
+        after: 'Knock Off, Protect',
+      },
+    ]
+  );
+  assert.deepEqual(
+    memberSnapshotDiff(
+      member('Weavile'),
+      member('Weavile', { moves: ['Protect'] })
+    ),
+    [{ field: 'Moves', before: 'None', after: 'Protect' }]
+  );
+  assert.deepEqual(
+    memberSnapshotDiff(
+      member('Weavile', { nature: 'bold' }),
+      member('Weavile', { nature: 'Bold' })
+    ),
+    [{ field: 'Nature', before: 'bold', after: 'Bold' }]
+  );
+});
+
+test('snapshot preview preserves raw set text and canonicalizes unknown metadata', () => {
+  const rawBefore = member('Weavile', {
+    set: 'Weavile @ Item\n- Protect',
+  });
+  const rawAfter = member('Weavile', {
+    set: 'Weavile @ Item\n- Protect\n',
+  });
+  assert.deepEqual(memberSnapshotDiff(rawBefore, rawAfter), [
+    {
+      field: 'Set text',
+      before: 'Weavile @ Item\n- Protect',
+      after: 'Weavile @ Item\n- Protect\n',
+    },
+  ]);
+  assert.deepEqual(
+    memberSnapshotDiff(
+      member('Weavile'),
+      member('Weavile', { metadata: { z: 2, a: 'saved' } })
+    ),
+    [
+      {
+        field: 'Saved metadata',
+        before: '{}',
+        after: '{"metadata":{"a":"saved","z":2}}',
+      },
+    ]
+  );
 });
 
 test('grouped saves retain the stored original and restore without mutation', () => {
@@ -410,6 +488,154 @@ test('original field choices lead in published order without inflating catalog c
   assert.equal(promoted.moves[1].totalCount, 2);
   assert.equal(promoted.moves[2].original, true);
   assert.equal(promoted.moves[3].original, undefined);
+});
+
+test('in-game field choices follow originals and preserve catalog evidence', () => {
+  const self = member('Weavile', { item: 'Life Orb', ability: 'Pressure' });
+  const original = member('Weavile', {
+    item: 'Rare original item',
+    ability: 'Pickpocket',
+    nature: 'Jolly',
+    moves: ['Snatch', 'Protect', 'snatch', 'Ice Shard'],
+  });
+  const inGame = member('Weavile', {
+    item: 'Focus Sash',
+    ability: 'Pickpocket',
+    nature: 'adamant',
+    moves: ['protect', 'In-game move', 'Ice Shard'],
+  });
+  const catalog = [
+    {
+      ...sourceTeam(),
+      members: [
+        member('Weavile', {
+          item: 'Life Orb',
+          ability: 'Pressure',
+          nature: 'Jolly',
+          moves: ['Protect', 'Ice Shard', 'Fake Out'],
+        }),
+      ],
+    },
+    {
+      ...sourceTeam(),
+      id: 'old',
+      regulation: 'M-B',
+      members: [
+        member('Weavile', {
+          item: 'Focus Sash',
+          ability: 'Pickpocket',
+          nature: 'Adamant',
+          moves: ['Protect', 'Fake Out'],
+        }),
+      ],
+    },
+  ];
+  const ordinary = catalogSuggestions(self, catalog, 'M-C');
+  const promoted = catalogSuggestions(
+    self,
+    catalog,
+    'M-C',
+    [],
+    undefined,
+    '',
+    self.pokemon,
+    original,
+    inGame
+  );
+  assert.deepEqual(
+    promoted.items.slice(0, 2).map(({ value }) => value),
+    ['Rare original item', 'Focus Sash']
+  );
+  assert.equal(promoted.items[0].original, true);
+  assert.equal(promoted.items[1].inGame, true);
+  assert.deepEqual(promoted.abilities[0], {
+    ...ordinary.abilities.find(({ value }) => value === 'Pickpocket'),
+    original: true,
+    inGame: true,
+  });
+  assert.deepEqual(
+    promoted.natures.slice(0, 2).map(({ value }) => value),
+    ['Jolly', 'Adamant']
+  );
+  assert.equal(promoted.natures[1].inGame, true);
+  assert.deepEqual(
+    promoted.moves.slice(0, 4).map(({ value }) => value),
+    ['Snatch', 'Protect', 'Ice Shard', 'In-game move']
+  );
+  assert.equal(promoted.moves[1].original, true);
+  assert.equal(promoted.moves[1].inGame, true);
+  assert.equal(promoted.moves[1].currentCount, 1);
+  assert.equal(promoted.moves[1].totalCount, 2);
+  assert.deepEqual(promoted.moves[3], {
+    value: 'In-game move',
+    currentCount: 0,
+    totalCount: 0,
+    inGame: true,
+  });
+
+  const catalogEvidence = (entry) => {
+    const copy = { ...entry };
+    delete copy.original;
+    delete copy.inGame;
+    return copy;
+  };
+  for (const field of ['items', 'abilities', 'moves', 'natures']) {
+    for (const row of ordinary[field]) {
+      assert.deepEqual(
+        catalogEvidence(
+          promoted[field].find(({ value }) => value === row.value)
+        ),
+        row
+      );
+    }
+  }
+});
+
+test('in-game promotion filters blank values and uses Browse identity', () => {
+  const choices = (target, saved) =>
+    catalogSuggestions(
+      target,
+      [],
+      'M-C',
+      [],
+      undefined,
+      '',
+      target.pokemon,
+      undefined,
+      saved
+    );
+  const fields = ['items', 'abilities', 'moves', 'natures'];
+  const blank = choices(
+    member('Weavile'),
+    member('Weavile', {
+      item: 'Unknown',
+      ability: '',
+      nature: 'Legacy',
+      moves: ['', 'Unknown', '   '],
+    })
+  );
+  for (const field of fields) assert.deepEqual(blank[field], []);
+
+  const mega = choices(
+    member('Raichu'),
+    member('Raichu-Mega-Y', {
+      item: 'Raichunite',
+      nature: 'bold',
+      moves: ['Protect'],
+    })
+  );
+  assert.equal(mega.items[0].value, 'Raichunite');
+  assert.equal(mega.items[0].inGame, true);
+  assert.equal(mega.natures[0].value, 'Bold');
+  assert.equal(mega.moves[0].value, 'Protect');
+
+  for (const [target, saved] of [
+    [member('Floette'), member('Floette-Eternal', { item: 'Eternal item' })],
+    [member('Floette-Eternal'), member('Floette', { item: 'Ordinary item' })],
+  ]) {
+    const separated = choices(target, saved);
+    for (const field of fields) assert.deepEqual(separated[field], []);
+  }
 });
 
 test('original field recommendations reject unrelated forms, unknown values, and nonstandard natures', () => {
