@@ -3,6 +3,8 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import Bookmark from '@lucide/svelte/icons/bookmark';
+  import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import MemberCard from '$lib/components/MemberCard.svelte';
@@ -124,105 +126,158 @@
     >
   </div>
 
-  <div class="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2">
-    <span
-      class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
-      >{regulationLabel(team.regulation)}</span
-    >
-    <span class="stamp" data-grade={evidenceGrade(custom ? 3 : strongest.level)}
-      >{strongest.label}</span
-    >
-    {#if strongest.event}<span class="provenance">{summaryContext}</span>{/if}
-    <span class="provenance">Shared {team.publishedAt || 'date unknown'}</span>
+  <div
+    class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
+  >
+    <div class="min-w-0 flex-1">
+      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <span
+          class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
+          >{regulationLabel(team.regulation)}</span
+        >
+        <span
+          class="stamp"
+          data-grade={evidenceGrade(custom ? 3 : strongest.level)}
+          >{strongest.label}</span
+        >
+        {#if strongest.event}<span class="provenance">{summaryContext}</span
+          >{/if}
+        <span class="provenance"
+          >Shared {team.publishedAt || 'date unknown'}</span
+        >
+      </div>
+
+      <h1
+        class="mt-4 max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-break-word sm:text-4xl"
+      >
+        {team.name}
+      </h1>
+      <p class="provenance mt-2">By {team.creator || 'an unlisted creator'}</p>
+    </div>
+
+    <div class="flex shrink-0 flex-wrap items-center gap-2">
+      <Button
+        variant="primary"
+        size="touch"
+        disabled={!ready || savedError !== '' || pending}
+        onclick={useTeam}>Use this team</Button
+      >
+      <Button
+        variant="secondary"
+        size="touch"
+        disabled={!ready || savedError !== '' || pending || wishlisted}
+        onclick={wishlist}
+      >
+        {#if wishlisted}
+          <BookmarkCheck class="size-4" aria-hidden="true" />
+        {:else}
+          <Bookmark class="size-4" aria-hidden="true" />
+        {/if}
+        <span>{wishlisted ? 'Wishlisted' : 'Wishlist'}</span>
+      </Button>
+    </div>
   </div>
 
-  <h1
-    class="mt-4 max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-break-word sm:text-4xl"
-  >
-    {team.name}
-  </h1>
-  <p class="provenance mt-2.5">By {team.creator || 'an unlisted creator'}</p>
-
+  <p role="status" aria-live="polite" class="sr-only">{status}</p>
   {#if custom}<p class="term mt-3">
       Custom-rule event: this team was shared for a tournament with additional
       Pokémon restrictions. Hidden from normal recommendations.
     </p>{/if}
-
-  <div class="mt-6 flex flex-wrap gap-2.5">
-    <Button
-      variant="primary"
-      disabled={!ready || savedError !== '' || pending}
-      onclick={useTeam}>Use this team</Button
-    >
-    <Button
-      variant="secondary"
-      disabled={!ready || savedError !== '' || pending || wishlisted}
-      onclick={wishlist}>{wishlisted ? 'Wishlisted' : 'Wishlist'}</Button
-    >
-    {#if isPasteUrl(team.pasteUrl)}<Button
-        href={team.pasteUrl}
-        variant="secondary"
-        target="_blank"
-        rel="external noreferrer"
-        ><ExternalLink aria-hidden="true" />Open original paste</Button
-      >{/if}
-    {#if paste}<Button
-        variant="secondary"
-        onclick={() =>
-          copy(
-            paste,
-            isPasteUrl(team.pasteUrl) ? 'Team paste' : 'Published sets'
-          )}
-        ><Copy aria-hidden="true" />{isPasteUrl(team.pasteUrl)
-          ? 'Copy team'
-          : 'Copy published sets'}</Button
-      >{/if}
-    {#if team.replicaCode && team.replicaStatus === '✔'}<Button
-        variant="secondary"
-        onclick={() => copy(team.replicaCode || '', 'Replica code')}
-        ><Copy aria-hidden="true" />Copy replica code</Button
-      >{/if}
-  </div>
-  <p role="status" aria-live="polite" class="mt-2 min-h-6 text-[0.9375rem]">
-    {copyStatus}
-  </p>
-  <p role="status" aria-live="polite" class="sr-only">{status}</p>
   {#if savedError || actionError}<p
       role="alert"
-      class="text-[0.9375rem] leading-relaxed"
+      class="mt-3 text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >
       {savedError || actionError}
     </p>{/if}
-  {#if team.replicaCode}<p class="provenance">
-      Replica code:
-      <code class="font-mono text-sm text-base-content select-all"
-        >{team.replicaCode}</code
-      >
-      <span class="mx-1.5"></span>{team.replicaStatus === '✔'
-        ? 'Listed as available by the source; availability may change.'
-        : 'The source does not list this code as available.'}
-    </p>{/if}
 
-  {#if team.pasteError}<p class="provenance mt-3">
-      Some published details could not be loaded. {team.pasteError}
-    </p>{/if}
-
-  {#if !isPasteUrl(team.pasteUrl)}<p class="provenance mt-3">
-      {team.paste
-        ? 'Only published details are included; missing set fields remain unknown.'
-        : 'Only the published roster is available; set details are unknown.'}
-    </p>{/if}
-
-  <section
-    aria-label="Pokémon sets"
-    class="mt-8 grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3"
-  >
-    {#each team.members as member, index (index)}
-      <div class="plate overflow-hidden">
-        <MemberCard {member} slot={index + 1} editable={false} />
+  {#if team.replicaCode}
+    <div
+      class="plate mt-5 flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+    >
+      <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span class="term">Replica code</span>
+        <code
+          class="rounded bg-base-200 px-2 py-0.5 font-mono text-sm font-bold text-base-content select-all"
+          >{team.replicaCode}</code
+        >
+        <span class="provenance">
+          {team.replicaStatus === '✔'
+            ? 'Listed as available by the source; availability may change.'
+            : 'The source does not list this code as available.'}
+        </span>
       </div>
-    {/each}
+      {#if team.replicaStatus === '✔'}
+        <Button
+          variant="secondary"
+          size="compact"
+          onclick={() => copy(team.replicaCode || '', 'Replica code')}
+          ><Copy aria-hidden="true" />Copy replica code</Button
+        >
+      {/if}
+    </div>
+  {/if}
+
+  <section aria-label="Pokémon sets" class="mt-8">
+    <div
+      class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-2.5"
+    >
+      <h2 class="text-[1.375rem] leading-tight font-extrabold">Pokémon sets</h2>
+      {#if paste || isPasteUrl(team.pasteUrl)}
+        <div class="flex flex-wrap items-center gap-2">
+          {#if paste}
+            <Button
+              variant="secondary"
+              size="compact"
+              onclick={() =>
+                copy(
+                  paste,
+                  isPasteUrl(team.pasteUrl) ? 'Team paste' : 'Published sets'
+                )}
+              ><Copy aria-hidden="true" />{isPasteUrl(team.pasteUrl)
+                ? 'Copy team'
+                : 'Copy published sets'}</Button
+            >
+          {/if}
+          {#if isPasteUrl(team.pasteUrl)}
+            <Button
+              href={team.pasteUrl}
+              variant="quiet"
+              size="compact"
+              target="_blank"
+              rel="external noreferrer"
+              ><ExternalLink aria-hidden="true" />Open original paste</Button
+            >
+          {/if}
+        </div>
+      {/if}
+    </div>
+
+    <p
+      role="status"
+      aria-live="polite"
+      class="mb-3 text-sm text-base-content/70 empty:hidden"
+    >
+      {copyStatus}
+    </p>
+
+    {#if team.pasteError}<p class="provenance mb-3">
+        Some published details could not be loaded. {team.pasteError}
+      </p>{/if}
+
+    {#if !isPasteUrl(team.pasteUrl)}<p class="provenance mb-3">
+        {team.paste
+          ? 'Only published details are included; missing set fields remain unknown.'
+          : 'Only the published roster is available; set details are unknown.'}
+      </p>{/if}
+
+    <div class="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {#each team.members as member, index (index)}
+        <div class="plate overflow-hidden">
+          <MemberCard {member} slot={index + 1} editable={false} />
+        </div>
+      {/each}
+    </div>
   </section>
 
   <section aria-labelledby="results-heading" class="mt-10">

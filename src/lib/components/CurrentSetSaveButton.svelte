@@ -309,7 +309,7 @@
   }
 </script>
 
-<div class={memberIndex === undefined ? 'max-w-sm min-w-0' : 'px-2.5'}>
+<div class={memberIndex === undefined ? 'contents' : 'px-2.5'}>
   {#if memberIndex === undefined && canRecord()}
     <Button
       variant="secondary"
@@ -322,19 +322,28 @@
       <Save class="size-4" aria-hidden="true" />
       Record all in-game sets
     </Button>
-    <p id={`in-game-sets-description-${teamId}`} class="provenance mt-2">
+    <span id={`in-game-sets-description-${teamId}`} class="sr-only">
       Record the sets currently in your Pokémon Champions box—one per Pokémon.
       This doesn’t change anything in the game.
-    </p>
+    </span>
   {/if}
   <p
     role="alert"
-    class="mt-2 text-sm empty:mt-0"
+    class="mt-2 text-sm {registry.error || alertMessage
+      ? ''
+      : 'sr-only'} {memberIndex === undefined ? 'order-last basis-full' : ''}"
     style="color: var(--color-error-content)"
   >
     {registry.error || alertMessage}
   </p>
-  <p role="status" aria-live="polite" class="provenance mt-2 empty:mt-0">
+  <p
+    role="status"
+    aria-live="polite"
+    class="provenance mt-2 {statusMessage ? '' : 'sr-only'} {memberIndex ===
+    undefined
+      ? 'order-last basis-full'
+      : ''}"
+  >
     {statusMessage}
   </p>
   {#if pendingPlan}

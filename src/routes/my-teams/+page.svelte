@@ -10,6 +10,11 @@
   import TeamPicker from '$lib/components/TeamPicker.svelte';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
   import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import SavedCollectionHeader from '$lib/components/SavedCollectionHeader.svelte';
+  import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
+  import Copy from '@lucide/svelte/icons/copy';
+  import Plus from '@lucide/svelte/icons/plus';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
   import { Button } from '$lib/components/ui/button';
   import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
@@ -53,14 +58,14 @@
   let visitBaseline = $state<{ id: string; members: Member[] } | null>(null);
   let ready = $state(false),
     message = $state(''),
-    storageError = $state('');
-  let deleting = $state(false);
-  let showExport = $state(false);
+    storageError = $state(''),
+    deleting = $state(false),
+    showExport = $state(false),
+    stale = $state(false);
   let activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
-    editorPending = $state(false);
-  let editorMember = $state<Member | null>(null);
-  let stale = $state(false);
+    editorPending = $state(false),
+    editorMember = $state<Member | null>(null);
   let editorRef = $state<
     | {
         focusInitialSection: () => void;
@@ -69,10 +74,10 @@
       }
     | undefined
   >();
-  let pendingSpecies = $state<string | null>(null);
-  let showSwapPicker = $state(false);
-  let swapUnavailable = $state(false);
-  let appliedRevision = 0;
+  let pendingSpecies = $state<string | null>(null),
+    showSwapPicker = $state(false),
+    swapUnavailable = $state(false),
+    appliedRevision = 0;
   const teams = $derived(data.catalog.teams as Team[]);
   const allSpecies = $derived(
     [
@@ -467,15 +472,9 @@
       deleting = false;
       return;
     }
-    draft = null;
+    draft = activeEditIndex = editorMember = pendingSpecies = null;
     baseline = '';
-    activeEditIndex = null;
-    editorPending = false;
-    editorMember = null;
-    pendingSpecies = null;
-    showSwapPicker = false;
-    swapUnavailable = false;
-    showExport = false;
+    editorPending = showSwapPicker = swapUnavailable = showExport = false;
     const replacement = resolveSavedTeamId(remaining, null, previousActiveId);
     let activeFailed = false;
     try {
@@ -510,28 +509,11 @@
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
 
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <header>
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h1
-        class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-      >
-        My teams
-      </h1>
-      <Button href={resolve('/wishlist')} variant="secondary" size="touch"
-        >Wishlist</Button
-      >
-    </div>
-    <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      Keep your original. Explore changes. Save your own version.
-    </p>
-  </header>
-  <div class="mt-4">
-    <Button href={resolve('/my-teams/new')} variant="secondary"
-      >Add custom team</Button
-    >
-  </div>
+  <SavedCollectionHeader
+    collection="my-teams"
+    title="My teams"
+    description="Keep your original. Explore changes. Save your own version."
+  />
   {#if storageError}<p
       role="alert"
       class="plate mt-5 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
@@ -539,32 +521,39 @@
     >
       {storageError}
     </p>{/if}
-  {#if !ready}<p class="mt-8 text-[0.9375rem] text-base-content/70">
-      Loading saved teams…
-    </p>
-  {:else if !storageError}
-    {#if saved.length}
-      <div
-        class="mt-6"
-        data-team-picker
-        onpointerdowncapture={() => {
-          pickerPress = true;
-          setTimeout(() => (pickerPress = false));
-        }}
-      >
-        <TeamPicker
-          bind:this={picker}
-          teams={saved}
-          value={draft?.id ?? ''}
-          onselect={selectTeam}
-          disabled={editing || deleting}
-        />
-      </div>
-    {:else}
-      <p class="plate mt-8 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
-        No saved teams yet. Open a catalog team and choose “Use this team”.
-      </p>
+  <div class="mt-6 flex flex-wrap items-end justify-between gap-4">
+    {#if !ready}
+      <p class="text-[0.9375rem] text-base-content/70">Loading saved teams…</p>
+    {:else if !storageError}
+      {#if saved.length}
+        <div
+          class="min-w-0 flex-1"
+          data-team-picker
+          onpointerdowncapture={() => {
+            pickerPress = true;
+            setTimeout(() => (pickerPress = false));
+          }}
+        >
+          <TeamPicker
+            bind:this={picker}
+            teams={saved}
+            value={draft?.id ?? ''}
+            onselect={selectTeam}
+            disabled={editing || deleting}
+          />
+        </div>
+      {:else}
+        <p class="plate max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
+          No saved teams yet. Open a catalog team and choose “Use this team”.
+        </p>
+      {/if}
     {/if}
+    <Button href={resolve('/my-teams/new')} variant="secondary" size="touch">
+      <Plus class="size-4" aria-hidden="true" />
+      <span>Add custom team</span>
+    </Button>
+  </div>
+  {#if ready && !storageError}
     <p
       role="status"
       aria-live="polite"
@@ -581,7 +570,7 @@
         current
       )}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
-        <header class="flex items-start gap-3 border-b pb-4">
+        <header class="flex items-start justify-between gap-3 border-b pb-4">
           <div class="min-w-0">
             <h2
               class="text-[0.9375rem] leading-tight font-bold wrap-break-word text-base-content/70"
@@ -602,6 +591,17 @@
               {/if}
             </div>
           </div>
+          <Button
+            variant="quiet"
+            size="icon-touch"
+            class="shrink-0 text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
+            aria-label="Delete team"
+            title="Delete team"
+            disabled={editing || deleting}
+            onclick={removeSelectedTeam}
+          >
+            <Trash2 class="size-4" aria-hidden="true" />
+          </Button>
         </header>
         <ul
           class="mt-4 grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6"
@@ -631,10 +631,12 @@
             </li>
           {/each}
         </ul>
-        <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
-          <label class="term block w-full max-w-xl"
+        <div
+          class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
+        >
+          <label class="term block w-full max-w-xl flex-1"
             >Team name<input
-              class="input mt-2 min-h-11 w-full sm:text-sm"
+              class="input mt-1.5 min-h-11 w-full sm:text-sm"
               maxlength="200"
               bind:value={draft.name}
               onblur={blurName}
@@ -643,7 +645,7 @@
               }}
             /></label
           >
-          <div class="flex flex-wrap gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <CurrentSetSaveButton
               teamId={draft.id}
               {baseline}
@@ -655,60 +657,60 @@
               size="touch"
               data-team-action="copy"
               disabled={editing || deleting}
-              onclick={copyPaste}>Copy team text</Button
+              onclick={copyPaste}
             >
-            <Button
-              variant="destructive"
-              size="touch"
-              disabled={editing || deleting}
-              onclick={removeSelectedTeam}>Delete team</Button
-            >
+              <Copy class="size-4" aria-hidden="true" />
+              <span>Copy team text</span>
+            </Button>
+            {#if !pendingSpecies && !showSwapPicker}
+              <Button
+                variant="secondary"
+                size="touch"
+                disabled={editing}
+                onclick={() => (showSwapPicker = true)}
+              >
+                <ArrowLeftRight class="size-4" aria-hidden="true" />
+                <span>Change a Pokémon</span>
+              </Button>
+            {/if}
           </div>
         </div>
-        <div class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <div class="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <p class="provenance">
             {dirty ? 'Unsaved input.' : 'Saved on this device.'}
           </p>
           {#if draft.name !== draft.original.name}
             <p class="provenance">Original: {draft.original.name}</p>
           {/if}
+          <p class="provenance">
+            Editing does not create a working rental code.
+          </p>
         </div>
-        <p class="provenance mt-1.5">
-          Editing does not create a working rental code.
-        </p>
-        <div class="mt-5">
-          {#if pendingSpecies}
-            <div
-              class="t-panel-slide input flex h-12 items-center justify-between gap-2"
-              use:revealPanel
-            >
-              <span>{pendingSpecies}</span>
-              <Button
-                variant="quiet"
-                size="icon-touch"
-                aria-label="Clear selected Pokémon"
-                onclick={cancelSpeciesSwap}><X class="size-4" /></Button
-              >
-            </div>
-          {:else if showSwapPicker}
-            <div class="t-panel-slide" use:revealPanel>
-              <PokemonPicker
-                options={availableSpecies}
-                onselect={startSpeciesSwap}
-                disabled={editing}
-                label="Change a Pokémon"
-                placeholder="Choose a Pokémon to swap in…"
-                disabledPlaceholder="Finish editing first"
-              />
-            </div>
-          {:else}
+        {#if pendingSpecies}
+          <div
+            class="t-panel-slide input mt-4 flex h-12 items-center justify-between gap-2"
+            use:revealPanel
+          >
+            <span>{pendingSpecies}</span>
             <Button
-              variant="secondary"
-              disabled={editing}
-              onclick={() => (showSwapPicker = true)}>Change a Pokémon</Button
+              variant="quiet"
+              size="icon-touch"
+              aria-label="Clear selected Pokémon"
+              onclick={cancelSpeciesSwap}><X class="size-4" /></Button
             >
-          {/if}
-        </div>
+          </div>
+        {:else if showSwapPicker}
+          <div class="t-panel-slide mt-4" use:revealPanel>
+            <PokemonPicker
+              options={availableSpecies}
+              onselect={startSpeciesSwap}
+              disabled={editing}
+              label="Change a Pokémon"
+              placeholder="Choose a Pokémon to swap in…"
+              disabledPlaceholder="Finish editing first"
+            />
+          </div>
+        {/if}
         {#if swapUnavailable && pendingSpecies}
           <p class="provenance mt-2" role="status">
             No catalog team with {pendingSpecies} shares a remaining teammate.

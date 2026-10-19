@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
+  import SavedCollectionHeader from '$lib/components/SavedCollectionHeader.svelte';
   import TeamCard from '$lib/components/TeamCard.svelte';
   import { Button } from '$lib/components/ui/button';
   import type { Team } from '$lib/catalog';
@@ -146,18 +148,11 @@
 
 <svelte:head><title>Wishlist — Champion's Atlas</title></svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <header>
-    <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-    >
-      Wishlist
-    </h1>
-    <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      Teams to try later. Use a team to move it to My teams.
-    </p>
-  </header>
+  <SavedCollectionHeader
+    collection="wishlist"
+    title="Wishlist"
+    description="Teams to try later. Use a team to move it to My teams."
+  />
   <p
     role="status"
     aria-live="polite"
@@ -189,23 +184,23 @@
               detailAvailable={available}
             >
               {#snippet actions()}
-                {#if !available}<p class="provenance mb-2.5">
-                    No longer in the catalog. Your saved team is still
-                    available.
-                  </p>{/if}
-                <div class="flex flex-wrap gap-2">
-                  <Button
-                    data-wishlist-use
-                    variant="primary"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => use(entry)}>Use this team</Button
-                  >
-                  <Button
-                    variant="destructive"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => remove(entry)}>Remove from Wishlist</Button
-                  >
-                </div>
+                <Button
+                  data-wishlist-use
+                  variant="primary"
+                  disabled={!ready || !!pendingId}
+                  onclick={() => use(entry)}>Use this team</Button
+                >
+                <Button
+                  variant="quiet"
+                  size="icon-compact"
+                  class="text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
+                  aria-label="Remove from Wishlist"
+                  title="Remove from Wishlist"
+                  disabled={!ready || !!pendingId}
+                  onclick={() => remove(entry)}
+                >
+                  <Trash2 class="size-4" aria-hidden="true" />
+                </Button>
               {/snippet}
             </TeamCard>
           </li>

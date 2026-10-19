@@ -15,7 +15,8 @@
   let { children } = $props();
   const isHome = $derived(page.url.pathname === resolve('/'));
   const isMyTeams = $derived(
-    page.url.pathname.startsWith(resolve('/my-teams'))
+    page.url.pathname.startsWith(resolve('/my-teams')) ||
+      page.url.pathname === resolve('/wishlist')
   );
   const isBrowse = $derived(
     isHome ||

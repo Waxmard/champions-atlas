@@ -4,6 +4,8 @@
   import { page } from '$app/state';
   import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
   import { onMount } from 'svelte';
+  import Bookmark from '@lucide/svelte/icons/bookmark';
+  import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
   import PokemonPicker from '$lib/components/PokemonPicker.svelte';
@@ -566,24 +568,31 @@
             {#snippet actions()}
               {@const busy =
                 !ready || savedError !== '' || pending.has(team.id)}
-              <div
-                class="flex w-full flex-wrap items-center justify-between gap-x-3 gap-y-2"
+              {@const isWishlisted = wishlisted.has(team.id)}
+              <Button
+                type="button"
+                variant="quiet"
+                size="icon-compact"
+                class={isWishlisted
+                  ? 'text-primary disabled:text-primary/80'
+                  : ''}
+                aria-label={isWishlisted ? 'Wishlisted' : 'Wishlist'}
+                title={isWishlisted ? 'Wishlisted' : 'Add to Wishlist'}
+                disabled={busy || isWishlisted}
+                onclick={() => wishlist(team)}
               >
-                <Button
-                  type="button"
-                  variant="quiet"
-                  disabled={busy || wishlisted.has(team.id)}
-                  onclick={() => wishlist(team)}
-                  >{wishlisted.has(team.id) ? 'Wishlisted' : 'Wishlist'}</Button
-                >
-                <Button
-                  type="button"
-                  class="ms-auto"
-                  variant="primary"
-                  disabled={busy}
-                  onclick={() => use(team)}>Use this team</Button
-                >
-              </div>
+                {#if isWishlisted}
+                  <BookmarkCheck class="size-4" aria-hidden="true" />
+                {:else}
+                  <Bookmark class="size-4" aria-hidden="true" />
+                {/if}
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                disabled={busy}
+                onclick={() => use(team)}>Use this team</Button
+              >
             {/snippet}
           </TeamCard>{/each}
       </div>
