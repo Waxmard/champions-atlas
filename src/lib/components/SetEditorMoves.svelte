@@ -1,12 +1,12 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import type { Member } from '$lib/catalog';
-  import type { CurrentSetChoice } from '$lib/current-sets';
-  import TypeMark from '$lib/components/TypeMark.svelte';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import type { CatalogSuggestion } from '$lib/workbench';
-  import { getMoveType, TYPE_COLORS } from '$lib/types';
+  import type { Member } from '#lib/catalog.js';
+  import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import TypeMark from '#lib/components/TypeMark.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import type { CatalogSuggestion } from '#lib/workbench.js';
+  import { getMoveType, TYPE_COLORS } from '#lib/types.js';
   let {
     moves,
     activeMoveSlot,

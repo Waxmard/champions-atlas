@@ -1,7 +1,7 @@
 <script lang="ts">
   import { Combobox } from 'bits-ui';
   import Search from '@lucide/svelte/icons/search';
-  import { getTypeIcon, type PokemonType } from '$lib/types';
+  import { getTypeIcon, type PokemonType } from '#lib/types.js';
 
   let {
     options,

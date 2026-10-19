@@ -4,22 +4,22 @@
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import CurrentSetSaveButton from '$lib/components/CurrentSetSaveButton.svelte';
-  import MemberCurrentSetControls from '$lib/components/MemberCurrentSetControls.svelte';
-  import TeamPicker from '$lib/components/TeamPicker.svelte';
-  import PokemonPicker from '$lib/components/PokemonPicker.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
-  import SavedCollectionHeader from '$lib/components/SavedCollectionHeader.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
+  import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
+  import TeamPicker from '#lib/components/TeamPicker.svelte';
+  import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import Copy from '@lucide/svelte/icons/copy';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
-  import { Button } from '$lib/components/ui/button';
-  import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
-  import TeamHistoryPanel from '$lib/components/TeamHistoryPanel.svelte';
-  import { canonicalSnapshot, restoreTeam } from '$lib/team-history';
-  import { copyText } from '$lib/clipboard';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
+  import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
+  import { canonicalSnapshot, restoreTeam } from '#lib/team-history.js';
+  import { copyText } from '#lib/clipboard.js';
   import {
     bestEvidence,
     evidenceGrade,
@@ -27,9 +27,9 @@
     regulationLabel,
     type Member,
     type Team,
-  } from '$lib/catalog';
-  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
-  import type { TeamTagsIndex } from '$lib/tags';
+  } from '#lib/catalog.js';
+  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
+  import type { TeamTagsIndex } from '#lib/tags.js';
   import {
     activeTeamKey,
     deleteTeam,
@@ -41,13 +41,9 @@
     saveTeam,
     swapSuggestions,
     type SavedTeam,
-  } from '$lib/workbench';
-  import { pushNow, sync } from '$lib/sync.svelte';
-  import {
-    liveInUseTeam,
-    resolveSavedTeamId,
-    teamsInUse,
-  } from '$lib/team-collections';
+  } from '#lib/workbench.js';
+  import { pushNow, sync } from '#lib/sync.svelte.js';
+  import * as collections from '#lib/team-collections.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -119,13 +115,13 @@
     navigate = true
   ) {
     try {
-      saved = teamsInUse(readSavedTeams(localStorage));
+      saved = collections.teamsInUse(readSavedTeams(localStorage));
       storageError = '';
       const activeId =
         activeOverride === undefined
           ? localStorage.getItem(activeTeamKey)
           : activeOverride;
-      const resolvedId = resolveSavedTeamId(saved, id, activeId);
+      const resolvedId = collections.resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
       baseline = entry ? contentSnapshot(entry) : '';
@@ -141,10 +137,11 @@
         localStorage.removeItem(activeTeamKey);
       if (navigate && (entry || !id)) {
         const destination = entry
-          ? resolve('/my-teams') + '?team=' + encodeURIComponent(entry.id)
-          : resolve('/my-teams');
+          ? resolve('my-teams') + '?team=' + encodeURIComponent(entry.id)
+          : resolve('my-teams');
+
         if (page.url.pathname + page.url.search !== destination)
-          void goto(destination as ResolvedPathname, { replaceState: true });
+          void goto(destination as ResolvedPathname, { replace: true });
       }
       showExport = false;
       activeEditIndex = null;
@@ -155,7 +152,7 @@
       showSwapPicker = false;
       swapUnavailable = false;
       message =
-        id && !entry && !resolveSavedTeamId(saved, null, activeId)
+        id && !entry && !collections.resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
           : '';
     } catch {
@@ -202,10 +199,13 @@
       (sync.revision === appliedRevision && !stale)
     )
       return;
+
     appliedRevision = sync.revision;
     untrack(() => openSaved(draft?.id ?? page.url.searchParams.get('team')));
   });
-  beforeNavigate(({ cancel, willUnload }) => {
+
+  beforeNavigate(({ cancel, willUnload, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (willUnload) return;
     if (dirty && !confirm('Discard unsaved input?')) cancel();
   });
@@ -214,11 +214,7 @@
   async function selectTeam(id: string): Promise<boolean> {
     persistIfDirty();
     try {
-      await goto(
-        (resolve('/my-teams') +
-          '?team=' +
-          encodeURIComponent(id)) as ResolvedPathname
-      );
+      await goto(resolve(`my-teams?team=${encodeURIComponent(id)}`));
     } catch {
       message = 'Could not open that team. Your current team is unchanged.';
       return false;
@@ -228,11 +224,13 @@
   }
   function blurName(event: FocusEvent) {
     const target = event.relatedTarget;
+
     if (
       pickerPress ||
       (target instanceof Element && target.closest('[data-team-picker]'))
     )
       return;
+
     saveTeamName();
   }
 
@@ -242,7 +240,7 @@
   ): boolean {
     if (!draft) return false;
     try {
-      const latest = liveInUseTeam(localStorage, draft!.id);
+      const latest = collections.liveInUseTeam(localStorage, draft!.id);
       if (!latest || contentSnapshot(latest) !== baseline) {
         stale = true;
         message =
@@ -251,7 +249,7 @@
       }
       const next = patch(latest);
       const pendingName = draft.name;
-      saved = teamsInUse(saveTeam(localStorage, next));
+      saved = collections.teamsInUse(saveTeam(localStorage, next));
       const persisted = saved.find(({ id }) => id === next.id)!;
       baseline = contentSnapshot(persisted);
       draft = structuredClone($state.snapshot(persisted));
@@ -329,6 +327,7 @@
   function canRevertSlot(index: number): boolean {
     const target = visitBaseline?.members[index];
     if (!draft || editing || deleting || !target) return false;
+
     return (
       canonicalSnapshot(target) !== canonicalSnapshot(draft.members[index]) &&
       !slotRevertReason(index)
@@ -458,13 +457,13 @@
     }
     let remaining: SavedTeam[];
     try {
-      if (!liveInUseTeam(localStorage, id)) {
+      if (!collections.liveInUseTeam(localStorage, id)) {
         message =
           'This team changed elsewhere. Reopen My teams before deleting.';
         deleting = false;
         return;
       }
-      remaining = teamsInUse(deleteTeam(localStorage, id));
+      remaining = collections.teamsInUse(deleteTeam(localStorage, id));
     } catch {
       message =
         'Could not delete team. Existing saved teams have been left untouched.';
@@ -474,7 +473,11 @@
     draft = activeEditIndex = editorMember = pendingSpecies = null;
     baseline = '';
     editorPending = showSwapPicker = swapUnavailable = showExport = false;
-    const replacement = resolveSavedTeamId(remaining, null, previousActiveId);
+    const replacement = collections.resolveSavedTeamId(
+      remaining,
+      null,
+      previousActiveId
+    );
     let activeFailed = false;
     try {
       if (replacement) localStorage.setItem(activeTeamKey, replacement);
@@ -486,9 +489,9 @@
     try {
       await goto(
         (replacement
-          ? resolve('/my-teams') + '?team=' + encodeURIComponent(replacement)
-          : resolve('/my-teams')) as ResolvedPathname,
-        { replaceState: true }
+          ? resolve('my-teams') + '?team=' + encodeURIComponent(replacement)
+          : resolve('my-teams')) as ResolvedPathname,
+        { replace: true }
       );
     } catch {
       activeFailed = true;
@@ -572,6 +575,7 @@
             >
               {draft.name}
             </h2>
+
             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span
                 class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"

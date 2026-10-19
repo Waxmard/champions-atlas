@@ -10,15 +10,15 @@
     NATURES,
     type ChampionsSpread,
     type ChampionsStat,
-  } from '$lib/paste';
-  import { resolveBattleForm } from '$lib/battle-forms';
-  import type { BenchmarkIndex } from '$lib/benchmarks';
-  import type { Member, Team } from '$lib/catalog';
-  import { speedBenchmark, speedFor, speedTiers } from '$lib/stats';
-  import EvBenchmarkPanel from '$lib/components/EvBenchmarkPanel.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
-  import type { CurrentSetChoice } from '$lib/current-sets';
+  } from '#lib/paste.js';
+  import { resolveBattleForm } from '#lib/battle-forms.js';
+  import type { BenchmarkIndex } from '#lib/benchmarks.js';
+  import type { Member, Team } from '#lib/catalog.js';
+  import { speedBenchmark, speedFor, speedTiers } from '#lib/stats.js';
+  import EvBenchmarkPanel from '#lib/components/EvBenchmarkPanel.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import type { CatalogSuggestion, SpreadSuggestion } from '#lib/workbench.js';
+  import type { CurrentSetChoice } from '#lib/current-sets.js';
 
   let {
     member,

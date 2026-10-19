@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
+  import { Button } from '#lib/components/ui/button/index.js';
   import {
     evidence,
     evidenceGrade,
     isPasteUrl,
     normalize,
     regulationLabel,
-  } from '$lib/catalog';
-  import { canonicalSnapshot, differences } from '$lib/team-history';
-  import { rosterConflict } from '$lib/workbench';
-  import type { SavedTeam } from '$lib/workbench';
+  } from '#lib/catalog.js';
+  import { canonicalSnapshot, differences } from '#lib/team-history.js';
+  import { rosterConflict } from '#lib/workbench.js';
+  import type { SavedTeam } from '#lib/workbench.js';
 
   interface Props {
     team: SavedTeam;

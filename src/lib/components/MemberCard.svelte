@@ -1,13 +1,13 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import MovePill from '$lib/components/MovePill.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
-  import TypeBadge from '$lib/components/TypeBadge.svelte';
-  import UnknownValue from '$lib/components/UnknownValue.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import type { Member } from '$lib/catalog';
-  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
+  import ItemIcon from '#lib/components/ItemIcon.svelte';
+  import MovePill from '#lib/components/MovePill.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import TypeBadge from '#lib/components/TypeBadge.svelte';
+  import UnknownValue from '#lib/components/UnknownValue.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import type { Member } from '#lib/catalog.js';
+  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 

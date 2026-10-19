@@ -7,9 +7,9 @@
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
-  import MemberCard from '$lib/components/MemberCard.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { copyText } from '$lib/clipboard';
+  import MemberCard from '#lib/components/MemberCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { copyText } from '#lib/clipboard.js';
   import {
     bestEvidence,
     evidence,
@@ -18,14 +18,14 @@
     isPasteUrl,
     regulationLabel,
     type Team,
-  } from '$lib/catalog';
-  import { exportPaste, type SavedTeam } from '$lib/workbench';
+  } from '#lib/catalog.js';
+  import { exportPaste, type SavedTeam } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
     wishlistCatalogTeam,
-  } from '$lib/saved-team-actions';
-  import { sync } from '$lib/sync.svelte';
+  } from '#lib/saved-team-actions.js';
+  import { sync } from '#lib/sync.svelte.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -119,11 +119,13 @@
     class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
   >
     <a
-      href={resolve(`/?${page.url.searchParams}`)}
+      href={resolve(`?${page.url.searchParams}`)}
       onclick={back}
       class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
-      ><ArrowLeft class="size-4" aria-hidden="true" />Back to teams</a
     >
+      <ArrowLeft class="size-4" aria-hidden="true" />
+      Back to teams
+    </a>
   </div>
 
   <div
@@ -234,10 +236,10 @@
                   paste,
                   isPasteUrl(team.pasteUrl) ? 'Team paste' : 'Published sets'
                 )}
-              ><Copy aria-hidden="true" />{isPasteUrl(team.pasteUrl)
-                ? 'Copy team'
-                : 'Copy published sets'}</Button
             >
+              <Copy aria-hidden="true" />
+              {isPasteUrl(team.pasteUrl) ? 'Copy team' : 'Copy published sets'}
+            </Button>
           {/if}
           {#if isPasteUrl(team.pasteUrl)}
             <Button
@@ -246,8 +248,10 @@
               size="compact"
               target="_blank"
               rel="external noreferrer"
-              ><ExternalLink aria-hidden="true" />Open original paste</Button
             >
+              <ExternalLink aria-hidden="true" />
+              Open original paste
+            </Button>
           {/if}
         </div>
       {/if}

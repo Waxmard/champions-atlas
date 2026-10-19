@@ -241,7 +241,7 @@ test('invalid custom import never changes local storage', async ({ page }) => {
     .getByLabel('Team text', { exact: true })
     .fill(peter.paste!.replace(/EVs:[^\r\n]*\r?\n/, ''));
   await page.getByRole('button', { name: 'Save custom team' }).click();
-  await expect(page.getByRole('status')).toContainText('missing EVs');
+  await expect(page.getByRole('alert')).toContainText('missing EVs');
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe(before);

@@ -4,22 +4,22 @@
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import SavedCollectionHeader from '$lib/components/SavedCollectionHeader.svelte';
-  import TeamCard from '$lib/components/TeamCard.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import type { Team } from '$lib/catalog';
-  import { pushNow, sync } from '$lib/sync.svelte';
+  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
+  import TeamCard from '#lib/components/TeamCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import type { Team } from '#lib/catalog.js';
+  import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
     removeWishlistedTeam,
     SavedTeamError,
     useWishlistedTeam,
-  } from '$lib/team-collections';
+  } from '#lib/team-collections.js';
   import {
     activeTeamKey,
     readSavedTeams,
     storageKey,
     type SavedTeam,
-  } from '$lib/workbench';
+  } from '#lib/workbench.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -102,7 +102,7 @@
     }
     try {
       await goto(
-        (resolve('/my-teams') +
+        (resolve('my-teams') +
           '?team=' +
           encodeURIComponent(promoted.id)) as ResolvedPathname
       );

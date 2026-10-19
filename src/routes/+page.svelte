@@ -2,30 +2,30 @@
   import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
+  import { SvelteSet } from 'svelte/reactivity';
   import { onMount } from 'svelte';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
-  import PokemonPicker from '$lib/components/PokemonPicker.svelte';
-  import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
-  import TeamCard from '$lib/components/TeamCard.svelte';
-  import TypeFilter from '$lib/components/TypeFilter.svelte';
+  import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
+  import TeamCard from '#lib/components/TeamCard.svelte';
+  import TypeFilter from '#lib/components/TypeFilter.svelte';
   import {
     getPokemonTypes,
     getTypeIcon,
     TYPE_COLORS,
     type PokemonType,
-  } from '$lib/types';
-  import { browseStorageKey, type SavedTeam } from '$lib/workbench';
+  } from '#lib/types.js';
+  import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
     wishlistCatalogTeam,
-  } from '$lib/saved-team-actions';
-  import { sync } from '$lib/sync.svelte';
-  import { Button } from '$lib/components/ui/button';
+  } from '#lib/saved-team-actions.js';
+  import { sync } from '#lib/sync.svelte.js';
+  import { Button } from '#lib/components/ui/button/index.js';
   import {
     readFilters,
     writeFilters,
@@ -37,7 +37,7 @@
     pokemonId,
     type MemberFilter,
     type Team,
-  } from '$lib/catalog';
+  } from '#lib/catalog.js';
   import type { PageData } from './$types';
 
   const browseKeys = ['member', 'regulation', 'sort', 'page', 'type', 'custom'];
@@ -68,7 +68,10 @@
   );
   const filterState = $derived.by(() => {
     try {
-      return { filters: readFilters(page.url.searchParams), error: '' };
+      return {
+        filters: readFilters(new URL(page.url.href).searchParams),
+        error: '',
+      };
     } catch {
       return {
         filters: [],
@@ -158,8 +161,10 @@
     result.set('sort', params.get('sort') === 'recent' ? 'recent' : 'priority');
     if (params.get('custom') === '1') result.set('custom', '1');
     const pageValue = params.get('page');
+
     if (pageValue && /^\d+$/.test(pageValue) && Number(pageValue) > 1)
       result.set('page', pageValue);
+
     return result;
   }
 
@@ -171,14 +176,16 @@
     }
   }
 
-  function navigate(params: URLSearchParams, noScroll = true) {
+  function navigate(params: URLSearchParams, preservePosition = true) {
     const canonical = browseParams(params);
     rememberBrowse(canonical);
     const query = canonical.toString();
-    void goto(resolve(`/?${query}`), {
-      replaceState: true,
-      noScroll,
-      keepFocus: true,
+
+    void goto(resolve(`?${query}`), {
+      replace: true,
+      reset: false,
+    }).then(() => {
+      if (!preservePosition) window.scrollTo(0, 0);
     });
   }
 
@@ -187,7 +194,7 @@
 
     if (browseKeys.some((key) => page.url.searchParams.has(key))) {
       try {
-        rememberBrowse(browseParams(page.url.searchParams));
+        rememberBrowse(browseParams(new URL(page.url.href).searchParams));
       } catch {
         // Invalid explicit links stay visible and do not replace saved filters.
       }
@@ -243,7 +250,7 @@
     pending.delete(team.id);
   }
   function changeFilters(next: MemberFilter[]) {
-    navigate(writeFilters(page.url.searchParams, next));
+    navigate(writeFilters(new URL(page.url.href).searchParams, next));
   }
   function addPokemon(pokemon: string) {
     pokemon = browsePokemon(pokemon);
@@ -277,7 +284,7 @@
     return getMemberOptions(teams, pokemon, field);
   }
   function changeOption(key: string, value: string) {
-    const params = new SvelteURLSearchParams(page.url.searchParams);
+    const params = new URL(page.url.href).searchParams;
     params.set(key, value);
     if (key !== 'page') params.delete('page');
     navigate(params, key !== 'page');
@@ -288,7 +295,7 @@
   }
 
   function setTypes(next: PokemonType[]) {
-    const params = new SvelteURLSearchParams(page.url.searchParams);
+    const params = new URL(page.url.href).searchParams;
     params.delete('type');
     for (const type of next) params.append('type', type.toLowerCase());
     params.delete('page');
@@ -559,7 +566,8 @@
     </div>
     {#if results.length}
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {#each visible as team (team.id)}<TeamCard
+        {#each visible as team (team.id)}
+          <TeamCard
             {team}
             currentRegulation={current}
             showRegulation={regulation === 'all'}

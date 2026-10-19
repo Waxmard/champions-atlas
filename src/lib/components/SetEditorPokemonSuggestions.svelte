@@ -1,8 +1,8 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
-  import type { Member } from '$lib/catalog';
-  import type { PokemonSuggestion } from '$lib/workbench';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import type { Member } from '#lib/catalog.js';
+  import type { PokemonSuggestion } from '#lib/workbench.js';
 
   let {
     options,

@@ -2,7 +2,7 @@
   import { tick } from 'svelte';
   import { Combobox } from 'bits-ui';
   import Search from '@lucide/svelte/icons/search';
-  import { normalize } from '$lib/catalog';
+  import { normalize } from '#lib/catalog.js';
   import SpeciesLabel from './SpeciesLabel.svelte';
 
   let {

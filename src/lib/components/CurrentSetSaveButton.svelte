@@ -1,7 +1,7 @@
 <script lang="ts">
   import Save from '@lucide/svelte/icons/save';
   import { tick } from 'svelte';
-  import { browsePokemon, type Member } from '$lib/catalog';
+  import { browsePokemon, type Member } from '#lib/catalog.js';
   import {
     currentSetsChangedEvent,
     currentSetsSnapshot,
@@ -10,15 +10,15 @@
     readCurrentSets,
     saveCurrentSets,
     type CurrentSetSavePlan,
-  } from '$lib/current-sets';
+  } from '#lib/current-sets.js';
   import {
     createCurrentSetRegistry,
     currentSetOwnerMatches,
-  } from '$lib/current-set-registry.svelte';
-  import { liveInUseTeam } from '$lib/team-collections';
-  import { canonicalSnapshot } from '$lib/team-history';
-  import { pushNow } from '$lib/sync.svelte';
-  import { Button } from '$lib/components/ui/button';
+  } from '#lib/current-set-registry.svelte.js';
+  import { liveInUseTeam } from '#lib/team-collections.js';
+  import { canonicalSnapshot } from '#lib/team-history.js';
+  import { pushNow } from '#lib/sync.svelte.js';
+  import { Button } from '#lib/components/ui/button/index.js';
 
   interface Props {
     teamId: string;

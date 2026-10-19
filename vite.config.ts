@@ -1,3 +1,4 @@
+import adapter from '@sveltejs/adapter-static';
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
@@ -43,7 +44,13 @@ export default defineConfig({
       },
     },
     tailwindcss(),
-    sveltekit(),
+    sveltekit({
+      adapter: adapter({ fallback: 'index.html' }),
+      compilerOptions: {
+        runes: ({ filename }) =>
+          filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
+      },
+    }),
     {
       name: 'emit-build-version',
       applyToEnvironment: (environment) => environment.name === 'client',

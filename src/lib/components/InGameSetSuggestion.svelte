@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { canonicalSnapshot, memberSnapshotDiff } from '$lib/team-history';
-  import type { Member } from '$lib/catalog';
+  import { canonicalSnapshot, memberSnapshotDiff } from '#lib/team-history.js';
+  import type { Member } from '#lib/catalog.js';
 
   interface Props {
     current: Member;

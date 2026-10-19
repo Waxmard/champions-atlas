@@ -2,7 +2,7 @@
   import { resolve } from '$app/paths';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Plus from '@lucide/svelte/icons/plus';
-  import { Button } from '$lib/components/ui/button';
+  import { Button } from '#lib/components/ui/button/index.js';
 
   let {
     collection,
@@ -36,7 +36,7 @@
       class="inline-flex items-center rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1"
     >
       <a
-        href={resolve('/my-teams')}
+        href={resolve('my-teams')}
         aria-label="My teams collection"
         aria-current={collection === 'my-teams' ? 'page' : undefined}
         class="inline-flex min-h-11 items-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3.5 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary {collection ===
@@ -47,7 +47,7 @@
         <span>My teams</span>
       </a>
       <a
-        href={resolve('/wishlist')}
+        href={resolve('wishlist')}
         aria-current={collection === 'wishlist' ? 'page' : undefined}
         class="inline-flex min-h-11 items-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3.5 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary {collection ===
         'wishlist'
@@ -59,7 +59,7 @@
       </a>
     </nav>
     {#if collection === 'my-teams'}
-      <Button href={resolve('/my-teams/new')} variant="quiet" size="compact">
+      <Button href={resolve('my-teams/new')} variant="quiet" size="compact">
         <Plus class="size-4" aria-hidden="true" />
         <span>Add custom team</span>
       </Button>

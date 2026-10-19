@@ -1,15 +1,15 @@
 <script lang="ts">
-  import EvEditor from '$lib/components/EvEditor.svelte';
+  import EvEditor from '#lib/components/EvEditor.svelte';
   import { SvelteSet } from 'svelte/reactivity';
-  import { buildBenchmarkIndex, type BenchmarkIndex } from '$lib/benchmarks';
-  import { normalize, type Member, type Team } from '$lib/catalog';
+  import { buildBenchmarkIndex, type BenchmarkIndex } from '#lib/benchmarks.js';
+  import { normalize, type Member, type Team } from '#lib/catalog.js';
   import {
     catalogSpreadSuggestions,
     originalSpreadSuggestion,
     type CatalogSuggestion,
     type SpreadSuggestion,
-  } from '$lib/workbench';
-  import type { CurrentSetChoice } from '$lib/current-sets';
+  } from '#lib/workbench.js';
+  import type { CurrentSetChoice } from '#lib/current-sets.js';
 
   let {
     member,

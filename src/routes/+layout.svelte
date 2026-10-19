@@ -7,16 +7,16 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
-  import { initSync, pushNow, signOut, sync } from '$lib/sync.svelte';
-  import { claimAutoReload, watchForUpdate } from '$lib/app-version';
-  import { activeTeamKey, readSavedTeams } from '$lib/workbench';
-  import { resolveSavedTeamId, teamsInUse } from '$lib/team-collections';
+  import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
+  import { claimAutoReload, watchForUpdate } from '#lib/app-version.js';
+  import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
+  import { resolveSavedTeamId, teamsInUse } from '#lib/team-collections.js';
 
   let { children } = $props();
   const isHome = $derived(page.url.pathname === resolve('/'));
   const isMyTeams = $derived(
-    page.url.pathname.startsWith(resolve('/my-teams')) ||
-      page.url.pathname === resolve('/wishlist')
+    page.url.pathname.startsWith(resolve('my-teams')) ||
+      page.url.pathname === resolve('wishlist')
   );
   const isBrowse = $derived(
     isHome ||
@@ -24,12 +24,14 @@
         resolve('/teams/[id]', { id: 'x' }).slice(0, -1)
       )
   );
-  const isLogin = $derived(page.url.pathname === resolve('/login'));
+  const isLogin = $derived(page.url.pathname === resolve('login'));
+
   const brandHref = $derived(
-    isHome || page.url.pathname.startsWith(resolve('/teams/'))
-      ? resolve(`/?${page.url.searchParams}`)
-      : resolve('/?browse=all')
+    isHome || page.url.pathname.startsWith(resolve('teams/'))
+      ? resolve(`?${page.url.searchParams}`)
+      : resolve('?browse=all')
   );
+
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
   const userInitials = $derived(
     userName
@@ -39,7 +41,6 @@
       .map((part) => part[0]!.toUpperCase())
       .join('') || '?'
   );
-
   const lastPageKey = 'champions-atlas:last-page:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   let initialUrl = $state<URL | null>(null);
@@ -63,11 +64,12 @@
       if (url.origin !== page.url.origin) return null;
       const path = url.pathname;
       const detailPrefix = resolve('/teams/[id]', { id: 'x' }).slice(0, -1);
+
       if (
         path !== resolve('/') &&
-        path !== resolve('/my-teams') &&
-        path !== resolve('/wishlist') &&
-        path !== resolve('/my-teams/new') &&
+        path !== resolve('my-teams') &&
+        path !== resolve('wishlist') &&
+        path !== resolve('my-teams/new') &&
         !(
           path.startsWith(detailPrefix) &&
           path.length > detailPrefix.length &&
@@ -75,6 +77,7 @@
         )
       )
         return null;
+
       decodeURIComponent(path);
       return path + url.search + url.hash;
     } catch {
@@ -116,7 +119,8 @@
         null,
         localStorage.getItem(activeTeamKey)
       );
-      if (id) return resolve('/my-teams') + '?team=' + encodeURIComponent(id);
+
+      if (id) return resolve('my-teams') + '?team=' + encodeURIComponent(id);
     } catch {
       return resolve('/');
     }
@@ -140,9 +144,10 @@
       (sync.configured && !sync.authResolved)
     )
       return;
+
     starting = true;
     const incoming = initialUrl.pathname + initialUrl.search + initialUrl.hash;
-    const login = initialUrl.pathname === resolve('/login');
+    const login = initialUrl.pathname === resolve('login');
     const bareRoot = incoming === resolve('/');
     const remembered = bareRoot
       ? storedDestination('local', lastPageKey)
@@ -152,8 +157,9 @@
       : bareRoot
         ? (remembered ?? defaultDestination())
         : incoming;
+
     if (bareRoot || login) {
-      const selected = destination.startsWith(resolve('/my-teams') + '?')
+      const selected = destination.startsWith(resolve('my-teams') + '?')
         ? new URL(destination, page.url.origin).searchParams.get('team')
         : null;
       if (selected) {
@@ -163,9 +169,9 @@
               (team) => team.id === selected
             )
           )
-            destination = resolve('/my-teams');
+            destination = resolve('my-teams');
         } catch {
-          destination = resolve('/my-teams');
+          destination = resolve('my-teams');
         }
       }
     }
@@ -176,13 +182,13 @@
     if (sync.configured && !sync.user) {
       pendingReturn = validDestination(destination);
       if (pendingReturn) updateStorage('session', authReturnKey, pendingReturn);
-      if (!login) await goto(resolve('/login'), { replaceState: true });
+      if (!login) await goto(resolve('login'), { replace: true });
     } else {
       if (destination !== incoming)
-        await goto(destination as ResolvedPathname, { replaceState: true });
+        await goto(destination as ResolvedPathname, { replace: true });
       if (automaticDetail && page.status === 404) {
         updateStorage('local', lastPageKey, null);
-        await goto(resolve('/?browse=all'), { replaceState: true });
+        await goto(resolve('?browse=all'), { replace: true });
       }
       if (login) {
         pendingReturn = null;
@@ -225,10 +231,12 @@
       redirecting
     )
       return;
-    const login = page.url.pathname === resolve('/login');
+
+    const login = page.url.pathname === resolve('login');
+
     if ((sync.user && login) || (!sync.user && !login)) {
       redirecting = true;
-      const destination = sync.user ? returnDestination() : resolve('/login');
+      const destination = sync.user ? returnDestination() : resolve('login');
       if (!sync.user) {
         pendingReturn = validDestination(
           page.url.pathname + page.url.search + page.url.hash
@@ -236,7 +244,7 @@
         if (pendingReturn)
           updateStorage('session', authReturnKey, pendingReturn);
       }
-      void goto(destination as ResolvedPathname, { replaceState: true })
+      void goto(destination as ResolvedPathname, { replace: true })
         .then(() => {
           if (sync.user) {
             pendingReturn = null;
@@ -251,14 +259,16 @@
 
   $effect(() => {
     const url = page.url;
+
     if (
       !startupReady ||
-      url.pathname === resolve('/login') ||
+      url.pathname === resolve('login') ||
       (url.pathname === resolve('/') && !url.search && !url.hash) ||
       page.status >= 400 ||
       (sync.configured && !sync.user)
     )
       return;
+
     updateStorage('local', lastPageKey, url.pathname + url.search + url.hash);
   });
   $effect(() => {
@@ -311,7 +321,7 @@
             : 'text-primary hover:bg-info'}">Browse</a
         >
         <a
-          href={resolve('/my-teams')}
+          href={resolve('my-teams')}
           aria-current={isMyTeams ? 'page' : undefined}
           class="nav-pill {isMyTeams
             ? 'bg-info text-info-content'

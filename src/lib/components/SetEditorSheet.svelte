@@ -1,38 +1,38 @@
 <script lang="ts">
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-  import InGameSetSuggestion from '$lib/components/InGameSetSuggestion.svelte';
-  import SetEditorPokemonSuggestions from '$lib/components/SetEditorPokemonSuggestions.svelte';
-  import { createCurrentSetRegistry } from '$lib/current-set-registry.svelte';
-  import { reuseCurrentSet, type CurrentSetChoice } from '$lib/current-sets';
-  import EvWorkbench from '$lib/components/EvWorkbench.svelte';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
-  import SetEditorDetails from '$lib/components/SetEditorDetails.svelte';
-  import SetEditorMoves from '$lib/components/SetEditorMoves.svelte';
-  import SetEditorOverview from '$lib/components/SetEditorOverview.svelte';
-  import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
-  import TypeBadge from '$lib/components/TypeBadge.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { normalize, pokemonId, type Member, type Team } from '$lib/catalog';
+  import InGameSetSuggestion from '#lib/components/InGameSetSuggestion.svelte';
+  import SetEditorPokemonSuggestions from '#lib/components/SetEditorPokemonSuggestions.svelte';
+  import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
+  import { reuseCurrentSet, type CurrentSetChoice } from '#lib/current-sets.js';
+  import EvWorkbench from '#lib/components/EvWorkbench.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
+  import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
+  import SetEditorOverview from '#lib/components/SetEditorOverview.svelte';
+  import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
+  import TypeBadge from '#lib/components/TypeBadge.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
   import {
     championsSpreadTotal,
     NATURES,
     parseChampionsSpread,
     parseSetBlock,
     updateSetText,
-  } from '$lib/paste';
+  } from '#lib/paste.js';
   import {
     memberRosterError,
     memberValidationError,
-  } from '$lib/member-validation';
-  import { canonicalSnapshot } from '$lib/team-history';
-  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
-  import type { TeamTagsIndex } from '$lib/tags';
+  } from '#lib/member-validation.js';
+  import { canonicalSnapshot } from '#lib/team-history.js';
+  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
+  import type { TeamTagsIndex } from '#lib/tags.js';
   import {
     catalogSuggestions,
     originalMemberFor,
     setText,
-  } from '$lib/workbench';
+  } from '#lib/workbench.js';
   type EditorView =
     'overview' | 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
   interface Props {

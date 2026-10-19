@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { Button } from '$lib/components/ui/button';
-  import { activeTeamKey, newCustomTeam, saveTeam } from '$lib/workbench';
-  import { pushNow } from '$lib/sync.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { activeTeamKey, newCustomTeam, saveTeam } from '#lib/workbench.js';
+  import { pushNow } from '#lib/sync.svelte.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -18,7 +18,7 @@
       saveTeam(localStorage, saved);
       localStorage.setItem(activeTeamKey, saved.id);
       void pushNow();
-      await goto(resolve(`/my-teams?team=${saved.id}`));
+      await goto(resolve(`my-teams?team=${encodeURIComponent(saved.id)}`));
     } catch (error) {
       message =
         error instanceof Error

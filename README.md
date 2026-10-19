@@ -36,6 +36,9 @@ npm run dev       # Start the local development server.
 ```
 
 Use the Node 24 LTS environment selected by mise. `npm ci` installs Lefthook hooks.
+SvelteKit 3 configuration is passed to `sveltekit()` in `vite.config.ts`.
+The `#lib/*` alias requires explicit extensions, such as `.js`, `.ts`, and
+`.svelte`. `tsconfig.json` scopes TypeScript checks to `src` and `vite.config.ts`.
 
 ```sh
 make ci           # Run lint, formatting, types, build, and Node tests.

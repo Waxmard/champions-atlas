@@ -1,4 +1,4 @@
-import { browser, dev } from '$app/environment';
+import { browser, dev } from '$app/env';
 import { initializeApp } from 'firebase/app';
 import {
   connectAuthEmulator,
@@ -112,6 +112,7 @@ function teamIds(value: unknown): string[] {
     )
   )
     throw new Error(cloudReadError);
+
   return value;
 }
 
@@ -127,6 +128,7 @@ function currentSetIds(value: unknown): string[] {
     )
   )
     throw new Error(cloudSetsReadError);
+
   return value;
 }
 

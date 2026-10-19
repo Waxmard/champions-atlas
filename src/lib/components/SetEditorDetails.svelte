@@ -1,12 +1,12 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import { normalize, type Member } from '$lib/catalog';
-  import type { CurrentSetChoice } from '$lib/current-sets';
-  import type { CatalogSuggestion } from '$lib/workbench';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import { NATURES } from '$lib/paste';
+  import { normalize, type Member } from '#lib/catalog.js';
+  import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import type { CatalogSuggestion } from '#lib/workbench.js';
+  import ItemIcon from '#lib/components/ItemIcon.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { NATURES } from '#lib/paste.js';
 
   interface Props {
     item: string;

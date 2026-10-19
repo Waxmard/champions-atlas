@@ -47,7 +47,7 @@ export async function openCatalogTeam(team: Team): Promise<string> {
     // My Teams reports storage trouble; the explicit ID still opens the team.
   }
   try {
-    await goto(resolve(`/my-teams?team=${encodeURIComponent(entry.id)}`));
+    await goto(resolve(`my-teams?team=${encodeURIComponent(entry.id)}`));
   } catch {
     return 'Could not open My teams. Your team was saved.';
   }

@@ -2,9 +2,9 @@
   import { Combobox } from 'bits-ui';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import { Button } from '$lib/components/ui/button';
-  import { rankSavedTeams } from '$lib/team-collections';
-  import type { SavedTeam } from '$lib/workbench';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { rankSavedTeams } from '#lib/team-collections.js';
+  import type { SavedTeam } from '#lib/workbench.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {

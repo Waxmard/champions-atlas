@@ -1,6 +1,6 @@
 <script lang="ts">
-  import TypeMark from '$lib/components/TypeMark.svelte';
-  import { getMoveType, TYPE_COLORS } from '$lib/types';
+  import TypeMark from '#lib/components/TypeMark.svelte';
+  import { getMoveType, TYPE_COLORS } from '#lib/types.js';
 
   interface Props {
     move: string;

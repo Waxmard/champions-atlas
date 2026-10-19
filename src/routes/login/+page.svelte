@@ -1,8 +1,8 @@
 <script lang="ts">
   import Compass from '@lucide/svelte/icons/compass';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-  import { Button } from '$lib/components/ui/button';
-  import { signIn, sync } from '$lib/sync.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { signIn, sync } from '#lib/sync.svelte.js';
 
   const signingIn = $derived(sync.status === 'syncing');
 </script>

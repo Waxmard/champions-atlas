@@ -1,6 +1,6 @@
 <script lang="ts">
   import { twMerge } from 'tailwind-merge';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
 
   let {
     pokemon,

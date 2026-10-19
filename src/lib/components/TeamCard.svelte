@@ -8,8 +8,8 @@
     isCustomRulesTeam,
     regulationLabel,
     type Team,
-  } from '$lib/catalog';
-  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
+  } from '#lib/catalog.js';
+  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
@@ -47,7 +47,7 @@
     )
       return;
     event.preventDefault();
-    void goto(resolve(`/teams/${team.id}${query}`), {
+    void goto(resolve(`teams/${team.id}${query}`), {
       state: { fromCatalog: true },
     });
   }
@@ -100,7 +100,7 @@
 >
   {#if detailAvailable}
     <a
-      href={resolve(`/teams/${team.id}${query}`)}
+      href={resolve(`teams/${team.id}${query}`)}
       onclick={open}
       class="block flex-1 rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
     >
@@ -114,7 +114,7 @@
   >
     {#if detailAvailable}
       <a
-        href={resolve(`/teams/${team.id}${query}`)}
+        href={resolve(`teams/${team.id}${query}`)}
         onclick={open}
         class="min-w-0 flex-1 rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >

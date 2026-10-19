@@ -7,17 +7,17 @@
     ownSetConditions,
     type BenchmarkConditions,
     type BenchmarkIndex,
-  } from '$lib/benchmarks';
+  } from '#lib/benchmarks.js';
   import {
     solveBenchmark,
     type BenchmarkGoal,
     type BenchmarkGroup,
     type BenchmarkResult,
-  } from '$lib/benchmark-suggestions';
-  import { resolveBattleForm } from '$lib/battle-forms';
-  import { normalize, type Member } from '$lib/catalog';
-  import PokemonPicker from '$lib/components/PokemonPicker.svelte';
-  import { formatSpreadDelta } from '$lib/paste';
+  } from '#lib/benchmark-suggestions.js';
+  import { resolveBattleForm } from '#lib/battle-forms.js';
+  import { normalize, type Member } from '#lib/catalog.js';
+  import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import { formatSpreadDelta } from '#lib/paste.js';
 
   let {
     member,

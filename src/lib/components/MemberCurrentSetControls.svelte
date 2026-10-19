@@ -1,10 +1,10 @@
 <script lang="ts">
   import Save from '@lucide/svelte/icons/save';
-  import type { Member } from '$lib/catalog';
-  import CurrentSetSaveButton from '$lib/components/CurrentSetSaveButton.svelte';
-  import MemberCard from '$lib/components/MemberCard.svelte';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import { Button } from '$lib/components/ui/button';
+  import type { Member } from '#lib/catalog.js';
+  import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
+  import MemberCard from '#lib/components/MemberCard.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
 
   let {
     teamId,

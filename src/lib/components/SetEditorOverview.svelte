@@ -5,11 +5,11 @@
   import FileText from '@lucide/svelte/icons/file-text';
   import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
   import Sparkles from '@lucide/svelte/icons/sparkles';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import MovePill from '$lib/components/MovePill.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
-  import UnknownValue from '$lib/components/UnknownValue.svelte';
-  import { Button } from '$lib/components/ui/button';
+  import ItemIcon from '#lib/components/ItemIcon.svelte';
+  import MovePill from '#lib/components/MovePill.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import UnknownValue from '#lib/components/UnknownValue.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
 
   interface Props {
     inGameSuggestion?: Snippet;

@@ -1,6 +1,7 @@
-import { base } from '$app/paths';
-import { normalize } from '$lib/catalog';
-import rawData from '$lib/data/pokemon-types.json';
+import { asset } from '$app/paths';
+import type { AssetPath } from '$app/types';
+import { normalize } from '#lib/catalog.js';
+import rawData from '#lib/data/pokemon-types.json';
 
 export type PokemonType =
   | 'normal'
@@ -48,7 +49,7 @@ const typeData = rawData as {
 };
 
 export function getTypeIcon(type: string): string {
-  return `${base}/types/${type.toLowerCase()}.svg`;
+  return asset(`types/${type.toLowerCase()}.svg` as AssetPath);
 }
 
 export function getMoveType(move: string): PokemonType | null {
