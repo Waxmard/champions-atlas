@@ -64,11 +64,6 @@ export const isCompleteSpread = (
       Number.isInteger(spread[stat]) && spread[stat] >= 0 && spread[stat] <= 32
   );
 
-export const SPREAD_DELTA_SMALL = 8;
-export const SPREAD_DELTA_MODERATE = 16;
-export type SpreadChangeSize =
-  'same' | 'small' | 'moderate' | 'large' | 'unknown';
-
 export interface SpreadDelta {
   stat: ChampionsStat;
   from: number;
@@ -91,14 +86,6 @@ export function spreadDeltas(
 
 export const spreadMoved = (deltas: SpreadDelta[]) =>
   deltas.reduce((total, entry) => total + Math.abs(entry.delta), 0);
-
-export function spreadChangeSize(moved: number | null): SpreadChangeSize {
-  if (moved === null) return 'unknown';
-  if (moved === 0) return 'same';
-  if (moved <= SPREAD_DELTA_SMALL) return 'small';
-  if (moved <= SPREAD_DELTA_MODERATE) return 'moderate';
-  return 'large';
-}
 
 export const formatSpreadDelta = (deltas: SpreadDelta[]) =>
   deltas

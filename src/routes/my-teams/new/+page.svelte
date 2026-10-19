@@ -78,7 +78,9 @@
       </p>
     </div>
   </form>
-  <p role="status" aria-live="polite" class="mt-4 min-h-6 text-sm text-primary">
-    {message}
-  </p>
+  {#if message}
+    <p role="alert" class="mt-4 text-[0.9375rem] text-error">
+      {message}
+    </p>
+  {/if}
 </main>

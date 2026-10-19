@@ -50,17 +50,13 @@
           : 'border-base-content/55 hover:border-base-content/80'}"
         style={typeColor ? `border-left: 4px solid ${typeColor};` : ''}
       >
-        <span class="value w-4 text-center text-base-content/60"
-          >{index + 1}</span
-        >
+        <span class="term w-4 text-center tabular-nums">{index + 1}</span>
         <TypeMark {type} size="md" />
         <input
           id={`set-move-${index + 1}`}
           aria-label={`Move ${index + 1}`}
           type="text"
-          tabindex={activeSuggestions !== null && activeMoveSlot !== index
-            ? -1
-            : 0}
+          tabindex={0}
           class="grow bg-transparent text-sm focus:outline-none"
           placeholder={`Move ${index + 1}`}
           value={move}
@@ -86,7 +82,7 @@
           size="icon-touch"
           class="-mr-2"
           aria-label={`Clear move ${index + 1}`}
-          tabindex={activeSuggestions !== null ? -1 : 0}
+          tabindex={0}
           disabled={!move}
           data-move-choice
           onpointerdown={(event) => event.preventDefault()}

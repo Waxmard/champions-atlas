@@ -303,7 +303,7 @@ function adopt(id: string) {
     try {
       restoreStorageValue(storageKey, rawTeams);
       restoreStorageValue(currentSetsKey, rawSets);
-      localStorage.setItem(ownerKey, previous);
+      restoreStorageValue(ownerKey, previous);
     } catch {
       try {
         localStorage.setItem(ownerKey, switching);

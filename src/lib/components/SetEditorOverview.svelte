@@ -164,7 +164,7 @@
       {#each MOVE_SLOTS as index (index)}
         {@const move = moves[index]?.trim()}
         {#if move}
-          <MovePill {move} size="md" interactive={false} class="w-full" />
+          <MovePill {move} size="md" class="w-full" />
         {:else}
           <div
             class="flex min-w-0 items-center gap-1.5 border-l-2 py-1 pl-1.5 text-base-content/50"

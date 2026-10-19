@@ -97,7 +97,7 @@
             size="icon-touch"
             class="-mr-2"
             aria-label="Clear item"
-            tabindex={activeSuggestions === 'item' ? -1 : 0}
+            tabindex={0}
             data-detail-choice
             onpointerdown={(event) => event.preventDefault()}
             onclick={(e) => {
@@ -194,7 +194,7 @@
             size="icon-touch"
             class="-mr-2"
             aria-label="Clear ability"
-            tabindex={activeSuggestions === 'ability' ? -1 : 0}
+            tabindex={0}
             data-detail-choice
             onpointerdown={(event) => event.preventDefault()}
             onclick={(e) => {

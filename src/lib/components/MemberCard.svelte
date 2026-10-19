@@ -184,7 +184,11 @@
         <span class="truncate">{value}</span>
       </span>
     {:else}
-      <span class="value min-w-0 truncate">{value}</span>
+      <span
+        class="value min-w-0 {field === 'spread'
+          ? 'text-end wrap-break-word'
+          : 'truncate'}">{value}</span
+      >
     {/if}
   {/snippet}
   {#if editable}
