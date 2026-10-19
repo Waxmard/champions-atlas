@@ -78,11 +78,12 @@
         });
       }
     }
+    let catalogCount = 0;
     for (const option of catalogSpreadSuggestions(
       member,
       teams,
       currentRegulation,
-      5,
+      7,
       teammates
     )) {
       const key = spreadKey(option.nature, option.spread);
@@ -98,6 +99,7 @@
         if (existing.inGame) existing.source += ` · ${source}`;
         continue;
       }
+      if (catalogCount === 5) continue;
       rows.push({
         spread: option.spread,
         nature: option.nature,
@@ -106,8 +108,9 @@
         movedPoints: option.movedPoints,
         speed: option.speed,
       });
+      catalogCount++;
     }
-    return rows.slice(0, 5);
+    return rows;
   });
   const spread = $derived(member.spread || '');
   const nature = $derived(member.nature || '');

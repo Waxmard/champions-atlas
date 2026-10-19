@@ -298,12 +298,25 @@ test('catalog spreads fill the list when no saved team runs the Pokémon', async
   const suggestions = editor.getByRole('region', {
     name: 'EV spread suggestions',
   });
-  const row = suggestions
-    .getByRole('button', { name: /^Use .+ spread .+$/ })
-    .filter({ hasText: 'catalog team' })
-    .first();
+  const rows = suggestions.getByRole('button', {
+    name: /^Use .+ spread .+$/,
+  });
+  await expect(rows).toHaveCount(6);
+  await expect(rows.first()).toContainText('Original team');
+  const catalogRows = rows.filter({ hasText: 'catalog team' });
+  await expect(catalogRows).toHaveCount(5);
+  await expect(
+    catalogRows.filter({ hasText: /Original team|My in-game set/ })
+  ).toHaveCount(0);
+  const labels = await rows.evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('aria-label')!)
+  );
+  expect(new Set(labels).size).toBe(6);
+  expect(labels.every((label) => label.startsWith('Use Timid spread '))).toBe(
+    true
+  );
+  const row = catalogRows.first();
   await expect(row).toBeVisible();
-  await expect(row).toContainText('catalog team');
   const chips = await chipsOf(row).allTextContents();
   await row.click();
   for (const chip of chips) {

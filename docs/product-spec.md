@@ -147,9 +147,10 @@ EV spread suggestions include only complete, standard pairs whose Nature matches
 the selected Nature and whose spread resolves to the current battle form.
 Matching immutable original and in-game pairs come first. Exact duplicate pairs
 appear once with their source labels combined. The list contains up to five
-unique pairs and fewer when fewer recorded pairs match. Matching catalog pairs
-rank by the best actual source team's shared teammates and matching set details
-for those teammates, then by published results, regulation, and credentials.
+additional unique catalog pairs after up to two matching saved-source pairs.
+Fewer rows appear when eligible recorded data is insufficient. Matching catalog
+pairs rank by the best actual source team's shared teammates and matching set
+details for those teammates, then by published results, regulation, and credentials.
 Catalog frequency breaks ties before publication date or ID. Catalog counts use
 catalog observations only. Original and in-game suggestions retain their source
 labels and do not fill in unpublished original EVs.
