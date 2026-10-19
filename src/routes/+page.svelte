@@ -363,8 +363,8 @@
       <div class="mt-2 flex flex-wrap gap-1.5">
         {#each selectedTypes as type (type)}
           <span
-            class="inline-flex items-center gap-1.5 border border-l-[3px] border-base-300 bg-base-100 py-1 pr-1 pl-2 text-[0.8125rem]"
-            style="border-left-color: {TYPE_COLORS[type]}"
+            class="inline-flex items-center gap-1.5 border border-s-[3px] border-base-300 bg-base-100 py-1 ps-2 pe-1 text-[0.8125rem]"
+            style="border-inline-start-color: {TYPE_COLORS[type]}"
           >
             <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
               class="font-medium">{type}</span
@@ -398,7 +398,7 @@
       {#each filters as filter, index (filter.pokemon)}
         <section
           class="plate min-w-0 px-4 pt-3 pb-4"
-          style="border-left: 3px solid {TYPE_COLORS[
+          style="border-inline-start: 3px solid {TYPE_COLORS[
             getPokemonTypes(filter.pokemon)[0]
           ]}"
           aria-label={`${filter.pokemon} constraints`}
@@ -538,7 +538,7 @@
         name="custom"
         value="1"
         autocomplete="off"
-        class="size-5 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
         checked={includeCustomRules}
         disabled={!ready}
         onchange={(event) =>
@@ -585,7 +585,6 @@
                   ? 'text-primary disabled:text-primary/80'
                   : ''}
                 aria-label={isWishlisted ? 'Wishlisted' : 'Wishlist'}
-                title={isWishlisted ? 'Wishlisted' : 'Add to Wishlist'}
                 disabled={busy || isWishlisted}
                 onclick={() => wishlist(team)}
               >

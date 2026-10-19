@@ -405,7 +405,7 @@ test('QoL deletion write failure preserves the draft and stored team', async ({
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Delete team', exact: true }).click();
 
-  await expect(page.locator('main > p[role="status"]')).toHaveText(
+  await expect(page.locator('main > p[role="alert"]')).toHaveText(
     'Could not delete team. Existing saved teams have been left untouched.'
   );
   await expect(

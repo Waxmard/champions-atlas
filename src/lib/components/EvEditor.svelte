@@ -12,41 +12,110 @@
     type ChampionsStat,
   } from '#lib/paste.js';
   import { resolveBattleForm } from '#lib/battle-forms.js';
-  import type { BenchmarkIndex } from '#lib/benchmarks.js';
-  import type { Member, Team } from '#lib/catalog.js';
+  import { buildBenchmarkIndex } from '#lib/benchmarks.js';
+  import { normalize, type Member, type Team } from '#lib/catalog.js';
   import { speedBenchmark, speedFor, speedTiers } from '#lib/stats.js';
   import EvBenchmarkPanel from '#lib/components/EvBenchmarkPanel.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import type { CatalogSuggestion, SpreadSuggestion } from '#lib/workbench.js';
+  import {
+    catalogSpreadSuggestions,
+    originalSpreadSuggestion,
+    type CatalogSuggestion,
+    type SpreadSuggestion,
+  } from '#lib/workbench.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
 
   let {
     member,
-    spread,
-    nature,
-    index,
-    spreadSuggestions,
     currentRegulation,
     teams,
     natureSuggestions,
+    originalMember,
     inGameMember,
     onspreadchange,
     onnaturechange,
     oningame,
   }: {
     member: Member;
-    spread: string;
-    nature: string;
-    index: BenchmarkIndex;
-    spreadSuggestions: SpreadSuggestion[];
     currentRegulation: string;
     teams: Team[];
     natureSuggestions: CatalogSuggestion[];
+    originalMember?: Member;
     inGameMember?: Member;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
   } = $props();
+  const index = $derived(buildBenchmarkIndex(teams, currentRegulation));
+  const regulationTeams = $derived(
+    teams.filter((team) => team.regulation === currentRegulation)
+  );
+  const spreadKey = (candidateNature: string, candidateSpread: string) =>
+    `${normalize(candidateNature)}|${normalize(candidateSpread)}`;
+
+  const spreadSuggestions = $derived.by(() => {
+    const preferredNature = originalMember?.nature ?? null;
+    const rows: SpreadSuggestion[] = [];
+    const original =
+      originalMember && originalSpreadSuggestion(member, originalMember);
+    if (original) rows.push(original);
+    const inGame =
+      inGameMember && originalSpreadSuggestion(member, inGameMember);
+    if (inGame) {
+      const key = spreadKey(inGame.nature, inGame.spread);
+      const existing = rows.find(
+        (row) => spreadKey(row.nature, row.spread) === key
+      );
+      if (existing) {
+        existing.inGame = true;
+        existing.source = 'Original team · My in-game set';
+      } else {
+        rows.push({
+          ...inGame,
+          source: 'My in-game set',
+          original: undefined,
+          inGame: true,
+        });
+      }
+    }
+    for (const option of catalogSpreadSuggestions(
+      member,
+      teams,
+      currentRegulation,
+      4,
+      preferredNature
+    )) {
+      const key = spreadKey(option.nature, option.spread);
+      const source =
+        `${option.totalCount} catalog team${option.totalCount === 1 ? '' : 's'}` +
+        (option.currentCount
+          ? ` · ${option.currentCount} in ${currentRegulation}`
+          : '');
+      const existing = rows.find(
+        (row) => spreadKey(row.nature, row.spread) === key
+      );
+      if (existing) {
+        if (existing.inGame) existing.source += ` · ${source}`;
+        continue;
+      }
+      rows.push({
+        spread: option.spread,
+        nature: option.nature,
+        source,
+        deltas: option.deltas,
+        movedPoints: option.movedPoints,
+        speed: option.speed,
+      });
+    }
+    const selected = rows.slice(0, 6);
+    const preferred = rows.find(
+      (row) => normalize(row.nature) === normalize(preferredNature ?? '')
+    );
+    if (preferred && !selected.includes(preferred)) selected[5] = preferred;
+    return selected;
+  });
+  const spread = $derived(member.spread || '');
+  const nature = $derived(member.nature || '');
 
   let draft = $state<ChampionsSpread | null>(null);
   const values = $derived(
@@ -73,7 +142,7 @@
       ? speedFor(resolvedForm.pokemon, parsedSpread, nature)
       : null
   );
-  const tiers = $derived(speedTiers(teams));
+  const tiers = $derived(speedTiers(regulationTeams));
 
   const clampEv = (value: number) => Math.max(0, Math.min(32, value || 0));
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
@@ -136,10 +205,7 @@
   }
 </script>
 
-<div
-  class="plate min-w-0 animate-in p-3.5 duration-200 fade-in-0 sm:p-4"
-  aria-label="EV editor"
->
+<div class="plate ev-editor-enter min-w-0 p-3.5 sm:p-4" aria-label="EV editor">
   <!-- Nature modifies the stats below -->
   <div class="mb-4 grid gap-2 border-b pb-4" aria-label="Nature suggestions">
     <div class="flex flex-wrap items-baseline justify-between gap-3 px-0.5">
@@ -176,7 +242,7 @@
           >
             {option.value}
             {#if option.original || option.inGame}<span
-                class="provenance ml-2"
+                class="provenance ms-2"
                 aria-hidden="true"
                 >{option.original
                   ? option.inGame
@@ -247,11 +313,11 @@
                 class="font-mono text-[11px]"
                 disabled={delta === 0}
                 aria-label={`Fill remaining EVs into ${stat}`}
-                title={delta > 0
-                  ? `Add ${delta} EVs to ${stat}`
-                  : delta < 0
-                    ? `Remove ${-delta} EVs from ${stat}`
-                    : 'No EV changes needed'}
+                title={delta === 0
+                  ? undefined
+                  : delta > 0
+                    ? `Add ${delta} EVs to ${stat}`
+                    : `Remove ${-delta} EVs from ${stat}`}
                 onclick={() => update(stat, target)}
               >
                 {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : 'Fill'}
@@ -322,11 +388,11 @@
       resolvedForm.pokemon,
       parseChampionsSpread(option.spread),
       option.nature,
-      teams
+      regulationTeams
     )}
     <button
       type="button"
-      class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
+      class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-start transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
       option.spread
         ? 'font-semibold'
         : ''}"
@@ -379,10 +445,12 @@
         {#each tiers as tier (tier.pokemon)}
           <li class="flex items-baseline justify-between gap-3">
             <span class="value">{tier.pokemon} · {tier.medianSpeed}</span>
-            {#if currentSpeed > tier.medianSpeed}<span
-                class="term"
-                title="Unmodified Speed outspeeds this tier">✓</span
-              >{/if}
+            {#if currentSpeed > tier.medianSpeed}
+              <span class="term">
+                <span aria-hidden="true">✓</span>
+                <span class="sr-only">Outspeeds this tier</span>
+              </span>
+            {/if}
           </li>
         {/each}
       </ul>

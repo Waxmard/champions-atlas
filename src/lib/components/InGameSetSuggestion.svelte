@@ -1,5 +1,9 @@
 <script lang="ts">
-  import { canonicalSnapshot, memberSnapshotDiff } from '#lib/team-history.js';
+  import {
+    canonicalSnapshot,
+    memberSnapshotDiff,
+    type MemberSnapshotDiffRow,
+  } from '#lib/team-history.js';
   import type { Member } from '#lib/catalog.js';
 
   interface Props {
@@ -38,10 +42,33 @@
   );
 </script>
 
+{#snippet disclosure(
+  change: MemberSnapshotDiffRow,
+  warning: string,
+  title: string
+)}
+  <p class="provenance wrap-anywhere">{warning}</p>
+  <details class="min-w-0 text-sm">
+    <summary class="min-h-11 cursor-pointer py-2 font-medium">{title}</summary>
+    <div class="grid gap-2 pb-2">
+      <div>
+        <p class="term">Before</p>
+        <pre
+          class="mt-1 max-h-40 overflow-auto wrap-anywhere whitespace-pre-wrap">{change.before}</pre>
+      </div>
+      <div>
+        <p class="term">After</p>
+        <pre
+          class="mt-1 max-h-40 overflow-auto wrap-anywhere whitespace-pre-wrap">{change.after}</pre>
+      </div>
+    </div>
+  </details>
+{/snippet}
+
 <li data-set-choice class="min-w-0">
   <button
     type="button"
-    class="option-row min-h-11 w-full flex-wrap items-start text-left"
+    class="option-row min-h-11 w-full flex-wrap items-start text-start"
     aria-label={`My in-game set for ${saved.pokemon}`}
     aria-describedby={changeSummaryId}
     disabled={identical || !!reason}
@@ -75,48 +102,18 @@
   {#if textChange || metadataChange}
     <div class="mt-2 space-y-2">
       {#if textChange}
-        <p class="provenance wrap-anywhere">
-          Set text differs; review before choosing.
-        </p>
-        <details class="min-w-0 text-sm">
-          <summary class="min-h-11 cursor-pointer py-2 font-medium">
-            Show set text changes
-          </summary>
-          <div class="grid gap-2 pb-2">
-            <div>
-              <p class="term">Before</p>
-              <pre
-                class="mt-1 max-h-40 overflow-auto wrap-anywhere whitespace-pre-wrap">{textChange.before}</pre>
-            </div>
-            <div>
-              <p class="term">After</p>
-              <pre
-                class="mt-1 max-h-40 overflow-auto wrap-anywhere whitespace-pre-wrap">{textChange.after}</pre>
-            </div>
-          </div>
-        </details>
+        {@render disclosure(
+          textChange,
+          'Set text differs; review before choosing.',
+          'Show set text changes'
+        )}
       {/if}
       {#if metadataChange}
-        <p class="provenance wrap-anywhere">
-          Saved metadata differs; review before choosing.
-        </p>
-        <details class="min-w-0 text-sm">
-          <summary class="min-h-11 cursor-pointer py-2 font-medium">
-            Show saved metadata changes
-          </summary>
-          <div class="grid gap-2 pb-2">
-            <div>
-              <p class="term">Before</p>
-              <pre
-                class="mt-1 max-h-40 overflow-auto wrap-anywhere whitespace-pre-wrap">{metadataChange.before}</pre>
-            </div>
-            <div>
-              <p class="term">After</p>
-              <pre
-                class="mt-1 max-h-40 overflow-auto wrap-anywhere whitespace-pre-wrap">{metadataChange.after}</pre>
-            </div>
-          </div>
-        </details>
+        {@render disclosure(
+          metadataChange,
+          'Saved metadata differs; review before choosing.',
+          'Show saved metadata changes'
+        )}
       {/if}
     </div>
   {/if}

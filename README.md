@@ -156,6 +156,10 @@ input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
 
+Item and ability suggestions are buttons after their labeled text fields.
+Use Tab to reach a suggestion and Enter to select it. Operation failures use
+alerts; successful actions use status messages.
+
 In the **My teams** overview, **Record in-game set** records a Pokémon's
 committed set as the one currently in your Pokémon Champions box. **Record all
 in-game sets** records the selected team's six sets in one operation. Both use

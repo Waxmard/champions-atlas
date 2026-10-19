@@ -283,7 +283,7 @@
 
 <a
   href="#main"
-  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:border focus:bg-base-100 focus:p-3"
+  class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:border focus:bg-base-100 focus:p-3"
   >Skip to content</a
 >
 {#if isLogin}
@@ -384,9 +384,11 @@
                   class="z-50 min-w-56 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
                 >
                   <div class="px-2 py-1.5">
-                    <p class="truncate text-sm font-semibold">{userName}</p>
+                    <p class="text-sm font-semibold wrap-anywhere">
+                      {userName}
+                    </p>
                     {#if sync.user.email && sync.user.email !== userName}<p
-                        class="provenance truncate"
+                        class="provenance wrap-anywhere"
                       >
                         {sync.user.email}
                       </p>{/if}
@@ -402,13 +404,13 @@
                     </p>
                     <DropdownMenu.Item
                       onSelect={() => void pushNow()}
-                      class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-base-200"
+                      class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-info data-highlighted:text-info-content"
                       >Retry sync</DropdownMenu.Item
                     >
                   {/if}
                   <DropdownMenu.Item
                     onSelect={signOut}
-                    class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-base-200"
+                    class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-info data-highlighted:text-info-content"
                     >Sign out</DropdownMenu.Item
                   >
                 </DropdownMenu.Content>

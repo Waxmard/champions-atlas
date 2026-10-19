@@ -201,7 +201,6 @@
               name="benchmark-goal"
               class="radio radio-sm"
               value={option.value}
-              aria-label={option.label}
               bind:group={goal}
             />
             <span>{option.label}</span>
@@ -320,7 +319,6 @@
           <input
             type="checkbox"
             class="checkbox checkbox-sm"
-            aria-label={check.label}
             checked={conditions[check.key]}
             onchange={(event) =>
               (conditions[check.key] = event.currentTarget.checked)}
@@ -395,7 +393,7 @@
           {#each group.solutions as solution, position (solution.spread)}
             <button
               type="button"
-              class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+              class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-start transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={`Use ${solution.nature} spread ${solution.spread}`}
               aria-describedby={`ev-benchmark-${group.nature}-${position}`}
               onclick={() => onspreadchange(solution.spread, solution.nature)}

@@ -58,7 +58,7 @@
     {#if showRegulation}<span class="term"
         >{regulationLabel(team.regulation)}</span
       >{/if}
-    <span class="provenance ml-auto shrink-0">{team.publishedAt}</span>
+    <span class="provenance ms-auto shrink-0">{team.publishedAt}</span>
   </div>
   <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
     {team.name}

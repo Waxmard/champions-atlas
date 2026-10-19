@@ -49,7 +49,7 @@
 
   const types = $derived(getPokemonTypes(member.pokemon));
   const rowClass =
-    'flex min-h-11 w-full items-baseline justify-between gap-3 rounded-[var(--radius-field)] px-1.5 py-1 text-left';
+    'flex min-h-11 w-full items-baseline justify-between gap-3 rounded-[var(--radius-field)] px-1.5 py-1 text-start';
 </script>
 
 <div
@@ -124,7 +124,7 @@
       {#if editable}
         <button
           type="button"
-          class="w-full rounded-sm p-0.5 text-left focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          class="w-full rounded-sm p-0.5 text-start focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit ${member.pokemon} moves`}
           data-set-field="moves"
           disabled={editing}
@@ -181,13 +181,15 @@
     {:else if item !== undefined}
       <span class="value inline-flex min-w-0 items-center gap-1.5">
         <ItemIcon {item} size={16} />
-        <span class="truncate">{value}</span>
+        <span class="min-w-0 wrap-anywhere">{value}</span>
       </span>
     {:else}
       <span
         class="value min-w-0 {field === 'spread'
           ? 'text-end wrap-break-word'
-          : 'truncate'}">{value}</span
+          : field === 'ability' || field === 'nature'
+            ? 'text-end wrap-anywhere'
+            : 'truncate'}">{value}</span
       >
     {/if}
   {/snippet}

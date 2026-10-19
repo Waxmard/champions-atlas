@@ -43,6 +43,7 @@
     type SavedTeam,
   } from '#lib/workbench.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
+  import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
   import * as collections from '#lib/team-collections.js';
   import type { PageData } from './$types';
 
@@ -53,6 +54,8 @@
   let visitBaseline = $state<{ id: string; members: Member[] } | null>(null);
   let ready = $state(false),
     message = $state(''),
+    errorMessage = $state(''),
+    nameError = $state(''),
     storageError = $state(''),
     deleting = $state(false),
     showExport = $state(false),
@@ -155,6 +158,8 @@
         id && !entry && !collections.resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
           : '';
+      errorMessage = '';
+      nameError = '';
     } catch {
       storageError =
         'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
@@ -216,7 +221,8 @@
     try {
       await goto(resolve(`my-teams?team=${encodeURIComponent(id)}`));
     } catch {
-      message = 'Could not open that team. Your current team is unchanged.';
+      errorMessage =
+        'Could not open that team. Your current team is unchanged.';
       return false;
     }
     await tick();
@@ -243,7 +249,8 @@
       const latest = collections.liveInUseTeam(localStorage, draft!.id);
       if (!latest || contentSnapshot(latest) !== baseline) {
         stale = true;
-        message =
+        message = '';
+        errorMessage =
           'This team changed elsewhere. Close and reopen the editor before saving.';
         return false;
       }
@@ -255,11 +262,14 @@
       draft = structuredClone($state.snapshot(persisted));
       if (!saveName) draft.name = pendingName;
       storageError = '';
+      nameError = '';
+      errorMessage = '';
       message = 'Saved on this device.';
       void pushNow();
       return true;
     } catch {
-      message =
+      message = '';
+      errorMessage =
         'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
       return false;
     }
@@ -268,9 +278,11 @@
     if (!draft) return;
     const name = draft.name.trim();
     if (!name) {
-      message = 'Give this team a name.';
+      message = errorMessage = '';
+      nameError = 'Give this team a name.';
       return;
     }
+    nameError = '';
     if (baseline && name === JSON.parse(baseline).name) {
       draft.name = name;
       return;
@@ -360,31 +372,13 @@
     editorMember = structuredClone($state.snapshot(draft!.members[index]));
   };
   function openSetDialog(node: HTMLDialogElement) {
-    const { scrollX, scrollY } = window;
-    const body = document.body;
-    const styles = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      width: body.style.width,
-      overflow: body.style.overflow,
-    };
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = `-${scrollX}px`;
-    body.style.width = '100%';
-    body.style.overflow = 'hidden';
+    const restoreScroll = lockBodyScroll();
     node.showModal();
     void tick().then(() => editorRef?.focusInitialSection());
     return {
       destroy() {
         if (node.open) node.close();
-        body.style.position = styles.position;
-        body.style.top = styles.top;
-        body.style.left = styles.left;
-        body.style.width = styles.width;
-        body.style.overflow = styles.overflow;
-        window.scrollTo(scrollX, scrollY);
+        restoreScroll();
       },
     };
   }
@@ -436,6 +430,9 @@
     const ok = await copyText(exportPaste(draft.members));
     message = ok
       ? 'Team text copied. Unknown fields are omitted; no stats were guessed.'
+      : '';
+    errorMessage = ok
+      ? ''
       : 'Clipboard unavailable. Select and copy the export text below.';
   }
   async function removeSelectedTeam() {
@@ -449,6 +446,7 @@
     )
       return;
     deleting = true;
+    message = errorMessage = '';
     let previousActiveId: string | null;
     try {
       previousActiveId = localStorage.getItem(activeTeamKey);
@@ -458,14 +456,14 @@
     let remaining: SavedTeam[];
     try {
       if (!collections.liveInUseTeam(localStorage, id)) {
-        message =
+        errorMessage =
           'This team changed elsewhere. Reopen My teams before deleting.';
         deleting = false;
         return;
       }
       remaining = collections.teamsInUse(deleteTeam(localStorage, id));
     } catch {
-      message =
+      errorMessage =
         'Could not delete team. Existing saved teams have been left untouched.';
       deleting = false;
       return;
@@ -496,9 +494,10 @@
     } catch {
       activeFailed = true;
     }
-    message = activeFailed
+    message = 'Team deleted.';
+    errorMessage = activeFailed
       ? 'Team deleted, but the active team could not be remembered.'
-      : 'Team deleted.';
+      : '';
     void pushNow();
     deleting = false;
     await tick();
@@ -516,12 +515,12 @@
     title="My teams"
     description="Keep your original. Explore changes. Save your own version."
   />
-  {#if storageError}<p
+  {#if storageError || errorMessage}<p
       role="alert"
       class="plate mt-5 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >
-      {storageError}
+      {storageError || errorMessage}
     </p>{/if}
   {#if !ready}
     <p class="mt-8 text-[0.9375rem] text-base-content/70">
@@ -552,11 +551,7 @@
     {/if}
   {/if}
   {#if ready && !storageError}
-    <p
-      role="status"
-      aria-live="polite"
-      class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70"
-    >
+    <p role="status" class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70">
       {message}
     </p>
     {#if draft}
@@ -571,11 +566,10 @@
         <header class="flex items-start justify-between gap-3 border-b pb-4">
           <div class="min-w-0">
             <h2
-              class="text-[0.9375rem] leading-tight font-bold wrap-break-word text-base-content/70"
+              class="text-xl leading-tight font-extrabold wrap-break-word text-base-content sm:text-[1.375rem]"
             >
               {draft.name}
             </h2>
-
             <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
               <span
                 class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
@@ -633,17 +627,24 @@
         <div
           class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
         >
-          <label class="term block w-full max-w-xl flex-1"
-            >Team name<input
-              class="input mt-1.5 min-h-11 w-full sm:text-sm"
-              maxlength="200"
-              bind:value={draft.name}
-              onblur={blurName}
-              onkeydown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur();
-              }}
-            /></label
-          >
+          <div class="w-full max-w-xl flex-1">
+            <label class="term block"
+              >Team name
+              <input
+                class="input mt-1.5 min-h-11 w-full sm:text-sm"
+                maxlength="200"
+                aria-invalid={nameError ? 'true' : undefined}
+                aria-describedby="team-name-error"
+                bind:value={draft.name}
+                oninput={() => (nameError = '')}
+                onblur={blurName}
+                onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+            </label>
+            <p id="team-name-error" class="mt-1 text-sm text-error-content">
+              {nameError}
+            </p>
+          </div>
           <div class="flex flex-wrap items-center gap-2">
             <CurrentSetSaveButton
               teamId={draft.id}
@@ -790,9 +791,3 @@
     </dialog>
   {/if}
 </main>
-
-<style>
-  :global(dialog.set-editor-dialog::backdrop) {
-    background: rgb(0 0 0 / 0.5);
-  }
-</style>

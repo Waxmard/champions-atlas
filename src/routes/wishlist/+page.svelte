@@ -28,6 +28,7 @@
     loaded = $state(false),
     storageError = $state(''),
     status = $state(''),
+    errorMessage = $state(''),
     pendingId = $state('');
   const catalogIds = $derived(
     new Set((data.catalog.teams as Team[]).map((team) => team.id))
@@ -80,12 +81,12 @@
   async function use(entry: SavedTeam) {
     if (pendingId) return;
     pendingId = entry.id;
-    status = '';
+    status = errorMessage = '';
     let promoted: SavedTeam;
     try {
       promoted = useWishlistedTeam(localStorage, entry.id);
     } catch (error) {
-      status =
+      errorMessage =
         error instanceof SavedTeamError
           ? error.message
           : 'Could not move this team to My teams. Check browser storage access and available space. Your Wishlist was not changed.';
@@ -94,10 +95,11 @@
       return;
     }
     void pushNow();
+    status = 'Team moved to My teams.';
     try {
       localStorage.setItem(activeTeamKey, promoted.id);
     } catch {
-      status =
+      errorMessage =
         'Your team was saved, but the active team could not be remembered.';
     }
     try {
@@ -107,7 +109,9 @@
           encodeURIComponent(promoted.id)) as ResolvedPathname
       );
     } catch {
-      status = 'Could not open My teams. Your team was saved.';
+      errorMessage = errorMessage
+        ? `${errorMessage} Could not open My teams.`
+        : 'Could not open My teams. Your team was saved.';
       pendingId = '';
       refresh();
       return;
@@ -119,12 +123,12 @@
     if (pendingId) return;
     if (!confirm(`Remove “${entry.name}” from Wishlist?`)) return;
     pendingId = entry.id;
-    status = '';
+    status = errorMessage = '';
     const index = entries.findIndex(({ id }) => id === entry.id);
     try {
       removeWishlistedTeam(localStorage, entry.id);
     } catch (error) {
-      status =
+      errorMessage =
         error instanceof SavedTeamError
           ? error.message
           : 'Could not remove this team. Existing saved teams have been left untouched.';
@@ -160,12 +164,12 @@
   >
     {status}
   </p>
-  {#if storageError}<p
+  {#if storageError || errorMessage}<p
       role="alert"
       class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >
-      {storageError}
+      {storageError || errorMessage}
     </p>{/if}
   {#if !loaded}<p class="mt-6 text-[0.9375rem] text-base-content/70">
       Loading Wishlist…

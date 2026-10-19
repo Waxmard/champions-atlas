@@ -4,7 +4,7 @@
   import SetEditorPokemonSuggestions from '#lib/components/SetEditorPokemonSuggestions.svelte';
   import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
   import { reuseCurrentSet, type CurrentSetChoice } from '#lib/current-sets.js';
-  import EvWorkbench from '#lib/components/EvWorkbench.svelte';
+  import EvEditor from '#lib/components/EvEditor.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
@@ -101,7 +101,7 @@
   let editorElement = $state<HTMLElement>();
   let contentElement = $state<HTMLElement>();
   let editorHeading = $state<HTMLElement>();
-  let evWorkbench = $state<{ flush: () => void }>();
+  let evEditor = $state<{ flush: () => void }>();
   const draftMember = $derived<Member>({
     ...accepted,
     pokemon: form.pokemon.trim(),
@@ -345,7 +345,7 @@
     return true;
   }
   export function flush(): boolean {
-    evWorkbench?.flush();
+    evEditor?.flush();
     return commit();
   }
   function keepFocus(event: PointerEvent) {
@@ -504,8 +504,8 @@
         </div>
       </div>
     {:else}
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-2">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto">
           <Button
             variant="quiet"
             size="touch"
@@ -518,7 +518,7 @@
           <div class="h-4 w-px bg-base-300"></div>
           <h2
             bind:this={editorHeading}
-            class="truncate text-[1.375rem] leading-tight font-semibold"
+            class="min-w-0 text-lg leading-tight font-semibold sm:text-[1.375rem]"
             tabindex="-1"
             data-editor-section={currentView === 'details'
               ? initialField === 'ability' || initialField === 'nature'
@@ -530,7 +530,7 @@
           </h2>
         </div>
         <div
-          class="flex shrink-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+          class="ms-auto flex shrink-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
         >
           <SpeciesLabel
             pokemon={form.pokemon || initialMember.pokemon}
@@ -640,8 +640,8 @@
       />
     {:else if currentView === 'spread'}
       <section aria-label="EV spread" class="grid gap-4">
-        <EvWorkbench
-          bind:this={evWorkbench}
+        <EvEditor
+          bind:this={evEditor}
           member={draftMember}
           {teams}
           {currentRegulation}

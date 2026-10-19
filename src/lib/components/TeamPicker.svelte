@@ -103,7 +103,7 @@
   >
     <div
       bind:this={fieldEl}
-      class="input relative mt-2 flex h-auto min-h-11 w-full flex-col items-stretch gap-1.5 py-2.5 pr-12"
+      class="input relative mt-2 flex h-auto min-h-11 w-full flex-col items-stretch gap-1.5 py-2.5 pe-12"
     >
       <div class="flex gap-1" aria-hidden="true">
         {#each selected ? roster(selected) : [] as pokemon, slot (slot)}
@@ -132,7 +132,7 @@
       <Button
         variant="quiet"
         size="icon-touch"
-        class="absolute top-1/2 right-0.5 -translate-y-1/2"
+        class="absolute end-0.5 top-1/2 -translate-y-1/2"
         aria-label="Show saved teams"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -150,7 +150,7 @@
         customAnchor={fieldEl}
         sideOffset={6}
         onpointerdown={(event) => event.preventDefault()}
-        class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+        class="picker-popover-enter z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg"
       >
         <Combobox.Viewport>
           {#each options as team (team.id)}
@@ -158,7 +158,7 @@
               value={team.id}
               label={team.name}
               aria-label={`${team.name}: ${roster(team).join(', ')}`}
-              class="option-row cursor-pointer border-b border-base-300 outline-none last:border-b-0 data-highlighted:bg-base-200 data-highlighted:text-base-content"
+              class="option-row cursor-pointer border-b border-base-300 outline-none last:border-b-0 data-highlighted:bg-info data-highlighted:text-info-content"
             >
               {#snippet children({ selected: isSelected })}
                 <span class="flex min-w-0 flex-1 flex-col gap-1">

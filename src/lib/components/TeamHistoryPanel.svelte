@@ -154,11 +154,11 @@
       aria-label="Original provenance"
       class="space-y-3 border-t border-base-300 pt-4"
     >
-      <h2 class="text-xl font-extrabold">
+      <h3 class="text-base font-extrabold">
         {team.origin === 'custom'
           ? 'Starting team details'
           : "Original team's results & sources"}
-      </h2>
+      </h3>
       <dl class="grid gap-3 sm:grid-cols-2">
         <div class="min-w-0">
           <dt class="term">
@@ -256,7 +256,6 @@
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
-  h2,
   h3 {
     overflow-wrap: anywhere;
   }

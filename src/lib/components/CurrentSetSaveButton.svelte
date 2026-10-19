@@ -1,6 +1,7 @@
 <script lang="ts">
   import Save from '@lucide/svelte/icons/save';
   import { tick } from 'svelte';
+  import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
   import { browsePokemon, type Member } from '#lib/catalog.js';
   import {
     currentSetsChangedEvent,
@@ -111,33 +112,15 @@
   }
 
   function openDialog(node: HTMLDialogElement) {
-    const { scrollX, scrollY } = window;
-    const body = document.body;
-    const styles = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      width: body.style.width,
-      overflow: body.style.overflow,
-    };
+    const restoreScroll = lockBodyScroll();
     const opener = dialogTrigger;
     const restoreOpenerFocus = dialogTriggerWasFocused;
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = `-${scrollX}px`;
-    body.style.width = '100%';
-    body.style.overflow = 'hidden';
     node.showModal();
     void tick().then(() => dialogTitle?.focus());
     return {
       destroy() {
         if (node.open) node.close();
-        body.style.position = styles.position;
-        body.style.top = styles.top;
-        body.style.left = styles.left;
-        body.style.width = styles.width;
-        body.style.overflow = styles.overflow;
-        window.scrollTo(scrollX, scrollY);
+        restoreScroll();
         pendingPlan = null;
         checkedIds = [];
         dialogTrigger = null;
@@ -427,9 +410,3 @@
     </dialog>
   {/if}
 </div>
-
-<style>
-  :global(dialog.current-set-save-dialog::backdrop) {
-    background: rgb(0 0 0 / 0.5);
-  }
-</style>
