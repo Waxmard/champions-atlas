@@ -13,7 +13,6 @@
   import SavedCollectionHeader from '$lib/components/SavedCollectionHeader.svelte';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import Copy from '@lucide/svelte/icons/copy';
-  import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
   import { Button } from '$lib/components/ui/button';
@@ -521,38 +520,34 @@
     >
       {storageError}
     </p>{/if}
-  <div class="mt-6 flex flex-wrap items-end justify-between gap-4">
-    {#if !ready}
-      <p class="text-[0.9375rem] text-base-content/70">Loading saved teams…</p>
-    {:else if !storageError}
-      {#if saved.length}
-        <div
-          class="min-w-0 flex-1"
-          data-team-picker
-          onpointerdowncapture={() => {
-            pickerPress = true;
-            setTimeout(() => (pickerPress = false));
-          }}
-        >
-          <TeamPicker
-            bind:this={picker}
-            teams={saved}
-            value={draft?.id ?? ''}
-            onselect={selectTeam}
-            disabled={editing || deleting}
-          />
-        </div>
-      {:else}
-        <p class="plate max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
-          No saved teams yet. Open a catalog team and choose “Use this team”.
-        </p>
-      {/if}
+  {#if !ready}
+    <p class="mt-8 text-[0.9375rem] text-base-content/70">
+      Loading saved teams…
+    </p>
+  {:else if !storageError}
+    {#if saved.length}
+      <div
+        class="mt-6"
+        data-team-picker
+        onpointerdowncapture={() => {
+          pickerPress = true;
+          setTimeout(() => (pickerPress = false));
+        }}
+      >
+        <TeamPicker
+          bind:this={picker}
+          teams={saved}
+          value={draft?.id ?? ''}
+          onselect={selectTeam}
+          disabled={editing || deleting}
+        />
+      </div>
+    {:else}
+      <p class="plate mt-8 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
+        No saved teams yet. Open a catalog team and choose “Use this team”.
+      </p>
     {/if}
-    <Button href={resolve('/my-teams/new')} variant="secondary" size="touch">
-      <Plus class="size-4" aria-hidden="true" />
-      <span>Add custom team</span>
-    </Button>
-  </div>
+  {/if}
   {#if ready && !storageError}
     <p
       role="status"
