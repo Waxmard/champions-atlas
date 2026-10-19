@@ -10,7 +10,7 @@ const typeData = JSON.parse(
 ) as { pokemon: Record<string, string[]> };
 const pokemonTypes = typeData.pokemon;
 
-// Mirrors $lib/catalog normalize and the $lib/types getPokemonTypes fallbacks so
+// Mirrors #lib/catalog normalize and the #lib/types getPokemonTypes fallbacks so
 // expectations come from the shipped type data instead of the filter code.
 const typesOf = (pokemon: string): string[] => {
   const key = pokemon

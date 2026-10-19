@@ -1,14 +1,14 @@
 <script lang="ts">
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import MovePill from '$lib/components/MovePill.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
-  import TypeBadge from '$lib/components/TypeBadge.svelte';
-  import UnknownValue from '$lib/components/UnknownValue.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import type { Member } from '$lib/catalog';
-  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
+  import type { Snippet } from 'svelte';
+  import ItemIcon from '#lib/components/ItemIcon.svelte';
+  import MovePill from '#lib/components/MovePill.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import TypeBadge from '#lib/components/TypeBadge.svelte';
+  import UnknownValue from '#lib/components/UnknownValue.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import type { Member } from '#lib/catalog.js';
+  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
-  import FileText from '@lucide/svelte/icons/file-text';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 
   export type EditableSetField =
@@ -31,6 +31,7 @@
     onrevert?: () => void;
     revertDisabled?: boolean;
     revertReason?: string;
+    actions?: Snippet;
   }
 
   let {
@@ -43,11 +44,12 @@
     onrevert,
     revertDisabled = false,
     revertReason = '',
+    actions,
   }: Props = $props();
 
   const types = $derived(getPokemonTypes(member.pokemon));
   const rowClass =
-    'flex min-h-11 w-full items-baseline justify-between gap-3 rounded-[var(--radius-field)] px-1.5 py-1 text-left';
+    'flex min-h-11 w-full items-baseline justify-between gap-3 rounded-[var(--radius-field)] px-1.5 py-1 text-start';
 </script>
 
 <div
@@ -79,9 +81,8 @@
 
     {#if editable}
       <Button
-        variant="outline"
-        size="sm"
-        class="min-h-11 shrink-0 gap-1.5 px-2.5 text-xs"
+        variant="quiet"
+        class="shrink-0"
         aria-label={`Change ${member.pokemon}`}
         data-set-field="pokemon"
         disabled={editing}
@@ -123,7 +124,7 @@
       {#if editable}
         <button
           type="button"
-          class="w-full rounded-sm p-0.5 text-left focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          class="w-full rounded-sm p-0.5 text-start focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit ${member.pokemon} moves`}
           data-set-field="moves"
           disabled={editing}
@@ -139,14 +140,12 @@
 
   {#if editable}
     <div
-      class="mt-2 flex flex-wrap {onrevert && !revertDisabled
-        ? 'justify-between'
-        : 'justify-end'} gap-1 border-t pt-1.5"
+      data-slot="card-actions"
+      class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-1"
     >
+      {@render actions?.()}
       {#if onrevert && !revertDisabled}<Button
-          variant="ghost"
-          size="sm"
-          class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
+          variant="quiet"
           aria-label={`Revert changes for ${member.pokemon}`}
           onclick={() => onrevert?.()}
         >
@@ -154,27 +153,13 @@
           <span>Revert changes</span>
         </Button>{/if}
       <Button
-        variant="ghost"
-        size="sm"
-        class="min-h-11 gap-1 px-2 text-xs"
+        variant="quiet"
         aria-label={`Edit set for ${member.pokemon}`}
         data-set-field="set"
         disabled={editing}
         onclick={() => onedit?.('set')}
       >
         <span>Edit set</span>
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        class="min-h-11 gap-1 px-2 text-xs text-base-content/70 hover:text-base-content"
-        aria-label={`Edit set text for ${member.pokemon}`}
-        data-set-field="text"
-        disabled={editing}
-        onclick={() => onedit?.('text')}
-      >
-        <FileText class="size-3" />
-        <span>Edit set text</span>
       </Button>
     </div>
     {#if revertReason}<p class="provenance mt-1">
@@ -196,10 +181,16 @@
     {:else if item !== undefined}
       <span class="value inline-flex min-w-0 items-center gap-1.5">
         <ItemIcon {item} size={16} />
-        <span class="truncate">{value}</span>
+        <span class="min-w-0 wrap-anywhere">{value}</span>
       </span>
     {:else}
-      <span class="value min-w-0 truncate">{value}</span>
+      <span
+        class="value min-w-0 {field === 'spread'
+          ? 'text-end wrap-break-word'
+          : field === 'ability' || field === 'nature'
+            ? 'text-end wrap-anywhere'
+            : 'truncate'}">{value}</span
+      >
     {/if}
   {/snippet}
   {#if editable}

@@ -1,5 +1,5 @@
 import { error } from '@sveltejs/kit';
-import catalog from '$lib/data/catalog.json';
+import catalog from '#lib/data/catalog.json';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = ({ params }) => {

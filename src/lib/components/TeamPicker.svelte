@@ -2,8 +2,9 @@
   import { Combobox } from 'bits-ui';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import { rankSavedTeams } from '$lib/team-collections';
-  import type { SavedTeam } from '$lib/workbench';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { rankSavedTeams } from '#lib/team-collections.js';
+  import type { SavedTeam } from '#lib/workbench.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
@@ -102,7 +103,7 @@
   >
     <div
       bind:this={fieldEl}
-      class="input relative mt-2 flex h-auto min-h-11 w-full flex-col items-stretch gap-1.5 py-2.5 pr-12"
+      class="input relative mt-2 flex h-auto min-h-11 w-full flex-col items-stretch gap-1.5 py-2.5 pe-12"
     >
       <div class="flex gap-1" aria-hidden="true">
         {#each selected ? roster(selected) : [] as pokemon, slot (slot)}
@@ -128,8 +129,10 @@
           <input {...props} value={field} />
         {/snippet}
       </Combobox.Input>
-      <button
-        type="button"
+      <Button
+        variant="quiet"
+        size="icon-touch"
+        class="absolute end-0.5 top-1/2 -translate-y-1/2"
         aria-label="Show saved teams"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -137,10 +140,9 @@
         onpointerdown={(event) => event.stopPropagation()}
         onclick={toggleTrigger}
         onkeydown={closeOnEscape}
-        class="absolute top-1/2 right-0.5 grid size-11 -translate-y-1/2 place-items-center rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <ChevronDown class="size-5" aria-hidden="true" />
-      </button>
+      </Button>
     </div>
     <Combobox.Portal>
       <Combobox.Content
@@ -148,7 +150,7 @@
         customAnchor={fieldEl}
         sideOffset={6}
         onpointerdown={(event) => event.preventDefault()}
-        class="z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95"
+        class="picker-popover-enter z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg"
       >
         <Combobox.Viewport>
           {#each options as team (team.id)}
@@ -156,7 +158,7 @@
               value={team.id}
               label={team.name}
               aria-label={`${team.name}: ${roster(team).join(', ')}`}
-              class="flex min-h-11 cursor-pointer items-center gap-2 border-b border-base-300 px-3 py-2 outline-none last:border-b-0 data-highlighted:bg-base-200 data-highlighted:text-base-content"
+              class="option-row cursor-pointer border-b border-base-300 outline-none last:border-b-0 data-highlighted:bg-info data-highlighted:text-info-content"
             >
               {#snippet children({ selected: isSelected })}
                 <span class="flex min-w-0 flex-1 flex-col gap-1">

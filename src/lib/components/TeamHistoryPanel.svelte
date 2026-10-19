@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { Button } from '$lib/components/ui/button';
+  import { Button } from '#lib/components/ui/button/index.js';
   import {
     evidence,
     evidenceGrade,
     isPasteUrl,
     normalize,
     regulationLabel,
-  } from '$lib/catalog';
-  import { canonicalSnapshot, differences } from '$lib/team-history';
-  import { rosterConflict } from '$lib/workbench';
-  import type { SavedTeam } from '$lib/workbench';
+  } from '#lib/catalog.js';
+  import { canonicalSnapshot, differences } from '#lib/team-history.js';
+  import { rosterConflict } from '#lib/workbench.js';
+  import type { SavedTeam } from '#lib/workbench.js';
 
   interface Props {
     team: SavedTeam;
@@ -100,8 +100,7 @@
   <div class="mt-3 space-y-5">
     <div class="flex flex-wrap items-end gap-3">
       <Button
-        variant="outline"
-        class="min-h-11"
+        variant="destructive"
         disabled={disabled || identical}
         onclick={() => onrestore()}>Restore original</Button
       >
@@ -128,8 +127,8 @@
               {@const slot = group.slot}
               {@const reason = slotReason(slot)}
               <Button
-                variant="outline"
-                class="mt-2 min-h-11"
+                variant="secondary"
+                class="mt-2"
                 disabled={disabled || !!reason}
                 aria-describedby={reason
                   ? `original-slot-reason-${team.id}-${slot}`
@@ -155,11 +154,11 @@
       aria-label="Original provenance"
       class="space-y-3 border-t border-base-300 pt-4"
     >
-      <h2 class="text-xl font-extrabold">
+      <h3 class="text-base font-extrabold">
         {team.origin === 'custom'
           ? 'Starting team details'
           : "Original team's results & sources"}
-      </h2>
+      </h3>
       <dl class="grid gap-3 sm:grid-cols-2">
         <div class="min-w-0">
           <dt class="term">
@@ -257,7 +256,6 @@
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
-  h2,
   h3 {
     overflow-wrap: anywhere;
   }

@@ -263,87 +263,6 @@ test('the panel starts empty, keeps the dialog inside the viewport and layers be
   ).toBe(true);
 });
 
-test('a spread another saved team runs saves immediately', async ({ page }) => {
-  const pokemon = 'Raichu-Mega-Y';
-  const { card, editor } = await openEditor(
-    page,
-    raichuTeamId,
-    raichuTeamName,
-    pokemon
-  );
-  await page.evaluate(
-    ({ key, teamId, spread, pokemon }) => {
-      const teams = JSON.parse(localStorage.getItem(key)!);
-      const copy = JSON.parse(
-        JSON.stringify(teams.find((team) => team.original.id === teamId))
-      );
-      copy.id = '11111111-1111-4111-8111-111111111111';
-      copy.name = 'Copied team';
-      const member = copy.members.find((entry) => entry.pokemon === pokemon);
-      member.spread = spread;
-      delete member.set;
-      teams.push(copy);
-      localStorage.setItem(key, JSON.stringify(teams));
-    },
-    {
-      key: storageKey,
-      teamId: raichuTeamId,
-      spread: '18 HP / 26 Def / 22 Spe',
-      pokemon,
-    }
-  );
-  await page.reload();
-  await card
-    .getByRole('button', { name: `Edit ${pokemon} EVs`, exact: true })
-    .click();
-  const suggestions = page
-    .getByRole('dialog', { name: `Edit ${pokemon} set`, exact: true })
-    .getByRole('region', { name: 'EV spread suggestions' });
-  await expect(suggestions).toContainText(
-    'Original team first, then your own teams and common catalog spreads.'
-  );
-  const row = suggestions.getByRole('button', {
-    name: `Use Timid spread 18 HP / 26 Def / 22 Spe`,
-    exact: true,
-  });
-  await expect(row).toContainText('Copied team · M-C · 1 points moved');
-  await expect(chipsOf(row)).toHaveText(['18 HP', '26 Def', '22 Spe']);
-
-  await row.click();
-  for (const [stat, value] of [
-    ['HP', '18'],
-    ['Atk', '0'],
-    ['Def', '26'],
-    ['SpA', '0'],
-    ['SpD', '0'],
-    ['Spe', '22'],
-  ])
-    await expect(editor.getByLabel(`${stat} EV`, { exact: true })).toHaveValue(
-      value
-    );
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!),
-    storageKey
-  );
-  expect(
-    stored
-      .find((team: { name: string }) => team.name === raichuTeamName)
-      .members.find((member: { pokemon: string }) => member.pokemon === pokemon)
-      .spread
-  ).toBe('18 HP / 26 Def / 22 Spe');
-  await page.reload();
-  await card
-    .getByRole('button', { name: `Edit ${pokemon} EVs`, exact: true })
-    .click();
-  const saved = page.getByRole('dialog', {
-    name: `Edit ${pokemon} set`,
-    exact: true,
-  });
-  await expect(saved.getByLabel('Def EV', { exact: true })).toHaveValue('26');
-  await expect(saved.getByLabel('Spe EV', { exact: true })).toHaveValue('22');
-});
-
 test('catalog spreads fill the list when no saved team runs the Pokémon', async ({
   page,
 }) => {
@@ -357,9 +276,6 @@ test('catalog spreads fill the list when no saved team runs the Pokémon', async
   const suggestions = editor.getByRole('region', {
     name: 'EV spread suggestions',
   });
-  await expect(suggestions).toContainText(
-    'then your own teams and common catalog spreads'
-  );
   const row = suggestions
     .getByRole('button', { name: /^Use .+ spread .+$/ })
     .filter({ hasText: 'catalog team' })

@@ -1,19 +1,24 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import TypeMark from '$lib/components/TypeMark.svelte';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import type { CatalogSuggestion } from '$lib/workbench';
-  import { getMoveType, TYPE_COLORS } from '$lib/types';
+  import type { Member } from '#lib/catalog.js';
+  import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import TypeMark from '#lib/components/TypeMark.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import type { CatalogSuggestion } from '#lib/workbench.js';
+  import { getMoveType, TYPE_COLORS } from '#lib/types.js';
   let {
     moves,
     activeMoveSlot,
     activeSuggestions,
     moveOptions,
+    inGameMember,
     error,
     errorField,
     onfocus,
     onchange,
     onchoose,
+    oningame,
     onclear,
     oncommit,
   }: {
@@ -21,11 +26,13 @@
     activeMoveSlot: number;
     activeSuggestions: string | null;
     moveOptions: CatalogSuggestion[];
+    inGameMember?: Member;
     error: string;
     errorField: EditableSetField | null;
     onfocus: (index: number) => void;
     onchange: (index: number, value: string) => void;
     onchoose: (index: number, value: string) => void;
+    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onclear: (index: number) => void;
     oncommit: () => void;
   } = $props();
@@ -43,17 +50,13 @@
           : 'border-base-content/55 hover:border-base-content/80'}"
         style={typeColor ? `border-left: 4px solid ${typeColor};` : ''}
       >
-        <span class="value w-4 text-center text-base-content/60"
-          >{index + 1}</span
-        >
+        <span class="term w-4 text-center tabular-nums">{index + 1}</span>
         <TypeMark {type} size="md" />
         <input
           id={`set-move-${index + 1}`}
           aria-label={`Move ${index + 1}`}
           type="text"
-          tabindex={activeSuggestions !== null && activeMoveSlot !== index
-            ? -1
-            : 0}
+          tabindex={0}
           class="grow bg-transparent text-sm focus:outline-none"
           placeholder={`Move ${index + 1}`}
           value={move}
@@ -74,15 +77,16 @@
             }
           }}
         />
-        <button
-          type="button"
-          class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
+        <Button
+          variant="quiet"
+          size="icon-touch"
+          class="-mr-2"
           aria-label={`Clear move ${index + 1}`}
-          tabindex={activeSuggestions !== null ? -1 : 0}
+          tabindex={0}
           disabled={!move}
           data-move-choice
           onpointerdown={(event) => event.preventDefault()}
-          onclick={() => onclear(index)}><X class="size-4" /></button
+          onclick={() => onclear(index)}><X class="size-4" /></Button
         >
       </div>
     {/each}
@@ -102,14 +106,31 @@
               type="button"
               data-move-choice
               onpointerdown={(event) => event.preventDefault()}
-              class="flex min-h-11 items-center gap-2.5 px-3 text-left text-sm transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
+              class="option-row"
               style={optionColor
                 ? `border-left: 3px solid ${optionColor};`
                 : ''}
-              onclick={() => onchoose(activeMoveSlot, option.value)}
+              onclick={() => {
+                if (option.inGame) {
+                  if (inGameMember)
+                    oningame(
+                      {
+                        kind: 'move',
+                        index: activeMoveSlot,
+                        move: option.value,
+                      },
+                      inGameMember
+                    );
+                } else onchoose(activeMoveSlot, option.value);
+              }}
               ><TypeMark type={optionType} size="md" /><span class="value"
                 >{option.value}</span
-              >{#if option.original}<span class="provenance">Original</span
+              >{#if option.original || option.inGame}<span class="provenance"
+                  >{option.original
+                    ? option.inGame
+                      ? 'Original · In-game'
+                      : 'Original'
+                    : 'In-game'}</span
                 >{/if}</button
             >
           </li>

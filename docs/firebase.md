@@ -1,7 +1,8 @@
 # Firebase deployment and sync
 
 Champion's Atlas builds to a static single-page application (SPA) and deploys to
-Firebase Hosting, and it syncs saved teams through Cloud Firestore. With the
+Firebase Hosting. It syncs saved teams and current Pokémon set snapshots through
+Cloud Firestore. With the
 `VITE_FIREBASE_*` variables the app requires Google sign-in: an unauthenticated
 visitor is redirected to `/login` and cannot reach the team browser until signed
 in. Without the variables it runs local-only and never initializes the Firebase
@@ -57,6 +58,45 @@ displaced edited version becomes a separate `(recovered)` team. A deletion
 counts as an edit. Offline saves stay on the device until a later connection,
 save, or **Retry sync**. Sync never truncates teams to fit the 50-team limit; if
 reconciliation needs more room, it stops and leaves both versions intact.
+
+## Current Pokémon sets
+
+Current sets use a separate registry, not team documents. The device stores the
+working registry under `champions-atlas:current-sets:v1`; the per-account cache
+adds `setsBase` and `setsLocal` to the existing v2 account record. Each entry
+contains a member snapshot keyed by Browse identity. Mawile and Mawile-Mega
+share an ID, while ordinary Floette and Floette-Eternal use different IDs.
+Each registry supports at most 1,500 sets.
+
+The registry manifest lives at
+`users/{uid}/pokemonSetState/manifest` and contains exactly
+`schemaVersion: 1`, sorted unique `setIds`, and `updatedAt:
+serverTimestamp()`. Each listed `users/{uid}/pokemonSets/{id}` document
+contains exactly `{id, member}`, with `id` matching the document ID. Owner rules
+allow reads and valid writes to these paths; deletes are denied. A missing
+manifest means an empty registry; a new account creates its empty manifest.
+Malformed manifests, missing or invalid children, and mismatched IDs stop sync
+without replacing either local working store or either sync baseline.
+
+Sync merges whole entries by ID. Independent species changes are retained; when
+devices explicitly save competing snapshots for the same species, the last
+server-accepted save wins. Current-set conflicts do not create recovered teams.
+Transactions stage at most 350 changed set documents and drain any remainder in
+later passes. The separate manifest and collection leave the existing v2 team
+manifest unchanged, so older team-only clients cannot erase the current-set
+index. Current sets have no delete operation; team deletion does not affect them.
+
+Account switching validates and caches both local stores, then replaces both
+under the existing owner guard. If the switch fails, the client restores both
+original storage values and the former owner; if rollback fails, it marks the
+owner interrupted. Sign-out preserves per-account snapshots. The current-set
+manifest listener and same-owner storage events request reconciliation rather
+than replacing local state.
+
+Deploy the updated rules for the current-set paths with the normal rules
+deployment. Until deployment, access to those paths fails visibly, while valid
+local saves remain available for retry. The emulator setup below tests rules
+locally and does not deploy them.
 
 Reconciliation continues while a set editor is open, but its mounted form does
 not refresh underneath you. If another device changes or deletes that team,
@@ -141,14 +181,30 @@ npx firebase-tools deploy --only hosting,firestore:rules --project champions-atl
 The app connects to the Firebase Emulator Suite only in a development build with
 `VITE_FIREBASE_EMULATORS=1`, the project ID `demo-champions-atlas`, and a
 loopback hostname, so a production build always talks to the configured project.
-Point the emulator ports at an isolated demo project and start the dev server:
+The repository `firebase.json` does not configure emulator ports. Create a
+temporary config outside the repository with the repository's absolute rules
+path; this example uses Auth on port 9099 and Firestore on port 8080:
+
+```json
+{
+  "firestore": { "rules": "/absolute/path/to/champions-atlas/firestore.rules" },
+  "emulators": {
+    "auth": { "host": "127.0.0.1", "port": 9099 },
+    "firestore": { "host": "127.0.0.1", "port": 8080 },
+    "ui": { "enabled": false }
+  }
+}
+```
+
+Start the emulators with that temporary config and run the development server
+against the isolated demo project:
 
 ```sh
-./node_modules/.bin/firebase emulators:start --only auth,firestore --project demo-champions-atlas
+./node_modules/.bin/firebase emulators:start --only auth,firestore --project demo-champions-atlas --config /tmp/champions-atlas-firebase.json
 VITE_FIREBASE_API_KEY=demo-key VITE_FIREBASE_AUTH_DOMAIN=demo-champions-atlas.firebaseapp.com VITE_FIREBASE_PROJECT_ID=demo-champions-atlas VITE_FIREBASE_APP_ID=demo-app VITE_FIREBASE_EMULATORS=1 npm run dev -- --host 127.0.0.1 --port 5199 --strictPort
 ```
 
-The emulator serves `firestore.rules` from the repository root. Sign in with a
+The emulator serves `firestore.rules` from the temporary config. Sign in with a
 test account; there is no bypass for real accounts. `npm run build:e2e` blanks
 the `VITE_FIREBASE_*` values, so it never reaches an emulator.
 

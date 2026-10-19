@@ -20,6 +20,7 @@ export default defineConfig({
       name: 'mobile-webkit',
       testMatch: [
         '**/workbench.spec.ts',
+        '**/workbench-keyboard.spec.ts',
         '**/workbench-edge.spec.ts',
         '**/team-history.spec.ts',
         '**/browser.spec.ts',

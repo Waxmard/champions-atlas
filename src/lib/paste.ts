@@ -41,6 +41,19 @@ export const formatChampionsSpread = (spread: ChampionsSpread) =>
 export const championsSpreadTotal = (spread: ChampionsSpread) =>
   CHAMPIONS_STATS.reduce((total, stat) => total + spread[stat], 0);
 
+export function balanceChampionsStat(
+  values: ChampionsSpread,
+  stat: ChampionsStat
+): ChampionsSpread {
+  return {
+    ...values,
+    [stat]: Math.max(
+      0,
+      Math.min(32, values[stat] + 66 - championsSpreadTotal(values))
+    ),
+  };
+}
+
 export const isCompleteSpread = (
   spread: ChampionsSpread | null
 ): spread is ChampionsSpread =>
@@ -50,11 +63,6 @@ export const isCompleteSpread = (
     (stat) =>
       Number.isInteger(spread[stat]) && spread[stat] >= 0 && spread[stat] <= 32
   );
-
-export const SPREAD_DELTA_SMALL = 8;
-export const SPREAD_DELTA_MODERATE = 16;
-export type SpreadChangeSize =
-  'same' | 'small' | 'moderate' | 'large' | 'unknown';
 
 export interface SpreadDelta {
   stat: ChampionsStat;
@@ -78,14 +86,6 @@ export function spreadDeltas(
 
 export const spreadMoved = (deltas: SpreadDelta[]) =>
   deltas.reduce((total, entry) => total + Math.abs(entry.delta), 0);
-
-export function spreadChangeSize(moved: number | null): SpreadChangeSize {
-  if (moved === null) return 'unknown';
-  if (moved === 0) return 'same';
-  if (moved <= SPREAD_DELTA_SMALL) return 'small';
-  if (moved <= SPREAD_DELTA_MODERATE) return 'moderate';
-  return 'large';
-}
 
 export const formatSpreadDelta = (deltas: SpreadDelta[]) =>
   deltas

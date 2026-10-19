@@ -115,6 +115,7 @@ test(
     const detailHref = await cards
       .first()
       .getByRole('link')
+      .first()
       .getAttribute('href');
     expect(detailHref).toBeTruthy();
     await page.screenshot({
@@ -122,9 +123,9 @@ test(
       fullPage: false,
     });
     if (testInfo.project.use.isMobile) {
-      await cards.first().getByRole('link').tap();
+      await cards.first().getByRole('link').first().tap();
     } else {
-      await cards.first().getByRole('link').click();
+      await cards.first().getByRole('link').first().click();
     }
     await expect(page).toHaveURL(
       new RegExp(`${detailHref!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
@@ -190,7 +191,7 @@ test('invalid filters stay explicit; team deep links and missing teams work', as
     .getByRole('region', { name: 'Matching teams' })
     .getByRole('article')
     .first();
-  const href = await card.getByRole('link').getAttribute('href');
+  const href = await card.getByRole('link').first().getAttribute('href');
   expect(href).toBeTruthy();
   await page.goto(href!);
   await page.reload();
@@ -369,6 +370,7 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     .getByRole('article')
     .first()
     .getByRole('link')
+    .first()
     .click();
   await expect(page).toHaveURL(/\/teams\//);
   for (const width of [320, 390]) {
@@ -437,8 +439,8 @@ test('custom-rule visibility and browse state survive navigation', async ({
   await expect(card.locator('.stamp[data-grade="reported"]')).toBeVisible();
   await expect(card.locator('.stamp[data-grade="strong"]')).toHaveCount(0);
 
-  if (testInfo.project.use.isMobile) await card.getByRole('link').tap();
-  else await card.getByRole('link').click();
+  if (testInfo.project.use.isMobile) await card.getByRole('link').first().tap();
+  else await card.getByRole('link').first().click();
   await expect
     .poll(() => new URL(page.url()).pathname)
     .toBe(`/teams/${customRulesTeam.id}`);
@@ -508,8 +510,9 @@ test('custom-rule visibility and browse state survive navigation', async ({
     );
 
   const ordinary = cards.first();
-  if (testInfo.project.use.isMobile) await ordinary.getByRole('link').tap();
-  else await ordinary.getByRole('link').click();
+  if (testInfo.project.use.isMobile)
+    await ordinary.getByRole('link').first().tap();
+  else await ordinary.getByRole('link').first().click();
   await expect(page.getByRole('link', { name: 'Back to teams' })).toBeVisible();
   await expect(useTeam).toBeEnabled();
   await useTeam.click();

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { Button } from '$lib/components/ui/button';
-  import { activeTeamKey, newCustomTeam, saveTeam } from '$lib/workbench';
-  import { pushNow } from '$lib/sync.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { activeTeamKey, newCustomTeam, saveTeam } from '#lib/workbench.js';
+  import { pushNow } from '#lib/sync.svelte.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -18,7 +18,7 @@
       saveTeam(localStorage, saved);
       localStorage.setItem(activeTeamKey, saved.id);
       void pushNow();
-      await goto(resolve(`/my-teams?team=${saved.id}`));
+      await goto(resolve(`my-teams?team=${encodeURIComponent(saved.id)}`));
     } catch (error) {
       message =
         error instanceof Error
@@ -72,13 +72,15 @@
       </span>
     </label>
     <div class="mt-4 flex flex-wrap items-center gap-3">
-      <Button type="submit" class="min-h-11">Save custom team</Button>
+      <Button type="submit" variant="primary">Save custom team</Button>
       <p class="provenance">
         Saves locally as {data.currentRegulation}; legality remains unverified.
       </p>
     </div>
   </form>
-  <p role="status" aria-live="polite" class="mt-4 min-h-6 text-sm text-primary">
-    {message}
-  </p>
+  {#if message}
+    <p role="alert" class="mt-4 text-[0.9375rem] text-error">
+      {message}
+    </p>
+  {/if}
 </main>

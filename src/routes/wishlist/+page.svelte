@@ -3,21 +3,23 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
-  import TeamCard from '$lib/components/TeamCard.svelte';
-  import { Button } from '$lib/components/ui/button';
-  import type { Team } from '$lib/catalog';
-  import { pushNow, sync } from '$lib/sync.svelte';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
+  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
+  import TeamCard from '#lib/components/TeamCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import type { Team } from '#lib/catalog.js';
+  import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
     removeWishlistedTeam,
     SavedTeamError,
     useWishlistedTeam,
-  } from '$lib/team-collections';
+  } from '#lib/team-collections.js';
   import {
     activeTeamKey,
     readSavedTeams,
     storageKey,
     type SavedTeam,
-  } from '$lib/workbench';
+  } from '#lib/workbench.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -26,6 +28,7 @@
     loaded = $state(false),
     storageError = $state(''),
     status = $state(''),
+    errorMessage = $state(''),
     pendingId = $state('');
   const catalogIds = $derived(
     new Set((data.catalog.teams as Team[]).map((team) => team.id))
@@ -78,12 +81,12 @@
   async function use(entry: SavedTeam) {
     if (pendingId) return;
     pendingId = entry.id;
-    status = '';
+    status = errorMessage = '';
     let promoted: SavedTeam;
     try {
       promoted = useWishlistedTeam(localStorage, entry.id);
     } catch (error) {
-      status =
+      errorMessage =
         error instanceof SavedTeamError
           ? error.message
           : 'Could not move this team to My teams. Check browser storage access and available space. Your Wishlist was not changed.';
@@ -92,20 +95,23 @@
       return;
     }
     void pushNow();
+    status = 'Team moved to My teams.';
     try {
       localStorage.setItem(activeTeamKey, promoted.id);
     } catch {
-      status =
+      errorMessage =
         'Your team was saved, but the active team could not be remembered.';
     }
     try {
       await goto(
-        (resolve('/my-teams') +
+        (resolve('my-teams') +
           '?team=' +
           encodeURIComponent(promoted.id)) as ResolvedPathname
       );
     } catch {
-      status = 'Could not open My teams. Your team was saved.';
+      errorMessage = errorMessage
+        ? `${errorMessage} Could not open My teams.`
+        : 'Could not open My teams. Your team was saved.';
       pendingId = '';
       refresh();
       return;
@@ -117,12 +123,12 @@
     if (pendingId) return;
     if (!confirm(`Remove “${entry.name}” from Wishlist?`)) return;
     pendingId = entry.id;
-    status = '';
+    status = errorMessage = '';
     const index = entries.findIndex(({ id }) => id === entry.id);
     try {
       removeWishlistedTeam(localStorage, entry.id);
     } catch (error) {
-      status =
+      errorMessage =
         error instanceof SavedTeamError
           ? error.message
           : 'Could not remove this team. Existing saved teams have been left untouched.';
@@ -146,18 +152,11 @@
 
 <svelte:head><title>Wishlist — Champion's Atlas</title></svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <header>
-    <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-    >
-      Wishlist
-    </h1>
-    <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      Teams to try later. Use a team to move it to My teams.
-    </p>
-  </header>
+  <SavedCollectionHeader
+    collection="wishlist"
+    title="Wishlist"
+    description="Teams to try later. Use a team to move it to My teams."
+  />
   <p
     role="status"
     aria-live="polite"
@@ -165,12 +164,12 @@
   >
     {status}
   </p>
-  {#if storageError}<p
+  {#if storageError || errorMessage}<p
       role="alert"
       class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >
-      {storageError}
+      {storageError || errorMessage}
     </p>{/if}
   {#if !loaded}<p class="mt-6 text-[0.9375rem] text-base-content/70">
       Loading Wishlist…
@@ -189,24 +188,23 @@
               detailAvailable={available}
             >
               {#snippet actions()}
-                {#if !available}<p class="provenance mb-2.5">
-                    No longer in the catalog. Your saved team is still
-                    available.
-                  </p>{/if}
-                <div class="flex flex-wrap gap-2">
-                  <Button
-                    data-wishlist-use
-                    class="min-h-11 px-4"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => use(entry)}>Use this team</Button
-                  >
-                  <Button
-                    variant="outline"
-                    class="min-h-11 px-4"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => remove(entry)}>Remove from Wishlist</Button
-                  >
-                </div>
+                <Button
+                  data-wishlist-use
+                  variant="primary"
+                  disabled={!ready || !!pendingId}
+                  onclick={() => use(entry)}>Use this team</Button
+                >
+                <Button
+                  variant="quiet"
+                  size="icon-compact"
+                  class="text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
+                  aria-label="Remove from Wishlist"
+                  title="Remove from Wishlist"
+                  disabled={!ready || !!pendingId}
+                  onclick={() => remove(entry)}
+                >
+                  <Trash2 class="size-4" aria-hidden="true" />
+                </Button>
               {/snippet}
             </TeamCard>
           </li>

@@ -1,5 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
+import {
+  expectDetailsSubView,
+  expectMovesSubView,
+  openWorkbench,
+  peter,
+} from './workbench-helpers';
 
 async function chooseOption(page: Page, picker: Locator, name: string) {
   await expect(async () => {
@@ -12,37 +17,19 @@ async function chooseOption(page: Page, picker: Locator, name: string) {
   await picker.press('Enter');
 }
 
-const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
 const storageKey = 'champions-atlas:teams:v1';
 
 async function expectOverviewHub(editor: Locator) {
-  await expect(
-    editor.getByRole('button', { name: 'Change Pokémon', exact: true })
-  ).toBeVisible();
-  await expect(
-    editor.getByRole('button', {
-      name: 'Edit item, ability, and nature',
-      exact: true,
-    })
-  ).toBeVisible();
-  await expect(
-    editor.getByRole('button', { name: 'Edit moves', exact: true })
-  ).toBeVisible();
-  await expect(
-    editor.getByRole('button', { name: 'Edit EV spread', exact: true })
-  ).toBeVisible();
-}
-async function expectMovesSubView(editor: Locator) {
-  for (const slot of [1, 2, 3, 4]) {
+  for (const name of [
+    'Change Pokémon',
+    'Edit item, ability, and nature',
+    'Edit moves',
+    'Edit EV spread',
+  ]) {
     await expect(
-      editor.getByLabel(`Move ${slot}`, { exact: true })
+      editor.getByRole('button', { name, exact: true })
     ).toBeVisible();
   }
-}
-async function expectDetailsSubView(editor: Locator) {
-  await expect(editor.getByLabel('Item', { exact: true })).toBeVisible();
-  await expect(editor.getByLabel('Ability', { exact: true })).toBeVisible();
-  await expect(editor.getByLabel('Nature', { exact: true })).toBeVisible();
 }
 
 async function expectPokemonSubView(editor: Locator) {
@@ -53,16 +40,6 @@ async function expectPokemonSubView(editor: Locator) {
 
 async function expectSpreadSubView(editor: Locator) {
   await expect(editor.getByLabel('HP EV', { exact: true })).toBeVisible();
-}
-
-async function openWorkbench(page: Page) {
-  await page.goto('/teams/' + peter.id);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
-  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    peter.name
-  );
 }
 
 test('save Peter, choose one slot, compare, edit, export, and preserve other five sets', async ({
@@ -216,9 +193,12 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   );
 
   await weavile
-    .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
+    .getByRole('button', { name: 'Edit set for Weavile', exact: true })
     .click();
   editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
+  await editor
+    .getByRole('button', { name: 'Edit Showdown text', exact: true })
+    .click();
   const raw = editor.getByRole('textbox', {
     name: 'Showdown set text',
     exact: true,
@@ -226,7 +206,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   const rawValue = await raw.inputValue();
   await raw.fill(rawValue + '\n- Protect');
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor.getByRole('alert')).toContainText('more than four moves');
+  await expect(editor.locator('[role="alert"]:not(:empty)')).toContainText(
+    'more than four moves'
+  );
   await expect(editor).toBeVisible();
   await raw.fill(
     rawValue.replace(/EVs: [^\n]+/, 'EVs: 32 HP / 32 Atk / 2 Spe')
@@ -289,7 +271,9 @@ test('untouched legacy EV spread saves, but changed spread requires 66', async (
   await expectSpreadSubView(editor);
   await editor.getByLabel('HP EV', { exact: true }).fill('31');
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor.getByRole('alert')).toContainText('must total 66');
+  await expect(editor.locator('[role="alert"]:not(:empty)')).toContainText(
+    'must total 66'
+  );
   await expect(editor).toBeVisible();
 });
 
@@ -433,122 +417,6 @@ test('page swap reports no overlap and clears its selection', async ({
   await expect(page.getByRole('region', { name: 'Weavile set' })).toBeVisible();
 });
 
-test('item suggestions support Tab and Enter selection through save and reload', async ({
-  page,
-}) => {
-  await openWorkbench(page);
-  const weavile = page.getByRole('region', {
-    name: 'Weavile set',
-    exact: true,
-  });
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile item', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expectDetailsSubView(editor);
-  const item = editor.getByLabel('Item', { exact: true });
-  await item.fill('a');
-  const suggestions = editor.getByLabel('Item suggestions', { exact: true });
-  const first = suggestions.getByRole('button').first();
-  await expect(first).toBeVisible();
-  const chosen = (await first.textContent())!.replace(/Original/g, '').trim();
-  await item.press('Tab');
-  await expect(first).toBeFocused();
-  await first.press('Enter');
-  await expect(item).toHaveValue(chosen);
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await page.reload();
-  await expect(weavile.getByText(chosen, { exact: true })).toBeVisible();
-});
-
-test('custom ability typed value survives Escape and Close saves valid input', async ({
-  page,
-}) => {
-  await openWorkbench(page);
-  const weavile = page.getByRole('region', {
-    name: 'Weavile set',
-    exact: true,
-  });
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile ability', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expectDetailsSubView(editor);
-  const ability = editor.getByLabel('Ability', { exact: true });
-  await ability.fill('Glitch Drive');
-  await ability.press('Escape');
-  await expect(ability).toHaveValue('Glitch Drive');
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(
-    weavile
-      .getByRole('button', { name: 'Edit Weavile ability', exact: true })
-      .getByText('Glitch Drive', { exact: true })
-  ).toBeVisible();
-
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile ability', exact: true })
-    .click();
-  const reopened = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expectDetailsSubView(reopened);
-  await reopened.getByLabel('Ability', { exact: true }).fill('Another');
-  await reopened.getByLabel('Ability', { exact: true }).press('Escape');
-  await reopened.getByRole('button', { name: 'Close', exact: true }).click();
-  await expect(
-    weavile
-      .getByRole('button', { name: 'Edit Weavile ability', exact: true })
-      .getByText('Another', { exact: true })
-  ).toBeVisible();
-});
-
-test('move Enter preserves typed value and Tab Enter selects an exact suggestion', async ({
-  page,
-}) => {
-  await openWorkbench(page);
-  const weavile = page.getByRole('region', {
-    name: 'Weavile set',
-    exact: true,
-  });
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile moves', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expectMovesSubView(editor);
-
-  const move2 = editor.getByLabel('Move 2', { exact: true });
-  await move2.fill('Pro');
-  await move2.press('Enter');
-  await expect(move2).toHaveValue('Pro');
-  await expect(editor).toBeVisible();
-
-  const move1 = editor.getByLabel('Move 1', { exact: true });
-  await move1.fill('Ice');
-  const options = editor
-    .getByLabel('Move suggestions', { exact: true })
-    .getByRole('button');
-  await expect(options.first()).toBeVisible();
-  const chosen = (await options.first().textContent())!
-    .replace(/Original/g, '')
-    .trim();
-  await move1.press('Tab');
-  await expect(options.first()).toBeFocused();
-  await options.first().press('Enter');
-  await expect(move1).toHaveValue(chosen);
-  await editor.getByRole('button', { name: 'Close', exact: true }).click();
-  await expect(editor).toHaveCount(0);
-});
-
 test('nature chips on the EV page set the nature and mark affected stats', async ({
   page,
 }) => {
@@ -646,12 +514,15 @@ test('structured edits survive a trip through the Showdown text view', async ({
     exact: true,
   });
   await weavile
-    .getByRole('button', { name: 'Edit set text for Weavile', exact: true })
+    .getByRole('button', { name: 'Edit set for Weavile', exact: true })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Weavile set',
     exact: true,
   });
+  await editor
+    .getByRole('button', { name: 'Edit Showdown text', exact: true })
+    .click();
   await editor
     .getByRole('button', { name: 'Back to overview', exact: true })
     .click();
@@ -690,15 +561,15 @@ test('leaving the Showdown text view untouched keeps the original set', async ({
     exact: true,
   });
   await glimmora
-    .getByRole('button', {
-      name: 'Edit set text for Glimmora-Mega',
-      exact: true,
-    })
+    .getByRole('button', { name: 'Edit set for Glimmora-Mega', exact: true })
     .click();
   const editor = page.getByRole('dialog', {
     name: 'Edit Glimmora-Mega set',
     exact: true,
   });
+  await editor
+    .getByRole('button', { name: 'Edit Showdown text', exact: true })
+    .click();
   await editor
     .getByRole('button', { name: 'Back to overview', exact: true })
     .click();
@@ -740,7 +611,7 @@ for (const mutation of ['changed', 'deleted'] as const) {
       await expect(editor.getByLabel('Item', { exact: true })).toHaveValue(
         'Uncommitted item'
       );
-      await expect(editor.getByRole('alert')).toContainText(
+      await expect(editor.locator('[role="alert"]:not(:empty)')).toContainText(
         'Could not save this input'
       );
       expect(

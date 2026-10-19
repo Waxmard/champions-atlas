@@ -36,6 +36,9 @@ npm run dev       # Start the local development server.
 ```
 
 Use the Node 24 LTS environment selected by mise. `npm ci` installs Lefthook hooks.
+SvelteKit 3 configuration is passed to `sveltekit()` in `vite.config.ts`.
+The `#lib/*` alias requires explicit extensions, such as `.js`, `.ts`, and
+`.svelte`. `tsconfig.json` scopes TypeScript checks to `src` and `vite.config.ts`.
 
 ```sh
 make ci           # Run lint, formatting, types, build, and Node tests.
@@ -145,11 +148,40 @@ it.
 
 Select a field on a saved team card to edit its set. Completed text saves on blur
 or Enter; selections and suggestions save immediately when the whole set is
-valid. Changed EV spreads must total 66 points. **Done** saves valid pending input
-and closes the editor; **Close** offers to discard only invalid or failed-write
+valid. Changed EV spreads must total 66 points. The full-height EV slider retains
+keyboard controls and vertical scrolling; **Fill** adjusts only the selected
+stat toward 66, within its 0–32 bounds. **Done** saves valid pending input and
+closes the editor; **Close** offers to discard only invalid or failed-write
 input. Earlier autosaves remain saved. There is no separate Apply step.
 **Advanced set text** replaces the set explicitly. Structured edits retain
 nicknames and supported untouched set lines. Unknown values are never guessed.
+
+Item and ability suggestions are buttons after their labeled text fields.
+Use Tab to reach a suggestion and Enter to select it. Operation failures use
+alerts; successful actions use status messages.
+
+In the **My teams** overview, **Record in-game set** records a Pokémon's
+committed set as the one currently in your Pokémon Champions box. **Record all
+in-game sets** records the selected team's six sets in one operation. Both use
+the Save icon and appear only when recording would change a snapshot. Recording
+changes only Champion's Atlas, never Pokémon Champions, and does not save the
+team itself. These actions are unavailable while editing. Individual
+replacements ask for confirmation. Bulk recording shows a checklist of different
+recorded sets, initially unchecked: select one, several, all, or none to replace.
+Unchecked Pokémon keep their recorded sets; selecting none still records new
+Pokémon. New or identical snapshots do not prompt, and identical snapshots do
+not show a Record action. **Cancel** records nothing.
+
+Snapshots use one slot per Browse identity, shared by a base Pokémon and its
+Mega. Ordinary Floette and Floette-Eternal have separate slots. Team edits do
+not update snapshots, and deleting a team does not delete them. The app does
+not seed snapshots from teams or keep history. When a snapshot exists, its
+values appear as source-labelled choices in the editor's existing field
+suggestions. Selecting a choice changes only that field, except that a spread
+choice changes the spread and nature together. The editor also offers a
+whole-set suggestion with a preview of the changes, including raw set text and
+saved metadata when they differ. You must select the suggestion to apply it;
+saved team cards have no direct reuse action.
 
 The card’s **Revert changes** action appears only when it can restore that slot
 to its state when you opened the team. It stays hidden for unchanged sets,
@@ -165,8 +197,8 @@ Original source metadata is kept when saving a catalog team and shown as evidenc
 for the original, not the edited version. Older saved teams show only metadata
 they retained. Custom teams show their starting team without public source claims.
 Original field and complete EV/nature suggestions lead the corresponding lists;
-other saved-team spreads and catalog spreads follow without duplicate pairs.
-Benchmark answers and **Speed tiers** retain their existing mechanics and limits.
+catalog suggestions follow without duplicate pairs. Benchmark answers and
+**Speed tiers** retain their existing mechanics and limits.
 
 **Copy team text** exports current sets, normalizing EVs out of 32 and omitting
 IVs, level, and Tera Type for Pokémon Champions. Unknown fields are omitted.
@@ -175,10 +207,11 @@ catalog refreshes on the same browser origin; clearing browser storage removes
 them. Saving requires available browser storage. Only unsaved input prompts
 before navigation. Browse filters and position remain device-local.
 
-When Firebase is configured, Google sign-in synchronizes saved teams and their
-originals across devices. Without configuration the app runs local-only. See
-[Firebase deployment and sync](docs/firebase.md) for the per-team data model and
-the rules-before-client release requirement.
+When Firebase is configured, Google sign-in synchronizes saved teams, their
+originals, and current Pokémon set snapshots across devices. Without
+configuration the app runs local-only. See [Firebase deployment and sync](docs/firebase.md)
+for the separate current-set registry and rules-before-client release
+requirement.
 
 ## Stack
 

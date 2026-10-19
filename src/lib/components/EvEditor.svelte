@@ -1,5 +1,6 @@
 <script lang="ts">
   import {
+    balanceChampionsStat,
     CHAMPIONS_STATS,
     championsSpreadTotal,
     formatChampionsSpread,
@@ -8,37 +9,113 @@
     parseChampionsSpread,
     NATURES,
     type ChampionsSpread,
-  } from '$lib/paste';
-  import { resolveBattleForm } from '$lib/battle-forms';
-  import type { BenchmarkIndex } from '$lib/benchmarks';
-  import type { Member, Team } from '$lib/catalog';
-  import { speedBenchmark, speedFor, speedTiers } from '$lib/stats';
-  import EvBenchmarkPanel from '$lib/components/EvBenchmarkPanel.svelte';
-  import type { CatalogSuggestion, SpreadSuggestion } from '$lib/workbench';
+    type ChampionsStat,
+  } from '#lib/paste.js';
+  import { resolveBattleForm } from '#lib/battle-forms.js';
+  import { buildBenchmarkIndex } from '#lib/benchmarks.js';
+  import { normalize, type Member, type Team } from '#lib/catalog.js';
+  import { speedBenchmark, speedFor, speedTiers } from '#lib/stats.js';
+  import EvBenchmarkPanel from '#lib/components/EvBenchmarkPanel.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import {
+    catalogSpreadSuggestions,
+    originalSpreadSuggestion,
+    type CatalogSuggestion,
+    type SpreadSuggestion,
+  } from '#lib/workbench.js';
+  import type { CurrentSetChoice } from '#lib/current-sets.js';
 
   let {
     member,
-    spread,
-    nature,
-    index,
-    spreadSuggestions,
     currentRegulation,
     teams,
     natureSuggestions,
+    originalMember,
+    inGameMember,
     onspreadchange,
     onnaturechange,
+    oningame,
   }: {
     member: Member;
-    spread: string;
-    nature: string;
-    index: BenchmarkIndex;
-    spreadSuggestions: SpreadSuggestion[];
     currentRegulation: string;
     teams: Team[];
     natureSuggestions: CatalogSuggestion[];
+    originalMember?: Member;
+    inGameMember?: Member;
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
+    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
   } = $props();
+  const index = $derived(buildBenchmarkIndex(teams, currentRegulation));
+  const regulationTeams = $derived(
+    teams.filter((team) => team.regulation === currentRegulation)
+  );
+  const spreadKey = (candidateNature: string, candidateSpread: string) =>
+    `${normalize(candidateNature)}|${normalize(candidateSpread)}`;
+
+  const spreadSuggestions = $derived.by(() => {
+    const preferredNature = originalMember?.nature ?? null;
+    const rows: SpreadSuggestion[] = [];
+    const original =
+      originalMember && originalSpreadSuggestion(member, originalMember);
+    if (original) rows.push(original);
+    const inGame =
+      inGameMember && originalSpreadSuggestion(member, inGameMember);
+    if (inGame) {
+      const key = spreadKey(inGame.nature, inGame.spread);
+      const existing = rows.find(
+        (row) => spreadKey(row.nature, row.spread) === key
+      );
+      if (existing) {
+        existing.inGame = true;
+        existing.source = 'Original team · My in-game set';
+      } else {
+        rows.push({
+          ...inGame,
+          source: 'My in-game set',
+          original: undefined,
+          inGame: true,
+        });
+      }
+    }
+    for (const option of catalogSpreadSuggestions(
+      member,
+      teams,
+      currentRegulation,
+      4,
+      preferredNature
+    )) {
+      const key = spreadKey(option.nature, option.spread);
+      const source =
+        `${option.totalCount} catalog team${option.totalCount === 1 ? '' : 's'}` +
+        (option.currentCount
+          ? ` · ${option.currentCount} in ${currentRegulation}`
+          : '');
+      const existing = rows.find(
+        (row) => spreadKey(row.nature, row.spread) === key
+      );
+      if (existing) {
+        if (existing.inGame) existing.source += ` · ${source}`;
+        continue;
+      }
+      rows.push({
+        spread: option.spread,
+        nature: option.nature,
+        source,
+        deltas: option.deltas,
+        movedPoints: option.movedPoints,
+        speed: option.speed,
+      });
+    }
+    const selected = rows.slice(0, 6);
+    const preferred = rows.find(
+      (row) => normalize(row.nature) === normalize(preferredNature ?? '')
+    );
+    if (preferred && !selected.includes(preferred)) selected[5] = preferred;
+    return selected;
+  });
+  const spread = $derived(member.spread || '');
+  const nature = $derived(member.nature || '');
 
   let draft = $state<ChampionsSpread | null>(null);
   const values = $derived(
@@ -65,7 +142,7 @@
       ? speedFor(resolvedForm.pokemon, parsedSpread, nature)
       : null
   );
-  const tiers = $derived(speedTiers(teams));
+  const tiers = $derived(speedTiers(regulationTeams));
 
   const clampEv = (value: number) => Math.max(0, Math.min(32, value || 0));
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
@@ -78,43 +155,57 @@
   }
   function commitDraft() {
     if (!draft) return;
-    onspreadchange(formatChampionsSpread(draft));
+    const next = formatChampionsSpread(draft);
     draft = null;
+    onspreadchange(next);
+  }
+  export function flush(): void {
+    commitDraft();
+  }
+  function setFromPointer(
+    event: PointerEvent,
+    input: HTMLInputElement,
+    stat: ChampionsStat
+  ) {
+    const rect = input.getBoundingClientRect();
+    const style = getComputedStyle(input);
+    const configuredThumb = Number.parseFloat(
+      style.getPropertyValue('--range-thumb-size')
+    );
+    const thumbSize = Number.isFinite(configuredThumb) ? configuredThumb : 16;
+    const travel = rect.width - thumbSize;
+    if (travel <= 0) return;
+    const fraction = Math.max(
+      0,
+      Math.min(1, (event.clientX - rect.left - thumbSize / 2) / travel)
+    );
+    setStat(
+      stat,
+      Math.round(32 * (style.direction === 'rtl' ? 1 - fraction : fraction))
+    );
+  }
+  function startPointer(event: PointerEvent, stat: ChampionsStat) {
+    if (!event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    const input = event.currentTarget as HTMLInputElement;
+    input.focus();
+    input.setPointerCapture(event.pointerId);
+    setFromPointer(event, input, stat);
+  }
+  function movePointer(event: PointerEvent, stat: ChampionsStat) {
+    const input = event.currentTarget as HTMLInputElement;
+    if (input.hasPointerCapture(event.pointerId))
+      setFromPointer(event, input, stat);
+  }
+  function finishPointer(event: PointerEvent) {
+    const input = event.currentTarget as HTMLInputElement;
+    if (!input.hasPointerCapture(event.pointerId)) return;
+    commitDraft();
+    input.releasePointerCapture(event.pointerId);
   }
 </script>
 
-<div
-  class="plate animate-in p-3.5 duration-200 fade-in-0 sm:p-4"
-  aria-label="EV editor"
->
-  <div class="mb-4 space-y-2">
-    <div class="flex items-baseline justify-between gap-3">
-      <div class="flex items-baseline gap-3">
-        <span class="term">Point budget</span>
-        <span class="value font-mono font-semibold">{total}/66 points</span>
-      </div>
-      <div class="flex items-baseline gap-3">
-        {#if total === 66}
-          <span class="value font-semibold">Complete</span>
-        {:else if total < 66}
-          <span class="value">{66 - total} remaining</span>
-        {:else}
-          <span
-            class="value font-semibold"
-            style="color: var(--color-error-content)"
-            >{total - 66} over limit</span
-          >
-        {/if}
-      </div>
-    </div>
-    <div class="h-2 w-full overflow-hidden rounded-full bg-base-300">
-      <div
-        class="h-full bg-primary transition-all duration-200"
-        style="width: {Math.min(100, Math.round((total / 66) * 100))}%"
-      ></div>
-    </div>
-  </div>
-
+<div class="plate ev-editor-enter min-w-0 p-3.5 sm:p-4" aria-label="EV editor">
   <!-- Nature modifies the stats below -->
   <div class="mb-4 grid gap-2 border-b pb-4" aria-label="Nature suggestions">
     <div class="flex flex-wrap items-baseline justify-between gap-3 px-0.5">
@@ -127,20 +218,37 @@
     </div>
     {#if natureSuggestions.length > 0}
       <div class="flex flex-wrap gap-2">
-        {#each natureSuggestions.slice(0, 5) as option (option.value)}
+        {#each natureSuggestions.slice(0, 4) as option (option.value)}
           {@const isSelected = nature === option.value}
           <button
             type="button"
             class="min-h-11 rounded-[var(--radius-selector)] border px-3 text-[0.8125rem] transition-colors {isSelected
               ? 'border-primary font-semibold'
               : 'border-base-300 hover:bg-base-200/70'}"
-            aria-label={`Use ${option.value} nature${option.original ? ' (original)' : ''}`}
-            onclick={() => onnaturechange(option.value)}
+            aria-label={`Use ${option.value} nature${
+              option.original
+                ? option.inGame
+                  ? ' (original and in-game)'
+                  : ' (original)'
+                : option.inGame
+                  ? ' (in-game)'
+                  : ''
+            }`}
+            onclick={() => {
+              if (option.inGame) {
+                if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
+              } else onnaturechange(option.value);
+            }}
           >
             {option.value}
-            {#if option.original}<span
-                class="provenance ml-2"
-                aria-hidden="true">Original</span
+            {#if option.original || option.inGame}<span
+                class="provenance ms-2"
+                aria-hidden="true"
+                >{option.original
+                  ? option.inGame
+                    ? 'Original · In-game'
+                    : 'Original'
+                  : 'In-game'}</span
               >{/if}
           </button>
         {/each}
@@ -156,12 +264,12 @@
   <div class="grid divide-y">
     {#each CHAMPIONS_STATS as stat (stat)}
       {@const currentVal = values[stat]}
-      {@const remaining = Math.max(0, 66 - total)}
-      {@const canAdd = Math.min(32 - currentVal, remaining)}
+      {@const target = balanceChampionsStat(values, stat)[stat]}
+      {@const delta = target - currentVal}
       <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
         <!-- Top Row: Stat Badge, Quick Buttons, Input & Suffix -->
-        <div class="flex items-center justify-between gap-2">
-          <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div class="flex flex-wrap items-center gap-2">
             <span class="term inline-flex w-12 justify-center">{stat}</span>
             {#if effect && effect.raised === stat}
               <span
@@ -181,34 +289,39 @@
               </span>
             {/if}
             <div class="flex items-center gap-1">
-              <button
-                type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+              <Button
+                variant="quiet"
+                size="dense"
+                class="font-mono text-[11px]"
                 disabled={values[stat] === 0}
                 onclick={() => update(stat, 0)}
               >
                 0
-              </button>
-              <button
-                type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
+              </Button>
+              <Button
+                variant="quiet"
+                size="dense"
+                class="font-mono text-[11px]"
                 disabled={values[stat] === 32}
                 onclick={() => update(stat, 32)}
               >
                 32
-              </button>
-              <button
-                type="button"
-                class="btn h-7 min-h-7 btn-ghost px-2 font-mono text-[11px] btn-xs"
-                disabled={canAdd <= 0}
+              </Button>
+              <Button
+                variant="quiet"
+                size="dense"
+                class="font-mono text-[11px]"
+                disabled={delta === 0}
                 aria-label={`Fill remaining EVs into ${stat}`}
-                title={canAdd > 0
-                  ? `Add remaining ${canAdd} EVs to ${stat}`
-                  : 'No remaining budget'}
-                onclick={() => update(stat, currentVal + canAdd)}
+                title={delta === 0
+                  ? undefined
+                  : delta > 0
+                    ? `Add ${delta} EVs to ${stat}`
+                    : `Remove ${-delta} EVs from ${stat}`}
+                onclick={() => update(stat, target)}
               >
-                {canAdd > 0 ? `+${canAdd}` : 'Fill'}
-              </button>
+                {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : 'Fill'}
+              </Button>
             </div>
           </div>
           <div class="flex items-center gap-1.5">
@@ -236,11 +349,17 @@
           type="range"
           min="0"
           max="32"
+          step="1"
           value={values[stat]}
-          class="range w-full range-xs"
+          class="range h-11 w-full touch-pan-y [--range-thumb-size:16px] range-xs"
+          style:--ev-progress={currentVal / 32}
           oninput={(event) => setStat(stat, event.currentTarget.valueAsNumber)}
           onchange={commitDraft}
           onblur={commitDraft}
+          onpointerdown={(event) => startPointer(event, stat)}
+          onpointermove={(event) => movePointer(event, stat)}
+          onpointerup={finishPointer}
+          onpointercancel={finishPointer}
         />
       </div>
     {/each}
@@ -261,7 +380,7 @@
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Original team first, then your own teams and common catalog spreads.
+      Original team first, then your in-game set and common catalog spreads.
     </p>
   </div>
   {#each spreadSuggestions as option, i (option.spread + option.nature)}
@@ -269,24 +388,33 @@
       resolvedForm.pokemon,
       parseChampionsSpread(option.spread),
       option.nature,
-      teams
+      regulationTeams
     )}
     <button
       type="button"
-      class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-left transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
+      class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-start transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
       option.spread
         ? 'font-semibold'
         : ''}"
-      aria-label={'Use ' + option.nature + ' spread ' + option.spread}
+      aria-label={'Use ' +
+        option.nature +
+        ' spread ' +
+        option.spread +
+        (option.inGame
+          ? option.original
+            ? ' (original team and in-game set)'
+            : ' (in-game set)'
+          : '')}
       aria-describedby={'ev-suggestion-details-' + i}
-      onclick={() => onspreadchange(option.spread, option.nature)}
+      onclick={() => {
+        if (option.inGame) {
+          if (inGameMember) oningame({ kind: 'spread' }, inGameMember);
+        } else onspreadchange(option.spread, option.nature);
+      }}
     >
       <span id={'ev-suggestion-details-' + i} class="sr-only"
         >{option.source} · {option.movedPoints} points moved</span
       >
-      {#if option.original}<span class="provenance" aria-hidden="true"
-          >Original</span
-        >{/if}
       {@render chips(option.spread)}
       <span class="value"
         >{option.nature} · {formatSpreadDelta(option.deltas)}</span
@@ -317,10 +445,12 @@
         {#each tiers as tier (tier.pokemon)}
           <li class="flex items-baseline justify-between gap-3">
             <span class="value">{tier.pokemon} · {tier.medianSpeed}</span>
-            {#if currentSpeed > tier.medianSpeed}<span
-                class="term"
-                title="Unmodified Speed outspeeds this tier">✓</span
-              >{/if}
+            {#if currentSpeed > tier.medianSpeed}
+              <span class="term">
+                <span aria-hidden="true">✓</span>
+                <span class="sr-only">Outspeeds this tier</span>
+              </span>
+            {/if}
           </li>
         {/each}
       </ul>
@@ -329,3 +459,24 @@
 </section>
 
 <EvBenchmarkPanel {member} {index} {currentRegulation} {onspreadchange} />
+
+<style>
+  .range {
+    --range-fill: 0;
+    --ev-rail: linear-gradient(
+      calc(90deg * var(--range-dir, 1)),
+      var(--range-progress)
+        calc(
+          var(--range-thumb-size) / 2 + (100% - var(--range-thumb-size)) *
+            var(--ev-progress)
+        ),
+      var(--range-bg) 0
+    );
+  }
+  .range::-webkit-slider-runnable-track {
+    background: var(--ev-rail);
+  }
+  .range::-moz-range-track {
+    background: var(--ev-rail);
+  }
+</style>

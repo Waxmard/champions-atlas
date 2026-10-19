@@ -1,5 +1,4 @@
 @import 'tailwindcss';
-@import 'tw-animate-css';
 @import '@fontsource-variable/nunito/index.css';
 
 @plugin 'daisyui' {
@@ -32,6 +31,8 @@
   --color-warning: #fff1ba;
   --color-warning-content: #664500;
   --color-error: #ffe4e9;
+  --color-destructive: #a71d39;
+  --color-destructive-content: #ffffff;
   --color-error-content: #a71d39;
   --color-muted: #506580;
   --radius-selector: 9999rem;
@@ -67,6 +68,8 @@
   --color-success-content: #b9f3d9;
   --color-warning: #514420;
   --color-warning-content: #ffe69a;
+  --color-destructive: #ffbdcb;
+  --color-destructive-content: #512d40;
   --color-error: #512d40;
   --color-error-content: #ffbdcb;
   --color-muted: #b3c4dc;
@@ -84,7 +87,6 @@
   --panel-open-dur: 400ms;
   --panel-close-dur: 350ms;
   --panel-translate-y: 8px;
-  --panel-blur: 0px;
   --panel-ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -95,7 +97,7 @@
 
 @layer base {
   * {
-    @apply border-base-300 outline-primary/50;
+    @apply border-base-300 outline-primary;
   }
   html {
     @apply font-sans;
@@ -232,38 +234,90 @@
     line-height: 1.5;
     font-variant-numeric: tabular-nums;
   }
+
+  .option-row {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.625rem;
+    padding-inline: 0.75rem;
+    text-align: start;
+    font-size: 0.875rem;
+  }
+  .option-row:hover {
+    background: color-mix(in oklab, var(--color-base-200) 70%, transparent);
+  }
+  .option-row:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+
+  .nav-pill {
+    display: inline-flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+    border-radius: var(--radius-field);
+    font-size: 0.875rem;
+    font-weight: 700;
+  }
+  .nav-pill:focus-visible {
+    box-shadow: 0 0 0 2px var(--color-primary);
+    outline: none;
+  }
 }
 /* transitions.dev: panel reveal */
 .t-panel-slide {
   transform: translateY(0);
   opacity: 1;
-  filter: blur(0);
   transition:
     transform var(--panel-close-dur) var(--panel-ease),
-    opacity var(--panel-close-dur) var(--panel-ease),
-    filter var(--panel-close-dur) var(--panel-ease);
-  will-change: transform, opacity, filter;
+    opacity var(--panel-close-dur) var(--panel-ease);
 }
 .t-panel-slide[data-motion-ready='true'] {
   transform: translateY(var(--panel-translate-y));
   opacity: 0;
-  filter: blur(var(--panel-blur));
   pointer-events: none;
 }
 .t-panel-slide[data-open='true'] {
   transform: translateY(0);
   opacity: 1;
-  filter: blur(0);
   pointer-events: auto;
   transition:
     transform var(--panel-open-dur) var(--panel-ease),
-    opacity var(--panel-open-dur) var(--panel-ease),
-    filter var(--panel-open-dur) var(--panel-ease);
+    opacity var(--panel-open-dur) var(--panel-ease);
+}
+@keyframes picker-popover-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+.picker-popover-enter[data-state='open'] {
+  animation: picker-popover-enter 150ms ease;
+}
+@keyframes ev-editor-enter {
+  from {
+    opacity: 0;
+  }
+}
+.ev-editor-enter {
+  animation: ev-editor-enter 200ms ease;
+}
+.current-set-save-dialog::backdrop,
+.set-editor-dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .t-panel-slide {
     transition: none !important;
+  }
+
+  .ev-editor-enter,
+  .picker-popover-enter[data-state='open'] {
+    animation: none;
   }
 
   *,

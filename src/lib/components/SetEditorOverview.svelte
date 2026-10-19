@@ -1,15 +1,18 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
+
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import FileText from '@lucide/svelte/icons/file-text';
   import SlidersHorizontal from '@lucide/svelte/icons/sliders-horizontal';
   import Sparkles from '@lucide/svelte/icons/sparkles';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import MovePill from '$lib/components/MovePill.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
-  import UnknownValue from '$lib/components/UnknownValue.svelte';
-  import { Button } from '$lib/components/ui/button';
+  import ItemIcon from '#lib/components/ItemIcon.svelte';
+  import MovePill from '#lib/components/MovePill.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import UnknownValue from '#lib/components/UnknownValue.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
 
   interface Props {
+    inGameSuggestion?: Snippet;
     pokemon: string;
     item: string;
     ability: string;
@@ -37,6 +40,7 @@
     error,
     originalAvailable = false,
     originalReason = '',
+    inGameSuggestion,
     onoriginal,
     onnavigate,
   }: Props = $props();
@@ -44,9 +48,9 @@
   const MOVE_SLOTS = [0, 1, 2, 3];
 </script>
 
-<div class="grid gap-3.5 pr-1 sm:pr-1.5">
+<div class="grid gap-3.5 pe-1 sm:pe-1.5">
   <div
-    class="plate flex items-center justify-between gap-3 p-3.5 pr-4.5 sm:p-4 sm:pr-5"
+    class="plate flex items-center justify-between gap-3 p-3.5 pe-4.5 sm:p-4 sm:pe-5"
     data-editor-section="pokemon"
   >
     <div class="flex min-w-0 items-center gap-3">
@@ -59,9 +63,8 @@
       </div>
     </div>
     <Button
-      variant="outline"
-      size="sm"
-      class="h-11 min-h-11 px-3"
+      variant="secondary"
+      size="touch"
       aria-label="Change Pokémon"
       onclick={() => onnavigate('pokemon')}
     >
@@ -71,8 +74,8 @@
 
   {#if originalAvailable}
     <Button
-      variant="outline"
-      class="min-h-11"
+      variant="secondary"
+      size="touch"
       disabled={!!originalReason}
       aria-describedby={originalReason ? 'original-set-reason' : undefined}
       onclick={onoriginal}>Use original set</Button
@@ -81,9 +84,17 @@
         {originalReason}
       </p>{/if}
   {/if}
+
+  {#if inGameSuggestion}
+    <section aria-label="Set suggestions" class="plate">
+      <ul role="list">
+        {@render inGameSuggestion()}
+      </ul>
+    </section>
+  {/if}
   <button
     type="button"
-    class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 sm:p-4 sm:pe-5"
     aria-label="Edit item, ability, and nature"
     onclick={() => onnavigate('details')}
     data-editor-section="item"
@@ -133,7 +144,7 @@
 
   <button
     type="button"
-    class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 sm:p-4 sm:pe-5"
     aria-label="Edit moves"
     onclick={() => onnavigate('moves')}
     data-editor-section="moves"
@@ -153,10 +164,10 @@
       {#each MOVE_SLOTS as index (index)}
         {@const move = moves[index]?.trim()}
         {#if move}
-          <MovePill {move} size="md" interactive={false} class="w-full" />
+          <MovePill {move} size="md" class="w-full" />
         {:else}
           <div
-            class="flex min-w-0 items-center gap-1.5 border-l-2 py-1 pl-1.5 text-base-content/50"
+            class="flex min-w-0 items-center gap-1.5 border-s-2 py-1 ps-1.5 text-base-content/50"
           >
             <div class="size-3.5 shrink-0 rounded-full bg-base-300"></div>
             <span class="term">Empty slot {index + 1}</span>
@@ -168,7 +179,7 @@
 
   <button
     type="button"
-    class="plate group flex min-h-11 flex-col p-3.5 pr-4.5 text-left hover:bg-base-200/70 sm:p-4 sm:pr-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 sm:p-4 sm:pe-5"
     aria-label="Edit EV spread"
     onclick={() => onnavigate('spread')}
     data-editor-section="spread"
@@ -195,7 +206,7 @@
       {/if}
       <div class="h-2 w-24 shrink-0 overflow-hidden rounded-full bg-base-300">
         <div
-          class="h-full bg-primary transition-all"
+          class="h-full bg-primary transition-[width]"
           style="width: {Math.min(
             100,
             Math.round((currentSpreadTotal / 66) * 100)
@@ -207,13 +218,12 @@
 
   <div class="pt-1 text-center">
     <Button
-      variant="ghost"
-      size="sm"
-      class="min-h-11 text-xs text-base-content/70 hover:text-base-content"
+      variant="quiet"
+      size="touch"
       aria-label="Edit Showdown text"
       onclick={() => onnavigate('text')}
     >
-      <FileText class="mr-1.5 size-3.5" />
+      <FileText class="me-1.5 size-3.5" />
       <span>Advanced: Showdown set text</span>
     </Button>
   </div>

@@ -1,22 +1,28 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import ItemIcon from '$lib/components/ItemIcon.svelte';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import { NATURES } from '$lib/paste';
+  import { normalize, type Member } from '#lib/catalog.js';
+  import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import type { CatalogSuggestion } from '#lib/workbench.js';
+  import ItemIcon from '#lib/components/ItemIcon.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { NATURES } from '#lib/paste.js';
 
   interface Props {
     item: string;
     ability: string;
     nature: string;
     activeSuggestions: string | null;
-    filteredItems: Array<{ value: string; original?: true }>;
-    filteredAbilities: Array<{ value: string; original?: true }>;
+    filteredItems: CatalogSuggestion[];
+    filteredAbilities: CatalogSuggestion[];
+    inGameMember?: Member;
     legacyNature: string | null;
     error: string;
     errorField: EditableSetField | null;
     onitemchange: (val: string) => void;
     onabilitychange: (val: string) => void;
     onnaturechange: (val: string) => void;
+    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onopensuggestions: (field: string) => void;
     onclearsuggestions: () => void;
     onclearerror: () => void;
@@ -30,203 +36,172 @@
     activeSuggestions,
     filteredItems,
     filteredAbilities,
+    inGameMember,
     legacyNature,
     error,
     errorField,
     onitemchange,
     onabilitychange,
     onnaturechange,
+    oningame,
     onopensuggestions,
     onclearsuggestions,
     onclearerror,
     oncommit,
   }: Props = $props();
+  const inGameNature = $derived(
+    NATURES.find(
+      (value) => normalize(value) === normalize(inGameMember?.nature ?? '')
+    ) ?? null
+  );
 </script>
+
+{#snippet detailField(
+  field: 'item' | 'ability',
+  label: string,
+  value: string,
+  placeholder: string,
+  onvaluechange: (value: string) => void,
+  options: CatalogSuggestion[]
+)}
+  <label for={`set-${field}-input`} class="term">{label}</label>
+  <div
+    class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+  >
+    {#if field === 'item'}
+      <ItemIcon item={value} size={20} />
+    {/if}
+    <input
+      id={`set-${field}-input`}
+      class="grow bg-transparent text-sm focus:outline-none"
+      {placeholder}
+      {value}
+      onfocus={() => onopensuggestions(field)}
+      onclick={() => onopensuggestions(field)}
+      oninput={(event) => onvaluechange(event.currentTarget.value)}
+      onblur={(event) => {
+        if (!(
+          event.relatedTarget instanceof HTMLElement &&
+          event.relatedTarget.closest('[data-detail-choice]')
+        ))
+          oncommit();
+      }}
+      onkeydown={(event) => {
+        if (event.key === 'Enter' && !event.isComposing) {
+          event.preventDefault();
+          onclearsuggestions();
+          oncommit();
+        }
+      }}
+    />
+    {#if value}
+      <Button
+        variant="quiet"
+        size="icon-touch"
+        class="-me-2"
+        aria-label={`Clear ${field}`}
+        data-detail-choice
+        onpointerdown={(event) => event.preventDefault()}
+        onclick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          onvaluechange('');
+          oncommit();
+        }}
+      >
+        <X class="size-4" />
+      </Button>
+    {/if}
+  </div>
+
+  {#if activeSuggestions === field}
+    <section
+      id={`set-${field}-suggestions`}
+      aria-label={`${label} suggestions`}
+      class="plate mt-2 max-h-60 overflow-y-auto"
+    >
+      <ul role="list" class="divide-y">
+        {#each options as opt (opt.value)}
+          <li>
+            <button
+              type="button"
+              class="option-row"
+              data-detail-choice
+              onpointerdown={(event) => event.preventDefault()}
+              onclick={() => {
+                if (opt.inGame) {
+                  if (inGameMember) oningame({ kind: field }, inGameMember);
+                  return;
+                }
+                onvaluechange(opt.value);
+                onclearsuggestions();
+                oncommit();
+              }}
+            >
+              {#if field === 'item'}
+                <ItemIcon item={opt.value} size={20} />
+                <span class="value">{opt.value}</span>
+              {:else}
+                {opt.value}
+              {/if}
+              {#if opt.original || opt.inGame}
+                <span class="provenance" class:ms-2={field === 'ability'}>
+                  {opt.original
+                    ? opt.inGame
+                      ? 'Original · In-game'
+                      : 'Original'
+                    : 'In-game'}
+                </span>
+              {/if}
+            </button>
+          </li>
+        {:else}
+          <li class="provenance p-3">No matching suggestions.</li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+{/snippet}
 
 <section class="grid gap-5">
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="min-w-0">
-      <label for="set-item-input" class="term">Item</label>
-      <div
-        class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
-      >
-        <ItemIcon {item} size={20} />
-        <input
-          id="set-item-input"
-          aria-label="Item"
-          role="combobox"
-          aria-expanded={activeSuggestions === 'item'}
-          aria-controls="set-item-suggestions"
-          class="grow bg-transparent text-sm focus:outline-none"
-          placeholder="Custom item"
-          value={item}
-          onfocus={() => onopensuggestions('item')}
-          onclick={() => onopensuggestions('item')}
-          oninput={(e) => onitemchange(e.currentTarget.value)}
-          onblur={(event) => {
-            if (!(
-              event.relatedTarget instanceof HTMLElement &&
-              event.relatedTarget.closest('[data-detail-choice]')
-            ))
-              oncommit();
-          }}
-          onkeydown={(event) => {
-            if (event.key === 'Enter' && !event.isComposing) {
-              event.preventDefault();
-              onclearsuggestions();
-              oncommit();
-            }
-          }}
-        />
-        {#if item}
-          <button
-            type="button"
-            class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
-            aria-label="Clear item"
-            tabindex={activeSuggestions === 'item' ? -1 : 0}
-            data-detail-choice
-            onpointerdown={(event) => event.preventDefault()}
-            onclick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onitemchange('');
-              oncommit();
-            }}
-          >
-            <X class="size-4" />
-          </button>
-        {/if}
-      </div>
-
-      {#if activeSuggestions === 'item'}
-        <section
-          id="set-item-suggestions"
-          aria-label="Item suggestions"
-          class="plate mt-2 max-h-60 overflow-y-auto"
-        >
-          <ul role="list" class="divide-y">
-            {#each filteredItems as opt (opt.value)}
-              <li>
-                <button
-                  type="button"
-                  class="flex min-h-11 items-center gap-2 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-                  data-detail-choice
-                  onpointerdown={(event) => event.preventDefault()}
-                  onclick={() => {
-                    onitemchange(opt.value);
-                    onclearsuggestions();
-                    oncommit();
-                  }}
-                >
-                  <ItemIcon item={opt.value} size={20} />
-                  <span class="value">{opt.value}</span>
-                  {#if opt.original}<span class="provenance">Original</span
-                    >{/if}
-                </button>
-              </li>
-            {:else}
-              <li class="provenance p-3">No matching suggestions.</li>
-            {/each}
-          </ul>
-        </section>
-      {/if}
+      {@render detailField(
+        'item',
+        'Item',
+        item,
+        'Custom item',
+        onitemchange,
+        filteredItems
+      )}
     </div>
 
     <div class="min-w-0">
-      <label for="set-ability-input" class="term">Ability</label>
-      <div
-        class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
-      >
-        <input
-          id="set-ability-input"
-          aria-label="Ability"
-          role="combobox"
-          aria-expanded={activeSuggestions === 'ability'}
-          aria-controls="set-ability-suggestions"
-          class="grow bg-transparent text-sm focus:outline-none"
-          placeholder="Custom ability"
-          value={ability}
-          onfocus={() => onopensuggestions('ability')}
-          onclick={() => onopensuggestions('ability')}
-          oninput={(e) => onabilitychange(e.currentTarget.value)}
-          onblur={(event) => {
-            if (!(
-              event.relatedTarget instanceof HTMLElement &&
-              event.relatedTarget.closest('[data-detail-choice]')
-            ))
-              oncommit();
-          }}
-          onkeydown={(event) => {
-            if (event.key === 'Enter' && !event.isComposing) {
-              event.preventDefault();
-              onclearsuggestions();
-              oncommit();
-            }
-          }}
-        />
-        {#if ability}
-          <button
-            type="button"
-            class="btn -mr-2 size-11 min-h-11 min-w-11 btn-ghost p-0 btn-xs"
-            aria-label="Clear ability"
-            tabindex={activeSuggestions === 'ability' ? -1 : 0}
-            data-detail-choice
-            onpointerdown={(event) => event.preventDefault()}
-            onclick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onabilitychange('');
-              oncommit();
-            }}
-          >
-            <X class="size-4" />
-          </button>
-        {/if}
-      </div>
-
-      {#if activeSuggestions === 'ability'}
-        <section
-          id="set-ability-suggestions"
-          aria-label="Ability suggestions"
-          class="plate mt-2 max-h-60 overflow-y-auto"
-        >
-          <ul role="list" class="divide-y">
-            {#each filteredAbilities as opt (opt.value)}
-              <li>
-                <button
-                  type="button"
-                  class="min-h-11 px-3 text-left text-sm hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary"
-                  data-detail-choice
-                  onpointerdown={(event) => event.preventDefault()}
-                  onclick={() => {
-                    onabilitychange(opt.value);
-                    onclearsuggestions();
-                    oncommit();
-                  }}
-                >
-                  {opt.value}{#if opt.original}<span class="provenance ml-2"
-                      >Original</span
-                    >{/if}
-                </button>
-              </li>
-            {:else}
-              <li class="provenance p-3">No matching suggestions.</li>
-            {/each}
-          </ul>
-        </section>
-      {/if}
+      {@render detailField(
+        'ability',
+        'Ability',
+        ability,
+        'Custom ability',
+        onabilitychange,
+        filteredAbilities
+      )}
     </div>
 
     <div class="min-w-0 sm:col-span-2">
       <label for="set-nature-input" class="term">Nature</label>
       <select
         id="set-nature-input"
-        aria-label="Nature"
         class="select mt-1.5 min-h-11 w-full text-sm"
         value={nature}
         onfocus={onclearsuggestions}
         onchange={(e) => {
-          onnaturechange(e.currentTarget.value);
+          const selected = e.currentTarget.value;
+          if (selected === inGameNature) {
+            if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
+            e.currentTarget.value = nature;
+            return;
+          }
+          onnaturechange(selected);
           onclearerror();
           oncommit();
         }}
@@ -235,8 +210,11 @@
         {#if legacyNature}
           <option value={legacyNature}>{legacyNature}</option>
         {/if}
+        {#if inGameNature && inGameMember}
+          <option value={inGameNature}>{inGameNature} — In-game</option>
+        {/if}
         {#each NATURES as n (n)}
-          <option value={n}>{n}</option>
+          {#if n !== inGameNature}<option value={n}>{n}</option>{/if}
         {/each}
       </select>
     </div>

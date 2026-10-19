@@ -1,8 +1,8 @@
 <script lang="ts">
   import Compass from '@lucide/svelte/icons/compass';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
-  import { Button } from '$lib/components/ui/button';
-  import { signIn, sync } from '$lib/sync.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { signIn, sync } from '#lib/sync.svelte.js';
 
   const signingIn = $derived(sync.status === 'syncing');
 </script>
@@ -32,8 +32,9 @@
 
       {#if sync.configured}
         <Button
-          variant="outline"
-          class="min-h-11 w-full gap-3"
+          variant="secondary"
+          size="touch"
+          class="w-full gap-3"
           onclick={signIn}
           disabled={signingIn}
         >

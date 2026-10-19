@@ -5,6 +5,49 @@ service cloud.firestore {
       function owner() {
         return request.auth != null && request.auth.uid == userId;
       }
+      function currentSetId(id) {
+        return id is string && id.size() > 0 && id.size() <= 1500
+          && id.matches('^[a-z0-9]+$');
+      }
+      function currentSetManifest() {
+        let ids = request.resource.data.setIds;
+        return request.resource.data.keys().hasAll(['schemaVersion', 'setIds', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['schemaVersion', 'setIds', 'updatedAt'])
+          && request.resource.data.schemaVersion == 1
+          && ids is list
+          && ids.size() <= 1500
+          && ids.toSet().size() == ids.size()
+          && request.resource.data.updatedAt is timestamp;
+      }
+      function currentSetText(value) {
+        return value is string && value.size() <= 50000;
+      }
+      function nullableCurrentSetText(value) {
+        return value == null || currentSetText(value);
+      }
+      function validCurrentSetMember(member) {
+        return member is map
+          && member.keys().hasAll(['pokemon', 'item', 'ability', 'moves', 'nature', 'spread'])
+          && currentSetText(member.pokemon)
+          && member.pokemon.size() > 0
+          && nullableCurrentSetText(member.item)
+          && nullableCurrentSetText(member.ability)
+          && nullableCurrentSetText(member.nature)
+          && nullableCurrentSetText(member.spread)
+          && member.moves is list && member.moves.size() <= 4
+          && (member.moves.size() < 1 || currentSetText(member.moves[0]))
+          && (member.moves.size() < 2 || currentSetText(member.moves[1]))
+          && (member.moves.size() < 3 || currentSetText(member.moves[2]))
+          && (member.moves.size() < 4 || currentSetText(member.moves[3]))
+          && (!('set' in member) || currentSetText(member.set));
+      }
+      function currentSetEntry(setId) {
+        return request.resource.data.keys().hasAll(['id', 'member'])
+          && request.resource.data.keys().hasOnly(['id', 'member'])
+          && currentSetId(setId)
+          && request.resource.data.id == setId
+          && validCurrentSetMember(request.resource.data.member);
+      }
       function manifest() {
         return request.resource.data.keys().hasAll(['schemaVersion', 'teamIds', 'updatedAt'])
           && request.resource.data.keys().hasOnly(['schemaVersion', 'teamIds', 'updatedAt'])
@@ -20,6 +63,14 @@ service cloud.firestore {
       match /teams/{teamId} {
         allow read, delete: if owner();
         allow create, update: if owner() && request.resource.data.id == teamId;
+      }
+      match /pokemonSetState/manifest {
+        allow read: if owner();
+        allow create, update: if owner() && currentSetManifest();
+      }
+      match /pokemonSets/{setId} {
+        allow read: if owner();
+        allow create, update: if owner() && currentSetEntry(setId);
       }
     }
   }

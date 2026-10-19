@@ -123,32 +123,3 @@ export function missingRoles(
   }
   return ROLE_FLAGS.filter((role) => !covered.has(role));
 }
-
-const ROLE_LABELS: Record<string, string> = {
-  fast_attacker: 'Fast attacker',
-  bulky_attacker: 'Bulky attacker',
-  win_condition: 'Win condition',
-  support: 'Support',
-  other: 'Other',
-  speed_control: 'Speed control',
-  redirection: 'Redirection',
-  weather: 'Weather',
-  hazard_control: 'Hazard control',
-  disruption: 'Disruption',
-};
-
-const ARCHETYPE_LABELS: Record<string, string> = {
-  rain: 'Rain',
-  sun: 'Sun',
-  sand: 'Sand',
-  snow: 'Snow',
-  trick_room: 'Trick Room',
-  tailwind_offense: 'Tailwind offense',
-  hyper_offense: 'Hyper offense',
-  balance: 'Balance',
-  other: 'Other',
-};
-
-export const roleLabel = (role: string) => ROLE_LABELS[role] ?? role;
-export const archetypeLabel = (archetype: string) =>
-  ARCHETYPE_LABELS[archetype] ?? archetype;

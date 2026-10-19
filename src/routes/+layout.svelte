@@ -7,15 +7,16 @@
   import { page } from '$app/state';
   import { onMount } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
-  import { initSync, pushNow, signOut, sync } from '$lib/sync.svelte';
-  import { claimAutoReload, watchForUpdate } from '$lib/app-version';
-  import { activeTeamKey, readSavedTeams } from '$lib/workbench';
-  import { resolveSavedTeamId, teamsInUse } from '$lib/team-collections';
+  import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
+  import { claimAutoReload, watchForUpdate } from '#lib/app-version.js';
+  import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
+  import { resolveSavedTeamId, teamsInUse } from '#lib/team-collections.js';
 
   let { children } = $props();
   const isHome = $derived(page.url.pathname === resolve('/'));
   const isMyTeams = $derived(
-    page.url.pathname.startsWith(resolve('/my-teams'))
+    page.url.pathname.startsWith(resolve('my-teams')) ||
+      page.url.pathname === resolve('wishlist')
   );
   const isBrowse = $derived(
     isHome ||
@@ -23,12 +24,14 @@
         resolve('/teams/[id]', { id: 'x' }).slice(0, -1)
       )
   );
-  const isLogin = $derived(page.url.pathname === resolve('/login'));
+  const isLogin = $derived(page.url.pathname === resolve('login'));
+
   const brandHref = $derived(
-    isHome || page.url.pathname.startsWith(resolve('/teams/'))
-      ? resolve(`/?${page.url.searchParams}`)
-      : resolve('/?browse=all')
+    isHome || page.url.pathname.startsWith(resolve('teams/'))
+      ? resolve(`?${page.url.searchParams}`)
+      : resolve('?browse=all')
   );
+
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
   const userInitials = $derived(
     userName
@@ -38,7 +41,6 @@
       .map((part) => part[0]!.toUpperCase())
       .join('') || '?'
   );
-
   const lastPageKey = 'champions-atlas:last-page:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   let initialUrl = $state<URL | null>(null);
@@ -62,11 +64,12 @@
       if (url.origin !== page.url.origin) return null;
       const path = url.pathname;
       const detailPrefix = resolve('/teams/[id]', { id: 'x' }).slice(0, -1);
+
       if (
         path !== resolve('/') &&
-        path !== resolve('/my-teams') &&
-        path !== resolve('/wishlist') &&
-        path !== resolve('/my-teams/new') &&
+        path !== resolve('my-teams') &&
+        path !== resolve('wishlist') &&
+        path !== resolve('my-teams/new') &&
         !(
           path.startsWith(detailPrefix) &&
           path.length > detailPrefix.length &&
@@ -74,6 +77,7 @@
         )
       )
         return null;
+
       decodeURIComponent(path);
       return path + url.search + url.hash;
     } catch {
@@ -115,7 +119,8 @@
         null,
         localStorage.getItem(activeTeamKey)
       );
-      if (id) return resolve('/my-teams') + '?team=' + encodeURIComponent(id);
+
+      if (id) return resolve('my-teams') + '?team=' + encodeURIComponent(id);
     } catch {
       return resolve('/');
     }
@@ -139,9 +144,10 @@
       (sync.configured && !sync.authResolved)
     )
       return;
+
     starting = true;
     const incoming = initialUrl.pathname + initialUrl.search + initialUrl.hash;
-    const login = initialUrl.pathname === resolve('/login');
+    const login = initialUrl.pathname === resolve('login');
     const bareRoot = incoming === resolve('/');
     const remembered = bareRoot
       ? storedDestination('local', lastPageKey)
@@ -151,8 +157,9 @@
       : bareRoot
         ? (remembered ?? defaultDestination())
         : incoming;
+
     if (bareRoot || login) {
-      const selected = destination.startsWith(resolve('/my-teams') + '?')
+      const selected = destination.startsWith(resolve('my-teams') + '?')
         ? new URL(destination, page.url.origin).searchParams.get('team')
         : null;
       if (selected) {
@@ -162,9 +169,9 @@
               (team) => team.id === selected
             )
           )
-            destination = resolve('/my-teams');
+            destination = resolve('my-teams');
         } catch {
-          destination = resolve('/my-teams');
+          destination = resolve('my-teams');
         }
       }
     }
@@ -175,13 +182,13 @@
     if (sync.configured && !sync.user) {
       pendingReturn = validDestination(destination);
       if (pendingReturn) updateStorage('session', authReturnKey, pendingReturn);
-      if (!login) await goto(resolve('/login'), { replaceState: true });
+      if (!login) await goto(resolve('login'), { replace: true });
     } else {
       if (destination !== incoming)
-        await goto(destination as ResolvedPathname, { replaceState: true });
+        await goto(destination as ResolvedPathname, { replace: true });
       if (automaticDetail && page.status === 404) {
         updateStorage('local', lastPageKey, null);
-        await goto(resolve('/?browse=all'), { replaceState: true });
+        await goto(resolve('?browse=all'), { replace: true });
       }
       if (login) {
         pendingReturn = null;
@@ -224,10 +231,12 @@
       redirecting
     )
       return;
-    const login = page.url.pathname === resolve('/login');
+
+    const login = page.url.pathname === resolve('login');
+
     if ((sync.user && login) || (!sync.user && !login)) {
       redirecting = true;
-      const destination = sync.user ? returnDestination() : resolve('/login');
+      const destination = sync.user ? returnDestination() : resolve('login');
       if (!sync.user) {
         pendingReturn = validDestination(
           page.url.pathname + page.url.search + page.url.hash
@@ -235,7 +244,7 @@
         if (pendingReturn)
           updateStorage('session', authReturnKey, pendingReturn);
       }
-      void goto(destination as ResolvedPathname, { replaceState: true })
+      void goto(destination as ResolvedPathname, { replace: true })
         .then(() => {
           if (sync.user) {
             pendingReturn = null;
@@ -250,14 +259,16 @@
 
   $effect(() => {
     const url = page.url;
+
     if (
       !startupReady ||
-      url.pathname === resolve('/login') ||
+      url.pathname === resolve('login') ||
       (url.pathname === resolve('/') && !url.search && !url.hash) ||
       page.status >= 400 ||
       (sync.configured && !sync.user)
     )
       return;
+
     updateStorage('local', lastPageKey, url.pathname + url.search + url.hash);
   });
   $effect(() => {
@@ -272,7 +283,7 @@
 
 <a
   href="#main"
-  class="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:border focus:bg-base-100 focus:p-3"
+  class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:border focus:bg-base-100 focus:p-3"
   >Skip to content</a
 >
 {#if isLogin}
@@ -292,10 +303,7 @@
     <div
       class="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4 sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
     >
-      <a
-        href={brandHref}
-        class="flex min-h-11 items-center rounded-[var(--radius-field)] px-2 text-base-content outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
-      >
+      <a href={brandHref} class="nav-pill text-base-content hover:bg-base-200">
         <span
           class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
           >Champion's Atlas</span
@@ -308,14 +316,14 @@
         <a
           href={brandHref}
           aria-current={isBrowse ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isBrowse
+          class="nav-pill {isBrowse
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">Browse</a
         >
         <a
-          href={resolve('/my-teams')}
+          href={resolve('my-teams')}
           aria-current={isMyTeams ? 'page' : undefined}
-          class="inline-flex min-h-11 items-center justify-center rounded-[var(--radius-field)] px-3 text-sm font-bold outline-none focus-visible:ring-2 focus-visible:ring-primary {isMyTeams
+          class="nav-pill {isMyTeams
             ? 'bg-info text-info-content'
             : 'text-primary hover:bg-info'}">My teams</a
         >
@@ -376,9 +384,11 @@
                   class="z-50 min-w-56 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
                 >
                   <div class="px-2 py-1.5">
-                    <p class="truncate text-sm font-semibold">{userName}</p>
+                    <p class="text-sm font-semibold wrap-anywhere">
+                      {userName}
+                    </p>
                     {#if sync.user.email && sync.user.email !== userName}<p
-                        class="provenance truncate"
+                        class="provenance wrap-anywhere"
                       >
                         {sync.user.email}
                       </p>{/if}
@@ -394,13 +404,13 @@
                     </p>
                     <DropdownMenu.Item
                       onSelect={() => void pushNow()}
-                      class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-base-200"
+                      class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-info data-highlighted:text-info-content"
                       >Retry sync</DropdownMenu.Item
                     >
                   {/if}
                   <DropdownMenu.Item
                     onSelect={signOut}
-                    class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-base-200"
+                    class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-info data-highlighted:text-info-content"
                     >Sign out</DropdownMenu.Item
                   >
                 </DropdownMenu.Content>

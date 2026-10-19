@@ -2,15 +2,14 @@
   import type { Snippet } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import ArrowUpRight from '@lucide/svelte/icons/arrow-up-right';
   import {
     bestEvidence,
     evidenceGrade,
     isCustomRulesTeam,
     regulationLabel,
     type Team,
-  } from '$lib/catalog';
-  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
+  } from '#lib/catalog.js';
+  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
@@ -48,7 +47,7 @@
     )
       return;
     event.preventDefault();
-    void goto(resolve(`/teams/${team.id}${query}`), {
+    void goto(resolve(`teams/${team.id}${query}`), {
       state: { fromCatalog: true },
     });
   }
@@ -59,7 +58,7 @@
     {#if showRegulation}<span class="term"
         >{regulationLabel(team.regulation)}</span
       >{/if}
-    <span class="provenance ml-auto shrink-0">{team.publishedAt}</span>
+    <span class="provenance ms-auto shrink-0">{team.publishedAt}</span>
   </div>
   <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
     {team.name}
@@ -79,38 +78,57 @@
       </li>
     {/each}
   </ul>
-  <div class="mt-3.5 flex items-start justify-between gap-3 border-t pt-2.5">
-    <div class="min-w-0">
-      <span class="stamp" data-grade={grade}>{result.label}</span>
-      {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
-          {evidenceContext}
-        </p>{/if}
-      {#if custom}<p class="term mt-1">Custom rules</p>{/if}
-    </div>
-    {#if detailAvailable}<ArrowUpRight
-        class="mt-0.5 size-4 shrink-0 text-base-content/60"
-        aria-hidden="true"
-      />{/if}
+{/snippet}
+
+{#snippet resultEvidence()}
+  <div class="min-w-0">
+    <span class="stamp" data-grade={grade}>{result.label}</span>
+    {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
+        {evidenceContext}
+      </p>{/if}
+    {#if custom}<p class="term mt-1">Custom rules</p>{/if}
+    {#if !detailAvailable}
+      <p class="provenance mt-1">
+        No longer in the catalog. Your saved team is still available.
+      </p>
+    {/if}
   </div>
 {/snippet}
 
 <article
-  class="plate relative min-w-0 overflow-hidden transition-colors duration-200 hover:border-primary"
+  class="plate relative flex min-w-0 flex-col overflow-hidden transition-colors duration-200 hover:border-primary"
 >
   {#if detailAvailable}
     <a
-      href={resolve(`/teams/${team.id}${query}`)}
+      href={resolve(`teams/${team.id}${query}`)}
       onclick={open}
-      class="block rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+      class="block flex-1 rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
     >
       {@render content()}
     </a>
   {:else}
-    <div class="p-4">{@render content()}</div>
+    <div class="flex-1 p-4">{@render content()}</div>
   {/if}
-  {#if actions}
-    <div class="flex flex-wrap gap-2 border-t px-4 py-3">
-      {@render actions()}
-    </div>
-  {/if}
+  <div
+    class="mx-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t py-2.5"
+  >
+    {#if detailAvailable}
+      <a
+        href={resolve(`teams/${team.id}${query}`)}
+        onclick={open}
+        class="min-w-0 flex-1 rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        {@render resultEvidence()}
+      </a>
+    {:else}
+      <div class="min-w-0 flex-1">
+        {@render resultEvidence()}
+      </div>
+    {/if}
+    {#if actions}
+      <div class="ms-auto flex shrink-0 items-center gap-1.5">
+        {@render actions()}
+      </div>
+    {/if}
+  </div>
 </article>

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { getTypeIcon } from '$lib/types';
+  import { getTypeIcon } from '#lib/types.js';
 
   interface Props {
     type: string;

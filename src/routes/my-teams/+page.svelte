@@ -4,17 +4,22 @@
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
-  import MemberCard from '$lib/components/MemberCard.svelte';
-  import type { EditableSetField } from '$lib/components/MemberCard.svelte';
-  import TeamPicker from '$lib/components/TeamPicker.svelte';
-  import PokemonPicker from '$lib/components/PokemonPicker.svelte';
-  import PokemonSprite from '$lib/components/PokemonSprite.svelte';
+  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
+  import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
+  import TeamPicker from '#lib/components/TeamPicker.svelte';
+  import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
+  import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
+  import Copy from '@lucide/svelte/icons/copy';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
-  import { Button } from '$lib/components/ui/button';
-  import SetEditorSheet from '$lib/components/SetEditorSheet.svelte';
-  import TeamHistoryPanel from '$lib/components/TeamHistoryPanel.svelte';
-  import { canonicalSnapshot, restoreTeam } from '$lib/team-history';
-  import { copyText } from '$lib/clipboard';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
+  import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
+  import { canonicalSnapshot, restoreTeam } from '#lib/team-history.js';
+  import { copyText } from '#lib/clipboard.js';
   import {
     bestEvidence,
     evidenceGrade,
@@ -22,9 +27,9 @@
     regulationLabel,
     type Member,
     type Team,
-  } from '$lib/catalog';
-  import { getPokemonTypes, TYPE_COLORS } from '$lib/types';
-  import type { TeamTagsIndex } from '$lib/tags';
+  } from '#lib/catalog.js';
+  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
+  import type { TeamTagsIndex } from '#lib/tags.js';
   import {
     activeTeamKey,
     deleteTeam,
@@ -36,13 +41,10 @@
     saveTeam,
     swapSuggestions,
     type SavedTeam,
-  } from '$lib/workbench';
-  import { pushNow, sync } from '$lib/sync.svelte';
-  import {
-    liveInUseTeam,
-    resolveSavedTeamId,
-    teamsInUse,
-  } from '$lib/team-collections';
+  } from '#lib/workbench.js';
+  import { pushNow, sync } from '#lib/sync.svelte.js';
+  import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
+  import * as collections from '#lib/team-collections.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -52,14 +54,16 @@
   let visitBaseline = $state<{ id: string; members: Member[] } | null>(null);
   let ready = $state(false),
     message = $state(''),
-    storageError = $state('');
-  let deleting = $state(false);
-  let showExport = $state(false);
+    errorMessage = $state(''),
+    nameError = $state(''),
+    storageError = $state(''),
+    deleting = $state(false),
+    showExport = $state(false),
+    stale = $state(false);
   let activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
-    editorPending = $state(false);
-  let editorMember = $state<Member | null>(null);
-  let stale = $state(false);
+    editorPending = $state(false),
+    editorMember = $state<Member | null>(null);
   let editorRef = $state<
     | {
         focusInitialSection: () => void;
@@ -68,10 +72,10 @@
       }
     | undefined
   >();
-  let pendingSpecies = $state<string | null>(null);
-  let showSwapPicker = $state(false);
-  let swapUnavailable = $state(false);
-  let appliedRevision = 0;
+  let pendingSpecies = $state<string | null>(null),
+    showSwapPicker = $state(false),
+    swapUnavailable = $state(false),
+    appliedRevision = 0;
   const teams = $derived(data.catalog.teams as Team[]);
   const allSpecies = $derived(
     [
@@ -114,13 +118,13 @@
     navigate = true
   ) {
     try {
-      saved = teamsInUse(readSavedTeams(localStorage));
+      saved = collections.teamsInUse(readSavedTeams(localStorage));
       storageError = '';
       const activeId =
         activeOverride === undefined
           ? localStorage.getItem(activeTeamKey)
           : activeOverride;
-      const resolvedId = resolveSavedTeamId(saved, id, activeId);
+      const resolvedId = collections.resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
       baseline = entry ? contentSnapshot(entry) : '';
@@ -136,10 +140,11 @@
         localStorage.removeItem(activeTeamKey);
       if (navigate && (entry || !id)) {
         const destination = entry
-          ? resolve('/my-teams') + '?team=' + encodeURIComponent(entry.id)
-          : resolve('/my-teams');
+          ? resolve('my-teams') + '?team=' + encodeURIComponent(entry.id)
+          : resolve('my-teams');
+
         if (page.url.pathname + page.url.search !== destination)
-          void goto(destination as ResolvedPathname, { replaceState: true });
+          void goto(destination as ResolvedPathname, { replace: true });
       }
       showExport = false;
       activeEditIndex = null;
@@ -150,9 +155,11 @@
       showSwapPicker = false;
       swapUnavailable = false;
       message =
-        id && !entry && !resolveSavedTeamId(saved, null, activeId)
+        id && !entry && !collections.resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
           : '';
+      errorMessage = '';
+      nameError = '';
     } catch {
       storageError =
         'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
@@ -197,10 +204,13 @@
       (sync.revision === appliedRevision && !stale)
     )
       return;
+
     appliedRevision = sync.revision;
     untrack(() => openSaved(draft?.id ?? page.url.searchParams.get('team')));
   });
-  beforeNavigate(({ cancel, willUnload }) => {
+
+  beforeNavigate(({ cancel, willUnload, shallow, type }) => {
+    if (shallow && type === 'goto') return;
     if (willUnload) return;
     if (dirty && !confirm('Discard unsaved input?')) cancel();
   });
@@ -209,13 +219,10 @@
   async function selectTeam(id: string): Promise<boolean> {
     persistIfDirty();
     try {
-      await goto(
-        (resolve('/my-teams') +
-          '?team=' +
-          encodeURIComponent(id)) as ResolvedPathname
-      );
+      await goto(resolve(`my-teams?team=${encodeURIComponent(id)}`));
     } catch {
-      message = 'Could not open that team. Your current team is unchanged.';
+      errorMessage =
+        'Could not open that team. Your current team is unchanged.';
       return false;
     }
     await tick();
@@ -223,11 +230,13 @@
   }
   function blurName(event: FocusEvent) {
     const target = event.relatedTarget;
+
     if (
       pickerPress ||
       (target instanceof Element && target.closest('[data-team-picker]'))
     )
       return;
+
     saveTeamName();
   }
 
@@ -237,26 +246,30 @@
   ): boolean {
     if (!draft) return false;
     try {
-      const latest = liveInUseTeam(localStorage, draft!.id);
+      const latest = collections.liveInUseTeam(localStorage, draft!.id);
       if (!latest || contentSnapshot(latest) !== baseline) {
         stale = true;
-        message =
+        message = '';
+        errorMessage =
           'This team changed elsewhere. Close and reopen the editor before saving.';
         return false;
       }
       const next = patch(latest);
       const pendingName = draft.name;
-      saved = teamsInUse(saveTeam(localStorage, next));
+      saved = collections.teamsInUse(saveTeam(localStorage, next));
       const persisted = saved.find(({ id }) => id === next.id)!;
       baseline = contentSnapshot(persisted);
       draft = structuredClone($state.snapshot(persisted));
       if (!saveName) draft.name = pendingName;
       storageError = '';
+      nameError = '';
+      errorMessage = '';
       message = 'Saved on this device.';
       void pushNow();
       return true;
     } catch {
-      message =
+      message = '';
+      errorMessage =
         'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
       return false;
     }
@@ -265,9 +278,11 @@
     if (!draft) return;
     const name = draft.name.trim();
     if (!name) {
-      message = 'Give this team a name.';
+      message = errorMessage = '';
+      nameError = 'Give this team a name.';
       return;
     }
+    nameError = '';
     if (baseline && name === JSON.parse(baseline).name) {
       draft.name = name;
       return;
@@ -324,6 +339,7 @@
   function canRevertSlot(index: number): boolean {
     const target = visitBaseline?.members[index];
     if (!draft || editing || deleting || !target) return false;
+
     return (
       canonicalSnapshot(target) !== canonicalSnapshot(draft.members[index]) &&
       !slotRevertReason(index)
@@ -356,31 +372,13 @@
     editorMember = structuredClone($state.snapshot(draft!.members[index]));
   };
   function openSetDialog(node: HTMLDialogElement) {
-    const { scrollX, scrollY } = window;
-    const body = document.body;
-    const styles = {
-      position: body.style.position,
-      top: body.style.top,
-      left: body.style.left,
-      width: body.style.width,
-      overflow: body.style.overflow,
-    };
-    body.style.position = 'fixed';
-    body.style.top = `-${scrollY}px`;
-    body.style.left = `-${scrollX}px`;
-    body.style.width = '100%';
-    body.style.overflow = 'hidden';
+    const restoreScroll = lockBodyScroll();
     node.showModal();
     void tick().then(() => editorRef?.focusInitialSection());
     return {
       destroy() {
         if (node.open) node.close();
-        body.style.position = styles.position;
-        body.style.top = styles.top;
-        body.style.left = styles.left;
-        body.style.width = styles.width;
-        body.style.overflow = styles.overflow;
-        window.scrollTo(scrollX, scrollY);
+        restoreScroll();
       },
     };
   }
@@ -432,6 +430,9 @@
     const ok = await copyText(exportPaste(draft.members));
     message = ok
       ? 'Team text copied. Unknown fields are omitted; no stats were guessed.'
+      : '';
+    errorMessage = ok
+      ? ''
       : 'Clipboard unavailable. Select and copy the export text below.';
   }
   async function removeSelectedTeam() {
@@ -445,6 +446,7 @@
     )
       return;
     deleting = true;
+    message = errorMessage = '';
     let previousActiveId: string | null;
     try {
       previousActiveId = localStorage.getItem(activeTeamKey);
@@ -453,29 +455,27 @@
     }
     let remaining: SavedTeam[];
     try {
-      if (!liveInUseTeam(localStorage, id)) {
-        message =
+      if (!collections.liveInUseTeam(localStorage, id)) {
+        errorMessage =
           'This team changed elsewhere. Reopen My teams before deleting.';
         deleting = false;
         return;
       }
-      remaining = teamsInUse(deleteTeam(localStorage, id));
+      remaining = collections.teamsInUse(deleteTeam(localStorage, id));
     } catch {
-      message =
+      errorMessage =
         'Could not delete team. Existing saved teams have been left untouched.';
       deleting = false;
       return;
     }
-    draft = null;
+    draft = activeEditIndex = editorMember = pendingSpecies = null;
     baseline = '';
-    activeEditIndex = null;
-    editorPending = false;
-    editorMember = null;
-    pendingSpecies = null;
-    showSwapPicker = false;
-    swapUnavailable = false;
-    showExport = false;
-    const replacement = resolveSavedTeamId(remaining, null, previousActiveId);
+    editorPending = showSwapPicker = swapUnavailable = showExport = false;
+    const replacement = collections.resolveSavedTeamId(
+      remaining,
+      null,
+      previousActiveId
+    );
     let activeFailed = false;
     try {
       if (replacement) localStorage.setItem(activeTeamKey, replacement);
@@ -487,16 +487,17 @@
     try {
       await goto(
         (replacement
-          ? resolve('/my-teams') + '?team=' + encodeURIComponent(replacement)
-          : resolve('/my-teams')) as ResolvedPathname,
-        { replaceState: true }
+          ? resolve('my-teams') + '?team=' + encodeURIComponent(replacement)
+          : resolve('my-teams')) as ResolvedPathname,
+        { replace: true }
       );
     } catch {
       activeFailed = true;
     }
-    message = activeFailed
+    message = 'Team deleted.';
+    errorMessage = activeFailed
       ? 'Team deleted, but the active team could not be remembered.'
-      : 'Team deleted.';
+      : '';
     void pushNow();
     deleting = false;
     await tick();
@@ -507,35 +508,22 @@
 </script>
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
+
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <header>
-    <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-    >
-      My teams
-    </h1>
-    <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      Keep your original. Explore changes. Save your own version.
-    </p>
-  </header>
-  <div class="mt-4 flex flex-wrap gap-2.5">
-    <Button href={resolve('/my-teams/new')} class="min-h-11 px-4"
-      >Add custom team</Button
-    >
-    <Button href={resolve('/wishlist')} variant="outline" class="min-h-11 px-4"
-      >Wishlist</Button
-    >
-  </div>
-  {#if storageError}<p
+  <SavedCollectionHeader
+    collection="my-teams"
+    title="My teams"
+    description="Keep your original. Explore changes. Save your own version."
+  />
+  {#if storageError || errorMessage}<p
       role="alert"
       class="plate mt-5 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >
-      {storageError}
+      {storageError || errorMessage}
     </p>{/if}
-  {#if !ready}<p class="mt-8 text-[0.9375rem] text-base-content/70">
+  {#if !ready}
+    <p class="mt-8 text-[0.9375rem] text-base-content/70">
       Loading saved teams…
     </p>
   {:else if !storageError}
@@ -561,11 +549,9 @@
         No saved teams yet. Open a catalog team and choose “Use this team”.
       </p>
     {/if}
-    <p
-      role="status"
-      aria-live="polite"
-      class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70"
-    >
+  {/if}
+  {#if ready && !storageError}
+    <p role="status" class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70">
       {message}
     </p>
     {#if draft}
@@ -577,10 +563,10 @@
         current
       )}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
-        <header class="flex items-start gap-3 border-b pb-4">
+        <header class="flex items-start justify-between gap-3 border-b pb-4">
           <div class="min-w-0">
             <h2
-              class="text-[0.9375rem] leading-tight font-bold wrap-break-word text-base-content/70"
+              class="text-xl leading-tight font-extrabold wrap-break-word text-base-content sm:text-[1.375rem]"
             >
               {draft.name}
             </h2>
@@ -598,6 +584,17 @@
               {/if}
             </div>
           </div>
+          <Button
+            variant="quiet"
+            size="icon-touch"
+            class="shrink-0 text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
+            aria-label="Delete team"
+            title="Delete team"
+            disabled={editing || deleting}
+            onclick={removeSelectedTeam}
+          >
+            <Trash2 class="size-4" aria-hidden="true" />
+          </Button>
         </header>
         <ul
           class="mt-4 grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6"
@@ -627,78 +624,93 @@
             </li>
           {/each}
         </ul>
-        <div class="mt-4 flex flex-wrap items-end justify-between gap-4">
-          <label class="term block w-full max-w-xl"
-            >Team name<input
-              class="input mt-2 min-h-11 w-full sm:text-sm"
-              maxlength="200"
-              bind:value={draft.name}
-              onblur={blurName}
-              onkeydown={(e) => {
-                if (e.key === 'Enter') e.currentTarget.blur();
-              }}
-            /></label
-          >
-          <div class="flex flex-wrap gap-2">
+        <div
+          class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
+        >
+          <div class="w-full max-w-xl flex-1">
+            <label class="term block"
+              >Team name
+              <input
+                class="input mt-1.5 min-h-11 w-full sm:text-sm"
+                maxlength="200"
+                aria-invalid={nameError ? 'true' : undefined}
+                aria-describedby="team-name-error"
+                bind:value={draft.name}
+                oninput={() => (nameError = '')}
+                onblur={blurName}
+                onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+              />
+            </label>
+            <p id="team-name-error" class="mt-1 text-sm text-error-content">
+              {nameError}
+            </p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <CurrentSetSaveButton
+              teamId={draft.id}
+              {baseline}
+              members={draft.members}
+              disabled={editing || deleting || stale}
+            />
             <Button
-              variant="outline"
-              class="min-h-11"
+              variant="secondary"
+              size="touch"
+              data-team-action="copy"
               disabled={editing || deleting}
-              onclick={copyPaste}>Copy team text</Button
+              onclick={copyPaste}
             >
-            <Button
-              variant="outline"
-              class="min-h-11 text-base-content"
-              disabled={editing || deleting}
-              onclick={removeSelectedTeam}>Delete team</Button
-            >
+              <Copy class="size-4" aria-hidden="true" />
+              <span>Copy team text</span>
+            </Button>
+            {#if !pendingSpecies && !showSwapPicker}
+              <Button
+                variant="secondary"
+                size="touch"
+                disabled={editing}
+                onclick={() => (showSwapPicker = true)}
+              >
+                <ArrowLeftRight class="size-4" aria-hidden="true" />
+                <span>Change a Pokémon</span>
+              </Button>
+            {/if}
           </div>
         </div>
-        <div class="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
+        <div class="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
           <p class="provenance">
             {dirty ? 'Unsaved input.' : 'Saved on this device.'}
           </p>
           {#if draft.name !== draft.original.name}
             <p class="provenance">Original: {draft.original.name}</p>
           {/if}
+          <p class="provenance">
+            Editing does not create a working rental code.
+          </p>
         </div>
-        <p class="provenance mt-1.5">
-          Editing does not create a working rental code.
-        </p>
-        <div class="mt-5">
-          {#if pendingSpecies}
-            <div
-              class="t-panel-slide input flex h-12 items-center justify-between gap-2"
-              use:revealPanel
-            >
-              <span>{pendingSpecies}</span>
-              <button
-                type="button"
-                class="btn size-11 min-h-11 min-w-11 btn-ghost p-0"
-                aria-label="Clear selected Pokémon"
-                onclick={cancelSpeciesSwap}><X class="size-4" /></button
-              >
-            </div>
-          {:else if showSwapPicker}
-            <div class="t-panel-slide" use:revealPanel>
-              <PokemonPicker
-                options={availableSpecies}
-                onselect={startSpeciesSwap}
-                disabled={editing}
-                label="Change a Pokémon"
-                placeholder="Choose a Pokémon to swap in…"
-                disabledPlaceholder="Finish editing first"
-              />
-            </div>
-          {:else}
+        {#if pendingSpecies}
+          <div
+            class="t-panel-slide input mt-4 flex h-12 items-center justify-between gap-2"
+            use:revealPanel
+          >
+            <span>{pendingSpecies}</span>
             <Button
-              variant="outline"
-              class="min-h-11"
-              disabled={editing}
-              onclick={() => (showSwapPicker = true)}>Change a Pokémon</Button
+              variant="quiet"
+              size="icon-touch"
+              aria-label="Clear selected Pokémon"
+              onclick={cancelSpeciesSwap}><X class="size-4" /></Button
             >
-          {/if}
-        </div>
+          </div>
+        {:else if showSwapPicker}
+          <div class="t-panel-slide mt-4" use:revealPanel>
+            <PokemonPicker
+              options={availableSpecies}
+              onselect={startSpeciesSwap}
+              disabled={editing}
+              label="Change a Pokémon"
+              placeholder="Choose a Pokémon to swap in…"
+              disabledPlaceholder="Finish editing first"
+            />
+          </div>
+        {/if}
         {#if swapUnavailable && pendingSpecies}
           <p class="provenance mt-2" role="status">
             No catalog team with {pendingSpecies} shares a remaining teammate.
@@ -723,9 +735,12 @@
                 : 'hover:border-primary/40'}"
               aria-label={`${member.pokemon} set`}
             >
-              <MemberCard
-                {member}
-                editable={true}
+              <MemberCurrentSetControls
+                teamId={draft.id}
+                {baseline}
+                members={draft.members}
+                memberIndex={index}
+                disabled={editing || deleting || stale}
                 {editing}
                 onedit={(field) => openSetEditor(index, field)}
                 onrevert={() => revertSlot(index)}
@@ -769,13 +784,6 @@
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={data.tags as TeamTagsIndex}
-        ownTeams={saved.map(({ id, name, original, members }) => ({
-          id,
-          name,
-          regulation: original.regulation,
-          members,
-        }))}
-        excludeOwnTeamId={draft.id}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}
@@ -783,9 +791,3 @@
     </dialog>
   {/if}
 </main>
-
-<style>
-  :global(dialog.set-editor-dialog::backdrop) {
-    background: rgb(0 0 0 / 0.5);
-  }
-</style>

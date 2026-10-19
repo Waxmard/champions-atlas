@@ -2,28 +2,30 @@
   import { afterNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
-  import { SvelteSet, SvelteURLSearchParams } from 'svelte/reactivity';
+  import { SvelteSet } from 'svelte/reactivity';
   import { onMount } from 'svelte';
+  import Bookmark from '@lucide/svelte/icons/bookmark';
+  import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
-  import PokemonPicker from '$lib/components/PokemonPicker.svelte';
-  import SpeciesLabel from '$lib/components/SpeciesLabel.svelte';
-  import TeamCard from '$lib/components/TeamCard.svelte';
-  import TypeFilter from '$lib/components/TypeFilter.svelte';
+  import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
+  import TeamCard from '#lib/components/TeamCard.svelte';
+  import TypeFilter from '#lib/components/TypeFilter.svelte';
   import {
     getPokemonTypes,
     getTypeIcon,
     TYPE_COLORS,
     type PokemonType,
-  } from '$lib/types';
-  import { browseStorageKey, type SavedTeam } from '$lib/workbench';
+  } from '#lib/types.js';
+  import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
     wishlistCatalogTeam,
-  } from '$lib/saved-team-actions';
-  import { sync } from '$lib/sync.svelte';
-  import { Button } from '$lib/components/ui/button';
+  } from '#lib/saved-team-actions.js';
+  import { sync } from '#lib/sync.svelte.js';
+  import { Button } from '#lib/components/ui/button/index.js';
   import {
     readFilters,
     writeFilters,
@@ -35,7 +37,7 @@
     pokemonId,
     type MemberFilter,
     type Team,
-  } from '$lib/catalog';
+  } from '#lib/catalog.js';
   import type { PageData } from './$types';
 
   const browseKeys = ['member', 'regulation', 'sort', 'page', 'type', 'custom'];
@@ -66,7 +68,10 @@
   );
   const filterState = $derived.by(() => {
     try {
-      return { filters: readFilters(page.url.searchParams), error: '' };
+      return {
+        filters: readFilters(new URL(page.url.href).searchParams),
+        error: '',
+      };
     } catch {
       return {
         filters: [],
@@ -156,8 +161,10 @@
     result.set('sort', params.get('sort') === 'recent' ? 'recent' : 'priority');
     if (params.get('custom') === '1') result.set('custom', '1');
     const pageValue = params.get('page');
+
     if (pageValue && /^\d+$/.test(pageValue) && Number(pageValue) > 1)
       result.set('page', pageValue);
+
     return result;
   }
 
@@ -169,14 +176,16 @@
     }
   }
 
-  function navigate(params: URLSearchParams, noScroll = true) {
+  function navigate(params: URLSearchParams, preservePosition = true) {
     const canonical = browseParams(params);
     rememberBrowse(canonical);
     const query = canonical.toString();
-    void goto(resolve(`/?${query}`), {
-      replaceState: true,
-      noScroll,
-      keepFocus: true,
+
+    void goto(resolve(`?${query}`), {
+      replace: true,
+      reset: false,
+    }).then(() => {
+      if (!preservePosition) window.scrollTo(0, 0);
     });
   }
 
@@ -185,7 +194,7 @@
 
     if (browseKeys.some((key) => page.url.searchParams.has(key))) {
       try {
-        rememberBrowse(browseParams(page.url.searchParams));
+        rememberBrowse(browseParams(new URL(page.url.href).searchParams));
       } catch {
         // Invalid explicit links stay visible and do not replace saved filters.
       }
@@ -241,7 +250,7 @@
     pending.delete(team.id);
   }
   function changeFilters(next: MemberFilter[]) {
-    navigate(writeFilters(page.url.searchParams, next));
+    navigate(writeFilters(new URL(page.url.href).searchParams, next));
   }
   function addPokemon(pokemon: string) {
     pokemon = browsePokemon(pokemon);
@@ -275,7 +284,7 @@
     return getMemberOptions(teams, pokemon, field);
   }
   function changeOption(key: string, value: string) {
-    const params = new SvelteURLSearchParams(page.url.searchParams);
+    const params = new URL(page.url.href).searchParams;
     params.set(key, value);
     if (key !== 'page') params.delete('page');
     navigate(params, key !== 'page');
@@ -286,7 +295,7 @@
   }
 
   function setTypes(next: PokemonType[]) {
-    const params = new SvelteURLSearchParams(page.url.searchParams);
+    const params = new URL(page.url.href).searchParams;
     params.delete('type');
     for (const type of next) params.append('type', type.toLowerCase());
     params.delete('page');
@@ -329,18 +338,18 @@
   <p role="status" aria-live="polite" class="sr-only">{status}</p>
 
   <div class="mt-4">
-    <button
+    <Button
       type="button"
+      variant="secondary"
       aria-expanded={typeOpen}
       onclick={() => (typeOpen = !typeOpen)}
-      class="btn min-h-11 gap-2 btn-outline"
     >
       <Filter class="size-4 text-base-content/60" aria-hidden="true" />
       Filter by type
       {#if selectedTypes.length}<span class="badge badge-primary"
           >{selectedTypes.length}</span
         >{/if}
-    </button>
+    </Button>
     {#if typeOpen}
       <div class="mt-2">
         <TypeFilter
@@ -354,18 +363,18 @@
       <div class="mt-2 flex flex-wrap gap-1.5">
         {#each selectedTypes as type (type)}
           <span
-            class="inline-flex items-center gap-1.5 border border-l-[3px] border-base-300 bg-base-100 py-1 pr-1 pl-2 text-[0.8125rem]"
-            style="border-left-color: {TYPE_COLORS[type]}"
+            class="inline-flex items-center gap-1.5 border border-s-[3px] border-base-300 bg-base-100 py-1 ps-2 pe-1 text-[0.8125rem]"
+            style="border-inline-start-color: {TYPE_COLORS[type]}"
           >
             <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
               class="font-medium">{type}</span
             >
-            <button
-              type="button"
+            <Button
+              variant="quiet"
+              size="icon-compact"
               aria-label={`Remove ${type} type filter`}
               onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
-              class="grid size-11 place-items-center rounded-full text-base-content/60 hover:text-base-content"
-              ><X class="size-3.5" aria-hidden="true" /></button
+              ><X class="size-3.5" aria-hidden="true" /></Button
             >
           </span>
         {/each}
@@ -389,7 +398,7 @@
       {#each filters as filter, index (filter.pokemon)}
         <section
           class="plate min-w-0 px-4 pt-3 pb-4"
-          style="border-left: 3px solid {TYPE_COLORS[
+          style="border-inline-start: 3px solid {TYPE_COLORS[
             getPokemonTypes(filter.pokemon)[0]
           ]}"
           aria-label={`${filter.pokemon} constraints`}
@@ -404,9 +413,9 @@
             </div>
             <Button
               type="button"
-              variant="ghost"
-              size="icon"
-              class="size-11 shrink-0"
+              variant="quiet"
+              size="icon-compact"
+              class="shrink-0"
               aria-label={`Remove ${filter.pokemon}`}
               onclick={() =>
                 changeFilters(filters.filter((_, i) => i !== index))}
@@ -529,7 +538,7 @@
         name="custom"
         value="1"
         autocomplete="off"
-        class="size-5 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
         checked={includeCustomRules}
         disabled={!ready}
         onchange={(event) =>
@@ -550,15 +559,15 @@
       </p>
       {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || includeCustomRules || filterState.error}<Button
           type="button"
-          variant="ghost"
-          class="min-h-11 px-2"
+          variant="quiet"
           disabled={!ready}
           onclick={clearFilters}>Clear filters</Button
         >{/if}
     </div>
     {#if results.length}
       <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {#each visible as team (team.id)}<TeamCard
+        {#each visible as team (team.id)}
+          <TeamCard
             {team}
             currentRegulation={current}
             showRegulation={regulation === 'all'}
@@ -567,17 +576,27 @@
             {#snippet actions()}
               {@const busy =
                 !ready || savedError !== '' || pending.has(team.id)}
+              {@const isWishlisted = wishlisted.has(team.id)}
               <Button
                 type="button"
-                variant="outline"
-                class="min-h-11 px-4"
-                disabled={busy || wishlisted.has(team.id)}
+                variant="quiet"
+                size="icon-compact"
+                class={isWishlisted
+                  ? 'text-primary disabled:text-primary/80'
+                  : ''}
+                aria-label={isWishlisted ? 'Wishlisted' : 'Wishlist'}
+                disabled={busy || isWishlisted}
                 onclick={() => wishlist(team)}
-                >{wishlisted.has(team.id) ? 'Wishlisted' : 'Wishlist'}</Button
               >
+                {#if isWishlisted}
+                  <BookmarkCheck class="size-4" aria-hidden="true" />
+                {:else}
+                  <Bookmark class="size-4" aria-hidden="true" />
+                {/if}
+              </Button>
               <Button
                 type="button"
-                class="min-h-11 px-4"
+                variant="primary"
                 disabled={busy}
                 onclick={() => use(team)}>Use this team</Button
               >
@@ -590,8 +609,7 @@
           class="mt-8 flex items-center justify-center gap-4"
         >
           <Button
-            variant="outline"
-            class="min-h-11"
+            variant="secondary"
             disabled={pageNumber === 1}
             onclick={() => changeOption('page', String(pageNumber - 1))}
             >Previous</Button
@@ -600,8 +618,7 @@
             >Page {pageNumber} of {pageCount}</span
           >
           <Button
-            variant="outline"
-            class="min-h-11"
+            variant="secondary"
             disabled={pageNumber === pageCount}
             onclick={() => changeOption('page', String(pageNumber + 1))}
             >Next</Button
@@ -619,8 +636,8 @@
         </p>
         <Button
           type="button"
-          variant="outline"
-          class="mt-5 min-h-11"
+          variant="secondary"
+          class="mt-5"
           disabled={!ready}
           onclick={clearFilters}>Clear filters</Button
         >

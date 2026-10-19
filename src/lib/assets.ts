@@ -1,5 +1,6 @@
-import { base } from '$app/paths';
-import { normalize } from '$lib/catalog';
+import { asset } from '$app/paths';
+import type { AssetPath } from '$app/types';
+import { normalize } from '#lib/catalog.js';
 
 const localImages = __LOCAL_IMAGE_ASSETS__;
 
@@ -9,5 +10,5 @@ export function localImageSrc(
 ): string {
   if (!name) return '';
   const path = `${directory}/${normalize(name)}.png`;
-  return localImages[path] ? `${base}/${path}` : '';
+  return localImages[path] ? asset(path as AssetPath) : '';
 }

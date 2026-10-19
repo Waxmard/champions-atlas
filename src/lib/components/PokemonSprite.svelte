@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { localImageSrc } from '$lib/assets';
+  import { localImageSrc } from '#lib/assets.js';
 
   let { pokemon, size = 32 }: { pokemon: string; size?: number } = $props();
   const src = $derived(localImageSrc('sprites', pokemon));

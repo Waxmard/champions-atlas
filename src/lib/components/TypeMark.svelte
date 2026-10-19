@@ -1,5 +1,5 @@
 <script lang="ts">
-  import TypeBadge from '$lib/components/TypeBadge.svelte';
+  import TypeBadge from '#lib/components/TypeBadge.svelte';
 
   let { type, size = 'sm' }: { type: string | null; size?: 'sm' | 'md' } =
     $props();
