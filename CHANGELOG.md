@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.7.0](https://github.com/Waxmard/champions-atlas/compare/v1.6.0...v1.7.0) (2026-10-19)
+
+
+### Features
+
+* record, reuse, and sync in-game Pokémon sets ([#45](https://github.com/Waxmard/champions-atlas/issues/45)) ([36902d4](https://github.com/Waxmard/champions-atlas/commit/36902d484cb6459956e823d31378d6ab8069d1aa))
+
 ## [1.6.0](https://github.com/Waxmard/champions-atlas/compare/v1.5.0...v1.6.0) (2026-10-13)
 
 
