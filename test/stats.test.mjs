@@ -5,10 +5,10 @@ import { parseChampionsSpread } from '../src/lib/paste.ts';
 import {
   finalHp,
   finalStat,
-  statsFor,
+  speedBenchmark,
   speedFor,
-  speedTiers,
   statRow,
+  statsFor,
 } from '../src/lib/stats.ts';
 
 const member = (pokemon, spread, nature = 'Serious') => ({
@@ -57,16 +57,14 @@ test('level-50 stat math applies the nature multiplier to the SP total', () => {
   assert.equal(speedFor('Absol', parseChampionsSpread(''), 'Timid'), 104);
 });
 
-test('speedTiers ranks species by member count and reports the lower median', () => {
-  const tiers = speedTiers([fixture]);
-  assert.deepEqual(
-    tiers.map((tier) => tier.pokemon),
-    ['Absol', 'Dragonite', 'Decidueye']
+test('speedBenchmark reports the strict percentile among valid recorded spreads', () => {
+  const result = speedBenchmark(
+    'Absol',
+    parseChampionsSpread('32 Atk / 19 Def / 15 Spe'),
+    'Serious',
+    [fixture]
   );
-  assert.equal(tiers[0].medianSpeed, 110);
-  assert.equal(tiers[0].count, 3);
-  assert.equal(tiers[1].medianSpeed, 120);
-  assert.equal(tiers[2].medianSpeed, 90);
+  assert.deepEqual(result, { speed: 110, beatPercent: 33 });
 });
 
 test('final stats use evolved form, nature, and the HP-one exception', () => {
@@ -122,7 +120,7 @@ test('Palafin stays in its saved form until a transient Hero choice', () => {
   assert.equal(saved.pokemon, 'Palafin');
 });
 
-test('Speed tiers group evolved stones and omit unknown natures', () => {
+test('speedBenchmark resolves evolved forms and excludes unknown natures', () => {
   const spread = '18 HP / 25 Def / 23 Spe';
   const base = {
     ...member('Raichu', spread, 'Timid'),
@@ -130,10 +128,18 @@ test('Speed tiers group evolved stones and omit unknown natures', () => {
     ability: 'Lightning Rod',
   };
   const mega = { ...base, pokemon: 'Raichu-Mega-Y' };
-  const tiers = speedTiers([
-    team('current', [base, mega, { ...base, nature: null }]),
-  ]);
-  assert.deepEqual(tiers, [
-    { pokemon: 'Raichu-Mega-Y', medianSpeed: 190, count: 2 },
-  ]);
+  const result = speedBenchmark(
+    'Raichu-Mega-Y',
+    parseChampionsSpread(spread),
+    'Timid',
+    [
+      team('current', [
+        base,
+        mega,
+        { ...base, nature: null },
+        { ...member('Raichu', spread, 'Timid'), item: 'Sitrus Berry' },
+      ]),
+    ]
+  );
+  assert.deepEqual(result, { speed: 190, beatPercent: 33 });
 });

@@ -285,6 +285,9 @@ export interface PokemonSuggestion {
   source: Team;
 }
 
+const canonicalNature = (nature: string | null) =>
+  NATURES.find((name) => normalize(name) === normalize(nature ?? ''));
+
 const matchingDetails = (a: Member, b: Member) =>
   (['item', 'ability', 'nature', 'spread'] as const).filter(
     (field) =>
@@ -293,6 +296,25 @@ const matchingDetails = (a: Member, b: Member) =>
   a.moves.filter((move) =>
     b.moves.some((other) => normalize(move) === normalize(other))
   ).length;
+
+interface SourceTeamFit {
+  shared: number;
+  details: number;
+}
+
+function sourceTeamFit(team: Team, teammates: Member[]): SourceTeamFit {
+  let shared = 0;
+  let details = 0;
+  for (const member of teammates) {
+    const match = team.members.find(
+      (candidate) => normalize(candidate.pokemon) === normalize(member.pokemon)
+    );
+    if (!match) continue;
+    shared++;
+    details += matchingDetails(member, match);
+  }
+  return { shared, details };
+}
 
 function rankedSourceTeams(
   teammates: Member[],
@@ -308,17 +330,7 @@ function rankedSourceTeams(
     missing,
     ranked: teams
       .map((team) => {
-        let shared = 0;
-        let details = 0;
-        for (const member of teammates) {
-          const match = team.members.find(
-            (candidate) =>
-              normalize(candidate.pokemon) === normalize(member.pokemon)
-          );
-          if (!match) continue;
-          shared++;
-          details += matchingDetails(member, match);
-        }
+        const { shared, details } = sourceTeamFit(team, teammates);
         const roleBonus = missing.some((role) =>
           team.members.some((member) => roleFlags(member).includes(role))
         )
@@ -612,6 +624,7 @@ interface CatalogSpreadOption {
   values: ChampionsSpread;
   currentCount: number;
   totalCount: number;
+  sources: Team[];
 }
 
 export interface CatalogSpreadSuggestion {
@@ -644,10 +657,9 @@ export function originalSpreadSuggestion(
   if (form.error || originalForm.error || form.pokemon !== originalForm.pokemon)
     return;
   const spread = parseChampionsSpread(original.spread);
-  const nature = NATURES.find(
-    (name) => normalize(name) === normalize(original.nature ?? '')
-  );
-  if (!isCompleteSpread(spread) || !nature) return;
+  const nature = canonicalNature(self.nature);
+  const originalNature = canonicalNature(original.nature);
+  if (!isCompleteSpread(spread) || !nature || originalNature !== nature) return;
   const deltas = spreadDeltas(parseChampionsSpread(self.spread), spread);
   return {
     spread: formatChampionsSpread(spread),
@@ -678,9 +690,7 @@ function catalogSpreadIndex(
     for (const member of team.members) {
       const values = parseChampionsSpread(member.spread);
       if (!isCompleteSpread(values)) continue;
-      const nature = NATURES.find(
-        (name) => normalize(name) === normalize(member.nature ?? '')
-      );
+      const nature = canonicalNature(member.nature);
       if (!nature) continue;
       const form = resolveBattleForm(member);
       if (form.error) continue;
@@ -696,6 +706,7 @@ function catalogSpreadIndex(
       if (option) {
         option.totalCount++;
         if (isCurrent) option.currentCount++;
+        option.sources.push(team);
       } else {
         options.set(key, {
           spread,
@@ -703,45 +714,78 @@ function catalogSpreadIndex(
           values,
           currentCount: isCurrent ? 1 : 0,
           totalCount: 1,
+          sources: [team],
         });
       }
     }
   }
-  const ranked = new Map<string, CatalogSpreadOption[]>();
+  const indexed = new Map<string, CatalogSpreadOption[]>();
   for (const [species, options] of bySpecies)
-    ranked.set(
-      species,
-      [...options.values()].sort(
-        (a, b) =>
-          b.currentCount - a.currentCount ||
-          b.totalCount - a.totalCount ||
-          a.spread.localeCompare(b.spread) ||
-          a.nature.localeCompare(b.nature)
-      )
-    );
-  spreadCache.set(teams, { regulation, bySpecies: ranked });
-  return ranked;
+    indexed.set(species, [...options.values()]);
+  spreadCache.set(teams, { regulation, bySpecies: indexed });
+  return indexed;
 }
 
 export function catalogSpreadSuggestions(
   self: Member,
   teams: Team[],
   currentRegulation: string,
-  limit = 4,
-  preferredNature: string | null = null
+  limit = 5,
+  teammates: Member[] = []
 ): CatalogSpreadSuggestion[] {
+  const nature = canonicalNature(self.nature);
+  if (!nature || limit <= 0) return [];
   const form = resolveBattleForm(self);
   if (form.error) return [];
   const options =
     catalogSpreadIndex(teams, currentRegulation).get(normalize(form.pokemon)) ??
     [];
+  const eligible = options.filter(
+    (option) => normalize(option.nature) === normalize(nature)
+  );
+  if (!eligible.length) return [];
   const initial = parseChampionsSpread(self.spread);
-  const selected = options.slice(0, limit);
-  const nature = normalize(preferredNature ?? '');
-  const preferred = options.find((pair) => normalize(pair.nature) === nature);
-  if (limit > 0 && preferred && !selected.includes(preferred))
-    selected[selected.length - 1] = preferred;
-  return selected.map((option) => {
+  const fitCache = new Map<Team, SourceTeamFit>();
+  const fitFor = (team: Team) => {
+    const cached = fitCache.get(team);
+    if (cached) return cached;
+    const fit = sourceTeamFit(team, teammates);
+    fitCache.set(team, fit);
+    return fit;
+  };
+  const ranked = eligible.map((option) => {
+    let source = option.sources[0];
+    let fit = fitFor(source);
+    for (let i = 1; i < option.sources.length; i++) {
+      const candidate = option.sources[i];
+      const candidateFit = fitFor(candidate);
+      if (
+        candidateFit.shared > fit.shared ||
+        (candidateFit.shared === fit.shared &&
+          (candidateFit.details > fit.details ||
+            (candidateFit.details === fit.details &&
+              compareTeams(candidate, source, currentRegulation) < 0)))
+      ) {
+        source = candidate;
+        fit = candidateFit;
+      }
+    }
+    return { option, source, fit };
+  });
+  ranked.sort(
+    (a, b) =>
+      b.fit.shared - a.fit.shared ||
+      b.fit.details - a.fit.details ||
+      compareTeams(
+        a.source,
+        b.source,
+        currentRegulation,
+        b.option.currentCount - a.option.currentCount ||
+          b.option.totalCount - a.option.totalCount
+      ) ||
+      a.option.spread.localeCompare(b.option.spread)
+  );
+  return ranked.slice(0, limit).map(({ option }) => {
     const deltas = spreadDeltas(initial, option.values);
     return {
       spread: option.spread,

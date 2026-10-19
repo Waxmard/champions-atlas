@@ -431,6 +431,7 @@ test('invalid EVs, duplicate moves and raw text never replace accepted autosaves
   await editor
     .getByRole('button', { name: 'Edit EV spread', exact: true })
     .click();
+  await editor.locator('[data-ev-toggle]').click();
   const beforeInvalid = await stored(page);
   await editor.getByLabel('HP EV', { exact: true }).fill('1');
   await editor.getByLabel('HP EV', { exact: true }).press('Tab');

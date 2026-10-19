@@ -68,6 +68,12 @@ It never changes another stat. If the selected stat cannot absorb the full
 difference, the differing total stays uncommitted and the editor reports it when
 you finish.
 
+Nature choices, the current allocation, and spread suggestions remain visible
+while manual controls are closed. **Adjust EVs manually** is a native disclosure
+that starts closed whenever you open the EV editor. It contains the number
+fields, quick allocation buttons, and sliders. The app does not save its open
+state.
+
 Record and reuse one explicit **my in-game set** per Browse identity,
 representing the set currently in your Pokémon Champions box. Recording changes
 only Champion's Atlas, never Pokémon Champions, and does not save the team
@@ -91,11 +97,12 @@ Snapshots remain independent of teams. Team edits do not update them, and
 deleting a team does not delete them. The app does not auto-seed current sets
 from teams or keep snapshot history.
 
-When a snapshot exists, its item, ability, nature, move, and spread values
-appear as subtly source-labelled choices in the corresponding editor suggestion
-surfaces. Selecting a choice changes only that field, except that a spread
-choice changes the spread and nature together. Duplicate values appear once with
-their sources combined. A whole-set suggestion previews structured changes,
+When a snapshot exists, its item, ability, nature, and move values appear as
+subtly source-labelled choices in the corresponding editor suggestion surfaces.
+A snapshot EV/nature pair appears only when its Nature matches the selected
+Nature. Selecting a matching spread changes its EV allocation and keeps the
+selected Nature unchanged. Duplicate values appear once with their sources
+combined. A whole-set suggestion previews structured changes,
 including form and ordered moves; it discloses raw set text and saved metadata
 changes before selection. Selecting the suggestion applies the complete saved
 snapshot subject to normal editor and roster validation. Saved team cards do not
@@ -136,18 +143,24 @@ Field-based editing for saved catalog teams is implemented. Full legality-aware
 adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
 suggestions.
 
-EV spread suggestions begin with the immutable original nature/spread pair when
-it is complete, standard, and resolves to the current battle form. The in-game
-pair follows when it passes the same checks, then common catalog spreads for the
-resolved form follow, with exact duplicate pairs removed. Original field
-suggestions use exact Pokémon identity or a successfully resolved matching
-battle form, never unrelated base forms. In-game field values follow original
-values and precede catalog values. Catalog counts are not inflated by original
-or in-game recommendations. When an observed complete pair matches the
-immutable original nature, at least one matching option remains visible through
-the catalog and combined list limits, even after you change the edited nature.
-Original and in-game suggestions precede ranked catalog suggestions, and all
-retain their source labels; they do not fill in unpublished original EVs.
+EV spread suggestions include only complete, standard pairs whose Nature matches
+the selected Nature and whose spread resolves to the current battle form.
+Matching immutable original and in-game pairs come first. Exact duplicate pairs
+appear once with their source labels combined. The list contains up to five
+unique pairs and fewer when fewer recorded pairs match. Matching catalog pairs
+rank by the best actual source team's shared teammates and matching set details
+for those teammates, then by published results, regulation, and credentials.
+Catalog frequency breaks ties before publication date or ID. Catalog counts use
+catalog observations only. Original and in-game suggestions retain their source
+labels and do not fill in unpublished original EVs.
+
+Original field suggestions use exact Pokémon identity or a successfully
+resolved matching battle form, never unrelated base forms. In-game field values
+follow original values and precede catalog values.
+
+The selected-Nature rule applies to ordinary spread suggestions; benchmark
+answers retain their alternative-Nature behavior.
+
 You can also ask one benchmark question: survive a named move from a named
 opponent, take a KO, or outspeed. The opponent's set is
 the most common recorded current-regulation set for that species, filtered by
@@ -160,8 +173,7 @@ spread reaches the goal, the answer says so and names the closest achievable
 result. Damage is one landed hit at full HP with the resolved battle form, actual
 item, and deterministic field-setting abilities. Benchmark Speed is unmodified
 level-50 Speed with only the Choice Scarf ×1.5 multiplier applied, never
-weather- or ability-adjusted turn order; the Speed tiers list stays unmodified
-level-50 Speed.
+weather- or ability-adjusted turn order.
 
 Inferred archetype and role tags are enrichment, never evidence: they carry no
 result label and never outrank a sourced result. They break ties among teams that

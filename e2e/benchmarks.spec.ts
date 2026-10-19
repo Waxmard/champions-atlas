@@ -220,7 +220,7 @@ test('a move that cannot deal damage is reported without a spread claim', async 
   ).toHaveCount(0);
 });
 
-test('the panel starts empty, keeps the dialog inside the viewport and layers below Speed tiers', async ({
+test('the panel starts empty, keeps the dialog inside the viewport and discloses manual EVs', async ({
   page,
 }) => {
   const { editor, suggestions, benchmarks } = await openEditor(
@@ -244,12 +244,34 @@ test('the panel starts empty, keeps the dialog inside the viewport and layers be
     )
   ).toBe(true);
 
-  const details = suggestions.locator('details');
-  await expect(details).not.toHaveAttribute('open', '');
-  await details.locator('summary').click();
-  await expect(details).toHaveAttribute('open', '');
-  await expect(details).toContainText('Unmodified Speed');
+  const toggle = editor.locator('[data-ev-toggle]');
+  const manual = toggle.locator('xpath=..');
+  const sliders = editor.getByLabel('HP EV slider', { exact: true });
+  const numberInput = editor.getByLabel('HP EV', { exact: true });
+  await expect(toggle).toHaveText('Adjust EVs manually');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await expect(sliders).toBeHidden();
+  await expect(numberInput).toBeHidden();
+  await expect(
+    editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
+  ).toBeVisible();
+  await expect(
+    suggestions.getByText('Suggested spreads', { exact: true })
+  ).toBeVisible();
+  await expect(
+    suggestions.getByText('Speed tiers', { exact: true })
+  ).toHaveCount(0);
 
+  await toggle.focus();
+  await toggle.press('Enter');
+  await expect(manual).toHaveAttribute('open', '');
+  await expect(sliders).toBeVisible();
+  await toggle.press('Space');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).not.toHaveAttribute('open', '');
   await ask(page, editor, benchmarks, {
     goal: 'Survive a hit',
     opponent: 'Basculegion',

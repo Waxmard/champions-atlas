@@ -438,7 +438,7 @@
           : field === 'moves'
             ? '#set-move-1'
             : field === 'spread'
-              ? '[data-ev-stat]'
+              ? '[data-ev-toggle]'
               : '';
       const target =
         (inputId ? editorElement?.querySelector<HTMLElement>(inputId) : null) ||
@@ -644,6 +644,7 @@
           bind:this={evEditor}
           member={draftMember}
           {teams}
+          {teammates}
           {currentRegulation}
           {originalMember}
           natureSuggestions={suggestions.natures}

@@ -683,6 +683,10 @@ test('custom-rule source teams are excluded from every recommendation boundary w
     [{ spread: '31 HP / 4 Def / 31 SpA', nature: 'Modest' }]
   );
   assert.deepEqual(
+    catalogSpreadSuggestions({ ...rotom, nature: 'Timid' }, [control], 'M-C'),
+    []
+  );
+  assert.deepEqual(
     catalogSpreadSuggestions(rotom, [custom, control], 'M-C'),
     catalogSpreadSuggestions(rotom, [control], 'M-C')
   );

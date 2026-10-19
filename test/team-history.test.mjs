@@ -682,7 +682,7 @@ test('original field recommendations reject unrelated forms, unknown values, and
 test('original EV recommendation computes spread deltas and speed without changing the original', () => {
   const self = member('Raichu', {
     item: 'Raichunite Y',
-    nature: 'Timid',
+    nature: 'tImId',
     spread: '18 HP / 25 Def / 23 Spe',
   });
   const original = {
@@ -703,4 +703,16 @@ test('original EV recommendation computes spread deltas and speed without changi
   assert.equal(changed.source, 'Original team');
   assert.equal(changed.original, true);
   assert.deepEqual(original, unchanged);
+  assert.equal(
+    originalSpreadSuggestion(self, { ...original, nature: 'Bold' }),
+    undefined
+  );
+  for (const nature of [null, 'Legacy', 'Bold'])
+    assert.equal(
+      originalSpreadSuggestion({ ...self, nature }, original),
+      undefined
+    );
+  const withoutNature = { ...self };
+  delete withoutNature.nature;
+  assert.equal(originalSpreadSuggestion(withoutNature, original), undefined);
 });

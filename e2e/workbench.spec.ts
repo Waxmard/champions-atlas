@@ -39,6 +39,9 @@ async function expectPokemonSubView(editor: Locator) {
 }
 
 async function expectSpreadSubView(editor: Locator) {
+  const toggle = editor.locator('[data-ev-toggle]');
+  await expect(toggle).toBeVisible();
+  await toggle.click();
   await expect(editor.getByLabel('HP EV', { exact: true })).toBeVisible();
 }
 
@@ -432,6 +435,9 @@ test('nature chips on the EV page set the nature and mark affected stats', async
     name: 'Edit Whimsicott set',
     exact: true,
   });
+  const manualToggle = editor.locator('[data-ev-toggle]');
+  await expect(manualToggle).toBeFocused();
+  await manualToggle.click();
   await expect(editor.getByLabel('HP EV', { exact: true })).toBeVisible();
   await expect(
     editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
@@ -451,6 +457,13 @@ test('nature chips on the EV page set the nature and mark affected stats', async
   await expect(editor.getByTitle('Timid raises Spe by 10%')).toHaveCount(0);
   await expect(editor.getByText('+10%', { exact: true })).toBeVisible();
   await expect(editor.getByText('-10%', { exact: true })).toBeVisible();
+  const spreadChoices = editor
+    .getByRole('region', { name: 'EV spread suggestions' })
+    .getByRole('button', { name: /^Use .* spread / });
+  const displayedChoices = await spreadChoices.all();
+  expect(displayedChoices.length).toBeGreaterThan(0);
+  for (const choice of displayedChoices)
+    await expect(choice).toHaveAttribute('aria-label', /^Use Bold spread /);
 
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
