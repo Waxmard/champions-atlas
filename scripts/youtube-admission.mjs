@@ -182,8 +182,6 @@ const protectionMoves = new Set([
   'kingsshield',
   'silktrap',
   'burningbulwark',
-  'wideguard',
-  'quickguard',
 ]);
 const doublesOnlyMoves = new Set([
   'helpinghand',

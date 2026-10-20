@@ -159,6 +159,24 @@ test('uses calendar fallback only for contextual Champions doubles candidates', 
     }),
     singlesOverlapPayload
   );
+  rejectReason(
+    'unsupported_format',
+    youtubeRow(url, 'nnnnnnnnnnn', {
+      title: 'Pokémon Champions showcase',
+      description: url,
+      publishedAt: '2026-07-01T12:00:00Z',
+    }),
+    pastePayload('', {
+      paste: [
+        blocks[0].replace('- Protect\n- Fake Out', '- Wide Guard\n- Rest'),
+        ...blocks
+          .slice(1)
+          .map((block) =>
+            block.replace('- Protect\n- Fake Out', '- Tackle\n- Rest')
+          ),
+      ].join('\n\n'),
+    })
+  );
   for (const hazardMove of [
     'Stealth Rock',
     'Sticky Web',
