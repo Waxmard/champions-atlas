@@ -7,14 +7,13 @@
     formatSpreadDelta,
     natureEffect,
     parseChampionsSpread,
-    NATURES,
     type ChampionsSpread,
     type ChampionsStat,
   } from '#lib/paste.js';
   import { resolveBattleForm } from '#lib/battle-forms.js';
   import { buildBenchmarkIndex } from '#lib/benchmarks.js';
   import { normalize, type Member, type Team } from '#lib/catalog.js';
-  import { speedBenchmark, speedFor, speedTiers } from '#lib/stats.js';
+  import { speedBenchmark } from '#lib/stats.js';
   import EvBenchmarkPanel from '#lib/components/EvBenchmarkPanel.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
@@ -29,6 +28,7 @@
     member,
     currentRegulation,
     teams,
+    teammates,
     natureSuggestions,
     originalMember,
     inGameMember,
@@ -39,6 +39,7 @@
     member: Member;
     currentRegulation: string;
     teams: Team[];
+    teammates: Member[];
     natureSuggestions: CatalogSuggestion[];
     originalMember?: Member;
     inGameMember?: Member;
@@ -54,7 +55,6 @@
     `${normalize(candidateNature)}|${normalize(candidateSpread)}`;
 
   const spreadSuggestions = $derived.by(() => {
-    const preferredNature = originalMember?.nature ?? null;
     const rows: SpreadSuggestion[] = [];
     const original =
       originalMember && originalSpreadSuggestion(member, originalMember);
@@ -78,12 +78,13 @@
         });
       }
     }
+    let catalogCount = 0;
     for (const option of catalogSpreadSuggestions(
       member,
       teams,
       currentRegulation,
-      4,
-      preferredNature
+      7,
+      teammates
     )) {
       const key = spreadKey(option.nature, option.spread);
       const source =
@@ -95,9 +96,11 @@
         (row) => spreadKey(row.nature, row.spread) === key
       );
       if (existing) {
-        if (existing.inGame) existing.source += ` · ${source}`;
+        if (existing.inGame || existing.original)
+          existing.source += ` · ${source}`;
         continue;
       }
+      if (catalogCount === 5) continue;
       rows.push({
         spread: option.spread,
         nature: option.nature,
@@ -106,13 +109,9 @@
         movedPoints: option.movedPoints,
         speed: option.speed,
       });
+      catalogCount++;
     }
-    const selected = rows.slice(0, 6);
-    const preferred = rows.find(
-      (row) => normalize(row.nature) === normalize(preferredNature ?? '')
-    );
-    if (preferred && !selected.includes(preferred)) selected[5] = preferred;
-    return selected;
+    return rows;
   });
   const spread = $derived(member.spread || '');
   const nature = $derived(member.nature || '');
@@ -133,16 +132,6 @@
   const total = $derived(championsSpreadTotal(values));
   const effect = $derived(natureEffect(nature));
   const resolvedForm = $derived(resolveBattleForm(member));
-  const parsedSpread = $derived(parseChampionsSpread(spread));
-  const validNature = $derived(
-    NATURES.includes(nature as (typeof NATURES)[number])
-  );
-  const currentSpeed = $derived(
-    parsedSpread && total === 66 && validNature && !resolvedForm.error
-      ? speedFor(resolvedForm.pokemon, parsedSpread, nature)
-      : null
-  );
-  const tiers = $derived(speedTiers(regulationTeams));
 
   const clampEv = (value: number) => Math.max(0, Math.min(32, value || 0));
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
@@ -259,111 +248,120 @@
       </p>
     {/if}
   </div>
+  <p class="provenance mb-2 px-0.5">
+    {formatChampionsSpread(values) || 'No EVs allocated'} · {total} / 66
+  </p>
+  <details>
+    <summary class="term min-h-11 cursor-pointer content-center" data-ev-toggle>
+      Adjust EVs manually
+    </summary>
 
-  <!-- Compact Stat Allocation Rows -->
-  <div class="grid divide-y">
-    {#each CHAMPIONS_STATS as stat (stat)}
-      {@const currentVal = values[stat]}
-      {@const target = balanceChampionsStat(values, stat)[stat]}
-      {@const delta = target - currentVal}
-      <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
-        <!-- Top Row: Stat Badge, Quick Buttons, Input & Suffix -->
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <div class="flex flex-wrap items-center gap-2">
-            <span class="term inline-flex w-12 justify-center">{stat}</span>
-            {#if effect && effect.raised === stat}
-              <span
-                class="value font-semibold"
-                aria-hidden="true"
-                title={`${nature} raises ${stat} by 10%`}
-              >
-                +10%
-              </span>
-            {:else if effect && effect.lowered === stat}
-              <span
-                class="value text-base-content/70"
-                aria-hidden="true"
-                title={`${nature} lowers ${stat} by 10%`}
-              >
-                -10%
-              </span>
-            {/if}
-            <div class="flex items-center gap-1">
-              <Button
-                variant="quiet"
-                size="dense"
-                class="font-mono text-[11px]"
-                disabled={values[stat] === 0}
-                onclick={() => update(stat, 0)}
-              >
-                0
-              </Button>
-              <Button
-                variant="quiet"
-                size="dense"
-                class="font-mono text-[11px]"
-                disabled={values[stat] === 32}
-                onclick={() => update(stat, 32)}
-              >
-                32
-              </Button>
-              <Button
-                variant="quiet"
-                size="dense"
-                class="font-mono text-[11px]"
-                disabled={delta === 0}
-                aria-label={`Fill remaining EVs into ${stat}`}
-                title={delta === 0
-                  ? undefined
-                  : delta > 0
-                    ? `Add ${delta} EVs to ${stat}`
-                    : `Remove ${-delta} EVs from ${stat}`}
-                onclick={() => update(stat, target)}
-              >
-                {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : 'Fill'}
-              </Button>
+    <!-- Compact Stat Allocation Rows -->
+    <div class="grid divide-y">
+      {#each CHAMPIONS_STATS as stat (stat)}
+        {@const currentVal = values[stat]}
+        {@const target = balanceChampionsStat(values, stat)[stat]}
+        {@const delta = target - currentVal}
+        <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
+          <!-- Top Row: Stat Badge, Quick Buttons, Input & Suffix -->
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="term inline-flex w-12 justify-center">{stat}</span>
+              {#if effect && effect.raised === stat}
+                <span
+                  class="value font-semibold"
+                  aria-hidden="true"
+                  title={`${nature} raises ${stat} by 10%`}
+                >
+                  +10%
+                </span>
+              {:else if effect && effect.lowered === stat}
+                <span
+                  class="value text-base-content/70"
+                  aria-hidden="true"
+                  title={`${nature} lowers ${stat} by 10%`}
+                >
+                  -10%
+                </span>
+              {/if}
+              <div class="flex items-center gap-1">
+                <Button
+                  variant="quiet"
+                  size="dense"
+                  class="font-mono text-[11px]"
+                  disabled={values[stat] === 0}
+                  onclick={() => update(stat, 0)}
+                >
+                  0
+                </Button>
+                <Button
+                  variant="quiet"
+                  size="dense"
+                  class="font-mono text-[11px]"
+                  disabled={values[stat] === 32}
+                  onclick={() => update(stat, 32)}
+                >
+                  32
+                </Button>
+                <Button
+                  variant="quiet"
+                  size="dense"
+                  class="font-mono text-[11px]"
+                  disabled={delta === 0}
+                  aria-label={`Fill remaining EVs into ${stat}`}
+                  title={delta === 0
+                    ? undefined
+                    : delta > 0
+                      ? `Add ${delta} EVs to ${stat}`
+                      : `Remove ${-delta} EVs from ${stat}`}
+                  onclick={() => update(stat, target)}
+                >
+                  {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : 'Fill'}
+                </Button>
+              </div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <input
+                id={`set-${stat}-ev`}
+                aria-label={`${stat} EV`}
+                type="number"
+                min="0"
+                max="32"
+                value={values[stat]}
+                data-ev-stat={stat}
+                class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
+                oninput={(event) =>
+                  setStat(stat, event.currentTarget.valueAsNumber)}
+                onchange={commitDraft}
+                onblur={commitDraft}
+              />
+              <span class="term">/ 32</span>
             </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            <input
-              id={`set-${stat}-ev`}
-              aria-label={`${stat} EV`}
-              type="number"
-              min="0"
-              max="32"
-              value={values[stat]}
-              data-ev-stat={stat}
-              class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
-              oninput={(event) =>
-                setStat(stat, event.currentTarget.valueAsNumber)}
-              onchange={commitDraft}
-              onblur={commitDraft}
-            />
-            <span class="term">/ 32</span>
-          </div>
-        </div>
 
-        <!-- Bottom Row: Range Slider -->
-        <input
-          aria-label={`${stat} EV slider`}
-          type="range"
-          min="0"
-          max="32"
-          step="1"
-          value={values[stat]}
-          class="range h-11 w-full touch-pan-y [--range-thumb-size:16px] range-xs"
-          style:--ev-progress={currentVal / 32}
-          oninput={(event) => setStat(stat, event.currentTarget.valueAsNumber)}
-          onchange={commitDraft}
-          onblur={commitDraft}
-          onpointerdown={(event) => startPointer(event, stat)}
-          onpointermove={(event) => movePointer(event, stat)}
-          onpointerup={finishPointer}
-          onpointercancel={finishPointer}
-        />
-      </div>
-    {/each}
-  </div>
+          <!-- Bottom Row: Range Slider -->
+          <input
+            aria-label={`${stat} EV slider`}
+            type="range"
+            min="0"
+            max="32"
+            step="1"
+            value={values[stat]}
+            class="range h-11 w-full touch-pan-y [--range-thumb-size:16px] range-xs"
+            style:--ev-progress={currentVal / 32}
+            oninput={(event) =>
+              setStat(stat, event.currentTarget.valueAsNumber)}
+            onchange={commitDraft}
+            onblur={commitDraft}
+            onpointerdown={(event) => startPointer(event, stat)}
+            onpointermove={(event) => movePointer(event, stat)}
+            onpointerup={finishPointer}
+            onpointercancel={finishPointer}
+          />
+        </div>
+      {/each}
+    </div>
+  </details>
 </div>
 {#snippet chips(value: string)}
   <div class="flex flex-wrap items-center gap-1.5">
@@ -380,7 +378,8 @@
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
-      Original team first, then your in-game set and common catalog spreads.
+      Matching Nature; original and in-game sets first, then catalog spreads
+      ranked by team fit and results.
     </p>
   </div>
   {#each spreadSuggestions as option, i (option.spread + option.nature)}
@@ -432,30 +431,10 @@
     </button>
   {:else}
     <p class="provenance px-3 py-2.5">
-      No spread suggestions for this Pokémon yet.
+      No recorded spreads match this Nature. Try another Nature or adjust EVs
+      manually.
     </p>
   {/each}
-  {#if tiers.length && currentSpeed !== null}
-    <details class="px-3 py-2.5">
-      <summary class="term min-h-11 cursor-pointer content-center"
-        >Speed tiers</summary
-      >
-      <p class="provenance">Unmodified Speed</p>
-      <ul class="mt-2 grid gap-1">
-        {#each tiers as tier (tier.pokemon)}
-          <li class="flex items-baseline justify-between gap-3">
-            <span class="value">{tier.pokemon} · {tier.medianSpeed}</span>
-            {#if currentSpeed > tier.medianSpeed}
-              <span class="term">
-                <span aria-hidden="true">✓</span>
-                <span class="sr-only">Outspeeds this tier</span>
-              </span>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    </details>
-  {/if}
 </section>
 
 <EvBenchmarkPanel {member} {index} {currentRegulation} {onspreadchange} />

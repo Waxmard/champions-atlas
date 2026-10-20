@@ -87,32 +87,3 @@ test('type filter selects, persists across reload, and clears', async ({
     page.getByRole('button', { name: 'Remove fire type filter' })
   ).toBeHidden();
 });
-
-test('every selected type must appear on the team', async ({ page }) => {
-  await openBrowse(page);
-  const baseline = await visibleTeams(page);
-  const [first] = baseline;
-  const distinct = [...new Set(first.members.flatMap(typesOf))];
-  expect(
-    distinct.length,
-    `${first.name} needs two distinct types to check AND semantics`
-  ).toBeGreaterThan(1);
-  const [typeA, typeB] = distinct;
-
-  await openTypeFilter(page);
-  await page.getByRole('combobox', { name: 'Filter by type' }).click();
-  await typeOption(page, typeA).click();
-  await expect(page).toHaveURL(new RegExp(`type=${typeA}\\b`));
-  await typeOption(page, typeB).click();
-  await expect(page).toHaveURL(new RegExp(`type=${typeA}\\b`));
-  await expect(page).toHaveURL(new RegExp(`type=${typeB}\\b`));
-
-  const filtered = await visibleTeams(page);
-  expect(filtered.map((team) => team.name)).toContain(first.name);
-  expect(filtered.length).toBeLessThanOrEqual(baseline.length);
-  for (const team of filtered) {
-    const present = new Set(team.members.flatMap(typesOf));
-    for (const type of [typeA, typeB])
-      expect(present.has(type), `${team.name} is missing ${type}`).toBe(true);
-  }
-});

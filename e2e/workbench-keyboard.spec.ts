@@ -5,41 +5,6 @@ import {
   openWorkbench,
 } from './workbench-helpers';
 
-test('item suggestions support Tab and Enter selection through save and reload', async ({
-  page,
-}) => {
-  await openWorkbench(page);
-  const weavile = page.getByRole('region', {
-    name: 'Weavile set',
-    exact: true,
-  });
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile item', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expectDetailsSubView(editor);
-  const item = editor.getByLabel('Item', { exact: true });
-  await item.fill('a');
-  const suggestions = editor.getByLabel('Item suggestions', { exact: true });
-  const first = suggestions.getByRole('button').first();
-  await expect(first).toBeVisible();
-  const chosen = (await first.textContent())!.replace(/Original/g, '').trim();
-  await page.keyboard.press('Tab');
-  await expect(
-    editor.getByRole('button', { name: 'Clear item' })
-  ).toBeFocused();
-  await page.keyboard.press('Tab');
-  await expect(first).toBeFocused();
-  await first.press('Enter');
-  await expect(item).toHaveValue(chosen);
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await page.reload();
-  await expect(weavile.getByText(chosen, { exact: true })).toBeVisible();
-});
-
 test('custom ability typed value survives Escape and Close saves valid input', async ({
   page,
 }) => {

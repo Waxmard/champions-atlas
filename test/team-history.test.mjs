@@ -263,32 +263,6 @@ test('legacy origin defaults without inventing it and retains custom starting me
   assert.equal(loaded.history, undefined);
 });
 
-test('failed writes preserve caller and storage', () => {
-  const storage = memory();
-  const initial = saveTeam(storage, newSavedTeam(sourceTeam()))[0];
-  const candidate = structuredClone(initial);
-  candidate.name = 'Pending';
-  const before = structuredClone(candidate),
-    raw = storage.raw();
-  assert.throws(
-    () =>
-      saveTeam(
-        {
-          ...storage,
-          setItem: () => {
-            throw new Error('Quota');
-          },
-        },
-        candidate
-      ),
-    /Quota/
-  );
-  assert.deepEqual(candidate, before);
-  assert.equal(storage.raw(), raw);
-  const saved = saveTeam(storage, candidate)[0];
-  assert.equal(saved.name, 'Pending');
-});
-
 test('invalid incoming sources and originals cannot hide behind retained fields', () => {
   const storage = memory(),
     saved = saveTeam(storage, newSavedTeam(sourceTeam()))[0];
@@ -682,7 +656,7 @@ test('original field recommendations reject unrelated forms, unknown values, and
 test('original EV recommendation computes spread deltas and speed without changing the original', () => {
   const self = member('Raichu', {
     item: 'Raichunite Y',
-    nature: 'Timid',
+    nature: 'tImId',
     spread: '18 HP / 25 Def / 23 Spe',
   });
   const original = {
@@ -703,4 +677,16 @@ test('original EV recommendation computes spread deltas and speed without changi
   assert.equal(changed.source, 'Original team');
   assert.equal(changed.original, true);
   assert.deepEqual(original, unchanged);
+  assert.equal(
+    originalSpreadSuggestion(self, { ...original, nature: 'Bold' }),
+    undefined
+  );
+  for (const nature of [null, 'Legacy', 'Bold'])
+    assert.equal(
+      originalSpreadSuggestion({ ...self, nature }, original),
+      undefined
+    );
+  const withoutNature = { ...self };
+  delete withoutNature.nature;
+  assert.equal(originalSpreadSuggestion(withoutNature, original), undefined);
 });

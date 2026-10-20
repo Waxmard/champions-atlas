@@ -38,7 +38,13 @@ const sneasler = {
   moves: ['Close Combat'],
 };
 
-const team = (id, regulation, members) => ({ id, regulation, members });
+const team = (id, regulation, members) => ({
+  id,
+  regulation,
+  publishedAt: '2026-01-01',
+  reports: [],
+  members,
+});
 
 const gholdengo = {
   pokemon: 'Gholdengo',
@@ -596,9 +602,21 @@ test('derived sets filter by item, exclude Choice Scarf and aggregate team count
     { item: 'Choice Scarf', teams: 1 },
   ]);
   assert.equal(deriveBenchmarkSet(index, 'Missingno'), null);
+  const megas = buildBenchmarkIndex(
+    [
+      team('base-stone', 'M-C', [raichu]),
+      team('explicit-mega', 'M-C', [{ ...raichu, pokemon: 'Raichu-Mega-Y' }]),
+    ],
+    'M-C'
+  );
+  assert.equal(megas.species[0].pokemon, 'Raichu-Mega-Y');
+  assert.deepEqual(megas.species[0].variants[0].teamIds, [
+    'base-stone',
+    'explicit-mega',
+  ]);
 });
 
-test('catalog spreads aggregate teams, prioritize the current regulation, and pair natures', () => {
+test('catalog spreads aggregate current-regulation observations for the selected nature', () => {
   const catalog = [
     team('cur-1', 'M-C', [
       { ...raichu, spread: '18 HP / 25 Def / 23 Spe', nature: 'Timid' },
@@ -647,16 +665,9 @@ test('catalog spreads aggregate teams, prioritize the current regulation, and pa
         totalCount: 2,
         movedPoints: 0,
       },
-      {
-        nature: 'Adamant',
-        spread: '4 HP / 30 Atk / 32 Spe',
-        currentCount: 0,
-        totalCount: 3,
-        movedPoints: 39,
-      },
     ]
   );
-  assert.equal(typeof results[1].speed, 'number');
+  assert.equal(typeof results[0].speed, 'number');
   assert.deepEqual(
     catalogSpreadSuggestions(
       { ...raichu, pokemon: 'Missingno' },
@@ -695,6 +706,19 @@ test('catalog spreads original recommendations require complete standard sets an
     { ...raichu, pokemon: 'Unknown' },
   ])
     assert.equal(originalSpreadSuggestion(raichu, original), undefined);
+  assert.equal(
+    originalSpreadSuggestion(raichu, { ...raichu, nature: 'Adamant' }),
+    undefined
+  );
+  for (const nature of [null, 'Legacy'])
+    assert.equal(
+      originalSpreadSuggestion({ ...raichu, nature }, raichu),
+      undefined
+    );
+  assert.equal(
+    originalSpreadSuggestion({ ...raichu, nature: 'tImId' }, raichu).nature,
+    'Timid'
+  );
   assert.equal(
     originalSpreadSuggestion(
       { ...raichu, pokemon: 'Unknown' },

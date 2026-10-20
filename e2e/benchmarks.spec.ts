@@ -2,8 +2,6 @@ import { expect, test, type Locator, type Page } from '@playwright/test';
 
 const raichuTeamId = 'm-c-b2039b4436fb6729';
 const raichuTeamName = "Danyul_YT's Raichu-Y Floette Team";
-const glimmoraTeamId = 'm-c-08798c511d2ae783';
-const glimmoraTeamName = "DomingoVGC's Salamence Hippowdon Team";
 const storageKey = 'champions-atlas:teams:v1';
 
 async function openEditor(
@@ -138,89 +136,7 @@ test('a same-nature answer saves immediately without Apply', async ({
   );
 });
 
-test('a nature-change answer leads with the cheapest equal-cost spread', async ({
-  page,
-}) => {
-  const { editor, benchmarks } = await openEditor(
-    page,
-    glimmoraTeamId,
-    glimmoraTeamName,
-    'Glimmora-Mega'
-  );
-  await ask(page, editor, benchmarks, {
-    goal: 'Survive a hit',
-    opponent: 'Gholdengo',
-    item: 'Life Orb',
-    move: 'Make It Rain',
-  });
-  await expect(benchmarks).toContainText('Gholdengo @ Life Orb');
-  await expect(benchmarks.getByRole('status')).toHaveText(
-    'This needs a different nature: Calm, moving 52 points.'
-  );
-  await expect(
-    benchmarks.getByRole('heading', { name: 'With your Timid nature' })
-  ).toBeVisible();
-  await expect(benchmarks).toContainText(
-    'No 66-point spread reaches this with Timid.'
-  );
-  await expect(
-    benchmarks.getByRole('heading', { name: 'Needs a different nature' })
-  ).toBeVisible();
-  const row = benchmarks
-    .getByRole('button', { name: /^Use Calm spread / })
-    .first();
-  await expect(chipsOf(row)).toHaveText(['22 HP', '32 SpD', '12 Spe']);
-  await expect(row).toContainText('52 points moved');
-  await expect(row).toContainText('survives 16/16 rolls (max 179 of 180 HP)');
-  await expect(benchmarks).toContainText('+7 more at the same cost');
-});
-
-test('an unreachable Speed target names the ceiling', async ({ page }) => {
-  const { editor, benchmarks } = await openEditor(
-    page,
-    raichuTeamId,
-    raichuTeamName,
-    'Raichu-Mega-Y'
-  );
-  await ask(page, editor, benchmarks, {
-    goal: 'Outspeed',
-    opponent: 'Basculegion',
-    item: 'Choice Scarf',
-  });
-  await expect(benchmarks).toContainText('Basculegion @ Choice Scarf');
-  await expect(benchmarks.getByRole('status')).toContainText(
-    'No 66-point spread reaches this;'
-  );
-  await expect(benchmarks).toContainText('Maximum Speed is 200 with Timid.');
-  await expect(
-    benchmarks.getByRole('button', { name: /^Use .* spread / })
-  ).toHaveCount(0);
-});
-
-test('a move that cannot deal damage is reported without a spread claim', async ({
-  page,
-}) => {
-  const { editor, benchmarks } = await openEditor(
-    page,
-    raichuTeamId,
-    raichuTeamName,
-    'Raichu-Mega-Y'
-  );
-  await ask(page, editor, benchmarks, {
-    goal: 'Take a KO',
-    opponent: 'Gholdengo',
-    item: 'Life Orb',
-    move: 'Focus Blast',
-  });
-  await expect(benchmarks.getByRole('status')).toHaveText(
-    'Focus Blast deals no damage to Gholdengo.'
-  );
-  await expect(
-    benchmarks.getByRole('button', { name: /^Use .* spread / })
-  ).toHaveCount(0);
-});
-
-test('the panel starts empty, keeps the dialog inside the viewport and layers below Speed tiers', async ({
+test('the panel starts empty, keeps the dialog inside the viewport and discloses manual EVs', async ({
   page,
 }) => {
   const { editor, suggestions, benchmarks } = await openEditor(
@@ -244,12 +160,34 @@ test('the panel starts empty, keeps the dialog inside the viewport and layers be
     )
   ).toBe(true);
 
-  const details = suggestions.locator('details');
-  await expect(details).not.toHaveAttribute('open', '');
-  await details.locator('summary').click();
-  await expect(details).toHaveAttribute('open', '');
-  await expect(details).toContainText('Unmodified Speed');
+  const toggle = editor.locator('[data-ev-toggle]');
+  const manual = toggle.locator('xpath=..');
+  const sliders = editor.getByLabel('HP EV slider', { exact: true });
+  const numberInput = editor.getByLabel('HP EV', { exact: true });
+  await expect(toggle).toHaveText('Adjust EVs manually');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await expect(sliders).toBeHidden();
+  await expect(numberInput).toBeHidden();
+  await expect(
+    editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
+  ).toBeVisible();
+  await expect(
+    suggestions.getByText('Suggested spreads', { exact: true })
+  ).toBeVisible();
+  await expect(
+    suggestions.getByText('Speed tiers', { exact: true })
+  ).toHaveCount(0);
 
+  await toggle.focus();
+  await toggle.press('Enter');
+  await expect(manual).toHaveAttribute('open', '');
+  await expect(sliders).toBeVisible();
+  await toggle.press('Space');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).not.toHaveAttribute('open', '');
   await ask(page, editor, benchmarks, {
     goal: 'Survive a hit',
     opponent: 'Basculegion',
@@ -276,12 +214,25 @@ test('catalog spreads fill the list when no saved team runs the Pokémon', async
   const suggestions = editor.getByRole('region', {
     name: 'EV spread suggestions',
   });
-  const row = suggestions
-    .getByRole('button', { name: /^Use .+ spread .+$/ })
-    .filter({ hasText: 'catalog team' })
-    .first();
+  const rows = suggestions.getByRole('button', {
+    name: /^Use .+ spread .+$/,
+  });
+  await expect(rows).toHaveCount(6);
+  await expect(rows.first()).toContainText('Original team');
+  const catalogRows = rows.filter({ hasText: 'catalog team' });
+  await expect(catalogRows).toHaveCount(5);
+  await expect(
+    catalogRows.filter({ hasText: /Original team|My in-game set/ })
+  ).toHaveCount(0);
+  const labels = await rows.evaluateAll((elements) =>
+    elements.map((element) => element.getAttribute('aria-label')!)
+  );
+  expect(new Set(labels).size).toBe(6);
+  expect(labels.every((label) => label.startsWith('Use Timid spread '))).toBe(
+    true
+  );
+  const row = catalogRows.first();
   await expect(row).toBeVisible();
-  await expect(row).toContainText('catalog team');
   const chips = await chipsOf(row).allTextContents();
   await row.click();
   for (const chip of chips) {

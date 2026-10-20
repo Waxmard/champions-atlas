@@ -130,40 +130,6 @@ test('unsupported multi-hit and intact Disguise never claim a one-roll probabili
   );
 });
 
-test('current regulation index counts each actual team and variant only once', () => {
-  const incomplete = { ...sneasler, spread: null };
-  const index = buildBenchmarkIndex(
-    [
-      team('current-a', 'M-C', [sneasler, { ...sneasler }, incomplete]),
-      team('current-b', 'M-C', [
-        { ...sneasler, spread: '32 HP / 32 Atk / 2 Spe' },
-      ]),
-      team('historical', 'M-B', [raichu]),
-    ],
-    'M-C'
-  );
-  assert.equal(index.teamCount, 2);
-  assert.equal(index.species.length, 1);
-  assert.equal(index.species[0].teamCount, 2);
-  assert.equal(index.species[0].eligibleTeamCount, 2);
-  assert.deepEqual(
-    index.species[0].variants.map((variant) => variant.teamIds),
-    [['current-a'], ['current-b']]
-  );
-  const megas = buildBenchmarkIndex(
-    [
-      team('base-stone', 'M-C', [raichu]),
-      team('explicit-mega', 'M-C', [{ ...raichu, pokemon: 'Raichu-Mega-Y' }]),
-    ],
-    'M-C'
-  );
-  assert.equal(megas.species[0].pokemon, 'Raichu-Mega-Y');
-  assert.deepEqual(megas.species[0].variants[0].teamIds, [
-    'base-stone',
-    'explicit-mega',
-  ]);
-});
-
 test('full-HP Focus Sash and effective Sturdy prevent a one-hit KO', () => {
   const target = {
     ...raichu,

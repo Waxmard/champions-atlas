@@ -63,9 +63,9 @@
   }: Props = $props();
   function getInitialView(field: EditableSetField): EditorView {
     if (field === 'set') return 'overview';
-    return field === 'item' || field === 'ability' || field === 'nature'
-      ? 'details'
-      : field;
+    if (field === 'item' || field === 'ability' || field === 'nature')
+      return 'details';
+    return field;
   }
   const MOVE_SLOTS = [0, 1, 2, 3];
   const initialMember = (() => member)();
@@ -92,9 +92,9 @@
   let activeSuggestions = $state<string | null>(
     initialView === 'pokemon' ? 'pokemon' : null
   );
-  let pokemonQuery = $state('');
-  let itemQuery = $state('');
-  let abilityQuery = $state('');
+  let pokemonQuery = $state(''),
+    itemQuery = $state(''),
+    abilityQuery = $state('');
   let moveQueries = $state(['', '', '', '']);
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
@@ -182,9 +182,10 @@
       ? form.nature
       : null
   );
-  const parsedCurrentSpread = $derived(parseChampionsSpread(form.spread));
   const currentSpreadTotal = $derived(
-    parsedCurrentSpread ? championsSpreadTotal(parsedCurrentSpread) : 0
+    parseChampionsSpread(form.spread)
+      ? championsSpreadTotal(parseChampionsSpread(form.spread)!)
+      : 0
   );
   const subViewTitle = $derived(
     {
@@ -438,7 +439,7 @@
           : field === 'moves'
             ? '#set-move-1'
             : field === 'spread'
-              ? '[data-ev-stat]'
+              ? '[data-ev-toggle]'
               : '';
       const target =
         (inputId ? editorElement?.querySelector<HTMLElement>(inputId) : null) ||
@@ -595,8 +596,7 @@
           openSuggestions(`move-${index}`);
         }}
         onchange={(index, value) => {
-          form.moves[index] = value;
-          moveQueries[index] = value;
+          form.moves[index] = moveQueries[index] = value;
           activeMoveSlot = index;
           activeSuggestions = `move-${index}`;
           clearError();
@@ -619,14 +619,12 @@
         {error}
         {errorField}
         onitemchange={(val) => {
-          itemQuery = val;
-          form.item = val;
+          itemQuery = form.item = val;
           activeSuggestions = 'item';
           clearError();
         }}
         onabilitychange={(val) => {
-          abilityQuery = val;
-          form.ability = val;
+          abilityQuery = form.ability = val;
           activeSuggestions = 'ability';
           clearError();
         }}
@@ -644,6 +642,7 @@
           bind:this={evEditor}
           member={draftMember}
           {teams}
+          {teammates}
           {currentRegulation}
           {originalMember}
           natureSuggestions={suggestions.natures}
@@ -674,7 +673,9 @@
     {:else if currentView === 'pokemon'}
       <section class="grid gap-4">
         <label for="set-pokemon-input" class="sr-only">Pokémon</label>
-        <label class="input flex min-h-11 items-center gap-2">
+        <label
+          class="input flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
+        >
           <PokemonSprite pokemon={form.pokemon} size={28} />
           <input
             id="set-pokemon-input"

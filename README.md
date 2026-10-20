@@ -196,9 +196,10 @@ change the saved ID or source history.
 Original source metadata is kept when saving a catalog team and shown as evidence
 for the original, not the edited version. Older saved teams show only metadata
 they retained. Custom teams show their starting team without public source claims.
-Original field and complete EV/nature suggestions lead the corresponding lists;
-catalog suggestions follow without duplicate pairs. Benchmark answers and
-**Speed tiers** retain their existing mechanics and limits.
+Original field suggestions lead their corresponding lists. Complete original EV
+spreads appear only when their Nature matches your selection; matching catalog
+spreads follow without duplicate pairs. Benchmark answers retain their existing
+mechanics and limits.
 
 **Copy team text** exports current sets, normalizing EVs out of 32 and omitting
 IVs, level, and Tera Type for Pokémon Champions. Unknown fields are omitted.

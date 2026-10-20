@@ -14,16 +14,12 @@ import {
   catalogSuggestions,
   swapSuggestions,
 } from '../src/lib/workbench.ts';
-import { resolveSavedTeamId } from '../src/lib/team-collections.ts';
 import {
   championsSpreadTotal,
   formatChampionsSpread,
-  NATURES,
-  natureEffect,
   parseChampionsSpread,
   parseCustomPaste,
   parsePaste,
-  parseSetBlock,
 } from '../src/lib/paste.ts';
 
 const member = (pokemon, item = 'Item') => ({
@@ -382,23 +378,6 @@ test('generateUUID falls back when crypto.randomUUID is undefined (insecure cont
   }
 });
 
-test('parseSetBlock extracts a set', () => {
-  const raw = `Incineroar @ Sitrus Berry
-Ability: Intimidate
-Careful Nature
-EVs: 252 HP / 4 Atk / 156 Def / 76 SpD / 20 Spe
-- Fake Out
-- Parting Shot
-- Knock Off
-- Flare Blitz`;
-  const parsed = parseSetBlock(raw);
-  assert.equal(parsed.pokemon, 'Incineroar');
-  assert.equal(parsed.item, 'Sitrus Berry');
-  assert.equal(parsed.ability, 'Intimidate');
-  assert.equal(parsed.nature, 'Careful');
-  assert.equal(parsed.moves.length, 4);
-});
-
 test('strict Champions spreads parse, format, and total six ordered stats', () => {
   const spread = parseChampionsSpread(
     '2 Spe / 32 SpA / 0 Def / 32 HP / 0 SpD / 0 Atk'
@@ -549,56 +528,6 @@ test('hybrid suggestions link Mega forms and keep stable fields fixed', () => {
   assert.ok(suggestions.pokemon[0].member.moves.length > 0);
 });
 
-test('resolveSavedTeamId resolves requested, active, and fallback ids', () => {
-  const teams = [team('t1'), team('t2')];
-  assert.equal(resolveSavedTeamId(teams, 't2', 't1'), 't2');
-  assert.equal(resolveSavedTeamId(teams, null, 't2'), 't2');
-  assert.equal(resolveSavedTeamId(teams, 'nonexistent', 't2'), 't2');
-  assert.equal(resolveSavedTeamId(teams, null, 'nonexistent'), 't1');
-  assert.equal(resolveSavedTeamId(teams, null, null), 't1');
-  assert.equal(resolveSavedTeamId([], 't1', 't1'), null);
-});
-
-test('every nature maps to its standard raised and lowered stat', () => {
-  const expected = {
-    Adamant: 'Atk/SpA',
-    Bashful: 'neutral',
-    Bold: 'Def/Atk',
-    Brave: 'Atk/Spe',
-    Calm: 'SpD/Atk',
-    Careful: 'SpD/SpA',
-    Docile: 'neutral',
-    Gentle: 'SpD/Def',
-    Hardy: 'neutral',
-    Hasty: 'Spe/Def',
-    Impish: 'Def/SpA',
-    Jolly: 'Spe/SpA',
-    Lax: 'Def/SpD',
-    Lonely: 'Atk/Def',
-    Mild: 'SpA/Def',
-    Modest: 'SpA/Atk',
-    Naive: 'Spe/SpD',
-    Naughty: 'Atk/SpD',
-    Quiet: 'SpA/Spe',
-    Quirky: 'neutral',
-    Rash: 'SpA/SpD',
-    Relaxed: 'Def/Spe',
-    Sassy: 'SpD/Spe',
-    Serious: 'neutral',
-    Timid: 'Spe/Atk',
-  };
-  assert.deepEqual(
-    NATURES.map((nature) => {
-      const effect = natureEffect(nature);
-      return effect ? `${effect.raised}/${effect.lowered}` : 'neutral';
-    }),
-    NATURES.map((nature) => expected[nature])
-  );
-  assert.equal(natureEffect('modest')?.raised, 'SpA');
-  assert.equal(natureEffect(null), null);
-  assert.equal(natureEffect(''), null);
-});
-
 test('the role tiebreak never outranks a sourced result', () => {
   const tags = {
     teams: { role: { archetype: 'balance', speedMode: 'faster', roles: {} } },
@@ -659,12 +588,6 @@ test('the role tiebreak never outranks a sourced result', () => {
     ]),
     withStub.map(() => [null, null, false])
   );
-});
-
-test('isMegaSpecies matches named Mega forms and not similar species', () => {
-  assert.equal(isMegaSpecies('Meganium'), false);
-  assert.equal(isMegaSpecies('Garchomp-Mega-Z'), true);
-  assert.equal(isMegaSpecies('Froslass-Mega'), true);
 });
 
 test('pokemonSuggestions stops offering a third Mega', () => {

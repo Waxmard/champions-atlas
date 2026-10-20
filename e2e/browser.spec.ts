@@ -94,6 +94,9 @@ test(
     await page
       .getByRole('combobox', { name: 'Sort teams' })
       .selectOption('recent');
+    await expect(page).toHaveURL(
+      (url) => url.searchParams.get('sort') === 'recent'
+    );
     const query = new URL(page.url()).search;
     expect(new URLSearchParams(query).getAll('member')).toHaveLength(2);
     const cards = page

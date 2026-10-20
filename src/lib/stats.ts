@@ -93,26 +93,14 @@ export function speedFor(
   return finalStat(row[5], spread?.Spe ?? 0, natureMultiplier(nature, 'Spe'));
 }
 
-export interface SpeedTier {
-  pokemon: string;
-  medianSpeed: number;
-  count: number;
-}
-
-interface SpeedIndex {
-  tiers: SpeedTier[];
-  speeds: number[];
-}
-
-const speedCache = new WeakMap<Team[], SpeedIndex>();
+const speedCache = new WeakMap<Team[], number[]>();
 
 /* Only legal 66-point spreads enter the benchmark, so a half-filled draft
    spread cannot skew it. */
-function speedIndex(teams: Team[]): SpeedIndex {
-  let cached = speedCache.get(teams);
-  if (cached) return cached;
-  const bySpecies = new Map<string, { pokemon: string; speeds: number[] }>();
-  const speeds: number[] = [];
+function speedIndex(teams: Team[]): number[] {
+  let speeds = speedCache.get(teams);
+  if (speeds) return speeds;
+  speeds = [];
   for (const team of teams) {
     for (const member of team.members) {
       const parsed = member.spread ? parseChampionsSpread(member.spread) : null;
@@ -126,31 +114,12 @@ function speedIndex(teams: Team[]): SpeedIndex {
       )
         continue;
       const speed = speedFor(form.pokemon, parsed, member.nature);
-      if (speed === null) continue;
-      speeds.push(speed);
-      const key = normalize(form.pokemon);
-      const entry = bySpecies.get(key);
-      if (entry) entry.speeds.push(speed);
-      else bySpecies.set(key, { pokemon: form.pokemon, speeds: [speed] });
+      if (speed !== null) speeds.push(speed);
     }
   }
-  const tiers = [...bySpecies.values()]
-    .map(({ pokemon, speeds: values }) => {
-      const sorted = [...values].sort((a, b) => a - b);
-      return {
-        pokemon,
-        medianSpeed: sorted[Math.floor((sorted.length - 1) / 2)],
-        count: values.length,
-      };
-    })
-    .sort((a, b) => b.count - a.count || a.pokemon.localeCompare(b.pokemon));
-  cached = { tiers, speeds: speeds.sort((a, b) => a - b) };
-  speedCache.set(teams, cached);
-  return cached;
-}
-
-export function speedTiers(teams: Team[], limit = 12): SpeedTier[] {
-  return speedIndex(teams).tiers.slice(0, limit);
+  speeds.sort((a, b) => a - b);
+  speedCache.set(teams, speeds);
+  return speeds;
 }
 
 export function speedBenchmark(
@@ -161,7 +130,7 @@ export function speedBenchmark(
 ): { speed: number; beatPercent: number } | null {
   const speed = speedFor(pokemon, spread, nature);
   if (speed === null) return null;
-  const { speeds } = speedIndex(teams);
+  const speeds = speedIndex(teams);
   if (!speeds.length) return null;
   let below = 0;
   for (const value of speeds) {
