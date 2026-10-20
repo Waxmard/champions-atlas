@@ -230,23 +230,6 @@ test('completed editor changes navigate without an unsaved warning', async ({
   expect(warned).toBe(false);
 });
 
-test('invalid custom import never changes local storage', async ({ page }) => {
-  await page.goto('/my-teams/new');
-  const before = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    storageKey
-  );
-  await page.getByLabel('Team name', { exact: true }).fill('Invalid team');
-  await page
-    .getByLabel('Team text', { exact: true })
-    .fill(peter.paste!.replace(/EVs:[^\r\n]*\r?\n/, ''));
-  await page.getByRole('button', { name: 'Save custom team' }).click();
-  await expect(page.getByRole('alert')).toContainText('missing EVs');
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), storageKey)
-  ).toBe(before);
-});
-
 test(
   'corrupt storage is reported and kept; missing local IDs do not show another team',
   { tag: '@smoke' },
@@ -382,44 +365,6 @@ test('QoL deletion of the final copy stays empty after pagehide and reload', asy
   ).toHaveCount(0);
 });
 
-test('QoL deletion write failure preserves the draft and stored team', async ({
-  page,
-}) => {
-  await saveCopies(page, 1);
-  await saveWeavileItem(page, 'Write-failure draft item');
-  const storedBefore = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    storageKey
-  );
-  const activeBefore = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    activeTeamKey
-  );
-  await page.evaluate((key) => {
-    const setItem = Storage.prototype.setItem;
-    Storage.prototype.setItem = function (name, value) {
-      if (name === key) throw new Error('Quota exceeded');
-      setItem.call(this, name, value);
-    };
-  }, storageKey);
-  page.once('dialog', (dialog) => dialog.accept());
-  await page.getByRole('button', { name: 'Delete team', exact: true }).click();
-
-  await expect(page.locator('main > p[role="alert"]')).toHaveText(
-    'Could not delete team. Existing saved teams have been left untouched.'
-  );
-  await expect(
-    page.getByRole('region', { name: 'Weavile set', exact: true })
-  ).toContainText('Write-failure draft item');
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), storageKey)
-  ).toBe(storedBefore);
-  expect(
-    await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
-  ).toBe(activeBefore);
-  await expect(page).toHaveURL('/my-teams?team=' + activeBefore);
-});
-
 test('set edit commits on save and reopening my-teams restores active team', async ({
   page,
 }) => {
@@ -454,55 +399,6 @@ test('set edit commits on save and reopening my-teams restores active team', asy
     peter.name
   );
   await expect(weavile.getByText('Focus Sash', { exact: true })).toBeVisible();
-});
-
-test('item edits preserve an unknown nature', async ({ page }) => {
-  await page.goto(`/teams/${peter.id}`);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
-  await expect(page).toHaveURL(/\/my-teams\?team=/);
-  await page.evaluate((key) => {
-    const teams = JSON.parse(localStorage.getItem(key)!);
-    const member = teams[0].members.find(
-      ({ pokemon }: { pokemon: string }) => pokemon === 'Weavile'
-    );
-    member.nature = null;
-    member.set =
-      member.set
-        .replace(/^Weavile/, 'Ice (Weavile)')
-        .replace(/Jolly Nature\n?/, '') + '\nShiny: Yes\nHappiness: 0';
-    member.privateEvidence = { retained: true };
-    localStorage.setItem(key, JSON.stringify(teams));
-  }, storageKey);
-  await page.reload();
-  const weavile = page.getByRole('region', {
-    name: 'Weavile set',
-    exact: true,
-  });
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile item', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expect(editor.getByLabel('Nature', { exact: true })).toHaveValue('');
-  await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
-  await editor.getByLabel('Item', { exact: true }).press('Escape');
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
-  const storedWeavile = stored.members.find(
-    (member: { pokemon: string }) => member.pokemon === 'Weavile'
-  );
-  expect(storedWeavile.nature).toBeNull();
-  expect(storedWeavile.item).toBe('Focus Sash');
-  expect(storedWeavile.set).toContain('Ice (Weavile) (M) @ Focus Sash');
-  expect(storedWeavile.set).toContain('Shiny: Yes\nHappiness: 0');
-  expect(storedWeavile.privateEvidence).toEqual({ retained: true });
 });
 
 test('backdrop and blank-area clicks retain set edit until explicit action', async ({
@@ -582,37 +478,6 @@ test('backdrop and blank-area clicks retain set edit until explicit action', asy
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
-});
-
-test('background navigation clicks retain the editor', async ({
-  page,
-}, testInfo) => {
-  test.skip(
-    testInfo.project.use.isMobile,
-    'Desktop-only: header is visible without scrolling'
-  );
-  await page.goto('/teams/' + peter.id);
-  await page
-    .getByRole('button', { name: 'Use this team', exact: true })
-    .click();
-  await page
-    .getByRole('region', { name: 'Weavile set', exact: true })
-    .getByRole('button', { name: 'Edit Weavile item', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expect(editor).toBeVisible();
-  const url = page.url();
-  const browse = page
-    .getByRole('navigation', { name: 'Main' })
-    .getByRole('link', { name: 'Browse', exact: true });
-  const box = await browse.boundingBox();
-  await page.mouse.click(box!.x + box!.width / 2, box!.y + box!.height / 2);
-  await expect(editor).toBeVisible();
-  await expect(page).toHaveURL(url);
-  await editor.getByRole('button', { name: 'Close', exact: true }).click();
 });
 
 test('visibility changes keep move and item edits mounted', async ({

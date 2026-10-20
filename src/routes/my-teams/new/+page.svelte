@@ -79,7 +79,11 @@
     </div>
   </form>
   {#if message}
-    <p role="alert" class="mt-4 text-[0.9375rem] text-error">
+    <p
+      role="alert"
+      class="mt-4 text-[0.9375rem]"
+      style="color: var(--color-error-content)"
+    >
       {message}
     </p>
   {/if}

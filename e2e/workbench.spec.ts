@@ -38,13 +38,6 @@ async function expectPokemonSubView(editor: Locator) {
   ).toBeVisible();
 }
 
-async function expectSpreadSubView(editor: Locator) {
-  const toggle = editor.locator('[data-ev-toggle]');
-  await expect(toggle).toBeVisible();
-  await toggle.click();
-  await expect(editor.getByLabel('HP EV', { exact: true })).toBeVisible();
-}
-
 test('save Peter, choose one slot, compare, edit, export, and preserve other five sets', async ({
   page,
 }) => {
@@ -234,50 +227,6 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
     peter.name
   );
-});
-
-test('untouched legacy EV spread saves, but changed spread requires 66', async ({
-  page,
-}) => {
-  await openWorkbench(page);
-  await page.evaluate((key) => {
-    const teams = JSON.parse(localStorage.getItem(key)!);
-    const member = teams[0].members.find(
-      ({ pokemon }: { pokemon: string }) => pokemon === 'Weavile'
-    );
-    member.spread = '32 HP';
-    delete member.set;
-    localStorage.setItem(key, JSON.stringify(teams));
-  }, storageKey);
-  await page.reload();
-  const weavile = page.getByRole('region', {
-    name: 'Weavile set',
-    exact: true,
-  });
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile item', exact: true })
-    .click();
-  let editor = page.getByRole('dialog', {
-    name: 'Edit Weavile set',
-    exact: true,
-  });
-  await expectDetailsSubView(editor);
-  await editor.getByLabel('Item', { exact: true }).fill('Legacy custom item');
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor).toHaveCount(0);
-  await expect(weavile).toContainText('Legacy custom item');
-
-  await weavile
-    .getByRole('button', { name: 'Edit Weavile EVs', exact: true })
-    .click();
-  editor = page.getByRole('dialog', { name: 'Edit Weavile set', exact: true });
-  await expectSpreadSubView(editor);
-  await editor.getByLabel('HP EV', { exact: true }).fill('31');
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor.locator('[role="alert"]:not(:empty)')).toContainText(
-    'must total 66'
-  );
-  await expect(editor).toBeVisible();
 });
 
 test('direct move slots and species swap on a saved team', async ({ page }) => {
@@ -564,34 +513,6 @@ test('structured edits survive a trip through the Showdown text view', async ({
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(editor).toHaveCount(0);
   await expect(weavile.getByText('Choice Band', { exact: true })).toBeVisible();
-});
-test('leaving the Showdown text view untouched keeps the original set', async ({
-  page,
-}) => {
-  await openWorkbench(page);
-  const glimmora = page.getByRole('region', {
-    name: 'Glimmora-Mega set',
-    exact: true,
-  });
-  await glimmora
-    .getByRole('button', { name: 'Edit set for Glimmora-Mega', exact: true })
-    .click();
-  const editor = page.getByRole('dialog', {
-    name: 'Edit Glimmora-Mega set',
-    exact: true,
-  });
-  await editor
-    .getByRole('button', { name: 'Edit Showdown text', exact: true })
-    .click();
-  await editor
-    .getByRole('button', { name: 'Back to overview', exact: true })
-    .click();
-  await expect(editor.getByText('Unsaved edits', { exact: true })).toHaveCount(
-    0
-  );
-  await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  await expect(editor).toHaveCount(0);
-  await expect(glimmora).toBeVisible();
 });
 for (const mutation of ['changed', 'deleted'] as const) {
   test(

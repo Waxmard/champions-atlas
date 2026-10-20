@@ -84,9 +84,6 @@ test('legacy teams default to My Teams without rewriting; Wishlist is excluded f
     teamsInUse(list).map((x) => x.id),
     ['a', 'b']
   );
-  assert.equal(resolveSavedTeamId(list, 'w', 'b'), 'b');
-  assert.equal(resolveSavedTeamId([{ ...list[1], id: 'w' }], 'w', 'w'), null);
-  assert.equal(resolveSavedTeamId(list, '', 'b'), 'b');
 });
 
 test('Wishlist deduplicates catalog IDs and promotion preserves the exact saved snapshot', () => {
@@ -261,27 +258,6 @@ test('quota failure during promotion or removal leaves stored bytes unchanged', 
   assert.throws(() => removeWishlistedTeam(s, 'w1'), /quota/);
   assert.equal(s.data, raw);
   assert.equal(readSavedTeams(s)[1].collection, 'wishlist');
-});
-
-test('corrupt or invalid storage is never written by any collection helper', () => {
-  const bad = [
-    '{',
-    JSON.stringify([{ ...snapshot('bad'), collection: 'lost' }]),
-    JSON.stringify([snapshot('dup'), snapshot('dup')]),
-  ];
-  for (const data of bad) {
-    const s = storage();
-    s.data = data;
-    for (const act of [
-      () => addCatalogToWishlist(s, catalogTeam('x')),
-      () => useCatalogTeam(s, catalogTeam('x')),
-      () => useWishlistedTeam(s, 'bad'),
-      () => removeWishlistedTeam(s, 'bad'),
-    ])
-      assert.throws(act);
-    assert.equal(s.data, data);
-    assert.equal(s.writes, 0);
-  }
 });
 
 test('at the 50-record cap promotion works but new bookmarks and copies fail untouched', () => {

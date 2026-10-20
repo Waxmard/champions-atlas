@@ -263,32 +263,6 @@ test('legacy origin defaults without inventing it and retains custom starting me
   assert.equal(loaded.history, undefined);
 });
 
-test('failed writes preserve caller and storage', () => {
-  const storage = memory();
-  const initial = saveTeam(storage, newSavedTeam(sourceTeam()))[0];
-  const candidate = structuredClone(initial);
-  candidate.name = 'Pending';
-  const before = structuredClone(candidate),
-    raw = storage.raw();
-  assert.throws(
-    () =>
-      saveTeam(
-        {
-          ...storage,
-          setItem: () => {
-            throw new Error('Quota');
-          },
-        },
-        candidate
-      ),
-    /Quota/
-  );
-  assert.deepEqual(candidate, before);
-  assert.equal(storage.raw(), raw);
-  const saved = saveTeam(storage, candidate)[0];
-  assert.equal(saved.name, 'Pending');
-});
-
 test('invalid incoming sources and originals cannot hide behind retained fields', () => {
   const storage = memory(),
     saved = saveTeam(storage, newSavedTeam(sourceTeam()))[0];

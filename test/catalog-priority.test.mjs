@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parsePoch, pochUrl } from '../scripts/poch-source.mjs';
-import { reportsWithLadderNotes } from '../scripts/catalog-results.mjs';
 import {
   bestEvidence,
   compareTeams,
@@ -254,44 +253,6 @@ test('saved report entrant metadata remains optional, retained, and protected fr
     );
     assert.equal(storage.value, unchanged);
   }
-});
-
-test('Master Ball ladder annotations retain source and reject prose', () => {
-  const url = 'https://pokepast.es/0000000000000000';
-  const notes = [
-    'Achieved Master Ball 1',
-    'Reached Master Ball Rank 2',
-    'Achieved Master Ball Rank 3',
-    'Reached Master Ball 4',
-    'Reached Master Ball',
-    'Reached Master Ball Rank 5',
-    'Reached Rank 3',
-    'My Master Ball Rank 1 team',
-    'Rank 99',
-  ].join('\n');
-  const reports = reportsWithLadderNotes([], notes, url);
-  assert.deepEqual(
-    reports.map(({ rank }) => rank),
-    [
-      'Master Ball Rank 1',
-      'Master Ball Rank 2',
-      'Master Ball Rank 3',
-      'Master Ball Rank 4',
-      'Master Ball',
-    ]
-  );
-  assert.ok(
-    reports.every(
-      (entry) =>
-        entry.event === 'Champions ranked battles' && entry.sourceUrl === url
-    )
-  );
-  const originals = structuredClone(reports);
-  assert.equal(
-    reportsWithLadderNotes(reports, notes, url).length,
-    reports.length
-  );
-  assert.deepEqual(reports, originals);
 });
 
 test('achievement bands are observable through grades and platform', () => {

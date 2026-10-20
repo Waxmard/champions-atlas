@@ -602,6 +602,18 @@ test('derived sets filter by item, exclude Choice Scarf and aggregate team count
     { item: 'Choice Scarf', teams: 1 },
   ]);
   assert.equal(deriveBenchmarkSet(index, 'Missingno'), null);
+  const megas = buildBenchmarkIndex(
+    [
+      team('base-stone', 'M-C', [raichu]),
+      team('explicit-mega', 'M-C', [{ ...raichu, pokemon: 'Raichu-Mega-Y' }]),
+    ],
+    'M-C'
+  );
+  assert.equal(megas.species[0].pokemon, 'Raichu-Mega-Y');
+  assert.deepEqual(megas.species[0].variants[0].teamIds, [
+    'base-stone',
+    'explicit-mega',
+  ]);
 });
 
 test('catalog spreads aggregate current-regulation observations for the selected nature', () => {

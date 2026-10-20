@@ -94,7 +94,7 @@
   {/if}
   <button
     type="button"
-    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 sm:p-4 sm:pe-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:p-4 sm:pe-5"
     aria-label="Edit item, ability, and nature"
     onclick={() => onnavigate('details')}
     data-editor-section="item"
@@ -144,7 +144,7 @@
 
   <button
     type="button"
-    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 sm:p-4 sm:pe-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:p-4 sm:pe-5"
     aria-label="Edit moves"
     onclick={() => onnavigate('moves')}
     data-editor-section="moves"
@@ -179,7 +179,7 @@
 
   <button
     type="button"
-    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 sm:p-4 sm:pe-5"
+    class="plate group flex min-h-11 flex-col p-3.5 pe-4.5 text-start hover:bg-base-200/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:p-4 sm:pe-5"
     aria-label="Edit EV spread"
     onclick={() => onnavigate('spread')}
     data-editor-section="spread"

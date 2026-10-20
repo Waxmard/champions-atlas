@@ -96,7 +96,8 @@
         (row) => spreadKey(row.nature, row.spread) === key
       );
       if (existing) {
-        if (existing.inGame) existing.source += ` · ${source}`;
+        if (existing.inGame || existing.original)
+          existing.source += ` · ${source}`;
         continue;
       }
       if (catalogCount === 5) continue;

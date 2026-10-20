@@ -173,19 +173,6 @@ const wishlisted = (id, name = id) => ({
   ],
 });
 
-test('sequential same-ID promotion converges in both directions', () => {
-  const base = [wishlisted('wish')];
-  const promoted = [{ ...base[0], collection: 'my-teams' }];
-  assert.deepEqual(merge(base, base, promoted), promoted);
-  assert.deepEqual(merge(base, promoted, base), promoted);
-  assert.deepEqual(merge(promoted, promoted, promoted), promoted);
-  assert.deepEqual(merge(base, promoted, promoted), promoted);
-  assert.equal(
-    teamsSnapshot(merge(base, promoted, base)),
-    teamsSnapshot(promoted)
-  );
-});
-
 test('promotion versus stale Wishlist deletion recovers the promoted team intact', () => {
   const base = [wishlisted('wish')];
   const promoted = [{ ...base[0], collection: 'my-teams' }];

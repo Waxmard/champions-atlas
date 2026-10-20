@@ -44,7 +44,7 @@
       {@const type = getMoveType(move)}
       {@const typeColor = type ? TYPE_COLORS[type] : null}
       <div
-        class="input flex min-h-11 items-center gap-2 border transition-colors {activeMoveSlot ===
+        class="input flex min-h-11 items-center gap-2 border transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary {activeMoveSlot ===
         index
           ? 'border-primary'
           : 'border-base-content/55 hover:border-base-content/80'}"
