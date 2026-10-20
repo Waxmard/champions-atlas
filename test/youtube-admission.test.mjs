@@ -137,6 +137,80 @@ test('uses calendar fallback only for contextual Champions doubles candidates', 
     }),
     singlesPayload
   );
+  const blocks = rawPaste.split('\n\n');
+  const singlesOverlapPayload = pastePayload('', {
+    paste: [
+      blocks[0],
+      blocks[1].replace('- Protect\n- Fake Out', '- Parting Shot\n- Fake Out'),
+      blocks[2].replace('- Protect\n- Fake Out', '- Pollen Puff\n- Rest'),
+      ...blocks
+        .slice(3)
+        .map((block) =>
+          block.replace('- Protect\n- Fake Out', '- Tackle\n- Rest')
+        ),
+    ].join('\n\n'),
+  });
+  rejectReason(
+    'unsupported_format',
+    youtubeRow(url, 'kkkkkkkkkkk', {
+      title: 'Pokémon Champions showcase',
+      description: url,
+      publishedAt: '2026-07-01T12:00:00Z',
+    }),
+    singlesOverlapPayload
+  );
+  for (const hazardMove of [
+    'Stealth Rock',
+    'Sticky Web',
+    'Mortal Spin',
+    'Ceaseless Edge',
+  ]) {
+    const singleHazardPayload = pastePayload('', {
+      paste: [
+        blocks[0].replace(
+          '- Protect\n- Fake Out',
+          `- Protect\n- ${hazardMove}`
+        ),
+        blocks[1],
+        blocks[2],
+        ...blocks
+          .slice(3)
+          .map((block) =>
+            block.replace('- Protect\n- Fake Out', '- Tackle\n- Rest')
+          ),
+      ].join('\n\n'),
+    });
+    const admittedHazard = youtubeCandidate(
+      youtubeRow(url, 'lllllllllll', {
+        title: 'Pokémon Champions showcase',
+        description: url,
+        publishedAt: '2026-07-01T12:00:00Z',
+      }),
+      singleHazardPayload
+    );
+    assert.equal(admittedHazard.regulation, 'M-B', hazardMove);
+  }
+  for (const secondHazard of ['Rapid Spin', 'Spikes']) {
+    const twoHazardPayload = pastePayload('', {
+      paste: [
+        blocks[0].replace('- Protect\n- Fake Out', '- Protect\n- Stealth Rock'),
+        blocks[1].replace(
+          '- Protect\n- Fake Out',
+          `- Protect\n- ${secondHazard}`
+        ),
+        ...blocks.slice(2),
+      ].join('\n\n'),
+    });
+    rejectReason(
+      'unsupported_format',
+      youtubeRow(url, 'mmmmmmmmmmm', {
+        title: 'Pokémon Champions showcase',
+        description: url,
+        publishedAt: '2026-07-01T12:00:00Z',
+      }),
+      twoHazardPayload
+    );
+  }
   const pasteEvidenced = youtubeCandidate(
     youtubeRow(url, 'fffffffffff', {
       title: 'Pokémon Champions showcase',
@@ -445,6 +519,15 @@ test('keeps rejected cached pre-Champions and unrelated uploads outside fallback
       title: 'They Unbanned GALARIAN DARMANITAN! So I had to use it...',
       description: `Pokemon Champions National Dex is here on a side server so of course I had to try it out!\nServer: https://play.champsnatdex.dynv6.net/\nTeam: ${pasteUrl('9706f410525066da')}\n#PokemonChampions`,
       publishedAt: '2026-05-10T21:30:08Z',
+      notes: '',
+      reason: 'unsupported_format',
+    },
+    {
+      paste: pasteUrl('0123456789abcdef'),
+      id: '7LLHJfylhCY',
+      title: 'What if Pokemon Was Scary? [Pokemon Ghost Grey Nuzlocke]',
+      description: `${pasteUrl('0123456789abcdef')}\n#pokemonchampions #vgc`,
+      publishedAt: '2026-10-15T18:00:00Z',
       notes: '',
       reason: 'unsupported_format',
     },

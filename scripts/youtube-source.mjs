@@ -27,11 +27,6 @@ export const youtubeChannels = Object.freeze([
     url: 'https://www.youtube.com/@CybertronVGC',
   }),
   Object.freeze({
-    handle: 'WolfeyVGC',
-    name: 'WolfeyVGC',
-    url: 'https://www.youtube.com/@WolfeyVGC',
-  }),
-  Object.freeze({
     handle: 'PokeRoyVGC',
     name: 'PokeRoy',
     url: 'https://www.youtube.com/@PokeRoyVGC',
@@ -40,11 +35,6 @@ export const youtubeChannels = Object.freeze([
     handle: 'CloverBells',
     name: 'CloverBells',
     url: 'https://www.youtube.com/@CloverBells',
-  }),
-  Object.freeze({
-    handle: 'VictoryRoadTV',
-    name: 'VictoryRoadTV',
-    url: 'https://www.youtube.com/@VictoryRoadTV',
   }),
 ]);
 

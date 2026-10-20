@@ -29,10 +29,8 @@ Sources:
 - [pokeaimMD](https://www.youtube.com/@pokeaimMD),
   [Pokeaim+](https://www.youtube.com/@pokeaimplus),
   [CybertronVGC](https://www.youtube.com/@CybertronVGC),
-  [WolfeyVGC](https://www.youtube.com/@WolfeyVGC),
-  [PokeRoy](https://www.youtube.com/@PokeRoyVGC),
-  [CloverBells](https://www.youtube.com/@CloverBells), and
-  [VictoryRoadTV](https://www.youtube.com/@VictoryRoadTV) are scanned through
+  [PokeRoy](https://www.youtube.com/@PokeRoyVGC), and
+  [CloverBells](https://www.youtube.com/@CloverBells) are scanned through
   their complete public upload histories using YouTube Data API v3. The importer
   follows each channel's uploads playlist and reads direct supported paste links
   in video descriptions. It does not follow shorteners, social posts, website

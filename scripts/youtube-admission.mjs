@@ -1,10 +1,6 @@
 import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { isPasteUrl, normalize } from '../src/lib/catalog.ts';
-import {
-  isCompleteSpread,
-  parseChampionsSpread,
-  parsePaste,
-} from '../src/lib/paste.ts';
+import { parsePaste } from '../src/lib/paste.ts';
 import { championRegulation } from './catalog-payloads.mjs';
 
 const object = (value) =>
@@ -111,6 +107,7 @@ function unsupportedTitleFormat(title) {
   if (/\boverused\b/i.test(title)) return 'overused';
   if (/\bnational\s*dex\b|\bnatdex\b/i.test(title)) return 'nationaldex';
   if (/\bpre[- ]?champions\b/i.test(title)) return 'prechampions';
+  if (/\bnuzlocke\b|\brom\s*hack\b/i.test(title)) return 'nuzlocke';
   const generation =
     /\bgen(?:eration)?\s*([1-8])\b/i.exec(title)?.[1] ??
     /^gen([1-8])(?:vgc|ou|doubles?)/.exec(normalized)?.[1];
@@ -188,23 +185,24 @@ const protectionMoves = new Set([
   'wideguard',
   'quickguard',
 ]);
-const doublesSupportMoves = new Set([
+const doublesOnlyMoves = new Set([
   'helpinghand',
   'followme',
   'ragepowder',
   'allyswitch',
   'coaching',
-  'tailwind',
-  'trickroom',
-  'icywind',
-  'electroweb',
-  'fakeout',
-  'partingshot',
-  'pollenpuff',
   'decorate',
   'instruct',
   'afteryou',
   'healpulse',
+  'wideguard',
+  'quickguard',
+]);
+const speedControlMoves = new Set([
+  'tailwind',
+  'trickroom',
+  'icywind',
+  'electroweb',
 ]);
 const singlesHazardMoves = new Set([
   'stealthrock',
@@ -214,6 +212,8 @@ const singlesHazardMoves = new Set([
   'courtchange',
   'mortalspin',
   'ceaselessedge',
+  'rapidspin',
+  'defog',
 ]);
 
 function pasteDoublesEvidence(paste) {
@@ -228,25 +228,20 @@ function pasteDoublesEvidence(paste) {
   if (sets.some((member) => resolveBattleForm(member).error !== null))
     return false;
   const normalizedMoves = sets.map(({ moves }) => moves.map(normalize));
-  if (
-    normalizedMoves.some((moves) =>
-      moves.some((move) => singlesHazardMoves.has(move))
-    )
-  )
-    return false;
-  const protectUsers = normalizedMoves.filter((moves) =>
-    moves.some((move) => protectionMoves.has(move))
-  ).length;
-  const supportUsers = normalizedMoves.filter((moves) =>
-    moves.some((move) => doublesSupportMoves.has(move))
-  ).length;
-  const spreads = sets.map(({ spread }) => spread).filter(Boolean);
-  const championsEvs =
-    spreads.length >= 4 &&
-    spreads.every((spread) => isCompleteSpread(parseChampionsSpread(spread)));
+  const countUsers = (moveSet) =>
+    normalizedMoves.filter((moves) => moves.some((move) => moveSet.has(move)))
+      .length;
+  const protectUsers = countUsers(protectionMoves);
+  const doublesOnlyUsers = countUsers(doublesOnlyMoves);
+  const speedControlUsers = countUsers(speedControlMoves);
+  const hazardUsers = countUsers(singlesHazardMoves);
+  if (hazardUsers > 1) return false;
+  if (hazardUsers === 1)
+    return protectUsers >= 3 || (protectUsers >= 2 && doublesOnlyUsers >= 1);
   return (
-    (protectUsers >= 2 && (protectUsers >= 3 || supportUsers >= 1)) ||
-    (championsEvs && (protectUsers >= 1 || supportUsers >= 2))
+    protectUsers >= 3 ||
+    (protectUsers >= 2 && (doublesOnlyUsers >= 1 || speedControlUsers >= 1)) ||
+    (protectUsers >= 1 && doublesOnlyUsers >= 1)
   );
 }
 
