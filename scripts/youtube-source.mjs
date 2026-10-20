@@ -21,6 +21,31 @@ export const youtubeChannels = Object.freeze([
     name: 'Pokeaim+',
     url: 'https://www.youtube.com/@pokeaimplus',
   }),
+  Object.freeze({
+    handle: 'CybertronVGC',
+    name: 'CybertronVGC',
+    url: 'https://www.youtube.com/@CybertronVGC',
+  }),
+  Object.freeze({
+    handle: 'WolfeyVGC',
+    name: 'WolfeyVGC',
+    url: 'https://www.youtube.com/@WolfeyVGC',
+  }),
+  Object.freeze({
+    handle: 'PokeRoyVGC',
+    name: 'PokeRoy',
+    url: 'https://www.youtube.com/@PokeRoyVGC',
+  }),
+  Object.freeze({
+    handle: 'CloverBells',
+    name: 'CloverBells',
+    url: 'https://www.youtube.com/@CloverBells',
+  }),
+  Object.freeze({
+    handle: 'VictoryRoadTV',
+    name: 'VictoryRoadTV',
+    url: 'https://www.youtube.com/@VictoryRoadTV',
+  }),
 ]);
 
 const object = (value) =>
@@ -333,15 +358,21 @@ function validateSnapshot(snapshot) {
     !exactKeys(snapshot, snapshotKeys) ||
     snapshot.version !== 1 ||
     !Array.isArray(snapshot.channels) ||
-    snapshot.channels.length !== youtubeChannels.length
+    snapshot.channels.length < 1 ||
+    snapshot.channels.length > youtubeChannels.length
   )
     throw fail('Cached snapshot is invalid.');
 
-  const channels = snapshot.channels.map((entry, index) => {
-    const identity = youtubeChannels[index];
+  let previousChannelIndex = -1;
+  const channels = snapshot.channels.map((entry) => {
+    if (!exactKeys(entry, channelSnapshotKeys))
+      throw fail('Cached snapshot is invalid.');
+    const channelIndex = youtubeChannels.findIndex(
+      (channel) => channel.handle === entry.handle
+    );
+    const identity = youtubeChannels[channelIndex];
     if (
-      !exactKeys(entry, channelSnapshotKeys) ||
-      entry.handle !== identity.handle ||
+      channelIndex <= previousChannelIndex ||
       entry.name !== identity.name ||
       entry.url !== identity.url ||
       typeof entry.channelId !== 'string' ||
@@ -354,7 +385,7 @@ function validateSnapshot(snapshot) {
       !Array.isArray(entry.candidates)
     )
       throw fail('Cached snapshot is invalid.');
-
+    previousChannelIndex = channelIndex;
     const candidates = [];
     const seenLinks = new Set();
     const videos = new Map();
@@ -499,7 +530,7 @@ export function youtubeImportRows(source, previousTeams) {
         skipped: [],
         videosScanned: discovery?.videosScanned || 0,
       },
-      retainedTeams: source.active
+      retainedTeams: discovery
         ? []
         : youtubeCollectionTeams(previousTeams, channel),
     };
@@ -559,16 +590,24 @@ export async function loadYoutubeSource({
 
   const directory = resolve(cache || '.cache/catalog');
   const snapshotPath = join(directory, 'youtube-sources.json');
+  let cachedChannels = null;
   if (offline || !keyPresent || refresh !== true) {
     const snapshot = await readSnapshot(snapshotPath);
     if (snapshot === invalidSnapshot) {
       if (!keyPresent || offline) throw fail('Cached snapshot is invalid.');
     } else if (snapshot) {
-      return {
-        active: true,
-        sourceText: JSON.stringify({ version: 1, channels: snapshot }),
-        channels: snapshot,
-      };
+      if (
+        offline ||
+        !keyPresent ||
+        snapshot.length === youtubeChannels.length
+      ) {
+        return {
+          active: true,
+          sourceText: JSON.stringify({ version: 1, channels: snapshot }),
+          channels: snapshot,
+        };
+      }
+      cachedChannels = new Map(snapshot.map((entry) => [entry.handle, entry]));
     } else if (offline && keyPresent) {
       throw fail('Enabled YouTube source has no offline snapshot.');
     } else if (!keyPresent) {
@@ -581,7 +620,10 @@ export async function loadYoutubeSource({
 
   const channels = [];
   for (const channel of youtubeChannels)
-    channels.push(await scanChannel(channel, apiKey));
+    channels.push(
+      cachedChannels?.get(channel.handle) ||
+        (await scanChannel(channel, apiKey))
+    );
   const validatedChannels = validateSnapshot({ version: 1, channels });
   await writeSnapshot(directory, validatedChannels);
   return {

@@ -1,4 +1,10 @@
+import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { isPasteUrl, normalize } from '../src/lib/catalog.ts';
+import {
+  isCompleteSpread,
+  parseChampionsSpread,
+  parsePaste,
+} from '../src/lib/paste.ts';
 import { championRegulation } from './catalog-payloads.mjs';
 
 const object = (value) =>
@@ -134,20 +140,114 @@ function unsupportedTitleFormat(title) {
   return null;
 }
 
+function unsupportedDescriptionFormat(description) {
+  if (/\bnational\s*dex\b|\bnatdex\b|\bchampsnatdex\b/i.test(description))
+    return 'nationaldex';
+  if (/\bpre[- ]?champions\b/i.test(description)) return 'prechampions';
+  if (
+    /\bsingles\s+ladder\b|\b6v6\s+singles\b|\bsingle\s+battles?\b/i.test(
+      description
+    )
+  )
+    return 'singles';
+  if (
+    /\b(?:champions|national\s*dex|natdex|showdown)\s+ou\b|\bou\s+(?:ladder|server|live)\b/i.test(
+      description
+    )
+  )
+    return 'ou';
+  return null;
+}
+
 function championsEvidence(value) {
   return (
-    /\bchampions\b/i.test(value) ||
+    /\b(?:pok[eé]mon)?champions\b/i.test(value) ||
     /champions(?:\d{4})?(?:vgc|doubles?)/.test(normalize(value))
   );
 }
 
 function doublesEvidence(value) {
-  return /\bvgc\b|\bdoubles\b|\bdouble\s+battles?\b/i.test(value);
+  return /\bvgc\b|\bdoubles\b|\bdouble\s+battles?\b|\bopen\s+team\s+sheet\b|\b(?:world|regional|international)\s+championships?\b|\bpokemon\s+worlds\b|\bat\s+worlds\b|\bfrom\s+worlds\b|\btrick\s+room\b|\btailwind\b|\bhelping\s+hand\b|\bfollow\s+me\b|\brage\s+powder\b|\bally\s+switch\b|\bcoaching\b|\bredirection\b|\bwide\s+guard\b/i.test(
+    value
+  );
 }
 
 function declaredDoublesEvidence(format) {
   const normalized = normalize(format);
   return normalized.includes('vgc') || normalized.includes('double');
+}
+
+const protectionMoves = new Set([
+  'protect',
+  'detect',
+  'spikyshield',
+  'banefulbunker',
+  'kingsshield',
+  'silktrap',
+  'burningbulwark',
+  'wideguard',
+  'quickguard',
+]);
+const doublesSupportMoves = new Set([
+  'helpinghand',
+  'followme',
+  'ragepowder',
+  'allyswitch',
+  'coaching',
+  'tailwind',
+  'trickroom',
+  'icywind',
+  'electroweb',
+  'fakeout',
+  'partingshot',
+  'pollenpuff',
+  'decorate',
+  'instruct',
+  'afteryou',
+  'healpulse',
+]);
+const singlesHazardMoves = new Set([
+  'stealthrock',
+  'spikes',
+  'toxicspikes',
+  'stickyweb',
+  'courtchange',
+  'mortalspin',
+  'ceaselessedge',
+]);
+
+function pasteDoublesEvidence(paste) {
+  if (typeof paste !== 'string' || !paste.trim()) return false;
+  let sets;
+  try {
+    sets = parsePaste(paste);
+  } catch {
+    return false;
+  }
+  if (sets.length !== 6) return false;
+  if (sets.some((member) => resolveBattleForm(member).error !== null))
+    return false;
+  const normalizedMoves = sets.map(({ moves }) => moves.map(normalize));
+  if (
+    normalizedMoves.some((moves) =>
+      moves.some((move) => singlesHazardMoves.has(move))
+    )
+  )
+    return false;
+  const protectUsers = normalizedMoves.filter((moves) =>
+    moves.some((move) => protectionMoves.has(move))
+  ).length;
+  const supportUsers = normalizedMoves.filter((moves) =>
+    moves.some((move) => doublesSupportMoves.has(move))
+  ).length;
+  const spreads = sets.map(({ spread }) => spread).filter(Boolean);
+  const championsEvs =
+    spreads.length >= 4 &&
+    spreads.every((spread) => isCompleteSpread(parseChampionsSpread(spread)));
+  return (
+    (protectUsers >= 2 && (protectUsers >= 3 || supportUsers >= 1)) ||
+    (championsEvs && (protectUsers >= 1 || supportUsers >= 2))
+  );
 }
 
 export function youtubeCandidate(discoveryCandidate, payload) {
@@ -204,6 +304,11 @@ export function youtubeCandidate(discoveryCandidate, payload) {
   const unsupportedTitle = unsupportedTitleFormat(video.title);
   if (unsupportedTitle)
     throw admissionError('unsupported_format', unsupportedTitle);
+  const unsupportedDescription = unsupportedDescriptionFormat(
+    video.description
+  );
+  if (unsupportedDescription)
+    throw admissionError('unsupported_format', unsupportedDescription);
   const context = [
     ...(regulations.length ? formats : []),
     video.title,
@@ -211,7 +316,11 @@ export function youtubeCandidate(discoveryCandidate, payload) {
   ];
   if (
     !context.some(championsEvidence) ||
-    !(context.some(doublesEvidence) || formats.some(declaredDoublesEvidence))
+    !(
+      context.some(doublesEvidence) ||
+      formats.some(declaredDoublesEvidence) ||
+      pasteDoublesEvidence(payload.paste)
+    )
   )
     throw admissionError(
       'unsupported_format',

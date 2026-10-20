@@ -30,7 +30,12 @@ import {
 } from '../scripts/sync-assets.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 import { bestEvidence, evidenceGrade } from '../src/lib/catalog.ts';
-
+import {
+  mcItems,
+  mcPokemon,
+  sheetCsv,
+  sheetRow,
+} from './fixtures/catalog-import.mjs';
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-bootstrap-'));
   const script = fileURLToPath(
@@ -141,6 +146,68 @@ test('deduplication keeps independent evidence and repeat imports stable', () =>
   assert.deepEqual(output[0].sheetIds, ['MC1', 'MC2']);
   assert.deepEqual(deduplicate(structuredClone(output)), output);
 });
+test('parseSheet extracts Report / Video and Other Links URLs and ignores non-URL notes', () => {
+  const row = (id, paste, event, rank, source, reportVideo, otherLinks) =>
+    sheetRow(id, {
+      pokemon: mcPokemon,
+      items: mcItems,
+      paste: `https://pokepast.es/${paste}`,
+      event,
+      rank,
+      source,
+      reportVideo,
+      otherLinks,
+    });
+  const parsed = parseSheet(
+    sheetCsv([
+      row(
+        'MC1',
+        '0123456789abcdef',
+        'Regional',
+        'Top 8',
+        'https://x.com/p/status/1',
+        'youtube.com/watch?v=aaaaaaaaaaa&si=share',
+        'https://play.limitlesstcg.com/t/1'
+      ),
+      row(
+        'MC2',
+        'fedcba9876543210',
+        'Video',
+        '',
+        'No Tweet',
+        'https://youtu.be/bbbbbbbbbbb?si=abc',
+        'Tera Square Offline Meetup #2 Team'
+      ),
+      row(
+        'MC3',
+        '1111222233334444',
+        'Meetup',
+        '1st',
+        'https://x.com/p/status/3',
+        'Tera Square Offline Meetup #2 Team',
+        'https://youtu.be/ccccccccccc?t=67'
+      ),
+    ]),
+    'M-C'
+  );
+  assert.deepEqual(
+    parsed.map(({ reports }) =>
+      reports.map(({ event, rank, sourceUrl }) => [event, rank, sourceUrl])
+    ),
+    [
+      [
+        ['Regional', 'Top 8', 'https://x.com/p/status/1'],
+        ['YouTube video', '', 'https://www.youtube.com/watch?v=aaaaaaaaaaa'],
+        ['Regional', '', 'https://play.limitlesstcg.com/t/1'],
+      ],
+      [['Video', '', 'https://www.youtube.com/watch?v=bbbbbbbbbbb']],
+      [
+        ['Meetup', '1st', 'https://x.com/p/status/3'],
+        ['Meetup', '', 'https://youtu.be/ccccccccccc?t=67'],
+      ],
+    ]
+  );
+});
 
 test('paste enrichment matches species and item, never array position', () => {
   const members = Array.from({ length: 6 }, (_, i) => ({
@@ -199,11 +266,8 @@ test('paste notes recover only explicit ladder results without duplicating claim
   }));
   const paste = members
     .map(
-      (member) =>
-        member.pokemon +
-        ' @ ' +
-        member.item +
-        '\nAbility: Ability\nAdamant Nature\n- Protect'
+      (m) =>
+        `${m.pokemon} @ ${m.item}\nAbility: Ability\nAdamant Nature\n- Protect`
     )
     .join('\n\n');
   const team = {
@@ -371,70 +435,14 @@ test('paste parser preserves complete sets and rejects unsafe input', () => {
 });
 
 test('normalizes team sheets to champions formatting', () => {
-  const paste = `Dragonite (M) @ Dragoninite  
-Ability: Inner Focus  
-Level: 50  
-EVs: 12 HP / 252 SpA / 252 Spe  
-Timid Nature  
-- Dragon Pulse  
-- Tailwind  
-- Flamethrower  
-- Protect  
-
-Rillaboom (M) @ Miracle Seed  
-Ability: Grassy Surge  
-Level: 50  
-EVs: 252 HP / 84 Atk / 4 Def / 108 SpD / 60 Spe  
-Adamant Nature  
-- Grassy Glide  
-- Wood Hammer  
-- Fake Out  
-- High Horsepower  
-
-Weavile (F) @ Focus Sash  
-Ability: Pickpocket  
-Level: 50  
-Tera Type: Dark  
-EVs: 44 HP / 252 Atk / 220 Spe  
-Jolly Nature  
-- Icicle Crash  
-- Fake Out  
-- Protect  
-- Knock Off  
-
-Gholdengo @ Grassy Seed  
-Ability: Good as Gold  
-Level: 50  
-Tera Type: Water  
-EVs: 236 HP / 124 Def / 92 SpA / 28 SpD / 28 Spe  
-Bold Nature  
-IVs: 31 Atk  
-- Protect  
-- Nasty Plot  
-- Shadow Ball  
-- Make It Rain  
-
-Golisopod (F) @ Golisopite  
-Ability: Emergency Exit  
-Level: 50  
-Tera Type: Water  
-EVs: 236 HP / 252 Atk / 12 Def / 12 SpD  
-Brave Nature  
-- Iron Head  
-- Leech Life  
-- First Impression  
-- Wide Guard  
-
-Milotic (F) @ Leftovers  
-Ability: Competitive  
-Level: 50  
-EVs: 252 HP / 212 Def / 36 SpA / 12 SpD  
-Calm Nature  
-IVs: 31 Atk  
-- Muddy Water  
-- Hypnosis  
-- Coil  
-- Protect`;
+  const paste = [
+    'Dragonite (M) @ Dragoninite\nAbility: Inner Focus\nLevel: 50\nEVs: 12 HP / 252 SpA / 252 Spe\nTimid Nature\n- Dragon Pulse\n- Tailwind\n- Flamethrower\n- Protect',
+    'Rillaboom (M) @ Miracle Seed\nAbility: Grassy Surge\nLevel: 50\nEVs: 252 HP / 84 Atk / 4 Def / 108 SpD / 60 Spe\nAdamant Nature\n- Grassy Glide\n- Wood Hammer\n- Fake Out\n- High Horsepower',
+    'Weavile (F) @ Focus Sash\nAbility: Pickpocket\nLevel: 50\nTera Type: Dark\nEVs: 44 HP / 252 Atk / 220 Spe\nJolly Nature\n- Icicle Crash\n- Fake Out\n- Protect\n- Knock Off',
+    'Gholdengo @ Grassy Seed\nAbility: Good as Gold\nLevel: 50\nTera Type: Water\nEVs: 236 HP / 124 Def / 92 SpA / 28 SpD / 28 Spe\nBold Nature\nIVs: 31 Atk\n- Protect\n- Nasty Plot\n- Shadow Ball\n- Make It Rain',
+    'Golisopod (F) @ Golisopite\nAbility: Emergency Exit\nLevel: 50\nTera Type: Water\nEVs: 236 HP / 252 Atk / 12 Def / 12 SpD\nBrave Nature\n- Iron Head\n- Leech Life\n- First Impression\n- Wide Guard',
+    'Milotic (F) @ Leftovers\nAbility: Competitive\nLevel: 50\nEVs: 252 HP / 212 Def / 36 SpA / 12 SpD\nCalm Nature\nIVs: 31 Atk\n- Muddy Water\n- Hypnosis\n- Coil\n- Protect',
+  ].join('\n\n');
 
   const members = parsePaste(paste);
   assert.equal(members.length, 6);

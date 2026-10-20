@@ -12,11 +12,7 @@ import {
   syncSprites,
   validateIndex,
 } from './sync-assets.mjs';
-import {
-  battleSpecies,
-  cosmeticForms,
-  resolveBattleForm,
-} from '../src/lib/battle-forms.ts';
+import { cosmeticForms, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import {
   devonCorpUrl,
@@ -25,7 +21,12 @@ import {
   parseVictoryRoad,
   victoryRoadUrl,
 } from './catalog-sources.mjs';
-import { championRegulation, loadIndexPaste } from './catalog-payloads.mjs';
+import {
+  loadIndexPaste,
+  resolvedPokemon,
+  rosterMatches,
+  validateIndexFormat,
+} from './catalog-payloads.mjs';
 import { reportsWithLadderNotes } from './catalog-results.mjs';
 import {
   enrichLinkedSpreads,
@@ -98,26 +99,46 @@ function url(text, host) {
     throw new Error(`Unexpected source URL: ${text}`);
   return parsed.href;
 }
+function optionalSourceUrl(text = '') {
+  const cleaned = value(text);
+  if (!cleaned) return '';
+  const raw = /^(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(cleaned)
+    ? `https://${cleaned}`
+    : cleaned;
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return '';
+  }
+  if (parsed.protocol === 'http:') parsed.protocol = 'https:';
+  if (parsed.protocol !== 'https:' || parsed.username || parsed.password)
+    return '';
+  const host = parsed.hostname.toLowerCase().replace(/^(?:www|m)\./, '');
+  const untimed =
+    !parsed.searchParams.has('t') &&
+    !parsed.searchParams.has('start') &&
+    !parsed.hash;
+  const shortId =
+    host === 'youtu.be' &&
+    untimed &&
+    /^\/([A-Za-z0-9_-]{11})\/?$/.exec(parsed.pathname)?.[1];
+  const watchId =
+    host === 'youtube.com' &&
+    parsed.pathname === '/watch' &&
+    untimed &&
+    /^[A-Za-z0-9_-]{11}$/.test(parsed.searchParams.get('v') || '') &&
+    parsed.searchParams.get('v');
+  const videoId = shortId || watchId;
+  return videoId ? `https://www.youtube.com/watch?v=${videoId}` : parsed.href;
+}
 
+const optionalColumn = (header, name) => header.indexOf(name);
+const months = 'Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec'.split('|');
 function date(text) {
   if (!text) return '';
   const match = /^(\d{1,2}) ([A-Z][a-z]{2}) (\d{4})$/.exec(text);
-  const month =
-    match &&
-    [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ].indexOf(match[2]);
+  const month = match ? months.indexOf(match[2]) : -1;
   if (!match || month < 0) throw new Error(`Unexpected date: ${text}`);
   const result = new Date(Date.UTC(Number(match[3]), month, Number(match[1])));
   if (result.getUTCMonth() !== month) throw new Error(`Invalid date: ${text}`);
@@ -135,6 +156,8 @@ export function parseSheet(text, regulation) {
     return index;
   };
   const pokemonStart = column('Pokemon Text for Copypasta');
+  const reportVideoColumn = optionalColumn(header, 'Report / Video');
+  const otherLinksColumn = optionalColumn(header, 'Other Links');
   const teams = rows
     .slice(headerIndex + 1)
     .filter((row) => row.some(Boolean))
@@ -157,6 +180,46 @@ export function parseSheet(text, regulation) {
       const pasteUrl = url(field('Pokepaste'), 'pokepast.es');
       if (!/^https:\/\/pokepast\.es\/[a-f0-9]{16}$/.test(pasteUrl))
         throw new Error(`Invalid paste URL in ${row[0]}`);
+      const primary = {
+        event: field('Tournament / Event'),
+        rank: field('Rank'),
+        sourceUrl: url(field('Link to Source')),
+      };
+      const reports = [primary];
+      const reportVideo =
+        reportVideoColumn >= 0 ? optionalSourceUrl(row[reportVideoColumn]) : '';
+      const otherLink =
+        otherLinksColumn >= 0 ? optionalSourceUrl(row[otherLinksColumn]) : '';
+      if (
+        primary.event.toLowerCase() === 'video' &&
+        !primary.sourceUrl &&
+        reportVideo
+      ) {
+        primary.sourceUrl = reportVideo;
+      } else if (
+        reportVideo &&
+        !reports.some(({ sourceUrl }) => sourceUrl === reportVideo)
+      ) {
+        reports.push({
+          event: /^https:\/\/(?:www\.)?(?:youtube\.com|youtu\.be)\//i.test(
+            reportVideo
+          )
+            ? 'YouTube video'
+            : 'Team report',
+          rank: '',
+          sourceUrl: reportVideo,
+        });
+      }
+      if (
+        otherLink &&
+        !reports.some(({ sourceUrl }) => sourceUrl === otherLink)
+      ) {
+        reports.push({
+          event: field('Tournament / Event') || 'Tournament page',
+          rank: '',
+          sourceUrl: otherLink,
+        });
+      }
       return {
         id: catalogId(regulation, pasteUrl, members),
         sheetIds: [row[0]],
@@ -167,13 +230,7 @@ export function parseSheet(text, regulation) {
         pasteUrl,
         replicaCode: field('Replica Code\n(Click text for image)') || null,
         replicaStatus: field('Replica Status'),
-        reports: [
-          {
-            event: field('Tournament / Event'),
-            rank: field('Rank'),
-            sourceUrl: url(field('Link to Source')),
-          },
-        ],
+        reports,
         members,
         paste: null,
         pasteNotes: null,
@@ -234,66 +291,6 @@ export function enrich(team, data) {
   };
 }
 const isVrPasteUrl = (value) => value.startsWith('https://www.vrpastes.com/');
-function validateIndexFormat(candidate, payload) {
-  const regulation = normalize(candidate.regulation);
-  if (!['ma', 'mb', 'mc'].includes(regulation))
-    throw errorWithReason('invalid_payload', 'Invalid candidate regulation');
-  if (payload.provider === 'victory-road') {
-    const format = payload.format;
-    if (format === undefined || format === null || format === '') return;
-    if (typeof format !== 'string')
-      throw errorWithReason('invalid_payload', 'VR format must be a string');
-    if (normalize(format) !== `vgcregulation${regulation}`)
-      throw errorWithReason('format_conflict', `Unexpected format: ${format}`);
-    return;
-  }
-  const notes = payload.notes;
-  if (notes === undefined || notes === null) return;
-  if (typeof notes !== 'string')
-    throw errorWithReason('invalid_payload', 'Paste notes must be a string');
-  for (const line of notes.split(/\r?\n/)) {
-    const match = /^\s*Format\s*:\s*(.*?)\s*$/i.exec(line);
-    if (match && championRegulation(match[1]) !== regulation)
-      throw errorWithReason(
-        'format_conflict',
-        `Unexpected format: ${match[1]}`
-      );
-  }
-}
-
-function resolvedPokemon(member) {
-  const resolved = resolveBattleForm(member);
-  return resolved.error ? member.pokemon : resolved.pokemon;
-}
-
-function rosterMatches(members, expectedSpecies) {
-  if (expectedSpecies === null || expectedSpecies === undefined) return true;
-  if (
-    !Array.isArray(expectedSpecies) ||
-    expectedSpecies.length !== 6 ||
-    !expectedSpecies.every(
-      (species) => typeof species === 'string' && species.trim()
-    )
-  )
-    throw errorWithReason('invalid_roster', 'Invalid published roster');
-  const canonical = (name) => {
-    const species = battleSpecies(name)?.name || name;
-    return cosmeticForms[normalize(species)] ?? species;
-  };
-  const actual = members
-    .map((member) => normalize(canonical(resolvedPokemon(member))))
-    .sort();
-  const expected = expectedSpecies
-    .map((species) => normalize(canonical(species)))
-    .sort();
-  if (actual.some((species, index) => species !== expected[index]))
-    throw errorWithReason(
-      'roster_mismatch',
-      'Paste species do not match the published roster'
-    );
-  return true;
-}
-
 export function teamFromIndex(candidate, payload, canonicalNames) {
   if (
     !candidate ||
@@ -505,9 +502,10 @@ async function main() {
   }
   const previousTeams = priorCatalog?.teams || [];
   const indexRefresh = process.env.REFRESH === '1' || checkSheet;
+  const youtubeRefresh = process.env.REFRESH === '1';
   const youtubeSource = await loadYoutubeSource({
     cache,
-    refresh: indexRefresh,
+    refresh: youtubeRefresh,
     offline: process.env.OFFLINE === '1',
     apiKey: process.env.YOUTUBE_API_KEY,
   });

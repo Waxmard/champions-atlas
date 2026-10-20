@@ -52,6 +52,9 @@ test('discovers both complete multi-page upload histories and canonical direct p
     [
       { videosScanned: 2, videosWithoutPaste: 0 },
       { videosScanned: 2, videosWithoutPaste: 1 },
+      ...youtubeChannels
+        .slice(2)
+        .map(() => ({ videosScanned: 1, videosWithoutPaste: 1 })),
     ]
   );
   assert.deepEqual(
@@ -90,6 +93,9 @@ test('discovers both complete multi-page upload histories and canonical direct p
     [playlistFor(main), 'main-page-2'],
     [playlistFor(plus), null],
     [playlistFor(plus), 'plus-page-2'],
+    ...youtubeChannels
+      .slice(2)
+      .map(({ handle }) => [playlistFor(handle), null]),
   ]);
   assertHeaderOnly(ctx.requests);
   assert.equal(result.sourceText.includes(apiKey), false);
@@ -384,7 +390,7 @@ test('a keyed online import refreshes an invalid snapshot', async (t) => {
   await seedSnapshot(ctx.cache, { version: 2, channels: [] });
   const result = await ctx.load({ apiKey });
   assert.equal(result.active, true);
-  assert.equal(ctx.requests.length, 4);
+  assert.equal(ctx.requests.length, youtubeChannels.length * 2);
   assert.deepEqual(
     JSON.parse(await readFile(snapshotPath(ctx.cache), 'utf8')),
     {
@@ -400,13 +406,41 @@ test('refresh crawls and atomically replaces a valid snapshot', async (t) => {
   const before = await readFile(snapshotPath(ctx.cache), 'utf8');
   const result = await ctx.load({ apiKey, refresh: true });
   const after = await readFile(snapshotPath(ctx.cache), 'utf8');
-  assert.equal(ctx.requests.length, 4);
+  assert.equal(ctx.requests.length, youtubeChannels.length * 2);
   assert.notEqual(after, before);
   assert.deepEqual(JSON.parse(after), {
     version: 1,
     channels: result.channels,
   });
   assert.deepEqual(await readdir(ctx.cache), ['youtube-sources.json']);
+});
+test('accepts a partial cached snapshot offline/keyless and incrementally scans missing channels online', async (t) => {
+  const ctx = api(t);
+  const full = snapshotData();
+  const partial = { version: 1, channels: full.channels.slice(0, 2) };
+  await seedSnapshot(ctx.cache, partial);
+  const cachedText = await readFile(snapshotPath(ctx.cache), 'utf8');
+
+  const keyless = await ctx.load({});
+  const offline = await ctx.load({ apiKey, offline: true, refresh: true });
+  assert.equal(keyless.active && offline.active, true);
+  assert.equal(keyless.channels.length, 2);
+  assert.equal(offline.channels.length, 2);
+  assert.equal(ctx.requests.length, 0);
+  assert.equal(await readFile(snapshotPath(ctx.cache), 'utf8'), cachedText);
+
+  const online = await ctx.load({ apiKey, refresh: false });
+  assert.equal(online.active, true);
+  assert.equal(online.channels.length, youtubeChannels.length);
+  assert.deepEqual(online.channels.slice(0, 2), partial.channels);
+  assert.equal(ctx.requests.length, (youtubeChannels.length - 2) * 2);
+  assert.deepEqual(
+    JSON.parse(await readFile(snapshotPath(ctx.cache), 'utf8')),
+    {
+      version: 1,
+      channels: online.channels,
+    }
+  );
 });
 
 test('a later page failure leaves the completed snapshot untouched', async (t) => {

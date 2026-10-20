@@ -24,7 +24,9 @@ const championsDouble = (url, id, options = {}) =>
     description: url,
     ...options,
   });
-
+const singlesPayload = pastePayload('', {
+  paste: rawPaste.replaceAll('- Protect\n- Fake Out', '- Tackle\n- Rest'),
+});
 test('maps only the bounded UTC video-date windows', () => {
   for (const [date, regulation] of [
     ['2026-04-08T00:00:00Z', 'M-A'],
@@ -124,7 +126,7 @@ test('uses calendar fallback only for contextual Champions doubles candidates', 
       description: url,
       publishedAt: '2026-07-01T12:00:00Z',
     }),
-    pastePayload('')
+    singlesPayload
   );
   rejectReason(
     'unsupported_format',
@@ -133,8 +135,67 @@ test('uses calendar fallback only for contextual Champions doubles candidates', 
       description: url,
       publishedAt: '2026-05-01T12:00:00Z',
     }),
+    singlesPayload
+  );
+  const pasteEvidenced = youtubeCandidate(
+    youtubeRow(url, 'fffffffffff', {
+      title: 'Pokémon Champions showcase',
+      description: url,
+      publishedAt: '2026-07-01T12:00:00Z',
+    }),
     pastePayload('')
   );
+  assert.equal(pasteEvidenced.regulation, 'M-B');
+  assert.deepEqual(pasteEvidenced.regulationInference, {
+    method: 'video-date',
+    publishedAt: '2026-07-01T12:00:00Z',
+    sourceUrl: 'https://www.youtube.com/watch?v=fffffffffff',
+  });
+  for (const [id, pasteId, published, title, description, regulation] of [
+    [
+      '-Q4wXj9eas4',
+      'abe1a9acd3a1dfd0',
+      '2026-10-07T21:00:02Z',
+      'This MEGA FALINKS + MEGA HOUNDOOM Team is too fun...',
+      "It's a brand new season of Pokemon Champions\nTeam: https://pokepast.es/abe1a9acd3a1dfd0",
+      'M-C',
+    ],
+    [
+      '8sZjQzfVscE',
+      '3e926c995da5a8e5',
+      '2026-04-24T20:20:59Z',
+      'I use the WORST Starter in Master Ball Rank…',
+      'Today we try Mega Emboar on the Master Ball Rank in Pokemon Champions.\nhttps://pokepast.es/3e926c995da5a8e5',
+      'M-A',
+    ],
+    [
+      'FLFsVRPLWac',
+      '2c92e63c0fd4a43c',
+      '2026-09-11T17:30:33Z',
+      'MEGA SALAMENCE just won a HUGE Tournament...',
+      'Mega Salamence returns in Pokemon Champions and it already won a HUGE Tournament! WIth Aerilate Double-Edge and Hyper Voice + Tailwind Support\nhttps://pokepast.es/2c92e63c0fd4a43c',
+      'M-C',
+    ],
+    [
+      'WHzW0mEJucw',
+      '48ba4fa43dc05417',
+      '2026-10-19T20:30:19Z',
+      'GOLURK Dominates Master Ball Rank!',
+      'Today we are using a Life Orb Golurk Tailwind and Trick Room Team\n#PokemonChampions\nhttps://pokepast.es/48ba4fa43dc05417',
+      'M-C',
+    ],
+  ]) {
+    const admitted = youtubeCandidate(
+      youtubeRow(pasteUrl(pasteId), id, {
+        title,
+        description,
+        publishedAt: published,
+      }),
+      pastePayload('')
+    );
+    assert.equal(admitted.regulation, regulation, id);
+    assert.equal(admitted.regulationInference?.publishedAt, published, id);
+  }
   const doubleBattles = youtubeCandidate(
     youtubeRow(url, 'iiiiiiiiiii', {
       title: 'Pokémon Champions Double Battle team',
@@ -349,6 +410,42 @@ test('keeps rejected cached pre-Champions and unrelated uploads outside fallback
       description: `${pasteUrl('902f0870e6b65711')}\nFormat: gen9prechampionsvgc`,
       publishedAt: '2026-04-03T18:31:20Z',
       notes: 'Format: gen9prechampionsvgc',
+      reason: 'unsupported_format',
+    },
+    {
+      paste: pasteUrl('98cf92767702d1c4'),
+      id: 'C21-fttQ4sI',
+      title: 'MEGA FROSLASS Dominates Masterball Rank!',
+      description: `${pasteUrl('98cf92767702d1c4')}\n#PokemonChampions`,
+      publishedAt: '2026-04-12T23:00:12Z',
+      notes: 'Format: gen9championsou',
+      reason: 'unsupported_format',
+    },
+    {
+      paste: pasteUrl('85ef4f3e985c9123'),
+      id: 'R99NbuPg1FQ',
+      title: "I can't believe they Unbanned URSHIFU. Let's Try it",
+      description: `Pokemon Champions National Dex is here on a side server!\n${pasteUrl('85ef4f3e985c9123')}`,
+      publishedAt: '2026-05-16T21:30:04Z',
+      notes: 'Format: gen9natdexchampionsou',
+      reason: 'unsupported_format',
+    },
+    {
+      paste: pasteUrl('2faffc186ddff1db'),
+      id: '_DNQZZz0meU',
+      title: "Turns out it's not complex to unban Terapagos...",
+      description: `This team with Mega Froslass and Terapagos managed to peak Rank 1 on the Pokemon Champions National Dex OU Server!\nServer: https://play.champsnatdex.dynv6.net/\nThe Team: ${pasteUrl('2faffc186ddff1db')}\n#PokemonChampions`,
+      publishedAt: '2026-05-12T21:00:26Z',
+      notes: '',
+      reason: 'unsupported_format',
+    },
+    {
+      paste: pasteUrl('9706f410525066da'),
+      id: 'yW88PAjwwDw',
+      title: 'They Unbanned GALARIAN DARMANITAN! So I had to use it...',
+      description: `Pokemon Champions National Dex is here on a side server so of course I had to try it out!\nServer: https://play.champsnatdex.dynv6.net/\nTeam: ${pasteUrl('9706f410525066da')}\n#PokemonChampions`,
+      publishedAt: '2026-05-10T21:30:08Z',
+      notes: '',
       reason: 'unsupported_format',
     },
   ];

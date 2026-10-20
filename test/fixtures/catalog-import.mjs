@@ -16,7 +16,7 @@ const importScript = fileURLToPath(
   new URL('../../scripts/import-catalog.mjs', import.meta.url)
 );
 const sheetHeader =
-  'Team ID|1|2|3|4|5|6|B|C|v1|v2|v3|Pokemon Text for Copypasta||||||Team Description|Full Name|Date Shared|Pokepaste|Replica Code\n(Click text for image)|Replica Status|Tournament / Event|Rank|Link to Source'.split(
+  'Team ID|1|2|3|4|5|6|B|C|v1|v2|v3|Pokemon Text for Copypasta||||||Team Description|Full Name|Date Shared|Pokepaste|Replica Code\n(Click text for image)|Replica Status|Tournament / Event|Rank|Link to Source|Report / Video|Other Links'.split(
     '|'
   );
 const list = (value) => value.split('/');
@@ -65,6 +65,8 @@ export function sheetRow(id, team) {
   row[24] = team.event || '';
   row[25] = team.rank || '';
   row[26] = team.source || '';
+  row[27] = team.reportVideo || '';
+  row[28] = team.otherLinks || '';
   return row;
 }
 
@@ -437,7 +439,7 @@ export const youtubeRow = (pasteUrl, id, options = {}) => ({
 });
 export const youtubePasteUrl = (id) => `https://pokepast.es/${id}`;
 export const youtubeRawPaste = pasteText(
-  ['Golurk', ...mcPokemon.slice(1)],
+  ['Golurk', ...mbPokemon.slice(1)],
   mcItems
 ).replaceAll('\nLevel: 50', '');
 export const youtubeChampionNotes = 'Format: gen9championsvgc2026regmc';
@@ -548,7 +550,16 @@ export async function prepareYoutubeRefreshFixture(directory) {
   });
   const config = {
     channels: channelInfo,
-    videos: { [main]: [mainVideo], [plus]: [plusVideo] },
+    videos: {
+      ...Object.fromEntries(
+        youtubeChannels.map(({ handle }) => [
+          handle,
+          [video(handle, 'bbbbbbbbbbb', { description: 'No paste link' })],
+        ])
+      ),
+      [main]: [mainVideo],
+      [plus]: [plusVideo],
+    },
     sheets: {
       2001945654: sheetSources['M-C.csv'],
       1458357160: sheetSources['M-B.csv'],

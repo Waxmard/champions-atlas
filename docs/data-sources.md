@@ -3,7 +3,7 @@
 The catalog holds Pokémon Champions doubles teams from the VGCPastes M-C and M-B
 spreadsheets, Victory Road's Champions replica-team page, DevonCorp's M-A
 collection, the published Poch.ms leaderboard, and direct paste links from the
-complete public upload histories of pokeaimMD and Pokeaim+. Teams from a sheet
+complete public upload histories of the configured YouTube VGC/Champions channels. Teams from a sheet
 or index include parsed paste sets, and Poch.ms records include the set details
 that page publishes. Missing fields remain unknown.
 
@@ -26,13 +26,20 @@ Sources:
   never from a season number, a publication date, or a tier claim. Reported
   singles and other formats are excluded. Existing X-linked social coverage remains
   on this free source; the ranking policy adds no paid API, scraper, or subscription.
-- [pokeaimMD](https://www.youtube.com/@pokeaimMD) and
-  [Pokeaim+](https://www.youtube.com/@pokeaimplus) are scanned through their
-  complete public upload histories using YouTube Data API v3. The importer
+- [pokeaimMD](https://www.youtube.com/@pokeaimMD),
+  [Pokeaim+](https://www.youtube.com/@pokeaimplus),
+  [CybertronVGC](https://www.youtube.com/@CybertronVGC),
+  [WolfeyVGC](https://www.youtube.com/@WolfeyVGC),
+  [PokeRoy](https://www.youtube.com/@PokeRoyVGC),
+  [CloverBells](https://www.youtube.com/@CloverBells), and
+  [VictoryRoadTV](https://www.youtube.com/@VictoryRoadTV) are scanned through
+  their complete public upload histories using YouTube Data API v3. The importer
   follows each channel's uploads playlist and reads direct supported paste links
   in video descriptions. It does not follow shorteners, social posts, website
   indexes, comments, transcripts, or screen-only teams.
-- Individual PokéPaste, VR Pastes, and original report links are retained on each team.
+- Individual PokéPaste, VR Pastes, and original report/video/tournament links
+  (including supplementary `Report / Video` and `Other Links` columns on
+  VGCPastes sheets) are retained on each team.
 
 A team from an index joins the catalog only when its linked paste is a six-set
 Pokémon Champions paste for that team's regulation. The importer rejects a paste
@@ -41,11 +48,15 @@ Victory Road row whose published roster does not match the paste, and a Victory
 Road row whose creator and result claims belong to a different roster.
 
 YouTube-linked teams require independent Pokémon Champions and VGC/doubles
-context. Every supplied `Format:` declaration, provider format, and explicit
+context (from explicit format declarations, doubles/tournament terminology in
+video text, or a six-Pokémon Champions doubles paste with protection/doubles
+support moves, no singles entry hazards, and resolved Champions battle forms).
+Every supplied `Format:` declaration, provider format, and explicit
 M-A, M-B, or M-C regulation token must agree. Singles, OU, National Dex,
 pre-Champions, other games, unknown format declarations, unsupported regulations,
-and conflicting formats are excluded. Promotional description text mentioning
-another game does not override an otherwise eligible team.
+and conflicting formats are excluded across both titles and descriptions.
+Promotional description text mentioning another game does not override an
+otherwise eligible team.
 
 When no explicit regulation or unresolved format declaration exists, the video
 date can estimate the regulation only with Champions doubles context:
@@ -103,7 +114,9 @@ workflow: dev, build, and typecheck generate a missing catalog and otherwise
 leave it in place.
 YouTube discovery stores only a validated, completed snapshot at
 `.cache/catalog/youtube-sources.json`. A keyed online import reuses a valid
-snapshot unless `REFRESH=1` or `CHECK_SHEET=1` requests a complete recrawl.
+complete snapshot unless `REFRESH=1` requests a complete recrawl, and
+incrementally scans only newly configured channels when a valid cached snapshot
+holds a subset of the allowlist.
 `OFFLINE=1` never contacts YouTube; with a key it requires a valid snapshot.
 Without a key, an existing valid snapshot is reused, while an absent snapshot
 disables this source with a warning and retains previously imported channel-only
