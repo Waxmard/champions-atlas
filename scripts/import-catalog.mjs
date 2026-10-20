@@ -22,11 +22,18 @@ import {
   devonCorpUrl,
   parseDevonCorp,
   parseVictoryRoad,
-  parseVrPaste,
   victoryRoadUrl,
 } from './catalog-sources.mjs';
+import { championRegulation, loadIndexPaste } from './catalog-payloads.mjs';
 import { reportsWithLadderNotes } from './catalog-results.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
+import {
+  loadYoutubeSource,
+  youtubeIndexData,
+  youtubeImportRows,
+  youtubePrior,
+  youtubeRetainedSourceText,
+} from './youtube-source.mjs';
 import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
@@ -221,17 +228,6 @@ export function enrich(team, data) {
   };
 }
 const isVrPasteUrl = (value) => value.startsWith('https://www.vrpastes.com/');
-
-const championRegulation = (value) => {
-  if (typeof value !== 'string') return null;
-  const text = normalize(value);
-  return (
-    /vgcregulation([a-z]{2})$/.exec(text)?.[1] ??
-    /champions.*reg([a-z]{2})$/.exec(text)?.[1] ??
-    null
-  );
-};
-
 function validateIndexFormat(candidate, payload) {
   const regulation = normalize(candidate.regulation);
   if (!['ma', 'mb', 'mc'].includes(regulation))
@@ -366,22 +362,6 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
     pasteNotes: payload.notes || null,
   };
 }
-const vrPasteApi = (id) =>
-  `https://vrpaste-backend.vercel.app/api/paste/${id}?lang=english`;
-
-function validateProviderJson(text) {
-  let data;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = null;
-  }
-  if (!data || typeof data !== 'object' || Array.isArray(data))
-    throw errorWithReason(
-      'invalid_payload',
-      'Provider payload is not a JSON object'
-    );
-}
 
 export async function enrichPastes(
   teams,
@@ -508,9 +488,40 @@ async function main() {
       if (error.code !== 'ENOENT') throw error;
     }
   }
+  let priorCatalog = null;
+  try {
+    priorCatalog = JSON.parse(await readFile(output, 'utf8'));
+  } catch (error) {
+    if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
+  }
+  const previousTeams = priorCatalog?.teams || [];
+  const indexRefresh = process.env.REFRESH === '1' || checkSheet;
+  const youtubeSource = await loadYoutubeSource({
+    cache,
+    refresh: indexRefresh,
+    offline: process.env.OFFLINE === '1',
+    apiKey: process.env.YOUTUBE_API_KEY,
+  });
+  const youtubeRows = youtubeImportRows(youtubeSource, previousTeams);
   const teams = [];
   const csvs = [];
-  const indexRefresh = process.env.REFRESH === '1' || checkSheet;
+  const payloads = new Map();
+  const youtubePasteUrls = new Set(
+    youtubeRows.flatMap(({ source }) =>
+      source.candidates.map(({ pasteUrl }) => pasteUrl)
+    )
+  );
+  const loadPayload = (candidate) => {
+    if (payloads.has(candidate.pasteUrl))
+      return payloads.get(candidate.pasteUrl);
+    const refresh =
+      indexRefresh &&
+      (isVrPasteUrl(candidate.pasteUrl) ||
+        youtubePasteUrls.has(candidate.pasteUrl));
+    const pending = loadIndexPaste(candidate, fetchCached, refresh);
+    payloads.set(candidate.pasteUrl, pending);
+    return pending;
+  };
   for (const [regulation, gid] of Object.entries(tabs)) {
     // Google CSV exports redirect to a Google-hosted download endpoint.
     const address = `${sheet}/export?format=csv&gid=${gid}`;
@@ -558,35 +569,20 @@ async function main() {
   const victoryRoad = parseVictoryRoad(victoryRoadHtml);
   const devonCorp = parseDevonCorp(devonCorpHtml);
   const unique = deduplicate(teams);
+  const youtubeHash = youtubeSource.active
+    ? youtubeSource.sourceText
+    : youtubeRetainedSourceText(youtubeRows);
   const sourceHash = hashSources([
     ...csvs,
     victoryRoadHtml,
     devonCorpHtml,
     pochHtml,
+    youtubeHash,
   ]);
-  let priorCatalog = null;
-  try {
-    priorCatalog = JSON.parse(await readFile(output, 'utf8'));
-  } catch (error) {
-    if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
-  }
-  const previousTeams = priorCatalog?.teams || [];
   const stats = await enrichPastes(unique, {
     limit: count,
     previousTeams,
-    loadPaste: async (team) => {
-      const key = team.pasteUrl.split('/').at(-1);
-      const cached = await fetchCached(
-        `${key}.json`,
-        `${team.pasteUrl}/json`,
-        JSON.parse
-      );
-      try {
-        return JSON.parse(cached);
-      } catch {
-        throw new Error(`Invalid cached paste: ${key}`);
-      }
-    },
+    loadPaste: (team) => loadPayload(team),
   });
   const canonicalNames = new Map();
   for (const team of unique)
@@ -604,65 +600,6 @@ async function main() {
   const reasons = new Map();
   const noteReason = (reason) =>
     reasons.set(reason, (reasons.get(reason) || 0) + 1);
-  const payloads = new Map();
-  async function loadVictoryRoadPayload(candidate) {
-    const id = candidate.pasteUrl.split('/').at(-1);
-    let text;
-    try {
-      text = await fetchCached(
-        `vr-${id}.json`,
-        vrPasteApi(id),
-        validateProviderJson,
-        indexRefresh
-      );
-    } catch (error) {
-      throw error.reason
-        ? error
-        : errorWithReason('paste_unavailable', error.message);
-    }
-    try {
-      return { ...parseVrPaste(JSON.parse(text)), provider: 'victory-road' };
-    } catch (error) {
-      throw error.reason
-        ? error
-        : errorWithReason('invalid_payload', `Invalid VR payload: ${id}`);
-    }
-  }
-  async function loadPokepastePayload(candidate) {
-    const key = candidate.pasteUrl.split('/').at(-1);
-    let text;
-    try {
-      text = await fetchCached(
-        `${key}.json`,
-        `${candidate.pasteUrl}/json`,
-        validateProviderJson
-      );
-    } catch (error) {
-      throw error.reason
-        ? error
-        : errorWithReason('paste_unavailable', error.message);
-    }
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch {
-      throw errorWithReason('invalid_payload', `Invalid paste payload: ${key}`);
-    }
-    return {
-      paste: data.paste,
-      notes: data.notes,
-      publishedAt: '',
-      provider: 'pokepaste',
-    };
-  }
-  const loadPayload = (candidate) => {
-    const pending = isVrPasteUrl(candidate.pasteUrl)
-      ? loadVictoryRoadPayload(candidate)
-      : loadPokepastePayload(candidate);
-    if (!payloads.has(candidate.pasteUrl))
-      payloads.set(candidate.pasteUrl, pending);
-    return payloads.get(candidate.pasteUrl);
-  };
   const compatiblePrior = (candidate) => {
     const prior = priorByKey.get(
       `${candidate.pasteUrl}|${candidate.regulation}`
@@ -682,64 +619,111 @@ async function main() {
     }
     return prior;
   };
+  const compatibleYoutubePrior = (candidate) => {
+    const prior = youtubePrior(candidate, previousTeams);
+    if (!prior || typeof prior.paste !== 'string') return null;
+    const payload = { paste: prior.paste, notes: prior.pasteNotes };
+    try {
+      const data = youtubeIndexData(candidate, payload);
+      const team = teamFromIndex(data.candidate, data.payload, canonicalNames);
+      return team.id === prior.id && team.regulation === prior.regulation
+        ? prior
+        : null;
+    } catch {
+      return null;
+    }
+  };
+  const youtubeTeamFromPayload = (candidate, payload) => {
+    const data = youtubeIndexData(candidate, payload);
+    return teamFromIndex(data.candidate, data.payload, canonicalNames);
+  };
   const fallbackReasons = new Set(['paste_unavailable', 'invalid_payload']);
   const publicBudget =
     count === Infinity ? Infinity : Math.max(0, count - stats.attempted);
   let publicUsed = 0;
   const publicTeams = [];
   const sourceStats = [];
-  for (const [name, source] of [
-    ['Victory Road', victoryRoad],
-    ['DevonCorp', devonCorp],
+  for (const { name, source, youtube = false, retainedTeams = [] } of [
+    { name: 'Victory Road', source: victoryRoad },
+    { name: 'DevonCorp', source: devonCorp },
+    ...youtubeRows,
   ]) {
+    const skipReasons = youtube ? {} : null;
     const counts = {
-      discovered: source.candidates.length + source.skipped.length,
+      discovered: source.candidates.length + (source.skipped?.length || 0),
+      scanned:
+        youtube && youtubeSource.active ? source.videosScanned : undefined,
       accepted: 0,
       priorRetained: 0,
       skipped: 0,
       merged: 0,
     };
-    for (const entry of source.skipped) {
+    const addReason = (reason) => {
+      noteReason(reason);
+      if (skipReasons) skipReasons[reason] = (skipReasons[reason] || 0) + 1;
+    };
+    for (const entry of source.skipped || []) {
       counts.skipped += 1;
-      noteReason(entry.reason);
+      addReason(entry.reason);
       console.warn(
         `${name}: skipped ${entry.pasteUrl || 'row'} (${entry.reason})`
       );
     }
-    sourceStats.push({ name, counts });
+    sourceStats.push({ name, counts, skipReasons });
+    const keep = (team, field) => {
+      publicTeams.push(team);
+      if (emitted.has(team.id)) counts.merged += 1;
+      else {
+        emitted.add(team.id);
+        counts[field] += 1;
+      }
+    };
+    const handleFailure = (candidate, prior, error) => {
+      const reason = error.reason || 'paste_unavailable';
+      if (prior && fallbackReasons.has(reason))
+        return keep({ ...prior, pasteError: error.message }, 'priorRetained');
+      counts.skipped += 1;
+      addReason(reason);
+      console.warn(
+        `${name}: skipped ${candidate.pasteUrl} (${reason}: ${error.message})`
+      );
+    };
+    for (const team of retainedTeams) keep(team, 'priorRetained');
     for (const candidate of source.candidates) {
-      const prior = compatiblePrior(candidate);
-      const keep = (team, field) => {
-        publicTeams.push(team);
-        if (emitted.has(team.id)) counts.merged += 1;
-        else {
-          emitted.add(team.id);
-          counts[field] += 1;
-        }
-      };
+      const prior = youtube
+        ? compatibleYoutubePrior(candidate)
+        : compatiblePrior(candidate);
       if (publicUsed >= publicBudget) {
-        if (prior) keep(prior, 'priorRetained');
+        if (prior && youtube && payloads.has(candidate.pasteUrl)) {
+          try {
+            keep(
+              youtubeTeamFromPayload(
+                candidate,
+                await payloads.get(candidate.pasteUrl)
+              ),
+              'accepted'
+            );
+          } catch (error) {
+            handleFailure(candidate, prior, error);
+          }
+        } else if (prior) keep(prior, 'priorRetained');
         else {
           counts.skipped += 1;
-          noteReason('limited');
+          addReason('limited');
         }
         continue;
       }
       publicUsed += 1;
       try {
         const payload = await loadPayload(candidate);
-        keep(teamFromIndex(candidate, payload, canonicalNames), 'accepted');
+        keep(
+          youtube
+            ? youtubeTeamFromPayload(candidate, payload)
+            : teamFromIndex(candidate, payload, canonicalNames),
+          'accepted'
+        );
       } catch (error) {
-        const reason = error.reason || 'paste_unavailable';
-        if (prior && fallbackReasons.has(reason))
-          keep({ ...prior, pasteError: error.message }, 'priorRetained');
-        else {
-          counts.skipped += 1;
-          noteReason(reason);
-          console.warn(
-            `${name}: skipped ${candidate.pasteUrl} (${reason}: ${error.message})`
-          );
-        }
+        handleFailure(candidate, prior, error);
       }
     }
   }
@@ -762,15 +746,28 @@ async function main() {
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
       { name: 'Poch.ms', url: pochUrl },
+      ...youtubeRows
+        .filter(
+          ({ retainedTeams }) => youtubeSource.active || retainedTeams.length
+        )
+        .map(({ name, url }) => ({ name, url })),
     ],
     sourceHash,
     teams: catalogTeams,
   });
   const sprites = await restoreSprites(catalogTeams);
   const items = await restoreItems(catalogTeams);
-  for (const { name, counts } of sourceStats)
+  for (const { name, counts, skipReasons } of sourceStats)
     console.log(
-      `${name}: ${counts.discovered} discovered — ${counts.accepted} accepted, ${counts.priorRetained} retained, ${counts.skipped} skipped, ${counts.merged} merged.`
+      `${name}: ${skipReasons ? (youtubeSource.active ? `${counts.scanned} uploads scanned, ${counts.discovered} linked candidates` : 'inactive (no completed snapshot)') : `${counts.discovered} discovered`} — ${counts.accepted} accepted, ${counts.priorRetained} retained, ${counts.skipped} skipped, ${counts.merged} merged${
+        skipReasons
+          ? `; skip reasons: ${
+              Object.entries(skipReasons)
+                .map(([reason, total]) => `${reason}=${total}`)
+                .join(', ') || 'none'
+            }`
+          : ''
+      }.`
     );
   if (reasons.size)
     console.log(

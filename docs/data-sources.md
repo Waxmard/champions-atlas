@@ -1,10 +1,11 @@
 # Catalog snapshot
 
-The catalog holds Pokémon Champions doubles teams from four sources: the
-VGCPastes M-C and M-B spreadsheets, Victory Road's Champions replica-team page,
-DevonCorp's M-A collection, and the published Poch.ms leaderboard. Teams from a
-sheet or an index include parsed paste sets, and Poch.ms records include the set
-details that page publishes. Missing fields remain unknown.
+The catalog holds Pokémon Champions doubles teams from the VGCPastes M-C and M-B
+spreadsheets, Victory Road's Champions replica-team page, DevonCorp's M-A
+collection, the published Poch.ms leaderboard, and direct paste links from the
+complete public upload histories of pokeaimMD and Pokeaim+. Teams from a sheet
+or index include parsed paste sets, and Poch.ms records include the set details
+that page publishes. Missing fields remain unknown.
 
 Sources:
 
@@ -25,11 +26,12 @@ Sources:
   never from a season number, a publication date, or a tier claim. Reported
   singles and other formats are excluded. Existing X-linked social coverage remains
   on this free source; the ranking policy adds no paid API, scraper, or subscription.
-- [Champions Battle Data](https://championsbattledata.com/api) supplies the level-50
-  stat values used for Speed. Its JSON is CORS-enabled and offered for app use,
-  and it is not used for usage percentages or result evidence. Refresh the
-  committed table by hand with `npm run sync:stats`; dev, build, and typecheck
-  never fetch it.
+- [pokeaimMD](https://www.youtube.com/@pokeaimMD) and
+  [Pokeaim+](https://www.youtube.com/@pokeaimplus) are scanned through their
+  complete public upload histories using YouTube Data API v3. The importer
+  follows each channel's uploads playlist and reads direct supported paste links
+  in video descriptions. It does not follow shorteners, social posts, website
+  indexes, comments, transcripts, or screen-only teams.
 - Individual PokéPaste, VR Pastes, and original report links are retained on each team.
 
 A team from an index joins the catalog only when its linked paste is a six-set
@@ -38,11 +40,32 @@ whose format names another regulation or another game, a protected paste, a
 Victory Road row whose published roster does not match the paste, and a Victory
 Road row whose creator and result claims belong to a different roster.
 
+YouTube-linked teams require explicit Pokémon Champions and VGC/doubles context
+in a format declaration, video title, or video description, plus a supported
+M-A, M-B, or M-C regulation. A paste's explicit `Format:` declaration, the
+video's declarations, and the paste's provider format must agree. Singles, OU,
+National Dex, other games, unsupported regulations, and conflicting formats are
+excluded. A date, channel identity, or current regulation never supplies format
+evidence. The importer preserves published set text and leaves missing fields
+unknown. It retains channel-collection and video provenance; a video date is a
+sharing date, not a result claim. The presenter is not treated as the team
+builder. Only a standalone `Team by:` or `Team by` description line supplies builder credit.
+
 A Poch.ms record joins the catalog only when its rule is `double`, its species
 resolve, and every field it uses parses. A record with an unresolvable species, a
 malformed field it needs, or a conflicting duplicate source ID is skipped rather
 than guessed. A source parse that finds supported records but admits none fails
 the refresh instead of publishing an empty success.
+
+YouTube source setup requires YouTube Data API v3 enabled in a Google Cloud
+project and an API key restricted to that API. Add the key as the
+`YOUTUBE_API_KEY` GitHub Actions secret accessible to both production and preview
+environments. Do not apply browser-referrer restrictions to this server-side key.
+On macOS, store it in Keychain with
+`security add-generic-password -s champions-atlas:youtube-api-key -a "$USER" -T "" -w`,
+then load it at import time with
+`export YOUTUBE_API_KEY="$(security find-generic-password -s champions-atlas:youtube-api-key -a "$USER" -w)"`.
+Never place the key in `.env`.
 
 ## Freshness and scheduling
 
@@ -54,6 +77,19 @@ fetch or structural failure throws before the atomic catalog write, so the
 previous catalog stays published. Nothing imports on a schedule outside that
 workflow: dev, build, and typecheck generate a missing catalog and otherwise
 leave it in place.
+YouTube discovery stores only a validated, completed snapshot at
+`.cache/catalog/youtube-sources.json`. A keyed online import reuses a valid
+snapshot unless `REFRESH=1` or `CHECK_SHEET=1` requests a complete recrawl.
+`OFFLINE=1` never contacts YouTube; with a key it requires a valid snapshot.
+Without a key, an existing valid snapshot is reused, while an absent snapshot
+disables this source with a warning and retains previously imported channel-only
+teams. An invalid snapshot fails in offline or keyless mode; a keyed online
+import replaces it only after a successful complete crawl. Once an enabled scan
+begins, API, quota, or structural failures abort before catalog replacement, including in
+preview; preview's stale-cache option does not weaken YouTube discovery. A
+successful complete scan treats disappeared video/paste links as removals.
+Individual paste fetch failures retain compatible prior sets and expose the
+error.
 
 ## Reuse conditions
 
@@ -132,8 +168,8 @@ error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
 partial-fetch option and does not erase compatible previously loaded sets. It
 counts candidate teams with the sheets first, so a limit below the sheet count
 leaves index teams unreached: those keep their previously validated record
-unchanged, and a new index team beyond the limit is omitted and reported as
-`limited`.
+unless an already-loaded shared payload contradicts the YouTube attribution.
+A new index team beyond the limit is omitted and reported as `limited`.
 
 Saved teams retain their own original snapshot and source history, and the
 snapshot keeps the original reports too. A record without a real paste URL

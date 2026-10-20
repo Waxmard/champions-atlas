@@ -1,11 +1,28 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import {
+  devonCorpPage,
+  devonItems,
+  devonPokemon,
+  pasteText,
+  pokePasteJson,
+  readCatalog,
+  reasonChecker,
+  rosterHtml,
+  runImport,
+  sheetCsv,
+  sheetRow,
+  sheetSources,
+  victoryRoadPage,
+  vrProviderPayload,
+  vrRoster,
+  vrRow,
+  writeCache,
+} from './fixtures/catalog-import.mjs';
 import {
   deduplicate,
   parseSheet,
@@ -17,235 +34,6 @@ import {
   victoryRoadUrl,
 } from '../scripts/catalog-sources.mjs';
 import { normalize } from '../src/lib/catalog.ts';
-
-const importScript = fileURLToPath(
-  new URL('../scripts/import-catalog.mjs', import.meta.url)
-);
-const sheetHeader =
-  'Team ID|1|2|3|4|5|6|B|C|v1|v2|v3|Pokemon Text for Copypasta||||||Team Description|Full Name|Date Shared|Pokepaste|Replica Code\n(Click text for image)|Replica Status|Tournament / Event|Rank|Link to Source'.split(
-    '|'
-  );
-const list = (value) => value.split('/');
-const vrRoster = list(
-  'Gengar Mega/Snorlax/Incineroar/Scrafty/Dragonite/Rillaboom'
-);
-const mcPokemon = list(
-  'Gholdengo/Amoonguss/Iron Hands/Farigiraf/Pelipper/Basculegion'
-);
-const mcItems = list(
-  'Choice Specs/Rocky Helmet/Assault Vest/Safety Goggles/Focus Sash/Mystic Water'
-);
-const mbPokemon = list(
-  'Kingambit/Sinistcha/Rillaboom/Incineroar/Dragonite/Snorlax'
-);
-const mbItems = list(
-  'Black Glasses/Sitrus Berry/Miracle Seed/Charcoal/Life Orb/Leftovers'
-);
-const devonPokemon = list(
-  'Charizard/Garchomp/Amoonguss/Incineroar/Rillaboom/Gholdengo'
-);
-const devonItems = list(
-  'Charizardite Y/Clear Amulet/Sitrus Berry/Safety Goggles/Miracle Seed/Choice Specs'
-);
-
-const csvField = (value) => {
-  const text = String(value);
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
-
-function sheetRow(id, team) {
-  const row = Array(sheetHeader.length).fill('');
-  row[0] = id;
-  team.items.forEach((item, index) => {
-    row[3 + index] = item;
-  });
-  team.pokemon.forEach((name, index) => {
-    row[12 + index] = name;
-  });
-  row[18] = team.name || id;
-  row[19] = team.creator || 'Owner';
-  row[20] = team.date || '12 Sep 2026';
-  row[21] = team.paste;
-  row[22] = team.code || '';
-  row[23] = 'Open';
-  row[24] = team.event || '';
-  row[25] = team.rank || '';
-  row[26] = team.source || '';
-  return row;
-}
-
-const sheetCsv = (rows) =>
-  [sheetHeader, ...rows].map((row) => row.map(csvField).join(',')).join('\n');
-
-function setBlock(name, item, ability, nature, moves, spread) {
-  return [
-    item ? `${name} @ ${item}` : name,
-    `Ability: ${ability}`,
-    'Level: 50',
-    spread ? `EVs: ${spread}` : '',
-    `${nature} Nature`,
-    ...moves.map((move) => `- ${move}`),
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
-const pasteText = (species, items) =>
-  species
-    .map((name, index) =>
-      setBlock(
-        name,
-        items[index],
-        'Ability',
-        'Adamant',
-        ['Protect', 'Fake Out'],
-        '2 HP / 32 Atk'
-      )
-    )
-    .join('\n\n');
-
-const pokePasteJson = (blocks, notes) =>
-  JSON.stringify({
-    author: 'Fixture',
-    notes,
-    paste: blocks,
-    title: 'Fixture team',
-  });
-
-const vrSetSpecs = [
-  'Gengar|Genry|Gengarite|Cursed Body|Modest|hp=30,def=13,spd=16,spe=7|Perish Song,Shadow Ball,Sludge Bomb,Protect',
-  'Snorlax|Snorlax|Leftovers|Thick Fat|Relaxed|hp=21,def=31,spd=14|Yawn,Encore,Fissure,Protect',
-  'Incineroar|Incineroar|Sitrus Berry|Intimidate|Relaxed|hp=32,def=25,spd=9|Flare Blitz,Parting Shot,Fake Out,Protect',
-  'Scrafty|Scrafty|Focus Sash|Intimidate|Impish|hp=32,def=4,spd=4,spe=26|Close Combat,Knock Off,Fake Out,Protect',
-  'Dragonite|Dragonite|Life Orb|Inner Focus|Adamant|hp=29,atk=32,spe=5|Dragon Claw,Low Kick,Extreme Speed,Protect',
-  'Rillaboom|Rillaboom|Eject Button|Grassy Surge|Sassy|hp=32,def=4,spd=30|Grassy Glide,U-turn,Fake Out,Protect',
-];
-
-const vrTeams = vrSetSpecs.map((spec) => {
-  const [species, name, item, ability, nature, evs, moves] = spec.split('|');
-  return {
-    species,
-    name,
-    item,
-    ability,
-    nature,
-    evs: Object.fromEntries(
-      evs.split(',').map((pair) => {
-        const [stat, value] = pair.split('=');
-        return [stat, Number(value)];
-      })
-    ),
-    moves: moves.split(','),
-    ...(species === 'Gengar' ? { shiny: true } : {}),
-  };
-});
-
-const vrProviderPayload = (overrides = {}) => ({
-  id: 'AbC12345',
-  is_public: true,
-  is_encrypted: false,
-  format: 'VGC Regulation M-C',
-  createdAt: 1789118018,
-  teams: vrTeams,
-  ...overrides,
-});
-
-const rosterHtml = (names) =>
-  names
-    .map((name) => `<img title="${name}" alt="${name}" width="64px"/>`)
-    .join('');
-
-const vrRow = (player, roster, paste, rank = 'Champion') =>
-  `<tr><td></td><td><b>${player}</b></td>` +
-  `<td><b>Spring Cup<br>${rank}</b></td><td><div>${roster}</div></td>` +
-  `<td>AB C 123</td><td><a href="${paste}"><img title="Export"/></a></td><td></td></tr>`;
-
-const vrTable = (rows, start = 0) =>
-  `<table><thead><tr><th>Flag</th><th>Player</th><th>Best results</th><th>Team</th>` +
-  `<th>Code</th><th>Paste</th><th>Rep.</th></tr></thead><tbody>${rows.slice(start).join('')}` +
-  `</tbody></table>`;
-
-const victoryRoadPage = (rows) =>
-  `<h1>Pokémon Champions — Replica Teams</h1>` +
-  `<h2>Regulation Set (M-C)</h2><h3>Teams reaching finals of large tournaments</h3>` +
-  vrTable(rows) +
-  `<h2>Past formats</h2>` +
-  vrTable([
-    vrRow(
-      'Legacy Player',
-      rosterHtml(vrRoster),
-      'https://pokepast.es/0123456789abcdef'
-    ),
-  ]);
-
-const devonCorpPage = (extra = '') =>
-  `<h1>38 Teams to Try for Pokémon Champions Regulation M-A</h1>` +
-  `<a href="https://pokepast.es/ffffffffffffffff">unrelated</a>` +
-  `<article><div class="blog-item-content e-content">` +
-  `<h3>CYBERTRON TEAM</h3><div class="sqs-html-content">` +
-  `<p>Teambuilder: <a href="https://x.com/CybertronVGC">https://x.com/CybertronVGC</a></p>` +
-  `<p>Replica Code: NFVS4SYCW2</p>` +
-  `<p>Pokepaste: <a href="https://pokepast.es/138b4ef886ba95e4">paste</a></p>` +
-  `<p><a href="https://youtu.be/Du3AZ5dpIv4?t=67">Link to YouTube Explanation</a></p>` +
-  `</div>${extra}</div></article>`;
-
-const reasonChecker = (reason) => (error) => error.reason === reason;
-
-async function writeCache(directory, files) {
-  const cache = join(directory, '.cache/catalog');
-  await mkdir(cache, { recursive: true });
-  for (const [name, content] of Object.entries(files))
-    await writeFile(join(cache, name), content);
-  return cache;
-}
-
-function runImport(directory, env = {}) {
-  return execFileSync(process.execPath, [importScript], {
-    cwd: directory,
-    env: {
-      ...process.env,
-      OFFLINE: '1',
-      CHECK_SHEET: '',
-      REFRESH: '',
-      PASTE_LIMIT: '',
-      ...env,
-    },
-    encoding: 'utf8',
-    stdio: 'pipe',
-  });
-}
-
-const catalogPath = (directory) => join(directory, 'src/lib/data/catalog.json');
-
-const readCatalog = async (directory) =>
-  JSON.parse(await readFile(catalogPath(directory), 'utf8'));
-
-const sheetSources = {
-  'M-C.csv': sheetCsv([
-    sheetRow('MC1', {
-      pokemon: mcPokemon,
-      items: mcItems,
-      paste: 'https://pokepast.es/aaaaaaaaaaaaaaaa',
-    }),
-  ]),
-  'M-B.csv': sheetCsv([
-    sheetRow('MB1', {
-      pokemon: mbPokemon,
-      items: mbItems,
-      paste: 'https://pokepast.es/bbbbbbbbbbbbbbbb',
-    }),
-  ]),
-  'aaaaaaaaaaaaaaaa.json': pokePasteJson(
-    pasteText(mcPokemon, mcItems),
-    'Format: gen9vgcregulationmc'
-  ),
-  'bbbbbbbbbbbbbbbb.json': pokePasteJson(
-    pasteText(mbPokemon, mbItems),
-    'Format: gen9vgcregulationmb'
-  ),
-  'poch-leaderboard.html':
-    '<script>self.__next_f.push([1,"a:{\\"entries\\":[],\\"x\\":[]}"])</script>',
-};
 
 test('imports public index teams alongside the sheets and accounts for every row', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-public-'));

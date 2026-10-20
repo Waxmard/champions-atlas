@@ -94,7 +94,7 @@ REFRESH=1 npm run import:catalog
 OFFLINE=1 npm run import:catalog
 ```
 
-The importer caches source files in `.cache/catalog`; `REFRESH=1` refreshes
+The importer caches source files in `.cache/catalog`. `REFRESH=1` refreshes
 spreadsheet metadata. `OFFLINE=1` requires cached files. `PASTE_LIMIT` controls
 how many recent teams to fetch when explicitly set; by default every team gets
 full paste details. Already loaded compatible sets survive partial imports.
@@ -103,6 +103,47 @@ spreads require an enriched paste. Unknown details never satisfy a filter.
 Imports replace the catalog atomically. Invalid spreadsheet data fails the
 import. Individual paste failures are reported on the team and in importer output;
 compatible previous sets are retained, otherwise details remain unknown.
+
+The importer also scans the complete public upload histories for [pokeaimMD](https://www.youtube.com/@pokeaimMD)
+and [Pokeaim+](https://www.youtube.com/@pokeaimplus). It admits only direct
+supported paste links with explicit Pokémon Champions doubles context and a
+supported M-A, M-B, or M-C regulation. Video dates provide sharing dates, not
+result claims; video presenters are not credited as team builders. Paste links
+and both channel/video provenance are retained.
+
+Set up YouTube Data API v3 in a Google Cloud project, restrict an API key to that
+API, and add it as the `YOUTUBE_API_KEY` GitHub Actions secret accessible to the
+production and preview environments. Do not set browser-referrer restrictions
+on this server-side key. Both deployment workflows stop before import when the
+secret is empty.
+
+On macOS, store the key in Keychain with this command; Keychain prompts for the
+value without placing it in shell history:
+
+```sh
+security add-generic-password -s champions-atlas:youtube-api-key -a "$USER" -T "" -w
+```
+
+Load it from Keychain only when running an import:
+
+```sh
+export YOUTUBE_API_KEY="$(security find-generic-password -s champions-atlas:youtube-api-key -a "$USER" -w)"
+CHECK_SHEET=1 npm run import:catalog # Refresh source data and scan both full histories.
+OFFLINE=1 npm run import:catalog    # Replay from the completed local snapshot.
+```
+
+The first full-history scan can take time. `.cache/catalog/youtube-sources.json`
+stores a validated completed snapshot. A keyed online import reuses it unless
+`REFRESH=1` or `CHECK_SHEET=1` requests a full recrawl. A failed enabled scan
+aborts the import without replacing the catalog, including in preview.
+`OFFLINE=1` never contacts YouTube and requires a valid snapshot when a key is
+configured. Without a key, an existing valid snapshot is reused; an absent
+snapshot disables the source with a warning and retains previously imported
+channel-only teams. An invalid snapshot fails in keyless or offline mode; a keyed
+online import attempts a complete recrawl. A completed scan treats disappeared
+video/paste links as removals. Individual paste failures retain compatible prior
+sets and report the error.
+
 Pokémon sprites and 24px item icons are cached under ignored `static/` folders
 during catalog bootstrap. Missing or invalid images fail independently without
 changing catalog data; item names remain visible when icons are unavailable.
