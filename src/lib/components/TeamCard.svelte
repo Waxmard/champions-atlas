@@ -6,6 +6,7 @@
     bestEvidence,
     evidenceGrade,
     isCustomRulesTeam,
+    listingReason,
     regulationLabel,
     type Team,
   } from '#lib/catalog.js';
@@ -30,11 +31,16 @@
   const result = $derived(bestEvidence(team, currentRegulation));
   const grade = $derived(evidenceGrade(result.level));
   const custom = $derived(isCustomRulesTeam(team));
+  const reason = $derived(result.none ? listingReason(team) : null);
   const evidenceContext = $derived(
-    result.platform === 'Tournament'
-      ? result.event +
+    reason
+      ? reason.detail
+      : result.platform === 'Tournament'
+        ? result.event +
           (result.entrants === undefined ? '' : ` (${result.entrants} players)`)
-      : result.platform
+        : result.platform === 'Unknown'
+          ? ''
+          : result.platform
   );
 
   function open(event: MouseEvent) {
@@ -82,8 +88,9 @@
 
 {#snippet resultEvidence()}
   <div class="min-w-0">
-    <span class="stamp" data-grade={grade}>{result.label}</span>
-    {#if result.platform !== 'Unknown'}<p class="provenance mt-1">
+    <span class="stamp" data-grade={grade}>{reason?.label ?? result.label}</span
+    >
+    {#if evidenceContext}<p class="provenance mt-1">
         {evidenceContext}
       </p>{/if}
     {#if custom}<p class="term mt-1">Custom rules</p>{/if}

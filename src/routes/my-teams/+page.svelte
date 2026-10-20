@@ -23,6 +23,7 @@
   import {
     bestEvidence,
     evidenceGrade,
+    listingReason,
     normalize,
     regulationLabel,
     type Member,
@@ -575,13 +576,13 @@
                 class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
                 >{regulationLabel(draft.original.regulation)}</span
               >
-              {#if originalResult}
-                <span
-                  class="stamp"
-                  data-grade={evidenceGrade(originalResult.level)}
-                  >Original result: {originalResult.label}</span
-                >
-              {/if}
+              <span
+                class="stamp"
+                data-grade={evidenceGrade(originalResult.level)}
+                >{originalResult.none
+                  ? listingReason(draft.original, draft.origin).label
+                  : `Original result: ${originalResult.label}`}</span
+              >
             </div>
           </div>
           <Button

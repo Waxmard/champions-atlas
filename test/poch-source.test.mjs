@@ -353,7 +353,7 @@ test('social ladder reports keep every published claim without inferring peak, f
   assert.equal(unreported.creator, social.handle);
   assert.equal(unreported.replicaCode, null);
   assert.deepEqual(results(unreported), [ladder('')]);
-  assert.equal(bestEvidence(unreported, 'M-C').label, 'No reported result');
+  assert.equal(bestEvidence(unreported, 'M-C').none, true);
 });
 
 test('social events use placement with zero/null/missing fallback and never emit ladder claims', () => {

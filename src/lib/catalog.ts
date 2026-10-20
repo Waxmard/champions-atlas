@@ -160,10 +160,12 @@ type ClassifiedEvidence = {
   platform: string;
   priority: Priority;
   entrants?: number;
+  none?: true;
 };
 const noEvidence = (entrants?: number): ClassifiedEvidence => ({
   level: 4,
-  label: 'No reported result',
+  label: '',
+  none: true,
   platform: 'Unknown',
   priority: [6, 0, 0, 0, 0],
   entrants,
@@ -372,6 +374,100 @@ export function evidenceGrade(
   if (level === 2) return 'qualified';
   if (level === 3) return 'reported';
   return 'none';
+}
+
+const youtubeChannelUrl = 'https://www.youtube.com/@';
+
+function collections(
+  reports: readonly Report[]
+): { name: string; youtube: boolean }[] {
+  const found: { name: string; youtube: boolean }[] = [];
+  for (const report of reports) {
+    const name = /^(.+) collection$/.exec(report.event)?.[1];
+    if (name && !found.some((entry) => entry.name === name))
+      found.push({
+        name,
+        youtube: report.sourceUrl.startsWith(youtubeChannelUrl),
+      });
+  }
+  return found;
+}
+
+export function youtubeChannelNames(reports: readonly Report[]): string[] {
+  return collections(reports)
+    .filter((entry) => entry.youtube)
+    .map((entry) => entry.name);
+}
+
+export function listingReason(
+  team: {
+    reports?: readonly Report[];
+    sheetIds?: readonly string[];
+    publishedAt?: string;
+  },
+  origin?: 'catalog' | 'custom'
+): { label: string; detail: string } {
+  if (origin === 'custom') return { label: 'Imported by you', detail: '' };
+  const reports = team.reports ?? [];
+  const channels = youtubeChannelNames(reports);
+  const sources = [
+    ...(channels.length ? [`Featured by ${channels.join(', ')}`] : []),
+    ...collections(reports)
+      .filter((entry) => !entry.youtube)
+      .map((entry) => `Listed by ${entry.name}`),
+    ...(team.sheetIds?.length ? ['Listed on VGCPastes'] : []),
+  ];
+  return {
+    label: sources[0] ?? 'Listed in the catalog',
+    detail: [
+      ...sources.slice(1),
+      team.publishedAt ? 'Ranked by share date' : 'Share date unknown',
+    ].join(' · '),
+  };
+}
+
+export type SourceRow =
+  | { kind: 'report'; report: Report }
+  | { kind: 'youtube'; channel: string; url: string; watch: boolean };
+
+export function sourceRows(reports: readonly Report[]): SourceRow[] {
+  const channels = collections(reports).filter((entry) => entry.youtube);
+  const isVideo = (report: Report) =>
+    channels.some((entry) => report.event === `${entry.name} video`);
+  const rows: SourceRow[] = [];
+  const emitted = new Set<string>();
+  const seen = new Set<string>();
+  for (const report of reports) {
+    const name = /^(.+) collection$/.exec(report.event)?.[1];
+    const channel = channels.find((entry) => entry.name === name);
+    if (channel) {
+      if (seen.has(channel.name)) continue;
+      seen.add(channel.name);
+      const videos = reports.filter(
+        (item) => item.event === `${channel.name} video`
+      );
+      if (!videos.length)
+        rows.push({
+          kind: 'youtube',
+          channel: channel.name,
+          url: report.sourceUrl,
+          watch: false,
+        });
+      for (const video of videos) {
+        if (emitted.has(video.sourceUrl)) continue;
+        emitted.add(video.sourceUrl);
+        rows.push({
+          kind: 'youtube',
+          channel: channel.name,
+          url: video.sourceUrl,
+          watch: true,
+        });
+      }
+    } else if (!isVideo(report)) rows.push({ kind: 'report', report });
+  }
+  return rows.filter(
+    (row) => row.kind !== 'report' || !emitted.has(row.report.sourceUrl)
+  );
 }
 
 function evidenceOf(team: Team, current: string): TeamEvidence {

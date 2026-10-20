@@ -230,11 +230,11 @@
             )}
             <li class="space-y-1 py-3 wrap-anywhere">
               <p class="font-bold">{report.event || 'Event not listed'}</p>
-              <p>
-                <span class="stamp" data-grade={evidenceGrade(result.level)}
-                  >{result.label}</span
-                > <span class="provenance">{result.platform}</span>
-              </p>
+              {#if !result.none}<p>
+                  <span class="stamp" data-grade={evidenceGrade(result.level)}
+                    >{result.label}</span
+                  > <span class="provenance">{result.platform}</span>
+                </p>{/if}
               {#if report.sourceUrl}{#if safeUrl(report.sourceUrl)}<a
                     class="inline-flex min-h-11 link items-center"
                     href={report.sourceUrl}
