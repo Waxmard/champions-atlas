@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.8.0](https://github.com/Waxmard/champions-atlas/compare/v1.7.0...v1.8.0) (2026-10-20)
+
+
+### Features
+
+* filter spread suggestions by Nature ([#51](https://github.com/Waxmard/champions-atlas/issues/51)) ([c839881](https://github.com/Waxmard/champions-atlas/commit/c839881f6b83fa3056de864fd7a328e3e61a6c5b))
+
 ## [1.7.0](https://github.com/Waxmard/champions-atlas/compare/v1.6.0...v1.7.0) (2026-10-19)
 
 
