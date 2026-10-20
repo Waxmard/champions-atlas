@@ -8,6 +8,7 @@ import {
   evidenceGrade,
   isCustomRulesTeam,
   listingReason,
+  sourceName,
   sourceRows,
   youtubeChannelNames,
 } from '../src/lib/catalog.ts';
@@ -776,4 +777,11 @@ test('listing reasons name the source and YouTube rows collapse to one watch lin
   assert.deepEqual(sourceRows([collection]), [
     { kind: 'youtube', channel: 'CybertronVGC', url: channel, watch: false },
   ]);
+  for (const [reports, expected] of [
+    [[collection, video], 'Featured by CybertronVGC'],
+    [[report('Showdown Ladder', 'Peak #12')], 'Showdown'],
+    [[report('Champions ranked battles', 'Master Ball 1')], 'Champions ladder'],
+    [[report('Mudkip’s Marsh Pit #6', '1st', 40)], 'Mudkip’s Marsh Pit #6'],
+  ])
+    assert.equal(sourceName({ reports, regulation: 'M-C' }, 'M-C'), expected);
 });

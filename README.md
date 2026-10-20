@@ -167,6 +167,10 @@ flag. It does not change offline behavior or impose a cache age limit.
 See [data sources and ranking limits](docs/data-sources.md) for source
 interpretation, ranking, and catalog freshness.
 
+Browse and Wishlist cards show one source chip: the ladder platform or tournament
+name for a reported result, otherwise the featured channel or listing source.
+Placements remain on the team detail page, not the cards.
+
 ## Save, compare, and edit
 
 Open a catalog team and choose **Use this team**, or choose **Add custom team**

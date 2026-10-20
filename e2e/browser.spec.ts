@@ -434,13 +434,10 @@ test('custom-rule visibility and browse state survive navigation', async ({
   const card = cards.first();
   await expect(card.getByRole('heading')).toHaveText(team.name);
   await expect(card.getByText('Custom rules', { exact: true })).toBeVisible();
-  await expect(card.locator('p.provenance')).toHaveText(
-    entrants === undefined
-      ? /Marsh Pit #6/
-      : new RegExp(`Marsh Pit #6 \\(${entrants} players\\)`)
+  await expect(card.locator('.stamp[data-grade="source"]')).toHaveText(
+    "Mudkip's Marsh Pit #6"
   );
-  await expect(card.locator('.stamp[data-grade="reported"]')).toBeVisible();
-  await expect(card.locator('.stamp[data-grade="strong"]')).toHaveCount(0);
+  await expect(card.locator('p.provenance')).toHaveCount(0);
 
   if (testInfo.project.use.isMobile) await card.getByRole('link').first().tap();
   else await card.getByRole('link').first().click();

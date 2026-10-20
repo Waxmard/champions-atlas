@@ -3,11 +3,9 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import {
-    bestEvidence,
-    evidenceGrade,
     isCustomRulesTeam,
-    listingReason,
     regulationLabel,
+    sourceName,
     type Team,
   } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
@@ -28,20 +26,8 @@
     actions?: Snippet;
     detailAvailable?: boolean;
   } = $props();
-  const result = $derived(bestEvidence(team, currentRegulation));
-  const grade = $derived(evidenceGrade(result.level));
   const custom = $derived(isCustomRulesTeam(team));
-  const reason = $derived(result.none ? listingReason(team) : null);
-  const evidenceContext = $derived(
-    reason
-      ? reason.detail
-      : result.platform === 'Tournament'
-        ? result.event +
-          (result.entrants === undefined ? '' : ` (${result.entrants} players)`)
-        : result.platform === 'Unknown'
-          ? ''
-          : result.platform
-  );
+  const source = $derived(sourceName(team, currentRegulation));
 
   function open(event: MouseEvent) {
     if (
@@ -88,11 +74,7 @@
 
 {#snippet resultEvidence()}
   <div class="min-w-0">
-    <span class="stamp" data-grade={grade}>{reason?.label ?? result.label}</span
-    >
-    {#if evidenceContext}<p class="provenance mt-1">
-        {evidenceContext}
-      </p>{/if}
+    <span class="stamp" data-grade="source">{source}</span>
     {#if custom}<p class="term mt-1">Custom rules</p>{/if}
     {#if !detailAvailable}
       <p class="provenance mt-1">

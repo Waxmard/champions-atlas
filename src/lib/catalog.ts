@@ -426,6 +426,17 @@ export function listingReason(
   };
 }
 
+export function sourceName(
+  team: Pick<Team, 'reports' | 'regulation'> &
+    Partial<Pick<Team, 'id' | 'sheetIds' | 'publishedAt'>>,
+  current: string
+): string {
+  const best = bestEvidence(team, current);
+  if (!best.none)
+    return best.platform === 'Tournament' ? best.event : best.platform;
+  return listingReason(team).label;
+}
+
 export type SourceRow =
   | { kind: 'report'; report: Report }
   | { kind: 'youtube'; channel: string; url: string; watch: boolean };
