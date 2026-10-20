@@ -2,9 +2,9 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, rmSync } from 'node:fs';
 import {
   loadYoutubeSource,
-  youtubeCandidate,
   youtubeChannels,
 } from '../../scripts/youtube-source.mjs';
+import { youtubeCandidate } from '../../scripts/youtube-admission.mjs';
 import { teamFromIndex } from '../../scripts/import-catalog.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';

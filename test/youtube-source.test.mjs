@@ -21,7 +21,6 @@ import {
   pokePasteJson,
   publishedAt,
   readCatalog,
-  rejectYoutubeCandidate as rejectReason,
   runImport,
   seedSnapshot,
   snapshotData,
@@ -32,17 +31,11 @@ import {
   writeFetchMock,
   writeYoutubeImportFixture,
   youtubeChampionNotes as championNotes,
-  youtubePastePayload as pastePayload,
   youtubePasteUrl as pasteUrl,
-  youtubeRawPaste as rawPaste,
   youtubeRow,
   youtubeSnapshot,
-  youtubeTeamFromCandidate as asTeam,
 } from './fixtures/catalog-import.mjs';
-import {
-  youtubeCandidate,
-  youtubeChannels,
-} from '../scripts/youtube-source.mjs';
+import { youtubeChannels } from '../scripts/youtube-source.mjs';
 
 test('discovers both complete multi-page upload histories and canonical direct paste links', async (t) => {
   const main = youtubeChannels[0].handle;
@@ -457,145 +450,6 @@ for (const [label, mutate] of invalidSnapshotCases) {
     assert.equal(ctx.requests.length, 0);
   });
 }
-
-test('admits source-backed sets with complete provenance and no inferred credit', () => {
-  const url = pasteUrl('aaaaaaaaaaaaaaaa');
-  const row = youtubeRow(url, 'aaaaaaaaaaa', {
-    title: 'Pokeaim Master Ball Rank — Pokémon Champions VGC',
-    description: `${url}\nPresenter: Pokeaim`,
-  });
-  const payload = pastePayload(championNotes, { title: '  Golurk Tailroom  ' });
-  const candidate = youtubeCandidate(row, payload);
-  const team = asTeam(row, payload);
-  assert.equal(candidate.regulation, 'M-C');
-  assert.equal(candidate.expectedSpecies, null);
-  assert.equal(candidate.replicaCode, null);
-  assert.equal(candidate.creator, '');
-  assert.equal(team.name, 'Golurk Tailroom');
-  assert.equal(team.publishedAt, publishedAt.slice(0, 10));
-  assert.equal(team.paste, rawPaste);
-  assert.equal(team.members.map(({ set }) => set).join('\n\n'), rawPaste);
-  assert.deepEqual(
-    team.reports.map(({ event, rank, sourceUrl }) => [event, rank, sourceUrl]),
-    [
-      ['pokeaimMD collection', '', youtubeChannels[0].url],
-      ['pokeaimMD video', '', 'https://www.youtube.com/watch?v=aaaaaaaaaaa'],
-    ]
-  );
-  for (const line of ['Team by: Alice', 'Team by Alice'])
-    assert.equal(
-      youtubeCandidate(
-        youtubeRow(url, 'bbbbbbbbbbb', { description: `${url}\n${line}` }),
-        pastePayload(championNotes)
-      ).creator,
-      'Alice'
-    );
-  const fallbackRow = youtubeRow(url, 'ccccccccccc', {
-    title: 'Video fallback',
-    description: url,
-  });
-  for (const title of [undefined, null, 7, '   '])
-    assert.equal(
-      youtubeCandidate(fallbackRow, pastePayload(championNotes, { title }))
-        .name,
-      'Video fallback'
-    );
-  const vrUrl = 'https://www.vrpastes.com/AbC12345';
-  const vrCandidate = youtubeCandidate(
-    youtubeRow(vrUrl, 'ddddddddddd', {
-      title: 'VR video fallback',
-      description: `${vrUrl}\nFormat: Pokémon Champions VGC Regulation M-C`,
-    }),
-    { paste: rawPaste, provider: 'victory-road', format: 'VGC Regulation M-C' }
-  );
-  assert.equal(vrCandidate.name, 'VR video fallback');
-  const sparseTeam = asTeam(
-    youtubeRow(url, 'eeeeeeeeeee', {
-      title: 'Champions VGC',
-      description: url,
-    }),
-    {
-      paste: ['Golurk', ...mcPokemon.slice(1)].join('\n\n'),
-      notes: championNotes,
-    }
-  );
-  assert.deepEqual(
-    [
-      sparseTeam.members[0].item,
-      sparseTeam.members[0].ability,
-      sparseTeam.members[0].moves,
-      sparseTeam.members[0].nature,
-      sparseTeam.members[0].spread,
-    ],
-    [null, null, [], null, null]
-  );
-});
-
-test('validates each explicit format declaration and requires Champions context', () => {
-  const url = pasteUrl('bbbbbbbbbbbbbbbb');
-  const row = youtubeRow(url, 'aaaaaaaaaaa', {
-    title: 'Pokémon Champions VGC',
-    description: url,
-  });
-  for (const format of [
-    'gen9championsouregmc',
-    'gen9championssinglesregmc',
-    'gen9championsnationaldexvgcregmc',
-    'gen8vgcregulationmc',
-    'Scarlet and Violet VGC Regulation M-C',
-    'Pokémon Sword and Shield VGC Regulation M-C',
-    'Sword and Shield VGC Regulation M-C',
-    'SV VGC Regulation M-C',
-    'gen9ou',
-    'gen9championsvgc2026regmd',
-  ])
-    rejectReason('unsupported_format', row, pastePayload(`Format: ${format}`));
-  rejectReason(
-    'unsupported_format',
-    youtubeRow(url, 'bbbbbbbbbbb', {
-      title: 'Pokémon Champions VGC',
-      description: `${url}\nFormat: gen9championsouregmc`,
-    }),
-    pastePayload(championNotes)
-  );
-  rejectReason('unsupported_format', row, {
-    ...pastePayload(championNotes),
-    provider: 'victory-road',
-    format: 'gen8vgcregulationmc',
-  });
-  for (const title of [
-    'Pokémon Champions VGC Singles',
-    'Pokémon Champions VGC OU',
-    'Pokémon Champions National Dex VGC',
-  ])
-    rejectReason(
-      'unsupported_format',
-      youtubeRow(url, 'ccccccccccc', { title, description: url }),
-      pastePayload(championNotes)
-    );
-  assert.equal(
-    youtubeCandidate(row, pastePayload('Format: gen9vgcregulationmc'))
-      .regulation,
-    'M-C'
-  );
-  rejectReason(
-    'unsupported_format',
-    youtubeRow(url, 'ddddddddddd', {
-      title: 'VGC Championships',
-      description: url,
-    }),
-    pastePayload('Format: gen9vgcregulationmc')
-  );
-  rejectReason(
-    'format_conflict',
-    youtubeRow(url, 'eeeeeeeeeee', {
-      title: 'Pokémon Champions VGC',
-      description: `${url}\nFormat: gen9vgcregulationmb`,
-    }),
-    pastePayload(championNotes)
-  );
-  rejectReason('missing_regulation', row, pastePayload(''));
-});
 
 test('imports YouTube variants, shares paste budgets, and retains only compatible priors', async (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'atlas-youtube-import-'));

@@ -19,7 +19,10 @@
     regulationLabel,
     type Team,
   } from '#lib/catalog.js';
-  import { exportPaste, type SavedTeam } from '#lib/workbench.js';
+  import { activeSpreadSource } from '#lib/spread-provenance.js';
+  import { exportPaste } from '#lib/workbench.js';
+  import { normalizeSet } from '#lib/paste.js';
+  import type { SavedTeam } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
@@ -31,6 +34,10 @@
   let { data }: { data: PageData } = $props();
   const team: Team = $derived(data.team);
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
+  const hasActiveEnrichment = $derived(
+    team.members.some((member) => activeSpreadSource(member) !== null)
+  );
+  const originalPaste = $derived(team.paste ? normalizeSet(team.paste) : '');
   const strongest = $derived(bestEvidence(team, data.currentRegulation));
   const custom = $derived(isCustomRulesTeam(team));
   const summaryContext = $derived(
@@ -144,6 +151,18 @@
         >
         {#if strongest.event}<span class="provenance">{summaryContext}</span
           >{/if}
+        {#if team.regulationInference}
+          <a
+            class="provenance inline-flex min-h-11 link items-center gap-1.5"
+            href={team.regulationInference.sourceUrl}
+            target="_blank"
+            rel="external noreferrer"
+          >
+            Regulation inferred from video date ({team.regulationInference
+              .publishedAt})
+            <ExternalLink class="size-3.5" aria-hidden="true" />
+          </a>
+        {/if}
         <span class="provenance"
           >Shared {team.publishedAt || 'date unknown'}</span
         >
@@ -340,8 +359,12 @@
       {#if team.pasteNotes}<p class="term mt-3">
           Paste notes (may differ from the listed regulation): {team.pasteNotes}
         </p>{/if}
+      {#if hasActiveEnrichment}<p class="provenance mt-3">
+          Copy and Save include linked creator additions; the original paste
+          text below does not.
+        </p>{/if}
       <pre
-        class="mt-4 overflow-x-auto font-mono text-xs leading-6">{paste}</pre>
+        class="mt-4 overflow-x-auto font-mono text-xs leading-6">{originalPaste}</pre>
     </details>
   {/if}
 </main>

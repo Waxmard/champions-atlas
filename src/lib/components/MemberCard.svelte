@@ -8,6 +8,7 @@
   import { Button } from '#lib/components/ui/button/index.js';
   import type { Member } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
+  import { activeSpreadSource } from '#lib/spread-provenance.js';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
 
@@ -48,6 +49,7 @@
   }: Props = $props();
 
   const types = $derived(getPokemonTypes(member.pokemon));
+  const spreadSource = $derived(activeSpreadSource(member));
   const rowClass =
     'flex min-h-11 w-full items-baseline justify-between gap-3 rounded-[var(--radius-field)] px-1.5 py-1 text-start';
 </script>
@@ -114,6 +116,30 @@
     `Edit ${member.pokemon} nature`
   )}
   {@render row('Spread', member.spread, 'spread', `Edit ${member.pokemon} EVs`)}
+  {#if spreadSource}
+    <div class="mt-1 flex flex-col">
+      <a
+        class="inline-flex min-h-11 link items-center focus-visible:ring-2 focus-visible:ring-primary"
+        href={spreadSource.pasteUrl}
+        target="_blank"
+        rel="external noreferrer"
+      >
+        {spreadSource.borrowedNature
+          ? 'EVs and Nature from linked creator paste'
+          : 'EVs from linked creator paste'}
+      </a>
+      {#each spreadSource.videoUrls as videoUrl, index (videoUrl)}
+        <a
+          class="inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
+          href={videoUrl}
+          target="_blank"
+          rel="external noreferrer"
+          aria-label={`Video provenance ${index + 1} for ${member.pokemon}'s linked creator paste`}
+          >Video provenance {index + 1}</a
+        >
+      {/each}
+    </div>
+  {/if}
 
   <!-- Moves -->
   <div class="mt-2 border-t pt-2">

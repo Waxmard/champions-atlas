@@ -1,8 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
-import { isPasteUrl, normalize } from '../src/lib/catalog.ts';
-import { championRegulation } from './catalog-payloads.mjs';
+import { isPasteUrl } from '../src/lib/catalog.ts';
 import { fetchWithRetry } from './catalog-sources.mjs';
 
 const apiBase = 'https://www.googleapis.com/youtube/v3';
@@ -27,8 +26,6 @@ export const youtubeChannels = Object.freeze([
 const object = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
 const fail = (message) => new Error(`YouTube source: ${message}`);
-const admissionError = (reason) =>
-  Object.assign(fail(`Candidate rejected (${reason}).`), { reason });
 
 function validDate(value) {
   if (
@@ -142,7 +139,7 @@ function canonicalPasteUrl(raw) {
   return isPasteUrl(canonical) ? canonical : null;
 }
 
-function pasteLinks(description) {
+export function pasteLinks(description) {
   const links = new Set();
   for (const match of description.matchAll(/https?:\/\/[^\s<>"']+/gi)) {
     const url = canonicalPasteUrl(match[0]);
@@ -475,148 +472,6 @@ async function writeSnapshot(directory, channels) {
     await unlink(temporary).catch(() => {});
     throw error;
   }
-}
-
-function formatDeclarations(text) {
-  return typeof text === 'string'
-    ? text.split(/\r?\n/).flatMap((line) => {
-        const match = /^\s*Format\s*:\s*(.*?)\s*$/i.exec(line);
-        return match ? [match[1]] : [];
-      })
-    : [];
-}
-
-function unsupportedFormat(format) {
-  const normalized = normalize(format);
-  const generation = /gen(\d+)/.exec(normalized)?.[1];
-  return (
-    /singles?/.test(normalized) ||
-    /\bou\b/i.test(format) ||
-    /ou(?:\d{4})?reg/.test(normalized) ||
-    /overused|nationaldex|natdex/.test(normalized) ||
-    (generation !== undefined && generation !== '9') ||
-    /\bsv\b/i.test(format) ||
-    /^(?:sv|sm|swsh|bdsp|oras|xy|bw|dpp|rby|gsc)(?:vgc|ou|doubles?)/.test(
-      normalized
-    ) ||
-    /scarlet|violet|sword|shield/.test(normalized) ||
-    /sunandmoon|ultrasun|ultramoon|brilliantdiamond|shiningpearl|legendsarceus|legendsza/.test(
-      normalized
-    )
-  );
-}
-
-function championsEvidence(value) {
-  return (
-    /\bchampions\b/i.test(value) ||
-    /champions(?:\d{4})?(?:vgc|doubles?)/.test(normalize(value))
-  );
-}
-
-function doublesEvidence(value) {
-  const normalized = normalize(value);
-  return (
-    /\bvgc\b|\bdoubles?\b/i.test(value) ||
-    normalized.includes('vgc') ||
-    normalized.includes('double')
-  );
-}
-
-export function youtubeCandidate(discoveryCandidate, payload) {
-  const video = discoveryCandidate?.video;
-  if (
-    !object(discoveryCandidate) ||
-    !object(video) ||
-    !object(payload) ||
-    typeof discoveryCandidate.sourceName !== 'string' ||
-    typeof discoveryCandidate.indexUrl !== 'string' ||
-    !isPasteUrl(discoveryCandidate.pasteUrl) ||
-    typeof video.id !== 'string' ||
-    !videoIdPattern.test(video.id) ||
-    typeof video.title !== 'string' ||
-    typeof video.description !== 'string'
-  )
-    throw admissionError('invalid_payload');
-  if (payload.notes != null && typeof payload.notes !== 'string')
-    throw admissionError('invalid_payload');
-  const formats = [
-    ...formatDeclarations(payload.notes),
-    ...formatDeclarations(video.description),
-  ];
-  if (
-    payload.provider === 'victory-road' &&
-    payload.format != null &&
-    payload.format !== ''
-  ) {
-    if (typeof payload.format !== 'string')
-      throw admissionError('invalid_payload');
-    formats.push(payload.format);
-  }
-  if (!formats.length) throw admissionError('missing_regulation');
-  const context = [...formats, video.title, video.description];
-  const regulations = formats.map((format) => {
-    if (unsupportedFormat(format)) throw admissionError('unsupported_format');
-    const regulation = championRegulation(format);
-    if (!regulation || !['ma', 'mb', 'mc'].includes(regulation))
-      throw admissionError('unsupported_format');
-    return regulation.toUpperCase();
-  });
-  if (new Set(regulations).size !== 1) throw admissionError('format_conflict');
-  const title = normalize(video.title);
-  if (
-    /\bsingles?\b|\bou\b/i.test(video.title) ||
-    title.includes('nationaldex') ||
-    !context.some(championsEvidence) ||
-    !context.some(doublesEvidence)
-  )
-    throw admissionError('unsupported_format');
-  const teamBy = video.description
-    .split(/\r?\n/)
-    .map((line) =>
-      /^\s*Team by(?:\s*:\s*|\s+)(.*?)\s*$/i.exec(line)?.[1]?.trim()
-    )
-    .find(Boolean);
-  const regulation = `M-${regulations[0].slice(-1)}`;
-  return {
-    sourceName: discoveryCandidate.sourceName,
-    indexUrl: discoveryCandidate.indexUrl,
-    pasteUrl: discoveryCandidate.pasteUrl,
-    expectedSpecies: null,
-    replicaCode: null,
-    regulation,
-    name:
-      (typeof payload.title === 'string' ? payload.title.trim() : '') ||
-      video.title,
-    creator: teamBy || '',
-    reports: [
-      {
-        event: `${discoveryCandidate.sourceName} collection`,
-        rank: '',
-        sourceUrl: discoveryCandidate.indexUrl,
-      },
-      {
-        event: `${discoveryCandidate.sourceName} video`,
-        rank: '',
-        sourceUrl: `https://www.youtube.com/watch?v=${video.id}`,
-      },
-    ],
-  };
-}
-
-export function youtubeIndexData(discoveryCandidate, payload) {
-  const candidate = youtubeCandidate(discoveryCandidate, payload);
-  return {
-    candidate,
-    payload: {
-      ...payload,
-      ...(payload.provider === 'victory-road'
-        ? { format: `vgcregulation${normalize(candidate.regulation)}` }
-        : {}),
-      publishedAt:
-        payload.publishedAt ||
-        discoveryCandidate.video.publishedAt.slice(0, 10),
-    },
-  };
 }
 
 export function youtubeCollectionTeams(teams, channel) {

@@ -1,3 +1,17 @@
+export interface SpreadSource {
+  pasteUrl: string;
+  videoUrls: string[];
+  sourceSet: string;
+  originalSet: string;
+  appliedSignature: string;
+  borrowedNature: boolean;
+}
+export interface RegulationInference {
+  method: 'video-date';
+  publishedAt: string;
+  sourceUrl: string;
+}
+
 export interface Member {
   // Saved-team members may retain unknown per-member metadata; the index
   // signature keeps this catalog type assignable to zod's looseObject output.
@@ -9,6 +23,7 @@ export interface Member {
   moves: string[];
   nature: string | null;
   spread: string | null;
+  spreadSource?: SpreadSource;
 }
 
 export interface Report {
@@ -32,6 +47,7 @@ export interface Team {
   paste: string | null;
   pasteNotes: string | null;
   pasteError?: string;
+  regulationInference?: RegulationInference;
 }
 
 export interface MemberFilter {

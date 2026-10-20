@@ -40,16 +40,40 @@ whose format names another regulation or another game, a protected paste, a
 Victory Road row whose published roster does not match the paste, and a Victory
 Road row whose creator and result claims belong to a different roster.
 
-YouTube-linked teams require explicit Pokémon Champions and VGC/doubles context
-in a format declaration, video title, or video description, plus a supported
-M-A, M-B, or M-C regulation. A paste's explicit `Format:` declaration, the
-video's declarations, and the paste's provider format must agree. Singles, OU,
-National Dex, other games, unsupported regulations, and conflicting formats are
-excluded. A date, channel identity, or current regulation never supplies format
-evidence. The importer preserves published set text and leaves missing fields
-unknown. It retains channel-collection and video provenance; a video date is a
+YouTube-linked teams require independent Pokémon Champions and VGC/doubles
+context. Every supplied `Format:` declaration, provider format, and explicit
+M-A, M-B, or M-C regulation token must agree. Singles, OU, National Dex,
+pre-Champions, other games, unknown format declarations, unsupported regulations,
+and conflicting formats are excluded. Promotional description text mentioning
+another game does not override an otherwise eligible team.
+
+When no explicit regulation or unresolved format declaration exists, the video
+date can estimate the regulation only with Champions doubles context:
+
+| Regulation | Inclusive UTC start | Exclusive UTC end |
+| ---------- | ------------------- | ----------------- |
+| M-A        | 2026-04-08 00:00    | 2026-06-17 02:00  |
+| M-B        | 2026-06-17 02:00    | 2026-09-09 02:00  |
+| M-C        | 2026-09-09 02:00    | 2026-12-02 00:00  |
+
+The [Victory Road regulation calendar](https://victoryroad.pro/champions-regulations/)
+provides the outer calendar dates; those boundaries use UTC day precision, not
+verified launch or closing times. The [official M-B notice](https://champions-news.pokemon-home.com/en/page/776.html)
+provides the two 02:00 UTC transitions. The importer does not extrapolate beyond
+these windows. Explicit regulation takes precedence: a tournament can use older
+rules after a new regulation starts. Detail and saved-original views disclose
+date inference with the source video link. It estimates rules active when shared,
+not the tournament's actual rules or current legality.
+
+Channel collection and video provenance remain attached. A video date is a
 sharing date, not a result claim. The presenter is not treated as the team
 builder. Only a standalone `Team by:` or `Team by` description line supplies builder credit.
+
+Skip reasons distinguish evidence from availability: `missing_regulation` means
+the importer lacks usable regulation evidence, `unsupported_format` means the
+published game or format is incompatible, and `format_conflict` means explicit
+regulations disagree. `paste_unavailable` means fetching failed, including HTTP
+404; malformed content is `invalid_payload`.
 
 A Poch.ms record joins the catalog only when its rule is `double`, its species
 resolve, and every field it uses parses. A record with an unresolvable species, a
@@ -109,6 +133,28 @@ declared appearance-only forms (`cosmeticForms`, such as `Sinistcha` and
 published-roster checks, while the retained name stays the one the source wrote.
 A mismatch fails the import instead of assigning details to the wrong Pokémon.
 Paste notes remain visible because they can describe a different regulation.
+
+An explicit creator adaptation can fill missing EVs and a missing Nature on a
+linked original. Each video must separately label one direct original-team paste
+and one direct creator-version paste. Both pastes must pass ordinary admission
+within the paste budget, share a supported regulation, and uniquely match all six
+resolved battle forms. Every original-known item, ability, Nature, and move set
+must agree; each receiving member must publish its item, ability, and four moves.
+Only a complete valid Champions spread with a recognized donor Nature can fill
+a hole. Published EVs and Natures are never replaced. Conflicting linked donor
+proposals leave that member unchanged.
+
+These additions retain donor paste and video attribution, separate from the
+original tournament text and results. Copy and Save include the additions;
+**Published paste text** shows the original without them. Attribution disappears
+when the working set no longer matches the borrowed set. Different-paste variants
+keep separate identities and reports; a matching roster alone never establishes
+a relationship or merges teams.
+
+With a completed active discovery snapshot, each import recomputes additions
+from source originals. Removed links, rejected donors, and unavailable donor
+pastes cannot silently preserve active borrowed values. In inactive keyless mode,
+compatible previously attributed additions remain because discovery is unobserved.
 
 Poch.ms records keep published values and leave the rest unknown. A missing set
 field or scalar stays unknown. The page publishes no spreads, so these records

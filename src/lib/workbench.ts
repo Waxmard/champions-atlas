@@ -30,6 +30,14 @@ import {
   tagsForTeam,
   type TeamTagsIndex,
 } from './tags.ts';
+import {
+  pasteUrlSchema,
+  regulationInferenceSchema,
+  reportSchema,
+  sourceSchema,
+  spreadSourceSchema,
+  textSchema,
+} from './spread-provenance.ts';
 
 export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
@@ -117,8 +125,6 @@ export function newCustomTeam(
   };
 }
 
-const textSchema = z.string().max(50_000);
-const pasteUrlSchema = textSchema.refine(isPasteUrl);
 export const memberSchema = z.looseObject({
   pokemon: textSchema.refine((value) => Boolean(normalize(value))),
   item: textSchema.nullable(),
@@ -127,6 +133,7 @@ export const memberSchema = z.looseObject({
   nature: textSchema.nullable(),
   spread: textSchema.nullable(),
   set: textSchema.optional(),
+  spreadSource: spreadSourceSchema.optional(),
 });
 const membersSchema = z
   .array(memberSchema)
@@ -135,12 +142,6 @@ const membersSchema = z
     (members) =>
       new Set(members.map((member) => normalize(member.pokemon))).size === 6
   );
-const reportSchema = z.object({
-  event: textSchema,
-  rank: textSchema,
-  sourceUrl: textSchema,
-  entrants: z.number().int().positive().optional(),
-});
 const originalSchema = z.looseObject({
   id: textSchema,
   name: textSchema,
@@ -156,10 +157,7 @@ const originalSchema = z.looseObject({
   replicaStatus: textSchema.optional(),
   pasteNotes: textSchema.nullable().optional(),
   pasteError: textSchema.optional(),
-});
-const sourceSchema = z.looseObject({
-  name: textSchema,
-  pasteUrl: pasteUrlSchema,
+  regulationInference: regulationInferenceSchema.optional(),
 });
 const savedTeamSchema = z.object({
   id: textSchema,

@@ -168,7 +168,17 @@
         </div>
         <div>
           <dt class="term">Regulation</dt>
-          <dd>{regulationLabel(team.original.regulation)}</dd>
+          <dd>
+            {regulationLabel(team.original.regulation)}
+            {#if team.original.regulationInference}
+              <a
+                class="inline-flex min-h-11 link items-center focus-visible:ring-2 focus-visible:ring-primary"
+                href={team.original.regulationInference.sourceUrl}
+                target="_blank"
+                rel="external noreferrer">Regulation inferred from video date</a
+              >
+            {/if}
+          </dd>
         </div>
         {#if team.original.creator}<div class="min-w-0">
             <dt class="term">Creator</dt>

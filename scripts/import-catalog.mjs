@@ -20,20 +20,25 @@ import {
 import { normalize } from '../src/lib/catalog.ts';
 import {
   devonCorpUrl,
+  logSourceSummaries,
   parseDevonCorp,
   parseVictoryRoad,
   victoryRoadUrl,
 } from './catalog-sources.mjs';
 import { championRegulation, loadIndexPaste } from './catalog-payloads.mjs';
 import { reportsWithLadderNotes } from './catalog-results.mjs';
+import {
+  enrichLinkedSpreads,
+  linkedSpreadPairs,
+} from './catalog-enrichment.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
 import {
   loadYoutubeSource,
-  youtubeIndexData,
   youtubeImportRows,
   youtubePrior,
   youtubeRetainedSourceText,
 } from './youtube-source.mjs';
+import { youtubeIndexData } from './youtube-admission.mjs';
 import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
@@ -184,6 +189,7 @@ export function deduplicate(teams) {
     const existing = unique.get(team.id);
     if (!existing) unique.set(team.id, team);
     else {
+      if (!team.regulationInference) delete existing.regulationInference;
       existing.sheetIds = [
         ...new Set([...existing.sheetIds, ...team.sheetIds]),
       ];
@@ -352,6 +358,9 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
     name: candidate.name,
     creator: candidate.creator,
     regulation: candidate.regulation,
+    ...(candidate.regulationInference
+      ? { regulationInference: candidate.regulationInference }
+      : {}),
     publishedAt: payload.publishedAt || '',
     pasteUrl: candidate.pasteUrl,
     replicaCode: candidate.replicaCode || null,
@@ -627,7 +636,7 @@ async function main() {
       const data = youtubeIndexData(candidate, payload);
       const team = teamFromIndex(data.candidate, data.payload, canonicalNames);
       return team.id === prior.id && team.regulation === prior.regulation
-        ? prior
+        ? { ...prior, regulationInference: team.regulationInference }
         : null;
     } catch {
       return null;
@@ -662,13 +671,17 @@ async function main() {
       noteReason(reason);
       if (skipReasons) skipReasons[reason] = (skipReasons[reason] || 0) + 1;
     };
+    const rowReasons = new Map();
     for (const entry of source.skipped || []) {
       counts.skipped += 1;
       addReason(entry.reason);
-      console.warn(
-        `${name}: skipped ${entry.pasteUrl || 'row'} (${entry.reason})`
-      );
+      if (entry.pasteUrl)
+        console.warn(`${name}: skipped ${entry.pasteUrl} (${entry.reason})`);
+      else
+        rowReasons.set(entry.reason, (rowReasons.get(entry.reason) || 0) + 1);
     }
+    for (const [reason, total] of rowReasons)
+      console.warn(`${name}: skipped ${total} rows (${reason})`);
     sourceStats.push({ name, counts, skipReasons });
     const keep = (team, field) => {
       publicTeams.push(team);
@@ -737,7 +750,16 @@ async function main() {
   for (const entry of poch.skipped)
     noteReason(entry.reason || 'invalid_record');
   sourceStats.push({ name: 'Poch.ms', counts: pochCounts });
-  const catalogTeams = deduplicate([...unique, ...publicTeams, ...poch.teams]);
+  const linked = enrichLinkedSpreads(
+    deduplicate([...unique, ...publicTeams, ...poch.teams]),
+    linkedSpreadPairs(
+      youtubeSource.channels.flatMap(({ candidates }) => candidates)
+    ),
+    { active: youtubeSource.active, previousTeams }
+  );
+  const catalogTeams = linked.teams;
+  if (linked.spread_conflict)
+    reasons.set('spread_conflict', linked.spread_conflict);
   await writeCatalog(output, {
     updatedAt: new Date().toISOString(),
     currentRegulation: 'M-C',
@@ -757,22 +779,12 @@ async function main() {
   });
   const sprites = await restoreSprites(catalogTeams);
   const items = await restoreItems(catalogTeams);
-  for (const { name, counts, skipReasons } of sourceStats)
-    console.log(
-      `${name}: ${skipReasons ? (youtubeSource.active ? `${counts.scanned} uploads scanned, ${counts.discovered} linked candidates` : 'inactive (no completed snapshot)') : `${counts.discovered} discovered`} — ${counts.accepted} accepted, ${counts.priorRetained} retained, ${counts.skipped} skipped, ${counts.merged} merged${
-        skipReasons
-          ? `; skip reasons: ${
-              Object.entries(skipReasons)
-                .map(([reason, total]) => `${reason}=${total}`)
-                .join(', ') || 'none'
-            }`
-          : ''
-      }.`
-    );
+  logSourceSummaries(sourceStats, youtubeSource.active);
   if (reasons.size)
     console.log(
       `Skip reasons: ${[...reasons].map(([reason, total]) => `${reason}=${total}`).join(', ')}`
     );
+  console.log(`Linked creator spreads: ${linked.enriched} members enriched.`);
   console.log(
     `Imported ${catalogTeams.length} teams; ${stats.enriched}/${stats.attempted} pastes enriched, ${stats.failed} failed. Catalog written atomically.${sprites ? ` ${sprites.wanted} sprites ready, ${sprites.failed} failed.` : ''}${items ? ` ${items.wanted} item icons ready, ${items.failed} failed.` : ''}`
   );
