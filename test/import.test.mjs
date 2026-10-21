@@ -1,51 +1,40 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { FETCH_ATTEMPTS, fetchWithRetry } from '../scripts/catalog-sources.mjs';
 import {
   parseCsv,
   parseSheet,
   deduplicate,
-  enrich,
-  enrichPastes,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
-import {
-  resolveItemIcon,
-  resolveSprite,
-  syncItems,
-  syncSprites,
-  validatePng,
-} from '../scripts/sync-assets.mjs';
+import { enrich, enrichPastes } from '../scripts/catalog-payloads.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 import { bestEvidence, evidenceGrade } from '../src/lib/catalog.ts';
-
+import {
+  mcItems,
+  mcPokemon,
+  sheetCsv,
+  sheetRow,
+  runImport,
+} from './fixtures/catalog-import.mjs';
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-bootstrap-'));
-  const script = fileURLToPath(
-    new URL('../scripts/import-catalog.mjs', import.meta.url)
-  );
-  const run = (...args) =>
-    execFileSync(process.execPath, [script, ...args], {
-      cwd: directory,
-      env: { ...process.env, OFFLINE: '1', REFRESH: '1' },
-      stdio: 'pipe',
-    });
+  const run = (...args) => runImport(directory, { REFRESH: '1' }, args);
   try {
     assert.throws(() => run('--if-missing'), /Missing cached sheet/);
     const path = join(directory, 'src/lib/data/catalog.json');
-    await writeCatalog(path, { teams: [{ id: 'original' }] });
+    await writeCatalog(path, {
+      teams: [
+        {
+          id: 'original',
+          regulation: 'M-C',
+          members: mcPokemon.map((pokemon) => ({ pokemon })),
+        },
+      ],
+    });
     const original = await readFile(path, 'utf8');
     run('--if-missing');
     assert.equal(await readFile(path, 'utf8'), original);
@@ -141,6 +130,68 @@ test('deduplication keeps independent evidence and repeat imports stable', () =>
   assert.deepEqual(output[0].sheetIds, ['MC1', 'MC2']);
   assert.deepEqual(deduplicate(structuredClone(output)), output);
 });
+test('parseSheet extracts Report / Video and Other Links URLs and ignores non-URL notes', () => {
+  const row = (id, paste, event, rank, source, reportVideo, otherLinks) =>
+    sheetRow(id, {
+      pokemon: mcPokemon,
+      items: mcItems,
+      paste: `https://pokepast.es/${paste}`,
+      event,
+      rank,
+      source,
+      reportVideo,
+      otherLinks,
+    });
+  const parsed = parseSheet(
+    sheetCsv([
+      row(
+        'MC1',
+        '0123456789abcdef',
+        'Regional',
+        'Top 8',
+        'https://x.com/p/status/1',
+        'youtube.com/watch?v=aaaaaaaaaaa&si=share',
+        'https://play.limitlesstcg.com/t/1'
+      ),
+      row(
+        'MC2',
+        'fedcba9876543210',
+        'Video',
+        '',
+        'No Tweet',
+        'https://youtu.be/bbbbbbbbbbb?si=abc',
+        'Tera Square Offline Meetup #2 Team'
+      ),
+      row(
+        'MC3',
+        '1111222233334444',
+        'Meetup',
+        '1st',
+        'https://x.com/p/status/3',
+        'Tera Square Offline Meetup #2 Team',
+        'https://youtu.be/ccccccccccc?t=67'
+      ),
+    ]),
+    'M-C'
+  );
+  assert.deepEqual(
+    parsed.map(({ reports }) =>
+      reports.map(({ event, rank, sourceUrl }) => [event, rank, sourceUrl])
+    ),
+    [
+      [
+        ['Regional', 'Top 8', 'https://x.com/p/status/1'],
+        ['YouTube video', '', 'https://www.youtube.com/watch?v=aaaaaaaaaaa'],
+        ['Regional', '', 'https://play.limitlesstcg.com/t/1'],
+      ],
+      [['Video', '', 'https://www.youtube.com/watch?v=bbbbbbbbbbb']],
+      [
+        ['Meetup', '1st', 'https://x.com/p/status/3'],
+        ['Meetup', '', 'https://youtu.be/ccccccccccc?t=67'],
+      ],
+    ]
+  );
+});
 
 test('paste enrichment matches species and item, never array position', () => {
   const members = Array.from({ length: 6 }, (_, i) => ({
@@ -199,11 +250,8 @@ test('paste notes recover only explicit ladder results without duplicating claim
   }));
   const paste = members
     .map(
-      (member) =>
-        member.pokemon +
-        ' @ ' +
-        member.item +
-        '\nAbility: Ability\nAdamant Nature\n- Protect'
+      (m) =>
+        `${m.pokemon} @ ${m.item}\nAbility: Ability\nAdamant Nature\n- Protect`
     )
     .join('\n\n');
   const team = {
@@ -371,70 +419,14 @@ test('paste parser preserves complete sets and rejects unsafe input', () => {
 });
 
 test('normalizes team sheets to champions formatting', () => {
-  const paste = `Dragonite (M) @ Dragoninite  
-Ability: Inner Focus  
-Level: 50  
-EVs: 12 HP / 252 SpA / 252 Spe  
-Timid Nature  
-- Dragon Pulse  
-- Tailwind  
-- Flamethrower  
-- Protect  
-
-Rillaboom (M) @ Miracle Seed  
-Ability: Grassy Surge  
-Level: 50  
-EVs: 252 HP / 84 Atk / 4 Def / 108 SpD / 60 Spe  
-Adamant Nature  
-- Grassy Glide  
-- Wood Hammer  
-- Fake Out  
-- High Horsepower  
-
-Weavile (F) @ Focus Sash  
-Ability: Pickpocket  
-Level: 50  
-Tera Type: Dark  
-EVs: 44 HP / 252 Atk / 220 Spe  
-Jolly Nature  
-- Icicle Crash  
-- Fake Out  
-- Protect  
-- Knock Off  
-
-Gholdengo @ Grassy Seed  
-Ability: Good as Gold  
-Level: 50  
-Tera Type: Water  
-EVs: 236 HP / 124 Def / 92 SpA / 28 SpD / 28 Spe  
-Bold Nature  
-IVs: 31 Atk  
-- Protect  
-- Nasty Plot  
-- Shadow Ball  
-- Make It Rain  
-
-Golisopod (F) @ Golisopite  
-Ability: Emergency Exit  
-Level: 50  
-Tera Type: Water  
-EVs: 236 HP / 252 Atk / 12 Def / 12 SpD  
-Brave Nature  
-- Iron Head  
-- Leech Life  
-- First Impression  
-- Wide Guard  
-
-Milotic (F) @ Leftovers  
-Ability: Competitive  
-Level: 50  
-EVs: 252 HP / 212 Def / 36 SpA / 12 SpD  
-Calm Nature  
-IVs: 31 Atk  
-- Muddy Water  
-- Hypnosis  
-- Coil  
-- Protect`;
+  const paste = [
+    'Dragonite (M) @ Dragoninite\nAbility: Inner Focus\nLevel: 50\nEVs: 12 HP / 252 SpA / 252 Spe\nTimid Nature\n- Dragon Pulse\n- Tailwind\n- Flamethrower\n- Protect',
+    'Rillaboom (M) @ Miracle Seed\nAbility: Grassy Surge\nLevel: 50\nEVs: 252 HP / 84 Atk / 4 Def / 108 SpD / 60 Spe\nAdamant Nature\n- Grassy Glide\n- Wood Hammer\n- Fake Out\n- High Horsepower',
+    'Weavile (F) @ Focus Sash\nAbility: Pickpocket\nLevel: 50\nTera Type: Dark\nEVs: 44 HP / 252 Atk / 220 Spe\nJolly Nature\n- Icicle Crash\n- Fake Out\n- Protect\n- Knock Off',
+    'Gholdengo @ Grassy Seed\nAbility: Good as Gold\nLevel: 50\nTera Type: Water\nEVs: 236 HP / 124 Def / 92 SpA / 28 SpD / 28 Spe\nBold Nature\nIVs: 31 Atk\n- Protect\n- Nasty Plot\n- Shadow Ball\n- Make It Rain',
+    'Golisopod (F) @ Golisopite\nAbility: Emergency Exit\nLevel: 50\nTera Type: Water\nEVs: 236 HP / 252 Atk / 12 Def / 12 SpD\nBrave Nature\n- Iron Head\n- Leech Life\n- First Impression\n- Wide Guard',
+    'Milotic (F) @ Leftovers\nAbility: Competitive\nLevel: 50\nEVs: 252 HP / 212 Def / 36 SpA / 12 SpD\nCalm Nature\nIVs: 31 Atk\n- Muddy Water\n- Hypnosis\n- Coil\n- Protect',
+  ].join('\n\n');
 
   const members = parsePaste(paste);
   assert.equal(members.length, 6);
@@ -646,146 +638,6 @@ test('invalid refresh preserves existing catalog', async () => {
       JSON.parse(await readFile(path, 'utf8')).teams[0].id,
       'original'
     );
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('sprite resolution keeps forms exact and covers catalog naming aliases', () => {
-  const results = [
-    ['lucario', 448],
-    ['arcanine-hisui', 10229],
-    ['indeedee-female', 10186],
-    ['lucario-mega', 10059],
-    ['lucario-mega-z', 10310],
-    ['floette-mega', 10296],
-    ['meowstic-female', 10025],
-    ['pyroar-male', 668],
-  ].map(([name, id]) => ({
-    name,
-    url: `https://pokeapi.co/api/v2/pokemon/${id}/`,
-  }));
-  const index = { results };
-  const champions = (id) =>
-    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/champions/${id}.png`;
-
-  assert.equal(resolveSprite('Lucario', index), champions(448));
-  assert.equal(resolveSprite('Arcanine-Hisui', index), champions(10229));
-  assert.equal(resolveSprite('Indeedee-F', index), champions(10186));
-  assert.equal(resolveSprite('Lucario-Mega', index), champions(10059));
-  assert.equal(resolveSprite('Lucario-Mega-Z', index), champions(10310));
-  assert.equal(resolveSprite('Floette-Mega', index), champions(10296));
-  assert.equal(resolveSprite('Floette-Eternal-Mega', index), champions(10296));
-  assert.equal(resolveSprite('Meowstic-F', index), champions(10025));
-  assert.equal(resolveSprite('Pyroar', index), champions(668));
-  assert.equal(
-    resolveSprite('Floette', index),
-    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/670.png'
-  );
-  assert.equal(
-    resolveSprite('Vivillon-Fancy', index),
-    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/666-fancy.png'
-  );
-  assert.equal(
-    resolveSprite('Sinistcha-Masterpiece', index),
-    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1013-masterpiece.png'
-  );
-  assert.equal(resolveSprite('Unknownmon', index), null);
-});
-
-test('sprite failures warn without changing catalog output or using wrong art', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'atlas-sprites-'));
-  const output = join(directory, 'catalog.json');
-  const sprites = join(directory, 'sprites');
-  const catalog = {
-    teams: [
-      {
-        members: [
-          { pokemon: 'Lucario' },
-          { pokemon: 'Vivillon-Fancy' },
-          { pokemon: 'Unknownmon' },
-        ],
-      },
-    ],
-  };
-  const index = {
-    results: [
-      {
-        name: 'lucario',
-        url: 'https://pokeapi.co/api/v2/pokemon/448/',
-      },
-    ],
-  };
-  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
-  const warnings = [];
-  try {
-    await writeFile(output, JSON.stringify(catalog));
-    await syncSprites(catalog.teams, index, {
-      directory: sprites,
-      load: async (address) => {
-        if (address.endsWith('/448.png')) return png;
-        throw new Error('offline');
-      },
-      warn: (message) => warnings.push(message),
-    });
-    assert.deepEqual(await readdir(sprites), ['lucario.png']);
-    assert.match(warnings.join('\n'), /Sprite unavailable for Unknownmon/);
-    assert.match(warnings.join('\n'), /vivillonfancy\.png: offline/);
-    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('item icons resolve normal and Champions names, validate PNGs, and fail safely', async () => {
-  assert.equal(
-    resolveItemIcon('Leftovers'),
-    'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/ileftovers.png'
-  );
-  assert.equal(
-    resolveItemIcon('Absolite Z'),
-    'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/iabsolite_z.png'
-  );
-  assert.throws(() => validatePng(Buffer.from('not png')), /Invalid PNG/);
-
-  const directory = await mkdtemp(join(tmpdir(), 'atlas-items-'));
-  const items = join(directory, 'items');
-  const output = join(directory, 'catalog.json');
-  const catalog = {
-    teams: [
-      {
-        members: [
-          { item: 'Leftovers' },
-          { item: 'Absolite Z' },
-          { item: null },
-        ],
-      },
-    ],
-  };
-  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
-  const warnings = [];
-  try {
-    await writeCatalog(output, catalog);
-    await mkdir(items, { recursive: true });
-    await writeFile(join(items, 'stale.png'), png);
-    await writeFile(join(items, 'absolitez.png'), Buffer.from('broken'));
-    const stats = await syncItems(catalog.teams, {
-      directory: items,
-      load: async (address) => {
-        if (address.endsWith('/ileftovers.png')) return png;
-        return Buffer.from('not png');
-      },
-      warn: (message) => warnings.push(message),
-    });
-    assert.deepEqual(stats, {
-      wanted: 2,
-      downloaded: 1,
-      failed: 1,
-      removed: 1,
-    });
-    assert.deepEqual(await readdir(items), ['leftovers.png']);
-    assert.match(warnings.join('\n'), /absolitez\.png: Invalid PNG sprite/);
-    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

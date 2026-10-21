@@ -7,6 +7,10 @@ import {
   evidence,
   evidenceGrade,
   isCustomRulesTeam,
+  listingReason,
+  sourceName,
+  sourceRows,
+  youtubeChannelNames,
 } from '../src/lib/catalog.ts';
 import { buildBenchmarkIndex } from '../src/lib/benchmark-index.ts';
 import {
@@ -683,4 +687,108 @@ test('custom-rule source teams are excluded from every recommendation boundary w
       (entry) => entry.value === 'Choice Specs' && entry.original
     )
   );
+});
+
+test('listing reasons name the source and YouTube rows collapse to one watch link', () => {
+  const channel = 'https://www.youtube.com/@CybertronVGC';
+  const watch = 'https://www.youtube.com/watch?v=abcdefghijk';
+  const collection = {
+    event: 'CybertronVGC collection',
+    rank: '',
+    sourceUrl: channel,
+  };
+  const video = { event: 'CybertronVGC video', rank: '', sourceUrl: watch };
+  const reports = [collection, video];
+  assert.deepEqual(
+    listingReason({ reports, sheetIds: ['MC1'], publishedAt: '2026-10-07' }),
+    {
+      label: 'Featured by CybertronVGC',
+      detail: 'Listed on VGCPastes · Ranked by share date',
+    }
+  );
+  assert.deepEqual(youtubeChannelNames(reports), ['CybertronVGC']);
+  assert.deepEqual(
+    listingReason({
+      reports: [
+        {
+          event: 'DevonCorp collection',
+          rank: '',
+          sourceUrl:
+            'https://devoncorp.press/resources/38-teams-for-pokemon-champions-regulation-m-a',
+        },
+      ],
+      publishedAt: '',
+    }),
+    { label: 'Listed by DevonCorp', detail: 'Share date unknown' }
+  );
+  assert.equal(
+    listingReason({
+      reports: [],
+      sheetIds: ['MC9'],
+      publishedAt: '2026-01-01',
+    }).label,
+    'Listed on VGCPastes'
+  );
+  assert.equal(listingReason({ reports: [] }).label, 'Listed in the catalog');
+  assert.deepEqual(listingReason({ reports: [] }, 'custom'), {
+    label: 'Imported by you',
+    detail: '',
+  });
+  assert.equal(
+    bestEvidence(
+      { reports: [{ event: '', rank: '', sourceUrl: '' }], regulation: 'M-C' },
+      'M-C'
+    ).none,
+    true
+  );
+  assert.equal(
+    bestEvidence(
+      {
+        reports: [
+          {
+            event: 'Champions ranked battles',
+            rank: 'Master Ball 1',
+            sourceUrl: '',
+          },
+        ],
+        regulation: 'M-C',
+      },
+      'M-C'
+    ).none,
+    undefined
+  );
+  const tweet = {
+    event: 'Video',
+    rank: '',
+    sourceUrl: 'https://x.com/a/status/1',
+  };
+  const ranked = {
+    event: 'Regional tournament',
+    rank: '1st',
+    sourceUrl: watch,
+  };
+  assert.deepEqual(
+    sourceRows([
+      collection,
+      video,
+      { event: 'YouTube video', rank: '', sourceUrl: watch },
+      ranked,
+      tweet,
+    ]),
+    [
+      { kind: 'youtube', channel: 'CybertronVGC', url: watch, watch: true },
+      { kind: 'report', report: ranked },
+      { kind: 'report', report: tweet },
+    ]
+  );
+  assert.deepEqual(sourceRows([collection]), [
+    { kind: 'youtube', channel: 'CybertronVGC', url: channel, watch: false },
+  ]);
+  for (const [reports, expected] of [
+    [[collection, video], 'Featured by CybertronVGC'],
+    [[report('Showdown Ladder', 'Peak #12')], 'Showdown'],
+    [[report('Champions ranked battles', 'Master Ball 1')], 'Champions ladder'],
+    [[report('Mudkip’s Marsh Pit #6', '1st', 40)], 'Mudkip’s Marsh Pit #6'],
+  ])
+    assert.equal(sourceName({ reports, regulation: 'M-C' }, 'M-C'), expected);
 });

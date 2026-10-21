@@ -1,10 +1,11 @@
 # Catalog snapshot
 
-The catalog holds Pokémon Champions doubles teams from four sources: the
-VGCPastes M-C and M-B spreadsheets, Victory Road's Champions replica-team page,
-DevonCorp's M-A collection, and the published Poch.ms leaderboard. Teams from a
-sheet or an index include parsed paste sets, and Poch.ms records include the set
-details that page publishes. Missing fields remain unknown.
+The catalog holds Pokémon Champions doubles teams from the VGCPastes M-C and M-B
+spreadsheets, Victory Road's Champions replica-team page, DevonCorp's M-A
+collection, the published Poch.ms leaderboard, and direct paste links from the
+complete public upload histories of the configured YouTube VGC/Champions channels. Teams from a sheet
+or index include parsed paste sets, and Poch.ms records include the set details
+that page publishes. Missing fields remain unknown.
 
 Sources:
 
@@ -25,12 +26,18 @@ Sources:
   never from a season number, a publication date, or a tier claim. Reported
   singles and other formats are excluded. Existing X-linked social coverage remains
   on this free source; the ranking policy adds no paid API, scraper, or subscription.
-- [Champions Battle Data](https://championsbattledata.com/api) supplies the level-50
-  stat values used for Speed. Its JSON is CORS-enabled and offered for app use,
-  and it is not used for usage percentages or result evidence. Refresh the
-  committed table by hand with `npm run sync:stats`; dev, build, and typecheck
-  never fetch it.
-- Individual PokéPaste, VR Pastes, and original report links are retained on each team.
+- [pokeaimMD](https://www.youtube.com/@pokeaimMD),
+  [Pokeaim+](https://www.youtube.com/@pokeaimplus),
+  [CybertronVGC](https://www.youtube.com/@CybertronVGC),
+  [PokeRoy](https://www.youtube.com/@PokeRoyVGC), and
+  [CloverBells](https://www.youtube.com/@CloverBells) are scanned through
+  their complete public upload histories using YouTube Data API v3. The importer
+  follows each channel's uploads playlist and reads direct supported paste links
+  in video descriptions. It does not follow shorteners, social posts, website
+  indexes, comments, transcripts, or screen-only teams.
+- Individual PokéPaste, VR Pastes, and original report/video/tournament links
+  (including supplementary `Report / Video` and `Other Links` columns on
+  VGCPastes sheets) are retained on each team.
 
 A team from an index joins the catalog only when its linked paste is a six-set
 Pokémon Champions paste for that team's regulation. The importer rejects a paste
@@ -38,22 +45,155 @@ whose format names another regulation or another game, a protected paste, a
 Victory Road row whose published roster does not match the paste, and a Victory
 Road row whose creator and result claims belong to a different roster.
 
+Every catalog entry path also checks the whole team against the official species,
+form, and Mega Evolution roster for its declared regulation. Historical M-A and
+M-B teams use their own rules, not M-C's roster. An `Unknown` team must fit one
+complete supported roster and keeps its `Unknown` label. Unsupported regulations,
+unmapped forms, and malformed rosters are excluded as `ineligible_species`;
+ineligible teams never reach linked-spread enrichment or asset restoration.
+
+The checked-in `scripts/data/champions-m-{a,b,c}.json` snapshots preserve official
+form IDs and explicit normalized app identities. Their primary sources are:
+
+| Regulation | Official notice                                                       | Eligible roster                                                                                                  |
+| ---------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| M-A        | [M-A rules](https://champions-news.pokemon-home.com/en/page/751.html) | [M-A Pokémon](https://web-view.app.pokemonchampions.jp/battle/pages/events/rs177501629259kmzbny/en/pokemon.html) |
+| M-B        | [M-B rules](https://champions-news.pokemon-home.com/en/page/776.html) | [M-B Pokémon](https://web-view.app.pokemonchampions.jp/battle/pages/events/rs178066986988lmoqpm/en/pokemon.html) |
+| M-C        | [M-C rules](https://champions-news.pokemon-home.com/en/page/816.html) | [M-C Pokémon](https://web-view.app.pokemonchampions.jp/battle/pages/events/rs178713870219xeaaio/en/pokemon.html) |
+
+Update snapshots deliberately when official rules change; imports never fetch live
+rosters. Keep full independent Mega maps: M-B's and M-C's notices announce additions
+to the preceding sets. M-A's undifferentiated Mega Meowstic notice is interpreted
+as covering both listed sexes. Crosswalks preserve exact forms: Maushold
+`0925-000` is Family of Three in M-A/M-B; `0925-001` is Family of Four in M-C.
+Ordinary Floette and Poké Ball Vivillon do not inherit eligibility from Eternal
+Flower Floette or Fancy Vivillon. Snapshot validation fails before catalog
+replacement if data is missing or malformed. Snapshot text contributes to the
+source hash. This gate does not validate movesets or item clauses and does not
+migrate personal or synced teams.
+
+YouTube-linked teams require independent Pokémon Champions and VGC/doubles
+context (from explicit format declarations, doubles/tournament terminology in
+video text, or a six-Pokémon Champions doubles paste with protection/doubles
+support moves, no singles entry hazards, and resolved Champions battle forms).
+Every supplied `Format:` declaration, provider format, and explicit
+M-A, M-B, or M-C regulation token must agree. Singles, OU, National Dex,
+pre-Champions, other games, unknown format declarations, unsupported regulations,
+and conflicting formats are excluded across both titles and descriptions.
+Promotional description text mentioning another game does not override an
+otherwise eligible team.
+
+When no explicit regulation or unresolved format declaration exists, the video
+date can estimate the regulation only with Champions doubles context:
+
+| Regulation | Inclusive UTC start | Exclusive UTC end |
+| ---------- | ------------------- | ----------------- |
+| M-A        | 2026-04-08 00:00    | 2026-06-17 02:00  |
+| M-B        | 2026-06-17 02:00    | 2026-09-09 02:00  |
+| M-C        | 2026-09-09 02:00    | 2026-12-02 00:00  |
+
+The [Victory Road regulation calendar](https://victoryroad.pro/champions-regulations/)
+provides the outer calendar dates; those boundaries use UTC day precision, not
+verified launch or closing times. The [official M-B notice](https://champions-news.pokemon-home.com/en/page/776.html)
+provides the two 02:00 UTC transitions. The importer does not extrapolate beyond
+these windows. Explicit regulation takes precedence: a tournament can use older
+rules after a new regulation starts. Detail and saved-original views disclose
+date inference with the source video link. It estimates rules active when shared,
+not the tournament's actual rules or current legality.
+
+Channel collection and video provenance remain attached. A video date is a
+sharing date, not a result claim. The presenter is not treated as the team
+builder. Only a standalone `Team by:` or `Team by` description line supplies builder credit.
+
+Skip reasons distinguish evidence from availability: `missing_regulation` means
+the importer lacks usable regulation evidence, `unsupported_format` means the
+published game or format is incompatible, and `format_conflict` means explicit
+regulations disagree. `paste_unavailable` means fetching failed, including HTTP
+404; malformed content is `invalid_payload`.
+
 A Poch.ms record joins the catalog only when its rule is `double`, its species
 resolve, and every field it uses parses. A record with an unresolvable species, a
 malformed field it needs, or a conflicting duplicate source ID is skipped rather
 than guessed. A source parse that finds supported records but admits none fails
 the refresh instead of publishing an empty success.
 
+For YouTube API key setup, GitHub Actions configuration, and import commands,
+see [YouTube credentials in README](../README.md#youtube-credentials).
+
+Routine imports refresh the active M-C slice. They retain eligible M-A, M-B, and
+`Unknown` records from the cached catalog baseline after checking each record
+against its regulation roster. An ineligible historical record is omitted with a
+warning. Frozen records keep their stored provenance and linked-spread values;
+routine imports do not re-enrich them or use them as linked-spread donors.
+
+The cache entry for `src/lib/data/catalog.json` supplies the history baseline.
+If that catalog is missing or empty, the importer bootstraps all available
+history. `REFRESH=1 npm run import:catalog` rebuilds the full history from current
+source data, replacing changed or removed historical records. The production
+workflow exposes the same operation through its **Rebuild all historical
+regulations** manual-dispatch checkbox. Routine removals remain authoritative
+for M-C; removal of a frozen record takes effect only in a full-history rebuild.
+
+YouTube discovery remains complete during routine imports: playlist traversal
+and configured-channel history scans are unchanged. The importer does not use a
+date cutoff to reduce discovery. It admits teams and recomputes linked-spread
+provenance only for the active slice. Frozen records retain their existing data.
+
 ## Freshness and scheduling
 
 `.github/workflows/deploy-prod.yml` imports the catalog and deploys it on every
-push to `main`, and once a day at 08:17 UTC. GitHub can delay a scheduled run.
+push to `main`, on manual dispatch, and once a day at 08:17 UTC. GitHub can delay
+a scheduled run. Only scheduled production imports set `YOUTUBE_REFRESH=1` to
+recrawl all configured channel histories. Pushes, manual dispatches, and PR previews
+reuse valid complete discovery snapshots; a cold cache can still require a crawl.
 The workflow serializes publication, and a failed import, tagging run, or build
 stops before deployment so the previously hosted build stays available. A source
 fetch or structural failure throws before the atomic catalog write, so the
 previous catalog stays published. Nothing imports on a schedule outside that
-workflow: dev, build, and typecheck generate a missing catalog and otherwise
-leave it in place.
+workflow: dev, build, and typecheck generate a missing catalog or rebuild one
+containing an ineligible team. Otherwise they reuse the catalog and restore assets.
+YouTube discovery stores only a validated, completed snapshot at
+`.cache/catalog/youtube-sources.json`. A keyed online import reuses a valid
+complete snapshot unless `REFRESH=1` or `YOUTUBE_REFRESH=1` requests a complete
+recrawl. `CHECK_SHEET=1` alone reuses discovery. Without a full recrawl flag, the
+importer incrementally scans only newly configured channels when a valid cached
+snapshot holds a subset of the allowlist.
+`OFFLINE=1` never contacts YouTube; with a key it requires a valid snapshot.
+Without a key, an existing valid snapshot is reused, while an absent snapshot
+disables this source with a warning and retains previously imported channel-only
+teams. An invalid snapshot fails in offline or keyless mode; a keyed online
+import replaces it only after a successful complete crawl. Once an enabled scan
+begins, API, quota, or structural failures abort before catalog replacement,
+including in preview; preview's stale-cache option does not weaken YouTube
+discovery. A successful complete scan treats disappeared video/paste links as
+removals from the active slice; frozen historical records remain until a
+full-history rebuild. Individual paste fetch failures retain compatible prior
+sets and expose the error.
+
+## Assets and preview cache
+
+Catalog bootstrap caches standard Pokémon PNG sprites and 24px item icons in
+ignored `static/` directories. It uses PokéAPI's standard PNG artwork for new or
+missing sprites. Exact aliases preserve source labels and raw paste text. Valid
+cached PNGs remain unchanged; asset download failures remain visible and do not
+alter catalog data.
+
+The app captures the asset inventory at development-server startup and build
+time. Missing sprites render nothing; missing item icons show a dash. Pokémon and
+item names remain visible, and absent assets trigger no requests. Restart the
+development server or rebuild after adding assets. `OFFLINE=1` controls source
+discovery, not asset downloads.
+
+Preview imports refresh live sources with `CHECK_SHEET=1` and set
+`ALLOW_STALE_SOURCE_CACHE=1`. When an eligible transient HTTP or network failure
+occurs, the importer warns and reuses validated raw source cache, including CSVs.
+The existing retry policy remains unchanged.
+
+Fallbacks fail when cache is missing, unreadable, invalid, or oversized. Fresh
+validation and cache-write errors, and mandatory-source failures, remain fatal.
+Production, CI, and local imports remain strict unless you explicitly set the
+stale-cache option. It does not change offline behavior or impose a cache age
+limit.
 
 ## Reuse conditions
 
@@ -66,13 +206,38 @@ ignored by Git.
 ## Interpretation
 
 Sheet regulation, species, items, author, publication date, result claims, and
-replica status are retained. Missing values remain unknown. Paste sets match by
-species and item, allowing a base species to match the sheet's Mega form. The
-declared appearance-only forms (`cosmeticForms`, such as `Sinistcha` and
+replica status are retained. Missing values remain unknown. Unknown details never
+satisfy a filter. Paste sets match by species and item, allowing a base species
+to match the sheet's Mega form.
+The declared appearance-only forms (`cosmeticForms`, such as `Sinistcha` and
 `Sinistcha-Masterpiece`) match across their spellings too, on both the paste and
 published-roster checks, while the retained name stays the one the source wrote.
 A mismatch fails the import instead of assigning details to the wrong Pokémon.
 Paste notes remain visible because they can describe a different regulation.
+
+An explicit creator adaptation can fill missing EVs and a missing Nature on a
+linked original. Each video must separately label one direct original-team paste
+and one direct creator-version paste. Both pastes must pass ordinary admission
+within the paste budget, share a supported regulation, and uniquely match all six
+resolved battle forms. Every original-known item, ability, Nature, and move set
+must agree; each receiving member must publish its item, ability, and four moves.
+Only a complete valid Champions spread with a recognized donor Nature can fill
+a hole. Published EVs and Natures are never replaced. Conflicting linked donor
+proposals leave that member unchanged.
+
+These additions retain donor paste and video attribution, separate from the
+original tournament text and results. Copy and Save include the additions;
+**Published paste text** shows the original without them. Attribution disappears
+when the working set no longer matches the borrowed set. Different-paste variants
+keep separate identities and reports; a matching roster alone never establishes
+a relationship or merges teams.
+
+For active teams, a completed discovery snapshot lets each import recompute
+additions from source originals. Removed links, rejected donors, and unavailable
+donor pastes cannot silently preserve active borrowed values. Frozen historical
+teams keep their existing additions during routine imports. In inactive keyless
+mode, compatible previously attributed additions also remain because discovery
+is unobserved.
 
 Poch.ms records keep published values and leave the rest unknown. A missing set
 field or scalar stays unknown. The page publishes no spreads, so these records
@@ -121,8 +286,11 @@ still imports.
 Exact duplicates share regulation, paste URL, and member species/items. Their
 sheet IDs and report links merge; different paste URLs remain separate variants.
 Imports are atomic, and source files are cached. `REFRESH=1` or `CHECK_SHEET=1`
-fetches every source, the Poch.ms leaderboard included; `OFFLINE=1` requires the
-cache. The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
+refreshes ordinary source indexes, the Poch.ms leaderboard included, and selected
+paste payloads. YouTube discovery refreshes separately with `REFRESH=1` or
+`YOUTUBE_REFRESH=1`; `YOUTUBE_REFRESH=1` alone leaves warm ordinary source and
+paste caches unchanged. `OFFLINE=1` requires the cache.
+The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
 accepted records, 92 of them with regulation `Unknown`, and 194 skipped records
 (reported singles and unsupported formats). The displayed snapshot date
 tracks catalog generation, not independent verification of source claims.
@@ -132,8 +300,8 @@ error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
 partial-fetch option and does not erase compatible previously loaded sets. It
 counts candidate teams with the sheets first, so a limit below the sheet count
 leaves index teams unreached: those keep their previously validated record
-unchanged, and a new index team beyond the limit is omitted and reported as
-`limited`.
+unless an already-loaded shared payload contradicts the YouTube attribution.
+A new index team beyond the limit is omitted and reported as `limited`.
 
 Saved teams retain their own original snapshot and source history, and the
 snapshot keeps the original reports too. A record without a real paste URL
@@ -142,19 +310,38 @@ published raw set; manual edits belong to the user's draft.
 Similarity measures shared Pokémon and matching known set details, with result
 priority breaking ties. It does not predict matchup quality or infer EVs.
 
-M-C is the configured current regulation from the planning discussion. No
-current-rule legality checker exists. Original regulation is not evidence that
-a team remains legal or competitive now.
+M-C is the configured current regulation from the planning discussion. Catalog
+admission checks species, forms, and allowed Mega Evolutions under each team's own
+rules. It does not establish full current-rule legality or competitiveness.
 
 ## Ranking and discovery
 
-The comparator orders non-custom teams ahead of known custom-rule records, known
-regulations ahead of Unknown, then achievement band, current-regulation status,
-and credential merit. A supplied recommendation tiebreak follows merit;
-publication time and team ID settle remaining ties. Newest shared is a deliberate
-date-only sort. Unknown regulation remains below every known regulation.
+Automatic team and set suggestions order non-custom teams ahead of known
+custom-rule records, known regulations ahead of Unknown, then achievement band,
+current-regulation status, and credential merit. A supplied recommendation
+tiebreak follows merit; publication time and team ID settle remaining ties.
+**Newest shared** is a deliberate date-only sort.
 
-Achievement bands, from highest to lowest, are: (1) Champions Champion Tier or
+Browse's **Recommended** order keeps the same custom-rule and unknown-regulation
+guards, then ranks resource groups: complete EVs with a video, complete EVs
+without a video, a video without complete EVs, and neither. Complete EVs require
+exactly six Pokémon with valid 66-point allocations, with each stat from 0 to 32;
+Nature is not required. Attributed imported EV additions count as working sets.
+A video is a direct HTTPS YouTube watch, live, Shorts, or youtu.be link with a
+valid 11-character video ID, attached to a report or EV-addition attribution.
+Channel and playlist links do not count. Multiple videos count the same as one.
+
+Within each resource group, Browse ranks Champion Tier or Champions positions
+1–100, Master Ball 1, qualifying major finishes, qualifying community finishes,
+Master Ball 2, Champions positions 101–1,000, Showdown positions 1–100, eligible
+lower Master Ball results, other reported results, then no result. Current
+regulation comes before credential merit within each band, followed by
+publication time and team ID. Every report can supply the team's best Browse
+band. Showdown Bo1, Bo3, and unspecified labels receive the same qualification;
+none implies closed team sheets. These Browse rules do not change evidence
+labels or automatic suggestions.
+
+For automatic suggestions, achievement bands, from highest to lowest, are: (1) Champions Champion Tier or
 explicit Champions global, peak, or season-finish position 1–100, then Master Ball
 1; (2) qualifying major-event finishes; (3) Master Ball 2, Champions positions
 101–1,000, then Showdown positions 1–100; (4) supported community finishes; (5)

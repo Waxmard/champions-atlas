@@ -22,7 +22,7 @@ function entry(value) {
   return { id: pokemonId(value.pokemon), member: value };
 }
 
-test('current-set availability compares complete snapshots by Browse identity', () => {
+test('current-set availability compares set-defining fields by Browse identity', () => {
   const pikachu = member('Pikachu', {
     set: 'Pikachu set',
     metadata: { source: 'saved' },
@@ -51,12 +51,52 @@ test('current-set availability compares complete snapshots by Browse identity', 
       [entry(member('Gengar', { set: 'Original raw text' }))],
       [member('Gengar', { set: 'Changed raw text' })]
     ),
-    true
+    false
   );
   assert.equal(
     currentSetsWouldChange(
       [entry(member('Snorlax', { metadata: { source: 'saved' } }))],
       [member('Snorlax', { metadata: { source: 'changed' } })]
+    ),
+    false
+  );
+  assert.equal(
+    currentSetsWouldChange(
+      [entry(member('Tyranitar', { spread: '32 HP / 32 Spe / 2 Atk' }))],
+      [member('Tyranitar', { spread: '2 Atk / 32 Spe / 32 HP' })]
+    ),
+    false
+  );
+  assert.equal(
+    currentSetsWouldChange(
+      [entry(member('Heracross', { item: 'Leftovers' }))],
+      [
+        member('Heracross', {
+          item: 'leftovers',
+          moves: ['Fake Out', 'Protect'],
+        }),
+      ]
+    ),
+    false
+  );
+  assert.equal(
+    currentSetsWouldChange(
+      [entry(member('Heracross', { item: 'Leftovers' }))],
+      [member('Heracross', { item: 'Choice Band' })]
+    ),
+    true
+  );
+  assert.equal(
+    currentSetsWouldChange(
+      [entry(member('Tyranitar', { spread: '32 HP / 32 Spe / 2 Atk' }))],
+      [member('Tyranitar', { spread: '32 HP / 30 Spe / 4 Atk' })]
+    ),
+    true
+  );
+  assert.equal(
+    currentSetsWouldChange(
+      [entry(member('Snorlax', { spread: '2 Atk', set: 'Old text' }))],
+      [member('Snorlax', { spread: '2 Atk', set: 'New text' })]
     ),
     true
   );

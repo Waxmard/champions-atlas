@@ -30,7 +30,7 @@
     readFilters,
     writeFilters,
     matchesTeam,
-    compareTeams,
+    compareBrowseTeams,
     getMemberOptions,
     isCustomRulesTeam,
     browsePokemon,
@@ -134,7 +134,7 @@
             sort === 'recent'
               ? b.publishedAt.localeCompare(a.publishedAt) ||
                 a.id.localeCompare(b.id)
-              : compareTeams(a, b, current)
+              : compareBrowseTeams(a, b, current)
           )
   );
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / 24)));

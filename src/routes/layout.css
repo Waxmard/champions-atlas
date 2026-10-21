@@ -209,7 +209,8 @@
     background: var(--color-accent);
     border-color: var(--color-accent);
   }
-  .stamp[data-grade='qualified'] {
+  .stamp[data-grade='qualified'],
+  .stamp[data-grade='source'] {
     color: var(--color-primary);
     background: transparent;
     border-color: var(--color-primary);
@@ -224,7 +225,6 @@
     color: var(--color-muted);
     background: transparent;
     border-color: var(--color-muted);
-    border-style: dashed;
     font-weight: 600;
   }
 

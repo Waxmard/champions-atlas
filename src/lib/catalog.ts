@@ -1,3 +1,19 @@
+import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
+
+export interface SpreadSource {
+  pasteUrl: string;
+  videoUrls: string[];
+  sourceSet: string;
+  originalSet: string;
+  appliedSignature: string;
+  borrowedNature: boolean;
+}
+export interface RegulationInference {
+  method: 'video-date';
+  publishedAt: string;
+  sourceUrl: string;
+}
+
 export interface Member {
   // Saved-team members may retain unknown per-member metadata; the index
   // signature keeps this catalog type assignable to zod's looseObject output.
@@ -9,6 +25,7 @@ export interface Member {
   moves: string[];
   nature: string | null;
   spread: string | null;
+  spreadSource?: SpreadSource;
 }
 
 export interface Report {
@@ -32,6 +49,7 @@ export interface Team {
   paste: string | null;
   pasteNotes: string | null;
   pasteError?: string;
+  regulationInference?: RegulationInference;
 }
 
 export interface MemberFilter {
@@ -144,10 +162,12 @@ type ClassifiedEvidence = {
   platform: string;
   priority: Priority;
   entrants?: number;
+  none?: true;
 };
 const noEvidence = (entrants?: number): ClassifiedEvidence => ({
   level: 4,
-  label: 'No reported result',
+  label: '',
+  none: true,
   platform: 'Unknown',
   priority: [6, 0, 0, 0, 0],
   entrants,
@@ -358,6 +378,114 @@ export function evidenceGrade(
   return 'none';
 }
 
+const youtubeChannelUrl = 'https://www.youtube.com/@';
+
+function collections(
+  reports: readonly Report[]
+): { name: string; youtube: boolean }[] {
+  const found: { name: string; youtube: boolean }[] = [];
+  for (const report of reports) {
+    const name = /^(.+) collection$/.exec(report.event)?.[1];
+    if (name && !found.some((entry) => entry.name === name))
+      found.push({
+        name,
+        youtube: report.sourceUrl.startsWith(youtubeChannelUrl),
+      });
+  }
+  return found;
+}
+
+export function youtubeChannelNames(reports: readonly Report[]): string[] {
+  return collections(reports)
+    .filter((entry) => entry.youtube)
+    .map((entry) => entry.name);
+}
+
+export function listingReason(
+  team: {
+    reports?: readonly Report[];
+    sheetIds?: readonly string[];
+    publishedAt?: string;
+  },
+  origin?: 'catalog' | 'custom'
+): { label: string; detail: string } {
+  if (origin === 'custom') return { label: 'Imported by you', detail: '' };
+  const reports = team.reports ?? [];
+  const channels = youtubeChannelNames(reports);
+  const sources = [
+    ...(channels.length ? [`Featured by ${channels.join(', ')}`] : []),
+    ...collections(reports)
+      .filter((entry) => !entry.youtube)
+      .map((entry) => `Listed by ${entry.name}`),
+    ...(team.sheetIds?.length ? ['Listed on VGCPastes'] : []),
+  ];
+  return {
+    label: sources[0] ?? 'Listed in the catalog',
+    detail: [
+      ...sources.slice(1),
+      team.publishedAt ? 'Ranked by share date' : 'Share date unknown',
+    ].join(' · '),
+  };
+}
+
+export function sourceName(
+  team: Pick<Team, 'reports' | 'regulation'> &
+    Partial<Pick<Team, 'id' | 'sheetIds' | 'publishedAt'>>,
+  current: string
+): string {
+  const best = bestEvidence(team, current);
+  if (!best.none)
+    return best.platform === 'Tournament' ? best.event : best.platform;
+  return listingReason(team).label;
+}
+
+export type SourceRow =
+  | { kind: 'report'; report: Report }
+  | { kind: 'youtube'; channel: string; url: string; watch: boolean };
+
+export function sourceRows(reports: readonly Report[]): SourceRow[] {
+  const channels = collections(reports).filter((entry) => entry.youtube);
+  const isVideo = (report: Report) =>
+    channels.some((entry) => report.event === `${entry.name} video`);
+  const rows: SourceRow[] = [];
+  const emitted = new Set<string>();
+  const seen = new Set<string>();
+  for (const report of reports) {
+    const name = /^(.+) collection$/.exec(report.event)?.[1];
+    const channel = channels.find((entry) => entry.name === name);
+    if (channel) {
+      if (seen.has(channel.name)) continue;
+      seen.add(channel.name);
+      const videos = reports.filter(
+        (item) => item.event === `${channel.name} video`
+      );
+      if (!videos.length)
+        rows.push({
+          kind: 'youtube',
+          channel: channel.name,
+          url: report.sourceUrl,
+          watch: false,
+        });
+      for (const video of videos) {
+        if (emitted.has(video.sourceUrl)) continue;
+        emitted.add(video.sourceUrl);
+        rows.push({
+          kind: 'youtube',
+          channel: channel.name,
+          url: video.sourceUrl,
+          watch: true,
+        });
+      }
+    } else if (!isVideo(report)) rows.push({ kind: 'report', report });
+  }
+  return rows.filter(
+    (row) =>
+      row.kind !== 'report' ||
+      !emitted.has(row.report.sourceUrl) ||
+      row.report.rank.trim() !== ''
+  );
+}
+
 function evidenceOf(team: Team, current: string): TeamEvidence {
   const cached = evidenceCache.get(team);
   if (cached?.current === current) return cached.evidence;
@@ -388,6 +516,110 @@ export function compareTeams(
     currentOrder ||
     priorityCompare(ea.priority, eb.priority) ||
     tiebreak ||
+    b.publishedAt.localeCompare(a.publishedAt) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+const browsePriority = (priority: Priority): Priority => [
+  priority[0] === 0
+    ? priority[1] === 1
+      ? 1
+      : 0
+    : priority[0] === 1
+      ? 2
+      : priority[0] === 3
+        ? 3
+        : priority[0] === 2
+          ? priority[1] === 0
+            ? 4
+            : priority[1] === 1
+              ? 5
+              : 6
+          : priority[0] === 4
+            ? 7
+            : priority[0] === 5
+              ? 8
+              : 9,
+  priority[1],
+  priority[2],
+  priority[3],
+  priority[4],
+];
+
+function isDirectYoutubeVideo(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return false;
+    let id: string | null = null;
+    if (
+      ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname)
+    ) {
+      if (url.pathname === '/watch') id = url.searchParams.get('v');
+      else
+        id =
+          /^\/(?:live|shorts)\/([A-Za-z0-9_-]{11})\/?$/.exec(
+            url.pathname
+          )?.[1] ?? null;
+    } else if (url.hostname === 'youtu.be') {
+      id = /^\/([A-Za-z0-9_-]{11})\/?$/.exec(url.pathname)?.[1] ?? null;
+    }
+    return !!id && /^[A-Za-z0-9_-]{11}$/.test(id);
+  } catch {
+    return false;
+  }
+}
+
+const browseCache = new WeakMap<
+  Team,
+  { current: string; resource: number; priority: Priority }
+>();
+
+function browseRankingOf(team: Team, current: string) {
+  const cached = browseCache.get(team);
+  if (cached?.current === current) return cached;
+
+  const completeEvs =
+    team.members.length === 6 &&
+    team.members.every((member) =>
+      isCompleteSpread(parseChampionsSpread(member.spread))
+    );
+  const hasVideo =
+    team.reports.some((report) => isDirectYoutubeVideo(report.sourceUrl)) ||
+    team.members.some((member) =>
+      member.spreadSource?.videoUrls.some(isDirectYoutubeVideo)
+    );
+  let priority: Priority = [9, 0, 0, 0, 0];
+  for (const report of team.reports) {
+    const candidate = browsePriority(
+      evidence(report, team.regulation, current).priority
+    );
+    if (priorityCompare(candidate, priority) < 0) priority = candidate;
+  }
+  const result = {
+    current,
+    resource: completeEvs ? (hasVideo ? 0 : 1) : hasVideo ? 2 : 3,
+    priority,
+  };
+  browseCache.set(team, result);
+  return result;
+}
+
+export function compareBrowseTeams(a: Team, b: Team, current: string): number {
+  const customOrder =
+    Number(isCustomRulesTeam(a)) - Number(isCustomRulesTeam(b));
+  if (customOrder) return customOrder;
+  const unknownOrder =
+    Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
+  if (unknownOrder) return unknownOrder;
+
+  const ra = browseRankingOf(a, current);
+  const rb = browseRankingOf(b, current);
+  return (
+    scalarCompare(ra.resource, rb.resource) ||
+    scalarCompare(ra.priority[0], rb.priority[0]) ||
+    Number(b.regulation === current) - Number(a.regulation === current) ||
+    priorityCompare(ra.priority, rb.priority) ||
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)
   );

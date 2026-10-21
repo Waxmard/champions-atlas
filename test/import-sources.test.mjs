@@ -1,11 +1,35 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
+import {
+  catalogPath,
+  devonCorpPage,
+  devonItems,
+  devonPokemon,
+  mcItems,
+  mcPokemon,
+  mbPokemon,
+  pasteText,
+  pochPage,
+  pochTeamRow,
+  pokePasteJson,
+  readCatalog,
+  reasonChecker,
+  rosterHtml,
+  runImport,
+  sheetCsv,
+  sheetRow,
+  sheetSources,
+  victoryRoadPage,
+  vrProviderPayload,
+  vrRoster,
+  vrRow,
+  writeCache,
+  writeFetchMock,
+} from './fixtures/catalog-import.mjs';
 import {
   deduplicate,
   parseSheet,
@@ -17,235 +41,6 @@ import {
   victoryRoadUrl,
 } from '../scripts/catalog-sources.mjs';
 import { normalize } from '../src/lib/catalog.ts';
-
-const importScript = fileURLToPath(
-  new URL('../scripts/import-catalog.mjs', import.meta.url)
-);
-const sheetHeader =
-  'Team ID|1|2|3|4|5|6|B|C|v1|v2|v3|Pokemon Text for Copypasta||||||Team Description|Full Name|Date Shared|Pokepaste|Replica Code\n(Click text for image)|Replica Status|Tournament / Event|Rank|Link to Source'.split(
-    '|'
-  );
-const list = (value) => value.split('/');
-const vrRoster = list(
-  'Gengar Mega/Snorlax/Incineroar/Scrafty/Dragonite/Rillaboom'
-);
-const mcPokemon = list(
-  'Gholdengo/Amoonguss/Iron Hands/Farigiraf/Pelipper/Basculegion'
-);
-const mcItems = list(
-  'Choice Specs/Rocky Helmet/Assault Vest/Safety Goggles/Focus Sash/Mystic Water'
-);
-const mbPokemon = list(
-  'Kingambit/Sinistcha/Rillaboom/Incineroar/Dragonite/Snorlax'
-);
-const mbItems = list(
-  'Black Glasses/Sitrus Berry/Miracle Seed/Charcoal/Life Orb/Leftovers'
-);
-const devonPokemon = list(
-  'Charizard/Garchomp/Amoonguss/Incineroar/Rillaboom/Gholdengo'
-);
-const devonItems = list(
-  'Charizardite Y/Clear Amulet/Sitrus Berry/Safety Goggles/Miracle Seed/Choice Specs'
-);
-
-const csvField = (value) => {
-  const text = String(value);
-  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-};
-
-function sheetRow(id, team) {
-  const row = Array(sheetHeader.length).fill('');
-  row[0] = id;
-  team.items.forEach((item, index) => {
-    row[3 + index] = item;
-  });
-  team.pokemon.forEach((name, index) => {
-    row[12 + index] = name;
-  });
-  row[18] = team.name || id;
-  row[19] = team.creator || 'Owner';
-  row[20] = team.date || '12 Sep 2026';
-  row[21] = team.paste;
-  row[22] = team.code || '';
-  row[23] = 'Open';
-  row[24] = team.event || '';
-  row[25] = team.rank || '';
-  row[26] = team.source || '';
-  return row;
-}
-
-const sheetCsv = (rows) =>
-  [sheetHeader, ...rows].map((row) => row.map(csvField).join(',')).join('\n');
-
-function setBlock(name, item, ability, nature, moves, spread) {
-  return [
-    item ? `${name} @ ${item}` : name,
-    `Ability: ${ability}`,
-    'Level: 50',
-    spread ? `EVs: ${spread}` : '',
-    `${nature} Nature`,
-    ...moves.map((move) => `- ${move}`),
-  ]
-    .filter(Boolean)
-    .join('\n');
-}
-
-const pasteText = (species, items) =>
-  species
-    .map((name, index) =>
-      setBlock(
-        name,
-        items[index],
-        'Ability',
-        'Adamant',
-        ['Protect', 'Fake Out'],
-        '2 HP / 32 Atk'
-      )
-    )
-    .join('\n\n');
-
-const pokePasteJson = (blocks, notes) =>
-  JSON.stringify({
-    author: 'Fixture',
-    notes,
-    paste: blocks,
-    title: 'Fixture team',
-  });
-
-const vrSetSpecs = [
-  'Gengar|Genry|Gengarite|Cursed Body|Modest|hp=30,def=13,spd=16,spe=7|Perish Song,Shadow Ball,Sludge Bomb,Protect',
-  'Snorlax|Snorlax|Leftovers|Thick Fat|Relaxed|hp=21,def=31,spd=14|Yawn,Encore,Fissure,Protect',
-  'Incineroar|Incineroar|Sitrus Berry|Intimidate|Relaxed|hp=32,def=25,spd=9|Flare Blitz,Parting Shot,Fake Out,Protect',
-  'Scrafty|Scrafty|Focus Sash|Intimidate|Impish|hp=32,def=4,spd=4,spe=26|Close Combat,Knock Off,Fake Out,Protect',
-  'Dragonite|Dragonite|Life Orb|Inner Focus|Adamant|hp=29,atk=32,spe=5|Dragon Claw,Low Kick,Extreme Speed,Protect',
-  'Rillaboom|Rillaboom|Eject Button|Grassy Surge|Sassy|hp=32,def=4,spd=30|Grassy Glide,U-turn,Fake Out,Protect',
-];
-
-const vrTeams = vrSetSpecs.map((spec) => {
-  const [species, name, item, ability, nature, evs, moves] = spec.split('|');
-  return {
-    species,
-    name,
-    item,
-    ability,
-    nature,
-    evs: Object.fromEntries(
-      evs.split(',').map((pair) => {
-        const [stat, value] = pair.split('=');
-        return [stat, Number(value)];
-      })
-    ),
-    moves: moves.split(','),
-    ...(species === 'Gengar' ? { shiny: true } : {}),
-  };
-});
-
-const vrProviderPayload = (overrides = {}) => ({
-  id: 'AbC12345',
-  is_public: true,
-  is_encrypted: false,
-  format: 'VGC Regulation M-C',
-  createdAt: 1789118018,
-  teams: vrTeams,
-  ...overrides,
-});
-
-const rosterHtml = (names) =>
-  names
-    .map((name) => `<img title="${name}" alt="${name}" width="64px"/>`)
-    .join('');
-
-const vrRow = (player, roster, paste, rank = 'Champion') =>
-  `<tr><td></td><td><b>${player}</b></td>` +
-  `<td><b>Spring Cup<br>${rank}</b></td><td><div>${roster}</div></td>` +
-  `<td>AB C 123</td><td><a href="${paste}"><img title="Export"/></a></td><td></td></tr>`;
-
-const vrTable = (rows, start = 0) =>
-  `<table><thead><tr><th>Flag</th><th>Player</th><th>Best results</th><th>Team</th>` +
-  `<th>Code</th><th>Paste</th><th>Rep.</th></tr></thead><tbody>${rows.slice(start).join('')}` +
-  `</tbody></table>`;
-
-const victoryRoadPage = (rows) =>
-  `<h1>Pokémon Champions — Replica Teams</h1>` +
-  `<h2>Regulation Set (M-C)</h2><h3>Teams reaching finals of large tournaments</h3>` +
-  vrTable(rows) +
-  `<h2>Past formats</h2>` +
-  vrTable([
-    vrRow(
-      'Legacy Player',
-      rosterHtml(vrRoster),
-      'https://pokepast.es/0123456789abcdef'
-    ),
-  ]);
-
-const devonCorpPage = (extra = '') =>
-  `<h1>38 Teams to Try for Pokémon Champions Regulation M-A</h1>` +
-  `<a href="https://pokepast.es/ffffffffffffffff">unrelated</a>` +
-  `<article><div class="blog-item-content e-content">` +
-  `<h3>CYBERTRON TEAM</h3><div class="sqs-html-content">` +
-  `<p>Teambuilder: <a href="https://x.com/CybertronVGC">https://x.com/CybertronVGC</a></p>` +
-  `<p>Replica Code: NFVS4SYCW2</p>` +
-  `<p>Pokepaste: <a href="https://pokepast.es/138b4ef886ba95e4">paste</a></p>` +
-  `<p><a href="https://youtu.be/Du3AZ5dpIv4?t=67">Link to YouTube Explanation</a></p>` +
-  `</div>${extra}</div></article>`;
-
-const reasonChecker = (reason) => (error) => error.reason === reason;
-
-async function writeCache(directory, files) {
-  const cache = join(directory, '.cache/catalog');
-  await mkdir(cache, { recursive: true });
-  for (const [name, content] of Object.entries(files))
-    await writeFile(join(cache, name), content);
-  return cache;
-}
-
-function runImport(directory, env = {}) {
-  return execFileSync(process.execPath, [importScript], {
-    cwd: directory,
-    env: {
-      ...process.env,
-      OFFLINE: '1',
-      CHECK_SHEET: '',
-      REFRESH: '',
-      PASTE_LIMIT: '',
-      ...env,
-    },
-    encoding: 'utf8',
-    stdio: 'pipe',
-  });
-}
-
-const catalogPath = (directory) => join(directory, 'src/lib/data/catalog.json');
-
-const readCatalog = async (directory) =>
-  JSON.parse(await readFile(catalogPath(directory), 'utf8'));
-
-const sheetSources = {
-  'M-C.csv': sheetCsv([
-    sheetRow('MC1', {
-      pokemon: mcPokemon,
-      items: mcItems,
-      paste: 'https://pokepast.es/aaaaaaaaaaaaaaaa',
-    }),
-  ]),
-  'M-B.csv': sheetCsv([
-    sheetRow('MB1', {
-      pokemon: mbPokemon,
-      items: mbItems,
-      paste: 'https://pokepast.es/bbbbbbbbbbbbbbbb',
-    }),
-  ]),
-  'aaaaaaaaaaaaaaaa.json': pokePasteJson(
-    pasteText(mcPokemon, mcItems),
-    'Format: gen9vgcregulationmc'
-  ),
-  'bbbbbbbbbbbbbbbb.json': pokePasteJson(
-    pasteText(mbPokemon, mbItems),
-    'Format: gen9vgcregulationmb'
-  ),
-  'poch-leaderboard.html':
-    '<script>self.__next_f.push([1,"a:{\\"entries\\":[],\\"x\\":[]}"])</script>',
-};
 
 test('imports public index teams alongside the sheets and accounts for every row', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-public-'));
@@ -390,10 +185,11 @@ test('imports public index teams alongside the sheets and accounts for every row
     const again = await readCatalog(directory);
     assert.deepEqual(again.teams.map(({ id }) => id).sort(), ids);
     const second = runImport(directory);
-    const third = await readCatalog(directory);
-    assert.deepEqual(third.teams.map(({ id }) => id).sort(), ids);
-    assert.equal(third.sourceHash, again.sourceHash);
-    assert.equal(runImport(directory), second);
+    const routine = await readCatalog(directory);
+    assert.deepEqual(routine.teams.map(({ id }) => id).sort(), ids);
+    const third = runImport(directory);
+    assert.equal((await readCatalog(directory)).sourceHash, routine.sourceHash);
+    assert.equal(third, second);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -563,7 +359,7 @@ test('PASTE_LIMIT spends sheet attempts first and reports limited candidates', a
       .slice(0, 3)
       .map((id) => full.teams.find(({ pasteUrl }) => pasteUrl.endsWith(id)).id);
 
-    const partial = runImport(directory, { PASTE_LIMIT: '3' });
+    const partial = runImport(directory, { PASTE_LIMIT: '2' });
     const partialCatalog = await readCatalog(directory);
     assert.deepEqual(
       partialCatalog.teams.map(({ id }) => id).sort(),
@@ -580,7 +376,7 @@ test('PASTE_LIMIT spends sheet attempts first and reports limited candidates', a
         'limit-only reuse must keep prior metadata unchanged'
       );
 
-    const zero = runImport(directory, { PASTE_LIMIT: '2' });
+    const zero = runImport(directory, { PASTE_LIMIT: '1' });
     assert.match(
       zero,
       /Victory Road: 3 discovered — 0 accepted, 3 retained, 0 skipped, 0 merged\./
@@ -590,7 +386,7 @@ test('PASTE_LIMIT spends sheet attempts first and reports limited candidates', a
       join(directory, '.cache/catalog/victory-road.html'),
       page(ids)
     );
-    const limited = runImport(directory, { PASTE_LIMIT: '2' });
+    const limited = runImport(directory, { PASTE_LIMIT: '1' });
     const limitedCatalog = await readCatalog(directory);
     assert.equal(limitedCatalog.teams.length, full.teams.length);
     assert.ok(
@@ -752,4 +548,198 @@ test('index payloads are admitted only for the candidate Champions regulation', 
       ),
     reasonChecker('roster_mismatch')
   );
+});
+test('cached import rejects ineligible sheet, public, and Poch teams before assets', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-eligibility-import-'));
+  try {
+    const illegalPokemon = ['Brute Bonnet', ...mcPokemon.slice(1)];
+    const illegalItems = ['Booster Energy', ...mcItems.slice(1)];
+    const badSheetUrl = 'https://pokepast.es/cccccccccccccccc';
+    const pokemonIds = {
+      Gengar: 94,
+      Snorlax: 143,
+      Dragonite: 149,
+      Pelipper: 279,
+      Incineroar: 727,
+      Basculegion: 902,
+      Kingambit: 983,
+      Sinistcha: 1013,
+      Farigiraf: 981,
+      Charizard: 6,
+      Garchomp: 445,
+      Ampharos: 181,
+      Scrafty: 560,
+      Rillaboom: 812,
+      'Brute Bonnet': 986,
+    };
+    const indexed = [
+      ...new Set([
+        ...mcPokemon,
+        ...mbPokemon,
+        ...devonPokemon,
+        ...vrRoster,
+        ...illegalPokemon,
+      ]),
+    ]
+      .filter((pokemon) => pokemonIds[pokemon])
+      .map((pokemon) => ({
+        name: pokemon.toLowerCase().replaceAll(' ', '-'),
+        url: `https://pokeapi.co/api/v2/pokemon/${pokemonIds[pokemon]}/`,
+      }));
+    const publicPayload = vrProviderPayload({
+      id: 'QwE12345',
+      teams: illegalPokemon.map((species, index) => ({
+        species,
+        name: species,
+        item: illegalItems[index],
+      })),
+    });
+    const cache = await writeCache(directory, {
+      ...sheetSources,
+      'M-C.csv': sheetCsv([
+        sheetRow('MC2', {
+          pokemon: illegalPokemon,
+          items: illegalItems,
+          paste: badSheetUrl,
+        }),
+        sheetRow('MC1', {
+          pokemon: mcPokemon,
+          items: mcItems,
+          paste: 'https://pokepast.es/aaaaaaaaaaaaaaaa',
+        }),
+      ]),
+      'victory-road.html': victoryRoadPage([
+        vrRow(
+          'Off-roster Player',
+          rosterHtml(illegalPokemon),
+          'https://www.vrpastes.com/QwE12345'
+        ),
+      ]),
+      'vr-QwE12345.json': JSON.stringify(publicPayload),
+      'devoncorp-m-a.html': devonCorpPage(),
+      '138b4ef886ba95e4.json': pokePasteJson(
+        pasteText(devonPokemon, devonItems),
+        'Format: gen9championsvgc2026regma'
+      ),
+      'poch-leaderboard.html': pochPage([
+        pochTeamRow('unknown-valid', mcPokemon),
+        pochTeamRow('unknown-ineligible', [
+          'Vivillon-Pokeball',
+          ...mcPokemon.slice(1),
+        ]),
+      ]),
+      [`${badSheetUrl.split('/').at(-1)}.json`]: pokePasteJson(
+        pasteText(illegalPokemon, illegalItems),
+        'Format: gen9vgcregulationmc'
+      ),
+      'pokemon.json': JSON.stringify({ results: indexed }),
+    });
+    const fetchEnv = await writeFetchMock(directory, {});
+    const outputPath = catalogPath(directory);
+    runImport(directory, { ...fetchEnv, PASTE_LIMIT: '4' });
+    const baseline = await readCatalog(directory);
+    baseline.teams.push({
+      id: 'sentinel',
+      regulation: 'M-C',
+      members: illegalPokemon.map((pokemon) => ({ pokemon })),
+    });
+    await writeFile(outputPath, JSON.stringify(baseline));
+    const output = runImport(directory, { ...fetchEnv, PASTE_LIMIT: '4' }, [
+      '--if-missing',
+    ]);
+    let catalog = await readCatalog(directory);
+    assert.ok(
+      ['M-A', 'M-B', 'M-C', 'Unknown'].every((regulation) =>
+        catalog.teams.some((team) => team.regulation === regulation)
+      ),
+      'legal historical and whole-roster Unknown teams should survive'
+    );
+    assert.ok(!catalog.teams.some(({ id }) => id === 'sentinel'));
+    assert.ok(
+      !catalog.teams.some((team) =>
+        team.members.some(({ pokemon }) => pokemon === 'Brute Bonnet')
+      )
+    );
+    assert.ok(!catalog.teams.some(({ sheetIds }) => sheetIds.includes('MC2')));
+    assert.ok(catalog.teams.some(({ id }) => id === 'poch-x-unknown-valid'));
+    assert.match(output, /1\/1 pastes enriched/);
+    assert.match(
+      output,
+      /Victory Road: 1 discovered — 0 accepted, 0 retained, 1 skipped, 0 merged\./
+    );
+    assert.match(
+      output,
+      /Poch\.ms: 2 discovered — 0 accepted, 0 retained, 2 skipped, 0 merged\./
+    );
+    assert.match(output, /ineligible_species=2/);
+    let assetRequests = JSON.parse(
+      await readFile(fetchEnv.MOCK_FETCH_LOG, 'utf8')
+    ).map((address) => new URL(address));
+    assert.ok(
+      assetRequests.every(
+        ({ hostname }) => hostname === 'raw.githubusercontent.com'
+      )
+    );
+    assert.ok(
+      !assetRequests.some(({ pathname }) => pathname.endsWith('/986.png'))
+    );
+    assert.ok(
+      !assetRequests.some(({ pathname }) =>
+        pathname.endsWith('/666-poke-ball.png')
+      )
+    );
+    assert.ok(
+      !assetRequests.some(({ pathname }) =>
+        pathname.endsWith('/ibooster_energy.png')
+      )
+    );
+
+    const mcTeam = catalog.teams.find(({ sheetIds }) =>
+      sheetIds.includes('MC1')
+    );
+    assert.ok(mcTeam);
+    mcTeam.paste = pasteText(illegalPokemon, illegalItems);
+    mcTeam.pasteNotes = 'Format: gen9vgcregulationmc';
+    await writeFile(outputPath, JSON.stringify(catalog));
+    const afterPrior = runImport(directory, {
+      ...fetchEnv,
+      PASTE_LIMIT: '4',
+    });
+    catalog = await readCatalog(directory);
+    assert.ok(
+      catalog.teams.some(({ sheetIds }) => sheetIds.includes('MC1')),
+      'mismatched prior paste must not replace the eligible sheet roster'
+    );
+    assert.ok(
+      !catalog.teams.some((team) =>
+        team.members.some(({ pokemon }) => pokemon === 'Brute Bonnet')
+      )
+    );
+    assert.match(afterPrior, /ineligible_species=2/);
+    assetRequests = JSON.parse(
+      await readFile(fetchEnv.MOCK_FETCH_LOG, 'utf8')
+    ).map((address) => new URL(address));
+    assert.ok(
+      !assetRequests.some(({ pathname }) => pathname.endsWith('/986.png'))
+    );
+    assert.ok(
+      !assetRequests.some(({ pathname }) =>
+        pathname.endsWith('/ibooster_energy.png')
+      )
+    );
+
+    const mbTeam = catalog.teams.find(({ regulation }) => regulation === 'M-B');
+    assert.ok(mbTeam);
+    mbTeam.members[0].pokemon = 'Brute Bonnet';
+    await writeFile(outputPath, JSON.stringify(catalog));
+    const previous = await readFile(outputPath, 'utf8');
+    await rm(join(cache, 'M-C.csv'));
+    assert.throws(
+      () => runImport(directory, fetchEnv, ['--if-missing']),
+      /Missing cached sheet/
+    );
+    assert.equal(await readFile(outputPath, 'utf8'), previous);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

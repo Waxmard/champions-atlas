@@ -29,10 +29,16 @@ jobs:
       - uses: jdx/mise-action@v4
       - run: npm ci
       - name: Import catalog
-        run: npm run import:catalog
+        run: |
+          if [ -z "$YOUTUBE_API_KEY" ]; then
+            echo '::error::YOUTUBE_API_KEY is not configured; refusing to skip YouTube sources.'
+            exit 1
+          fi
+          npm run import:catalog
         env:
           CHECK_SHEET: '1'
           ALLOW_STALE_SOURCE_CACHE: '1'
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       - name: Enrich team tags
         run: |
           if [ -z "$TYPESAFE_API_KEY" ]; then

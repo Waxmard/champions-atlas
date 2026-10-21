@@ -1,4 +1,5 @@
 import { normalize, type Member } from './catalog.ts';
+import { canonicalName } from './canonical-names.ts';
 
 export const CHAMPIONS_STATS = [
   'HP',
@@ -289,4 +290,48 @@ export function parseCustomPaste(text: string): Member[] {
       throw new Error(`${member.pokemon} must have exactly four moves`);
   }
   return members;
+}
+
+export function canonicalMember(member: Member): Member {
+  const parsed = parseChampionsSpread(normalizeSpread(member.spread ?? null));
+  const spread = parsed
+    ? formatChampionsSpread(parsed) || null
+    : (member.spread ?? null);
+  const nature =
+    NATURES.find(
+      (name) => normalize(name) === normalize(member.nature ?? '')
+    ) ??
+    member.nature ??
+    null;
+  const item = member.item === null ? null : canonicalName('item', member.item);
+  const ability =
+    member.ability === null ? null : canonicalName('ability', member.ability);
+  const moves = member.moves.map((move) => canonicalName('move', move));
+  const set =
+    typeof member.set === 'string'
+      ? member.set
+          .split('\n')
+          .map((line, index) => {
+            const text = line.trim();
+            if (spread && text.startsWith('EVs:')) return `EVs: ${spread}`;
+            if (text.endsWith(' Nature')) {
+              const name = NATURES.find(
+                (candidate) =>
+                  normalize(candidate) === normalize(text.slice(0, -7))
+              );
+              if (name) return `${name} Nature`;
+            }
+            if (text.startsWith('Ability: '))
+              return `Ability: ${canonicalName('ability', text.slice(9))}`;
+            if (text.startsWith('- '))
+              return `- ${canonicalName('move', text.slice(2))}`;
+            const at = text.indexOf(' @ ');
+            if (index === 0 && at > 0)
+              return `${text.slice(0, at)} @ ${canonicalName('item', text.slice(at + 3))}`;
+            return line;
+          })
+          .join('\n')
+      : member.set;
+  const canonical = { ...member, item, ability, moves, spread, nature };
+  return set === undefined ? canonical : { ...canonical, set };
 }

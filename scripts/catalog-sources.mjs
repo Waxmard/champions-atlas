@@ -757,3 +757,18 @@ export async function fetchWithRetry(address, options, timeoutMs = 30000) {
     }
   }
 }
+
+export function logSourceSummaries(sourceStats, youtubeActive) {
+  for (const { name, counts, skipReasons } of sourceStats)
+    console.log(
+      `${name}: ${skipReasons ? (youtubeActive ? `${counts.scanned} uploads scanned, ${counts.discovered} linked candidates` : 'inactive (no completed snapshot)') : `${counts.discovered} discovered`} — ${counts.accepted} accepted, ${counts.priorRetained} retained, ${counts.skipped} skipped, ${counts.merged} merged${
+        skipReasons
+          ? `; skip reasons: ${
+              Object.entries(skipReasons)
+                .map(([reason, total]) => `${reason}=${total}`)
+                .join(', ') || 'none'
+            }`
+          : ''
+      }.`
+    );
+}

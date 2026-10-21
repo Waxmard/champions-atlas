@@ -16,10 +16,16 @@
     evidenceGrade,
     isCustomRulesTeam,
     isPasteUrl,
+    listingReason,
     regulationLabel,
+    sourceRows,
+    youtubeChannelNames,
     type Team,
   } from '#lib/catalog.js';
-  import { exportPaste, type SavedTeam } from '#lib/workbench.js';
+  import { activeSpreadSource } from '#lib/spread-provenance.js';
+  import { exportPaste } from '#lib/workbench.js';
+  import { normalizeSet } from '#lib/paste.js';
+  import type { SavedTeam } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
@@ -31,8 +37,21 @@
   let { data }: { data: PageData } = $props();
   const team: Team = $derived(data.team);
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
+  const hasActiveEnrichment = $derived(
+    team.members.some((member) => activeSpreadSource(member) !== null)
+  );
+  const originalPaste = $derived(
+    team.paste
+      ? team.paste
+          .split(/\n\s*\n/)
+          .map((set) => normalizeSet(set))
+          .join('\n\n')
+      : ''
+  );
   const strongest = $derived(bestEvidence(team, data.currentRegulation));
   const custom = $derived(isCustomRulesTeam(team));
+  const reason = $derived(strongest.none ? listingReason(team) : null);
+  const channels = $derived(youtubeChannelNames(team.reports));
   const summaryContext = $derived(
     strongest.entrants === undefined
       ? strongest.event
@@ -41,6 +60,7 @@
   let ready = $state(false);
   let copyStatus = $state('');
   let saved = $state.raw<SavedTeam[]>([]);
+  let failedCopyText = $state('');
   let savedError = $state('');
   let actionError = $state('');
   let status = $state('');
@@ -102,7 +122,8 @@
     const ok = await copyText(text);
     copyStatus = ok
       ? `${label} copied.`
-      : 'Copy unavailable. Select and copy the text below.';
+      : 'Copy unavailable. Select and copy the text in the field below.';
+    failedCopyText = ok ? '' : text;
   }
 </script>
 
@@ -140,10 +161,24 @@
         <span
           class="stamp"
           data-grade={evidenceGrade(custom ? 3 : strongest.level)}
-          >{strongest.label}</span
+          >{reason?.label ?? strongest.label}</span
         >
-        {#if strongest.event}<span class="provenance">{summaryContext}</span
+        {#if reason}<span class="provenance">{reason.detail}</span
+          >{:else if strongest.event}<span class="provenance"
+            >{summaryContext}</span
           >{/if}
+        {#if team.regulationInference}
+          <a
+            class="provenance inline-flex min-h-11 link items-center gap-1.5"
+            href={team.regulationInference.sourceUrl}
+            target="_blank"
+            rel="external noreferrer"
+          >
+            Regulation inferred from video date ({team.regulationInference
+              .publishedAt})
+            <ExternalLink class="size-3.5" aria-hidden="true" />
+          </a>
+        {/if}
         <span class="provenance"
           >Shared {team.publishedAt || 'date unknown'}</span
         >
@@ -154,7 +189,13 @@
       >
         {team.name}
       </h1>
-      <p class="provenance mt-2">By {team.creator || 'an unlisted creator'}</p>
+      <p class="provenance mt-2">
+        {team.creator
+          ? `By ${team.creator}`
+          : channels.length
+            ? `Shared by ${channels.join(', ')}`
+            : 'By an unlisted creator'}
+      </p>
     </div>
 
     <div class="flex shrink-0 flex-wrap items-center gap-2">
@@ -264,6 +305,16 @@
     >
       {copyStatus}
     </p>
+    {#if failedCopyText}
+      <label class="mb-3 block text-sm text-base-content/70">
+        Team text to copy
+        <textarea
+          class="textarea mt-1.5 min-h-28 w-full font-mono text-xs"
+          readonly
+          onclick={(event) => event.currentTarget.select()}
+          value={failedCopyText}></textarea>
+      </label>
+    {/if}
 
     {#if team.pasteError}<p class="provenance mb-3">
         Some published details could not be loaded. {team.pasteError}
@@ -292,37 +343,63 @@
       Results & sources
     </h2>
     <ul class="plate mt-4 divide-y">
-      {#each team.reports as report, index (index)}
-        {@const result = evidence(
-          report,
-          team.regulation,
-          data.currentRegulation
-        )}
-        <li class="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <div class="min-w-0">
-            {#if team.reports.length > 1}<span
-                class="stamp"
-                data-grade={evidenceGrade(custom ? 3 : result.level)}
-                >{result.label}</span
-              >{/if}
-            <div class="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-              <p class="value">
-                {report.event || 'Event not listed'}
-              </p>
-              <p class="term">{result.platform}</p>
-              {#if report.entrants !== undefined}<p class="provenance">
-                  {report.entrants} players
-                </p>{/if}
-            </div>
-          </div>
-          {#if report.sourceUrl}<Button
-              href={report.sourceUrl}
+      {#each sourceRows(team.reports) as row, index (index)}
+        {#if row.kind === 'youtube'}
+          <li
+            class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+          >
+            <p class="value">
+              {row.watch ? 'Video' : 'Channel'} · {row.channel}
+            </p>
+            <Button
+              href={row.url}
               variant="quiet"
               target="_blank"
               rel="external noreferrer"
-              ><ExternalLink aria-hidden="true" />Original source</Button
-            >{/if}
-        </li>
+              ><ExternalLink aria-hidden="true" />{row.watch
+                ? 'Watch on YouTube'
+                : 'View channel'}</Button
+            >
+          </li>
+        {:else}
+          {@const report = row.report}
+          {@const result = evidence(
+            report,
+            team.regulation,
+            data.currentRegulation
+          )}
+          <li
+            class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+          >
+            <div class="min-w-0">
+              {#if team.reports.length > 1 && !result.none}<span
+                  class="stamp"
+                  data-grade={evidenceGrade(custom ? 3 : result.level)}
+                  >{result.label}</span
+                >{/if}
+              <div
+                class="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5"
+              >
+                <p class="value">
+                  {report.event || 'Event not listed'}
+                </p>
+                {#if result.platform !== 'Unknown'}<p class="term">
+                    {result.platform}
+                  </p>{/if}
+                {#if report.entrants !== undefined}<p class="provenance">
+                    {report.entrants} players
+                  </p>{/if}
+              </div>
+            </div>
+            {#if report.sourceUrl}<Button
+                href={report.sourceUrl}
+                variant="quiet"
+                target="_blank"
+                rel="external noreferrer"
+                ><ExternalLink aria-hidden="true" />Original source</Button
+              >{/if}
+          </li>
+        {/if}
       {/each}
     </ul>
     {#if team.sheetIds.length > 0}
@@ -340,8 +417,12 @@
       {#if team.pasteNotes}<p class="term mt-3">
           Paste notes (may differ from the listed regulation): {team.pasteNotes}
         </p>{/if}
+      {#if hasActiveEnrichment}<p class="provenance mt-3">
+          Copy and Save include linked creator additions; the original paste
+          text below does not.
+        </p>{/if}
       <pre
-        class="mt-4 overflow-x-auto font-mono text-xs leading-6">{paste}</pre>
+        class="mt-4 overflow-x-auto font-mono text-xs leading-6">{originalPaste}</pre>
     </details>
   {/if}
 </main>
