@@ -106,7 +106,8 @@ compatible previous sets are retained, otherwise details remain unknown.
 
 The importer also scans the complete public upload histories for [pokeaimMD](https://www.youtube.com/@pokeaimMD),
 [Pokeaim+](https://www.youtube.com/@pokeaimplus), [CybertronVGC](https://www.youtube.com/@CybertronVGC),
-[PokeRoy](https://www.youtube.com/@PokeRoyVGC), and [CloverBells](https://www.youtube.com/@CloverBells).
+[PokeRoy](https://www.youtube.com/@PokeRoyVGC), [CloverBells](https://www.youtube.com/@CloverBells),
+and [PokemaineEvent](https://www.youtube.com/@PokemaineEvent).
 It admits only direct supported paste links with explicit Pokémon Champions doubles context and a
 supported M-A, M-B, or M-C regulation. Video dates provide sharing dates, not
 result claims; video presenters are not credited as team builders. Paste links

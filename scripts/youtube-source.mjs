@@ -36,6 +36,11 @@ export const youtubeChannels = Object.freeze([
     name: 'CloverBells',
     url: 'https://www.youtube.com/@CloverBells',
   }),
+  Object.freeze({
+    handle: 'PokemaineEvent',
+    name: 'PokemaineEvent',
+    url: 'https://www.youtube.com/@PokemaineEvent',
+  }),
 ]);
 
 const object = (value) =>
