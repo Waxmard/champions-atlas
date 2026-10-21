@@ -11,6 +11,7 @@ import {
 import { resolveBattleForm } from './battle-forms.ts';
 import {
   NATURES,
+  canonicalMember,
   formatChampionsSpread,
   isCompleteSpread,
   normalizeSet,
@@ -125,7 +126,7 @@ export function newCustomTeam(
   };
 }
 
-export const memberSchema = z.looseObject({
+const rawMemberSchema = z.looseObject({
   pokemon: textSchema.refine((value) => Boolean(normalize(value))),
   item: textSchema.nullable(),
   ability: textSchema.nullable(),
@@ -135,6 +136,7 @@ export const memberSchema = z.looseObject({
   set: textSchema.optional(),
   spreadSource: spreadSourceSchema.optional(),
 });
+export const memberSchema = rawMemberSchema.transform(canonicalMember);
 const membersSchema = z
   .array(memberSchema)
   .length(6)

@@ -290,3 +290,36 @@ export function parseCustomPaste(text: string): Member[] {
   }
   return members;
 }
+
+export function canonicalMember(member: Member): Member {
+  const parsed = parseChampionsSpread(normalizeSpread(member.spread ?? null));
+  const spread = parsed
+    ? formatChampionsSpread(parsed) || null
+    : (member.spread ?? null);
+  const nature =
+    NATURES.find(
+      (name) => normalize(name) === normalize(member.nature ?? '')
+    ) ??
+    member.nature ??
+    null;
+  const set =
+    typeof member.set === 'string'
+      ? member.set
+          .split('\n')
+          .map((line) => {
+            const text = line.trim();
+            if (spread && text.startsWith('EVs:')) return `EVs: ${spread}`;
+            if (text.endsWith(' Nature')) {
+              const name = NATURES.find(
+                (candidate) =>
+                  normalize(candidate) === normalize(text.slice(0, -7))
+              );
+              if (name) return `${name} Nature`;
+            }
+            return line;
+          })
+          .join('\n')
+      : member.set;
+  const canonical = { ...member, spread, nature };
+  return set === undefined ? canonical : { ...canonical, set };
+}

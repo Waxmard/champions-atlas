@@ -25,7 +25,7 @@ function member(pokemon, changes = {}) {
     ability: 'Ability',
     moves: ['Protect', 'Fake Out'],
     nature: 'Adamant',
-    spread: '32 HP / 32 Spe / 2 Atk',
+    spread: '32 HP / 2 Atk / 32 Spe',
     ...changes,
   };
 }

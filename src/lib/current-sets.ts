@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { normalize, pokemonId, type Member } from './catalog.ts';
-import { updateSetText } from './paste.ts';
+import { canonicalMember, updateSetText } from './paste.ts';
+import { memberSetSignature } from './spread-provenance.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import { memberSchema } from './workbench.ts';
 
@@ -83,15 +84,22 @@ function sameEntry(a: CurrentSet | undefined, b: CurrentSet | undefined) {
     : b !== undefined && canonicalSnapshot(a) === canonicalSnapshot(b);
 }
 
+function sameSet(a: Member, b: Member) {
+  const signature = memberSetSignature(a);
+  return signature !== null && signature === memberSetSignature(b);
+}
+
 export function currentSetsWouldChange(
   sets: CurrentSet[],
   members: Member[]
 ): boolean {
   return members.some((member) => {
     const id = pokemonId(member.pokemon);
-    return !sameEntry(
-      sets.find((entry) => entry.id === id),
-      { id, member }
+    const stored = sets.find((entry) => entry.id === id);
+    const incoming = { id, member };
+    return !(
+      sameEntry(stored, incoming) ||
+      (stored !== undefined && sameSet(stored.member, member))
     );
   });
 }
@@ -114,7 +122,7 @@ export function prepareCurrentSets(
 ): CurrentSetSavePlan {
   const current = readCurrentSets(storage);
   const incoming = members.map((member) => {
-    const snapshot = structuredClone(member);
+    const snapshot = canonicalMember(structuredClone(member));
     if (typeof snapshot?.pokemon !== 'string') throw new Error(readError);
     return { id: pokemonId(snapshot.pokemon), member: snapshot };
   });

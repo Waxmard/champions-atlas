@@ -10,6 +10,7 @@
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { claimAutoReload, watchForUpdate } from '#lib/app-version.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
+  import { migrateStoredData } from '#lib/storage-migration.js';
   import { resolveSavedTeamId, teamsInUse } from '#lib/team-collections.js';
 
   let { children } = $props();
@@ -200,6 +201,11 @@
   }
 
   onMount(() => {
+    try {
+      migrateStoredData(localStorage);
+    } catch {
+      /* storage unavailable */
+    }
     initialUrl = new URL(location.href);
     initSync();
     const stopWatching = watchForUpdate({
