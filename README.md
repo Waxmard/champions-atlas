@@ -110,7 +110,11 @@ to **My teams**. Choose **Use this team**, or import a complete six-member
 **Add custom team** in **My teams**.
 
 Edit saved sets, compare them with their immutable original, restore changes, and
-export current team text. Edited teams never gain new rental codes, and legality
+export current team text. On catalog team details, **Published paste text** preserves
+the published text, while **Copy team** and **Copy published sets** use the enriched
+set export. If clipboard access is unavailable, the actual copied text appears in
+a selectable field. A source video can establish a team's sharing date, but not
+a tournament result. Edited teams never gain new rental codes, and legality
 remains unverified. **Record in-game set** and **Record all in-game sets**
 explicitly record committed sets as snapshots: they change Atlas only, never
 Pokémon Champions. Team edits do not update those snapshots.

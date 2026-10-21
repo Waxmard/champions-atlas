@@ -154,6 +154,11 @@ test('canonicalMember canonicalizes item, ability, and move spellings', () => {
     canonicalMember(member({ item: 'Staraptorite' })).item,
     'Staraptorite'
   );
+  assert.equal(
+    canonicalMember(member({ set: 'Pika @ leftovers\nMystery @ sitrus berry' }))
+      .set,
+    'Pika @ Leftovers\nMystery @ sitrus berry'
+  );
 });
 
 test('migrateStoredData rewrites legacy teams and current sets once', () => {

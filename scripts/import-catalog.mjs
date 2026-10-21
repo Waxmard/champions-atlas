@@ -581,7 +581,7 @@ async function main() {
     count === Infinity ? Infinity : Math.max(0, count - stats.attempted);
   let publicUsed = 0;
   const publicTeams = [];
-  const admittedCurrentYoutubeCandidates = [];
+  const admittedYoutubeCandidates = [];
   const sourceStats = [];
   for (const { name, source, youtube = false, retainedTeams = [] } of [
     { name: 'Victory Road', source: victoryRoad },
@@ -633,8 +633,8 @@ async function main() {
         return;
       }
       publicTeams.push(team);
-      if (!fullHistory && youtube && discoveryCandidate)
-        admittedCurrentYoutubeCandidates.push(discoveryCandidate);
+      if (youtube && discoveryCandidate)
+        admittedYoutubeCandidates.push(discoveryCandidate);
       if (emitted.has(team.id)) counts.merged += 1;
       else {
         emitted.add(team.id);
@@ -735,11 +735,7 @@ async function main() {
   sourceStats.push({ name: 'Poch.ms', counts: pochCounts });
   const linked = enrichLinkedSpreads(
     deduplicate([...unique, ...publicTeams, ...pochTeams]),
-    linkedSpreadPairs(
-      fullHistory
-        ? youtubeSource.channels.flatMap(({ candidates }) => candidates)
-        : admittedCurrentYoutubeCandidates
-    ),
+    linkedSpreadPairs(admittedYoutubeCandidates),
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
   const catalogTeams = fullHistory

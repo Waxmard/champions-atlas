@@ -479,7 +479,10 @@ export function sourceRows(reports: readonly Report[]): SourceRow[] {
     } else if (!isVideo(report)) rows.push({ kind: 'report', report });
   }
   return rows.filter(
-    (row) => row.kind !== 'report' || !emitted.has(row.report.sourceUrl)
+    (row) =>
+      row.kind !== 'report' ||
+      !emitted.has(row.report.sourceUrl) ||
+      row.report.rank.trim() !== ''
   );
 }
 

@@ -40,7 +40,14 @@
   const hasActiveEnrichment = $derived(
     team.members.some((member) => activeSpreadSource(member) !== null)
   );
-  const originalPaste = $derived(team.paste ? normalizeSet(team.paste) : '');
+  const originalPaste = $derived(
+    team.paste
+      ? team.paste
+          .split(/\n\s*\n/)
+          .map((set) => normalizeSet(set))
+          .join('\n\n')
+      : ''
+  );
   const strongest = $derived(bestEvidence(team, data.currentRegulation));
   const custom = $derived(isCustomRulesTeam(team));
   const reason = $derived(strongest.none ? listingReason(team) : null);
@@ -53,6 +60,7 @@
   let ready = $state(false);
   let copyStatus = $state('');
   let saved = $state.raw<SavedTeam[]>([]);
+  let failedCopyText = $state('');
   let savedError = $state('');
   let actionError = $state('');
   let status = $state('');
@@ -114,7 +122,8 @@
     const ok = await copyText(text);
     copyStatus = ok
       ? `${label} copied.`
-      : 'Copy unavailable. Select and copy the text below.';
+      : 'Copy unavailable. Select and copy the text in the field below.';
+    failedCopyText = ok ? '' : text;
   }
 </script>
 
@@ -296,6 +305,16 @@
     >
       {copyStatus}
     </p>
+    {#if failedCopyText}
+      <label class="mb-3 block text-sm text-base-content/70">
+        Team text to copy
+        <textarea
+          class="textarea mt-1.5 min-h-28 w-full font-mono text-xs"
+          readonly
+          onclick={(event) => event.currentTarget.select()}
+          value={failedCopyText}></textarea>
+      </label>
+    {/if}
 
     {#if team.pasteError}<p class="provenance mb-3">
         Some published details could not be loaded. {team.pasteError}

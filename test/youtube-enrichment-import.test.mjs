@@ -191,3 +191,60 @@ test('offline importer infers, enriches linked variants, and recomputes provenan
     'prior borrowed values must reset when the active donor is rejected'
   );
 });
+test('rejected linked YouTube candidates cannot enrich admitted teams during bootstrap or routine refresh', async (t) => {
+  const directory = await mkdtemp(
+    join(tmpdir(), 'atlas-youtube-rejected-link-')
+  );
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  const rows = [
+    youtubeRow(originalUrl, 'ggggggggggg', {
+      description: `${originalUrl}\nFormat: gen9championsvgc2026regmc`,
+      publishedAt,
+    }),
+    youtubeRow(donorUrl, 'hhhhhhhhhhh', {
+      description: `${donorUrl}\nFormat: gen9championsvgc2026regmc`,
+      publishedAt,
+    }),
+    youtubeRow(originalUrl, 'fffffffffff', {
+      title: 'Pokémon Scarlet and Violet VGC team',
+      description: linkedDescription,
+      publishedAt,
+    }),
+    youtubeRow(donorUrl, 'fffffffffff', {
+      title: 'Pokémon Scarlet and Violet VGC team',
+      description: linkedDescription,
+      publishedAt,
+    }),
+  ];
+  const cache = await writeYoutubeImportFixture(directory, rows, {
+    aaaaaaaaaaaaaaaa: originalPayload,
+    cccccccccccccccc: donorPayload,
+  });
+  await writeFile(
+    join(cache, 'M-C.csv'),
+    sheetCsv([
+      sheetRow('MC1', {
+        pokemon: mbPokemon,
+        items: mbItems,
+        paste: originalUrl,
+      }),
+    ])
+  );
+  for (const env of [{}, { YOUTUBE_REFRESH: '1' }]) {
+    const output = runImport(directory, env);
+    const catalog = await readCatalog(directory);
+    const original = catalog.teams.find(
+      ({ pasteUrl }) => pasteUrl === originalUrl
+    );
+    assert.match(output, /unsupported_format/);
+    assert.ok(original);
+    assert.ok(
+      original.members.every(
+        ({ spread, nature, spreadSource }) =>
+          spread === null && nature === null && spreadSource === undefined
+      ),
+      'the rejected video must not supply enrichment in bootstrap or routine refresh'
+    );
+  }
+});

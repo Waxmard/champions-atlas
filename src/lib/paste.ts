@@ -311,7 +311,7 @@ export function canonicalMember(member: Member): Member {
     typeof member.set === 'string'
       ? member.set
           .split('\n')
-          .map((line) => {
+          .map((line, index) => {
             const text = line.trim();
             if (spread && text.startsWith('EVs:')) return `EVs: ${spread}`;
             if (text.endsWith(' Nature')) {
@@ -326,7 +326,7 @@ export function canonicalMember(member: Member): Member {
             if (text.startsWith('- '))
               return `- ${canonicalName('move', text.slice(2))}`;
             const at = text.indexOf(' @ ');
-            if (at > 0)
+            if (index === 0 && at > 0)
               return `${text.slice(0, at)} @ ${canonicalName('item', text.slice(at + 3))}`;
             return line;
           })

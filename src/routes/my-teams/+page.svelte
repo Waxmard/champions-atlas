@@ -580,7 +580,9 @@
                 class="stamp"
                 data-grade={evidenceGrade(originalResult.level)}
                 >{originalResult.none
-                  ? listingReason(draft.original, draft.origin).label
+                  ? draft.origin === 'custom'
+                    ? listingReason(draft.original, draft.origin).label
+                    : `Original source: ${listingReason(draft.original, draft.origin).label}`
                   : `Original result: ${originalResult.label}`}</span
               >
             </div>

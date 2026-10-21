@@ -762,15 +762,22 @@ test('listing reasons name the source and YouTube rows collapse to one watch lin
     rank: '',
     sourceUrl: 'https://x.com/a/status/1',
   };
+  const ranked = {
+    event: 'Regional tournament',
+    rank: '1st',
+    sourceUrl: watch,
+  };
   assert.deepEqual(
     sourceRows([
       collection,
       video,
       { event: 'YouTube video', rank: '', sourceUrl: watch },
+      ranked,
       tweet,
     ]),
     [
       { kind: 'youtube', channel: 'CybertronVGC', url: watch, watch: true },
+      { kind: 'report', report: ranked },
       { kind: 'report', report: tweet },
     ]
   );
