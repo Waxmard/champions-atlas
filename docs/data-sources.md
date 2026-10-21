@@ -117,15 +117,8 @@ malformed field it needs, or a conflicting duplicate source ID is skipped rather
 than guessed. A source parse that finds supported records but admits none fails
 the refresh instead of publishing an empty success.
 
-YouTube source setup requires YouTube Data API v3 enabled in a Google Cloud
-project and an API key restricted to that API. Add the key as the
-`YOUTUBE_API_KEY` GitHub Actions secret accessible to both production and preview
-environments. Do not apply browser-referrer restrictions to this server-side key.
-On macOS, store it in Keychain with
-`security add-generic-password -s champions-atlas:youtube-api-key -a "$USER" -T "" -w`,
-then load it at import time with
-`export YOUTUBE_API_KEY="$(security find-generic-password -s champions-atlas:youtube-api-key -a "$USER" -w)"`.
-Never place the key in `.env`.
+For YouTube API key setup, GitHub Actions configuration, and import commands,
+see [YouTube credentials in README](../README.md#youtube-credentials).
 
 Routine imports refresh the active M-C slice. They retain eligible M-A, M-B, and
 `Unknown` records from the cached catalog baseline after checking each record
@@ -177,6 +170,31 @@ removals from the active slice; frozen historical records remain until a
 full-history rebuild. Individual paste fetch failures retain compatible prior
 sets and expose the error.
 
+## Assets and preview cache
+
+Catalog bootstrap caches standard Pokémon PNG sprites and 24px item icons in
+ignored `static/` directories. It uses PokéAPI's standard PNG artwork for new or
+missing sprites. Exact aliases preserve source labels and raw paste text. Valid
+cached PNGs remain unchanged; asset download failures remain visible and do not
+alter catalog data.
+
+The app captures the asset inventory at development-server startup and build
+time. Missing sprites render nothing; missing item icons show a dash. Pokémon and
+item names remain visible, and absent assets trigger no requests. Restart the
+development server or rebuild after adding assets. `OFFLINE=1` controls source
+discovery, not asset downloads.
+
+Preview imports refresh live sources with `CHECK_SHEET=1` and set
+`ALLOW_STALE_SOURCE_CACHE=1`. When an eligible transient HTTP or network failure
+occurs, the importer warns and reuses validated raw source cache, including CSVs.
+The existing retry policy remains unchanged.
+
+Fallbacks fail when cache is missing, unreadable, invalid, or oversized. Fresh
+validation and cache-write errors, and mandatory-source failures, remain fatal.
+Production, CI, and local imports remain strict unless you explicitly set the
+stale-cache option. It does not change offline behavior or impose a cache age
+limit.
+
 ## Reuse conditions
 
 The owner enabled daily automation for personal use with attribution and local
@@ -188,9 +206,10 @@ ignored by Git.
 ## Interpretation
 
 Sheet regulation, species, items, author, publication date, result claims, and
-replica status are retained. Missing values remain unknown. Paste sets match by
-species and item, allowing a base species to match the sheet's Mega form. The
-declared appearance-only forms (`cosmeticForms`, such as `Sinistcha` and
+replica status are retained. Missing values remain unknown. Unknown details never
+satisfy a filter. Paste sets match by species and item, allowing a base species
+to match the sheet's Mega form.
+The declared appearance-only forms (`cosmeticForms`, such as `Sinistcha` and
 `Sinistcha-Masterpiece`) match across their spellings too, on both the paste and
 published-roster checks, while the retained name stays the one the source wrote.
 A mismatch fails the import instead of assigning details to the wrong Pokémon.

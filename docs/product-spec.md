@@ -1,19 +1,19 @@
 # Product specification
 
-Champion's Atlas helps its owner choose Pokémon Champions doubles teams on a
+Champion's Atlas helps you choose Pokémon Champions doubles teams on a
 phone. Existing spreadsheets are awkward to browse, and missingNO loses filters
-when opening a team. Version 1 succeeds by making discovery reliable and fast.
+when opening a team. The product focuses on reliable, fast discovery.
 
-This document records agreed behavior that lives nowhere else: what each version
-covers, the similarity, suggestion, and benchmark rules, and the acceptance
+This document records agreed behavior that lives nowhere else: discovery and
+browsing, saved-team editing and similarity rules, benchmark rules, and acceptance
 criteria. Import and result-ordering rules are in
 [data sources](data-sources.md), the synced record model is in
 [Firebase deployment and sync](firebase.md), and user-facing behavior, tooling,
 and commands are in the [README](../README.md) and `AGENTS.md`.
 
-## Version 1
+## Discovery and browsing
 
-- Ship an installable, mobile-friendly PWA for personal use.
+- Provide mobile-friendly browsing for personal use.
 - Browse teams with or without a Pokémon in mind.
 - Combine multiple Pokémon filters using AND: every selected Pokémon must occur
   on the team.
@@ -30,12 +30,16 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Default Browse to the current regulation; make older regulations available
   through All regulations.
 - Prioritize relevant results with the ordering in [data sources](data-sources.md).
-- Show available team sets, original sources, result evidence, paste links, and
-  copyable rental/replica codes when published.
+- Show available team sets and original sources. Browse and Wishlist cards show
+  one source chip: the ladder platform or tournament name for a reported result,
+  or the featured channel or listing source otherwise. Keep placements on team
+  details, and show result evidence, paste links, and copyable rental/replica
+  codes when published.
 - Preserve filters, sorting, and scroll position when opening teams and
   returning. Back to teams stays visible while browsing a team.
 - Encode filters in the URL so a refresh or shared link restores the selection.
-- Save current teams locally. Account sync is described in Version 1.5.
+- Save current teams locally. Configured account sync is described in
+  [Firebase deployment and sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
   silently modify imported teams.
 - Known custom-rule teams stay hidden from Browse by default; **Include
@@ -50,16 +54,27 @@ and MetaVGC. PokéKit stays later-use only, because aggregate spreads are not
 proof of an individual team's build or a Champions ladder finish. This policy
 adds no paid API, scraper, or subscription.
 
-## Version 1.5: similar teams and editing
+## Saved teams, similarity, and editing
 
-**My teams** saves an immutable original and an editable copy. Catalog originals
-retain the full published sets and source metadata available when saved. Custom
-originals are starting teams without public source claims; legacy originals are
-never backfilled from a refreshed catalog.
+Choose **Use this team** for a catalog team. **My teams** keeps an immutable
+original and an editable copy. Catalog originals retain the full published sets
+and source metadata available when saved; show that metadata as evidence for the
+original, not the edited version. Older saved teams show only metadata they
+retained. Custom originals are starting teams without public source claims;
+never backfill legacy originals from a refreshed catalog.
+
+**Revert changes** restores a team slot to its state when you opened the team.
+It is unavailable when the set is unchanged, while editing or deleting, or when
+restoration conflicts with the current roster.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately; invalid interim EV allocations remain uncommitted. There is no
 separate Apply step.
+
+**Done** commits valid pending input. **Close** offers to discard invalid or
+failed-write input without undoing earlier autosaves. **Advanced set text**
+explicitly replaces a set. Structured edits preserve nicknames and untouched
+supported lines; they never guess unknown values.
 
 The EV slider keeps its native keyboard controls and vertical page scrolling,
 with a 44-pixel touch target across its full height. **Fill** adds or removes
@@ -102,11 +117,19 @@ subtly source-labelled choices in the corresponding editor suggestion surfaces.
 A snapshot EV/nature pair appears only when its Nature matches the selected
 Nature. Selecting a matching spread changes its EV allocation and keeps the
 selected Nature unchanged. Duplicate values appear once with their sources
-combined. A whole-set suggestion previews structured changes,
+combined.
+
+Selecting a field suggestion changes only that field, except a spread suggestion
+changes EVs and Nature together.
+
+A whole-set suggestion previews structured changes,
 including form and ordered moves; it discloses raw set text and saved metadata
 changes before selection. Selecting the suggestion applies the complete saved
 snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
+
+Suggestions are keyboard-operable. Operation errors use alerts, and successful
+actions use status messages.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
@@ -126,6 +149,10 @@ An explicit saved-team link with no saved teams keeps its URL and shows a
 missing-team notice. Resuming a deleted saved team opens the empty My teams view
 and clears its active selection.
 
+Saving requires available browser storage; clearing the origin's storage removes
+local saves. Only unsaved input prompts before navigation. Browse filters and
+position remain device-local.
+
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
 fields and moves next, then uses result ordering for ties. All regulations are
 included. Replacement sets favor retaining the chosen Pokémon and its set
@@ -139,9 +166,12 @@ team. Exact forms remain distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-Field-based editing for saved catalog teams is implemented. Full legality-aware
-adaptation is not implemented. The two-Mega limit applies to Pokémon replacement
-suggestions.
+In **Original & history**, compare the current team with the immutable original.
+Restore the original team with its name, sets, and roster order without changing
+its saved ID or source history. **Restore original set** is available only when
+it does not duplicate a Pokémon or exceed the replacement Mega limit.
+
+The two-Mega limit applies to Pokémon replacement suggestions.
 
 EV spread suggestions include only complete, standard pairs whose Nature matches
 the selected Nature and whose spread resolves to the current battle form.
@@ -193,6 +223,10 @@ Champions text. Custom teams are saved locally under the current regulation with
 legality unverified and no published source claims. File, URL, screenshot,
 rental-code, legality, and cross-device import are out of scope.
 
+Export current sets with Champions EV normalization, using 0–32 per stat. Omit
+IVs, level, Tera Type, and unknown values. Never assign edited teams new rental
+codes.
+
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.
 
@@ -203,25 +237,23 @@ team that is already bookmarked returns the existing bookmark; adding one that i
 only in use leaves that team untouched. Using a bookmarked team promotes the
 same record, retaining its ID, original snapshot, sets, and sources, and separate
 My teams copies are never merged. Removal rejects a record that is no longer a
-bookmark so a stale Wishlist control cannot delete a promoted team. Both
-collections share the same storage ceiling and sync path (see
-[storage and sync](firebase.md)). The My teams picker shows only in-use teams and searches the
-current team name and each member's species with exact, prefix, substring, and
+bookmark so a stale Wishlist control cannot delete a promoted team. A bookmark
+whose source team leaves the catalog stays usable with its saved roster and no
+catalog details. Both collections share the same storage ceiling and sync path
+(see [storage and sync](firebase.md)).
+
+The My teams picker shows only in-use teams. Its icon-first search covers the
+current team name and each member's species, with exact, prefix, substring, and
 character-subsequence tiers, requiring every whitespace-separated term to match.
+Arrow keys and Enter select a result; Escape restores the current team without
+renaming it.
 
-## Version 2 and later
+## Future scope
 
+- Support installation as a PWA for personal use.
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
 - Native iOS app.
-
-## Stack
-
-Svelte and SvelteKit are selected, and gaining more experience with Svelte is an
-explicit project goal. Use SvelteKit routing for team details and URL-based
-filter state; keep editable UI components under `src/lib/components/ui`. The
-confirmed toolchain, its agreed exception to mw-kit's Biome default, and the
-commands live in the [README](../README.md) and `AGENTS.md`.
 
 ## Acceptance criteria
 
