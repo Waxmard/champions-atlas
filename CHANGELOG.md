@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.9.0](https://github.com/Waxmard/champions-atlas/compare/v1.8.0...v1.9.0) (2026-10-21)
+
+
+### Features
+
+* rank catalog teams by EV and video completeness in browse ([#55](https://github.com/Waxmard/champions-atlas/issues/55)) ([deb91f7](https://github.com/Waxmard/champions-atlas/commit/deb91f7a28b322cab7604fed1cbb1b97a0ab1d64))
+
 ## [1.8.0](https://github.com/Waxmard/champions-atlas/compare/v1.7.0...v1.8.0) (2026-10-20)
 
 
