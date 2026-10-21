@@ -45,6 +45,33 @@ whose format names another regulation or another game, a protected paste, a
 Victory Road row whose published roster does not match the paste, and a Victory
 Road row whose creator and result claims belong to a different roster.
 
+Every catalog entry path also checks the whole team against the official species,
+form, and Mega Evolution roster for its declared regulation. Historical M-A and
+M-B teams use their own rules, not M-C's roster. An `Unknown` team must fit one
+complete supported roster and keeps its `Unknown` label. Unsupported regulations,
+unmapped forms, and malformed rosters are excluded as `ineligible_species`;
+ineligible teams never reach linked-spread enrichment or asset restoration.
+
+The checked-in `scripts/data/champions-m-{a,b,c}.json` snapshots preserve official
+form IDs and explicit normalized app identities. Their primary sources are:
+
+| Regulation | Official notice                                                       | Eligible roster                                                                                                  |
+| ---------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| M-A        | [M-A rules](https://champions-news.pokemon-home.com/en/page/751.html) | [M-A Pokémon](https://web-view.app.pokemonchampions.jp/battle/pages/events/rs177501629259kmzbny/en/pokemon.html) |
+| M-B        | [M-B rules](https://champions-news.pokemon-home.com/en/page/776.html) | [M-B Pokémon](https://web-view.app.pokemonchampions.jp/battle/pages/events/rs178066986988lmoqpm/en/pokemon.html) |
+| M-C        | [M-C rules](https://champions-news.pokemon-home.com/en/page/816.html) | [M-C Pokémon](https://web-view.app.pokemonchampions.jp/battle/pages/events/rs178713870219xeaaio/en/pokemon.html) |
+
+Update snapshots deliberately when official rules change; imports never fetch live
+rosters. Keep full independent Mega maps: M-B's and M-C's notices announce additions
+to the preceding sets. M-A's undifferentiated Mega Meowstic notice is interpreted
+as covering both listed sexes. Crosswalks preserve exact forms: Maushold
+`0925-000` is Family of Three in M-A/M-B; `0925-001` is Family of Four in M-C.
+Ordinary Floette and Poké Ball Vivillon do not inherit eligibility from Eternal
+Flower Floette or Fancy Vivillon. Snapshot validation fails before catalog
+replacement if data is missing or malformed. Snapshot text contributes to the
+source hash. This gate does not validate movesets or item clauses and does not
+migrate personal or synced teams.
+
 YouTube-linked teams require independent Pokémon Champions and VGC/doubles
 context (from explicit format declarations, doubles/tournament terminology in
 video text, or a six-Pokémon Champions doubles paste with protection/doubles
@@ -111,8 +138,8 @@ The workflow serializes publication, and a failed import, tagging run, or build
 stops before deployment so the previously hosted build stays available. A source
 fetch or structural failure throws before the atomic catalog write, so the
 previous catalog stays published. Nothing imports on a schedule outside that
-workflow: dev, build, and typecheck generate a missing catalog and otherwise
-leave it in place.
+workflow: dev, build, and typecheck generate a missing catalog or rebuild one
+containing an ineligible team. Otherwise they reuse the catalog and restore assets.
 YouTube discovery stores only a validated, completed snapshot at
 `.cache/catalog/youtube-sources.json`. A keyed online import reuses a valid
 complete snapshot unless `REFRESH=1` or `YOUTUBE_REFRESH=1` requests a complete
@@ -242,9 +269,9 @@ published raw set; manual edits belong to the user's draft.
 Similarity measures shared Pokémon and matching known set details, with result
 priority breaking ties. It does not predict matchup quality or infer EVs.
 
-M-C is the configured current regulation from the planning discussion. No
-current-rule legality checker exists. Original regulation is not evidence that
-a team remains legal or competitive now.
+M-C is the configured current regulation from the planning discussion. Catalog
+admission checks species, forms, and allowed Mega Evolutions under each team's own
+rules. It does not establish full current-rule legality or competitiveness.
 
 ## Ranking and discovery
 

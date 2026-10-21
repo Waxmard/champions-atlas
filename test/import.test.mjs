@@ -1,16 +1,7 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
-import {
-  mkdir,
-  mkdtemp,
-  readFile,
-  readdir,
-  rm,
-  writeFile,
-} from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import test from 'node:test';
 import { FETCH_ATTEMPTS, fetchWithRetry } from '../scripts/catalog-sources.mjs';
 import {
@@ -21,13 +12,6 @@ import {
   enrichPastes,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
-import {
-  resolveItemIcon,
-  resolveSprite,
-  syncItems,
-  syncSprites,
-  validatePng,
-} from '../scripts/sync-assets.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 import { bestEvidence, evidenceGrade } from '../src/lib/catalog.ts';
 import {
@@ -35,22 +19,23 @@ import {
   mcPokemon,
   sheetCsv,
   sheetRow,
+  runImport,
 } from './fixtures/catalog-import.mjs';
 test('bootstrap fails without sources, reuses an existing catalog, and keeps refresh explicit', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-bootstrap-'));
-  const script = fileURLToPath(
-    new URL('../scripts/import-catalog.mjs', import.meta.url)
-  );
-  const run = (...args) =>
-    execFileSync(process.execPath, [script, ...args], {
-      cwd: directory,
-      env: { ...process.env, OFFLINE: '1', REFRESH: '1' },
-      stdio: 'pipe',
-    });
+  const run = (...args) => runImport(directory, { REFRESH: '1' }, args);
   try {
     assert.throws(() => run('--if-missing'), /Missing cached sheet/);
     const path = join(directory, 'src/lib/data/catalog.json');
-    await writeCatalog(path, { teams: [{ id: 'original' }] });
+    await writeCatalog(path, {
+      teams: [
+        {
+          id: 'original',
+          regulation: 'M-C',
+          members: mcPokemon.map((pokemon) => ({ pokemon })),
+        },
+      ],
+    });
     const original = await readFile(path, 'utf8');
     run('--if-missing');
     assert.equal(await readFile(path, 'utf8'), original);
@@ -654,146 +639,6 @@ test('invalid refresh preserves existing catalog', async () => {
       JSON.parse(await readFile(path, 'utf8')).teams[0].id,
       'original'
     );
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('sprite resolution keeps forms exact and covers catalog naming aliases', () => {
-  const results = [
-    ['lucario', 448],
-    ['arcanine-hisui', 10229],
-    ['indeedee-female', 10186],
-    ['lucario-mega', 10059],
-    ['lucario-mega-z', 10310],
-    ['floette-mega', 10296],
-    ['meowstic-female', 10025],
-    ['pyroar-male', 668],
-  ].map(([name, id]) => ({
-    name,
-    url: `https://pokeapi.co/api/v2/pokemon/${id}/`,
-  }));
-  const index = { results };
-  const champions = (id) =>
-    `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/versions/generation-ix/champions/${id}.png`;
-
-  assert.equal(resolveSprite('Lucario', index), champions(448));
-  assert.equal(resolveSprite('Arcanine-Hisui', index), champions(10229));
-  assert.equal(resolveSprite('Indeedee-F', index), champions(10186));
-  assert.equal(resolveSprite('Lucario-Mega', index), champions(10059));
-  assert.equal(resolveSprite('Lucario-Mega-Z', index), champions(10310));
-  assert.equal(resolveSprite('Floette-Mega', index), champions(10296));
-  assert.equal(resolveSprite('Floette-Eternal-Mega', index), champions(10296));
-  assert.equal(resolveSprite('Meowstic-F', index), champions(10025));
-  assert.equal(resolveSprite('Pyroar', index), champions(668));
-  assert.equal(
-    resolveSprite('Floette', index),
-    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/670.png'
-  );
-  assert.equal(
-    resolveSprite('Vivillon-Fancy', index),
-    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/666-fancy.png'
-  );
-  assert.equal(
-    resolveSprite('Sinistcha-Masterpiece', index),
-    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1013-masterpiece.png'
-  );
-  assert.equal(resolveSprite('Unknownmon', index), null);
-});
-
-test('sprite failures warn without changing catalog output or using wrong art', async () => {
-  const directory = await mkdtemp(join(tmpdir(), 'atlas-sprites-'));
-  const output = join(directory, 'catalog.json');
-  const sprites = join(directory, 'sprites');
-  const catalog = {
-    teams: [
-      {
-        members: [
-          { pokemon: 'Lucario' },
-          { pokemon: 'Vivillon-Fancy' },
-          { pokemon: 'Unknownmon' },
-        ],
-      },
-    ],
-  };
-  const index = {
-    results: [
-      {
-        name: 'lucario',
-        url: 'https://pokeapi.co/api/v2/pokemon/448/',
-      },
-    ],
-  };
-  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
-  const warnings = [];
-  try {
-    await writeFile(output, JSON.stringify(catalog));
-    await syncSprites(catalog.teams, index, {
-      directory: sprites,
-      load: async (address) => {
-        if (address.endsWith('/448.png')) return png;
-        throw new Error('offline');
-      },
-      warn: (message) => warnings.push(message),
-    });
-    assert.deepEqual(await readdir(sprites), ['lucario.png']);
-    assert.match(warnings.join('\n'), /Sprite unavailable for Unknownmon/);
-    assert.match(warnings.join('\n'), /vivillonfancy\.png: offline/);
-    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
-});
-
-test('item icons resolve normal and Champions names, validate PNGs, and fail safely', async () => {
-  assert.equal(
-    resolveItemIcon('Leftovers'),
-    'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/ileftovers.png'
-  );
-  assert.equal(
-    resolveItemIcon('Absolite Z'),
-    'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/iabsolite_z.png'
-  );
-  assert.throws(() => validatePng(Buffer.from('not png')), /Invalid PNG/);
-
-  const directory = await mkdtemp(join(tmpdir(), 'atlas-items-'));
-  const items = join(directory, 'items');
-  const output = join(directory, 'catalog.json');
-  const catalog = {
-    teams: [
-      {
-        members: [
-          { item: 'Leftovers' },
-          { item: 'Absolite Z' },
-          { item: null },
-        ],
-      },
-    ],
-  };
-  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
-  const warnings = [];
-  try {
-    await writeCatalog(output, catalog);
-    await mkdir(items, { recursive: true });
-    await writeFile(join(items, 'stale.png'), png);
-    await writeFile(join(items, 'absolitez.png'), Buffer.from('broken'));
-    const stats = await syncItems(catalog.teams, {
-      directory: items,
-      load: async (address) => {
-        if (address.endsWith('/ileftovers.png')) return png;
-        return Buffer.from('not png');
-      },
-      warn: (message) => warnings.push(message),
-    });
-    assert.deepEqual(stats, {
-      wanted: 2,
-      downloaded: 1,
-      failed: 1,
-      removed: 1,
-    });
-    assert.deepEqual(await readdir(items), ['leftovers.png']);
-    assert.match(warnings.join('\n'), /absolitez\.png: Invalid PNG sprite/);
-    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

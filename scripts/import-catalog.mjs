@@ -7,13 +7,15 @@ import { parsePaste } from '../src/lib/paste.ts';
 import {
   assetSlug as slug,
   basePokemon as base,
-  pokemonIndex,
-  syncItems,
-  syncSprites,
-  validateIndex,
+  restoreCatalogAssets,
 } from './sync-assets.mjs';
 import { cosmeticForms, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
+import {
+  eligibilitySourceTexts,
+  rejectIneligibleTeam,
+  teamEligibilityError,
+} from './champions-eligibility.mjs';
 import {
   devonCorpUrl,
   logSourceSummaries,
@@ -460,36 +462,17 @@ async function main() {
       missingMessage,
     });
   }
-  async function restoreSprites(teams) {
-    try {
-      const index = validateIndex(
-        await fetchCached(
-          'pokemon.json',
-          pokemonIndex,
-          validateIndex,
-          process.env.REFRESH === '1'
-        )
-      );
-      return await syncSprites(teams, index);
-    } catch (error) {
-      console.warn(`Sprites unavailable: ${error.message}`);
-      return null;
-    }
-  }
-  async function restoreItems(teams) {
-    try {
-      return await syncItems(teams);
-    } catch (error) {
-      console.warn(`Item icons unavailable: ${error.message}`);
-      return null;
-    }
-  }
   if (process.argv.includes('--if-missing') && !checkSheet) {
     try {
       const catalog = JSON.parse(await readFile(output, 'utf8'));
-      await restoreSprites(catalog.teams || []);
-      await restoreItems(catalog.teams || []);
-      return;
+      const catalogTeams = catalog.teams || [];
+      if (catalogTeams.every((team) => !teamEligibilityError(team))) {
+        await restoreCatalogAssets(catalogTeams, {
+          fetchCached,
+          refresh: process.env.REFRESH === '1',
+        });
+        return;
+      }
     } catch (error) {
       if (error.code !== 'ENOENT') throw error;
     }
@@ -576,7 +559,13 @@ async function main() {
   );
   const victoryRoad = parseVictoryRoad(victoryRoadHtml);
   const devonCorp = parseDevonCorp(devonCorpHtml);
-  const unique = deduplicate(teams);
+  const reasons = new Map();
+  const noteReason = (reason) =>
+    reasons.set(reason, (reasons.get(reason) || 0) + 1);
+  let unique = deduplicate(teams).filter(
+    (team) =>
+      !rejectIneligibleTeam(`${team.regulation} sheet`, team, noteReason)
+  );
   const youtubeHash = youtubeSource.active
     ? youtubeSource.sourceText
     : youtubeRetainedSourceText(youtubeRows);
@@ -586,12 +575,17 @@ async function main() {
     devonCorpHtml,
     pochHtml,
     youtubeHash,
+    ...eligibilitySourceTexts,
   ]);
   const stats = await enrichPastes(unique, {
     limit: count,
     previousTeams,
     loadPaste: (team) => loadPayload(team),
   });
+  unique = unique.filter(
+    (team) =>
+      !rejectIneligibleTeam(`${team.regulation} sheet`, team, noteReason)
+  );
   const canonicalNames = new Map();
   for (const team of unique)
     for (const member of team.members) {
@@ -605,9 +599,6 @@ async function main() {
     if (team.pasteUrl && !priorByKey.has(`${team.pasteUrl}|${team.regulation}`))
       priorByKey.set(`${team.pasteUrl}|${team.regulation}`, team);
   const emitted = new Set(unique.map((team) => team.id));
-  const reasons = new Map();
-  const noteReason = (reason) =>
-    reasons.set(reason, (reasons.get(reason) || 0) + 1);
   const compatiblePrior = (candidate) => {
     const prior = priorByKey.get(
       `${candidate.pasteUrl}|${candidate.regulation}`
@@ -683,6 +674,10 @@ async function main() {
       console.warn(`${name}: skipped ${total} rows (${reason})`);
     sourceStats.push({ name, counts, skipReasons });
     const keep = (team, field) => {
+      if (rejectIneligibleTeam(name, team, addReason)) {
+        counts.skipped += 1;
+        return;
+      }
       publicTeams.push(team);
       if (emitted.has(team.id)) counts.merged += 1;
       else {
@@ -739,18 +734,21 @@ async function main() {
       }
     }
   }
+  const pochTeams = poch.teams.filter(
+    (team) => !rejectIneligibleTeam('Poch.ms', team, noteReason)
+  );
   const pochCounts = {
     discovered: poch.teams.length + poch.skipped.length,
-    accepted: poch.teams.length,
+    accepted: pochTeams.length,
     priorRetained: 0,
-    skipped: poch.skipped.length,
+    skipped: poch.skipped.length + poch.teams.length - pochTeams.length,
     merged: 0,
   };
   for (const entry of poch.skipped)
     noteReason(entry.reason || 'invalid_record');
   sourceStats.push({ name: 'Poch.ms', counts: pochCounts });
   const linked = enrichLinkedSpreads(
-    deduplicate([...unique, ...publicTeams, ...poch.teams]),
+    deduplicate([...unique, ...publicTeams, ...pochTeams]),
     linkedSpreadPairs(
       youtubeSource.channels.flatMap(({ candidates }) => candidates)
     ),
@@ -776,8 +774,10 @@ async function main() {
     sourceHash,
     teams: catalogTeams,
   });
-  const sprites = await restoreSprites(catalogTeams);
-  const items = await restoreItems(catalogTeams);
+  const { sprites, items } = await restoreCatalogAssets(catalogTeams, {
+    fetchCached,
+    refresh: process.env.REFRESH === '1',
+  });
   logSourceSummaries(sourceStats, youtubeSource.active);
   if (reasons.size)
     console.log(

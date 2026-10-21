@@ -81,10 +81,12 @@ Use `npm run format` to format files and `npm run preview` to serve a built app.
 ## Catalog
 
 The generated catalog is ignored by Git. `npm run dev`, `npm run build`, and
-`npm run typecheck` automatically import it when missing, then reuse it unchanged.
-A clean checkout needs network access for the initial import unless source files
-are already cached. The built app uses the bundled snapshot without fetching
-source data at runtime.
+`npm run typecheck` import it when missing and check existing teams against the
+checked-in regulation rosters before reuse. An ineligible catalog triggers a
+normal cached import without forcing a YouTube recrawl. A failed rebuild
+preserves the previous file and exits unsuccessfully. A clean checkout needs
+network access for the initial import unless source files are already cached.
+The built app uses the bundled snapshot without fetching source data at runtime.
 
 Regenerate or refresh explicitly with:
 
@@ -147,9 +149,12 @@ online import attempts a complete recrawl. A completed scan treats disappeared
 video/paste links as removals. Individual paste failures retain compatible prior
 sets and report the error.
 
-Pokémon sprites and 24px item icons are cached under ignored `static/` folders
-during catalog bootstrap. Missing or invalid images fail independently without
-changing catalog data; item names remain visible when icons are unavailable.
+Small standard Pokémon PNG sprites and 24px item icons are cached under ignored
+`static/` directories during catalog bootstrap. New or missing sprites use
+PokéAPI's standard PNG artwork; valid cached PNGs remain unchanged. Source aliases
+resolve exact forms and item filenames without changing catalog labels or paste
+text. Missing or invalid images fail independently without changing catalog data.
+`OFFLINE=1` controls source discovery, not asset downloads.
 
 The app renders decorative sprites and item icons only when their PNG files exist
 in the local asset inventory captured at development server startup or build time. Missing

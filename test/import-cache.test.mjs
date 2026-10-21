@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import {
+  mkdtemp,
+  mkdir,
+  readFile,
+  readdir,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -9,6 +16,13 @@ import { fetchCached } from '../scripts/catalog-cache.mjs';
 import { parseSheet, sheet } from '../scripts/import-catalog.mjs';
 import { victoryRoadUrl, devonCorpUrl } from '../scripts/catalog-sources.mjs';
 import { pochUrl } from '../scripts/poch-source.mjs';
+import {
+  resolveItemIcon,
+  resolveSprite,
+  syncItems,
+  syncSprites,
+  validatePng,
+} from '../scripts/sync-assets.mjs';
 
 const address = 'https://example.test/source.json';
 const name = 'source.json';
@@ -288,13 +302,28 @@ const sheetHeader =
     '|'
   );
 const species = [
-  'Gholdengo',
-  'Amoonguss',
-  'Iron Hands',
-  'Farigiraf',
+  'Gengar',
+  'Snorlax',
+  'Dragonite',
   'Pelipper',
+  'Incineroar',
   'Basculegion',
 ];
+const speciesIds = new Map([
+  ['Gengar', 94],
+  ['Snorlax', 143],
+  ['Dragonite', 149],
+  ['Pelipper', 279],
+  ['Incineroar', 727],
+  ['Basculegion', 902],
+]);
+const assetUrls = new Set([
+  ...species.map(
+    (pokemon) =>
+      `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${speciesIds.get(pokemon)}.png`
+  ),
+  'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/ileftovers.png',
+]);
 function sheetCsv(regulation, description) {
   const row = Array(sheetHeader.length).fill('');
   row[0] = regulation === 'M-C' ? 'MC1' : 'MB1';
@@ -365,9 +394,9 @@ async function importerFixture(
     'devoncorp-m-a.html': devonHtml,
     'poch-leaderboard.html': pochHtml,
     'pokemon.json': JSON.stringify({
-      results: species.map((pokemon, index) => ({
+      results: species.map((pokemon) => ({
         name: pokemon.toLowerCase().replaceAll(' ', '-'),
-        url: `https://pokeapi.co/api/v2/pokemon/${index + 1}/`,
+        url: `https://pokeapi.co/api/v2/pokemon/${speciesIds.get(pokemon)}/`,
       })),
     }),
   };
@@ -391,13 +420,14 @@ async function importerFixture(
     import { appendFileSync } from 'node:fs';
     import { pathToFileURL } from 'node:url';
     const responses = ${JSON.stringify(responses)};
+    const assets = new Set(${JSON.stringify([...assetUrls])});
     globalThis.fetch = async (address, options) => {
       appendFileSync('requests.jsonl', JSON.stringify({address: String(address), redirect: options?.redirect}) + '\\n');
       if (address === ${JSON.stringify(sourceAddresses[failedName])}) {
         throw new TypeError('fetch failed', {cause: Object.assign(new Error('connect timeout'), {code: 'UND_ERR_CONNECT_TIMEOUT'})});
       }
       if (Object.hasOwn(responses, address)) return new Response(responses[address]);
-      if (/^https:\\/\\/raw\\.githubusercontent\\.com\\/(PokeAPI\\/sprites\\/master\\/sprites\\/pokemon|smogon\\/sprites\\/master\\/src\\/minisprites\\/items)\\/.*\\.png$/.test(address)) {
+      if (assets.has(String(address))) {
         return new Response(Uint8Array.from([137,80,78,71,13,10,26,10]), {headers: {'content-type': 'image/png'}});
       }
       throw new Error('Unexpected URL: ' + address);
@@ -528,4 +558,233 @@ test('cache boundary: sheet validator and fetch options preserve raw CSV', async
     text
   );
   assert.ok(ctx.requests.every(([, options]) => options.redirect === 'follow'));
+});
+
+test('sprite resolution uses numeric PokéAPI sprites and exact aliases', () => {
+  const root =
+    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
+  const ids = new Map([
+    ['arcanine-hisui', 10229],
+    ['floette-mega', 10296],
+    ['indeedee-female', 10186],
+    ['lucario', 448],
+    ['lucario-mega', 10059],
+    ['lucario-mega-z', 10310],
+    ['meowstic-female', 10025],
+    ['meowstic-female-mega', 10315],
+    ['meowstic-male', 678],
+    ['meowstic-male-mega', 10314],
+    ['morpeko-full-belly', 877],
+    ['gourgeist-average', 711],
+    ['lycanroc-midday', 745],
+    ['pyroar-male', 668],
+    ['squawkabilly-green-plumage', 931],
+    ['vivillon', 666],
+  ]);
+  const index = {
+    results: [...ids].map(([name, id]) => ({
+      name,
+      url: `https://pokeapi.co/api/v2/pokemon/${id}/`,
+    })),
+  };
+  for (const [name, target] of [
+    ['Lucario', 'lucario'],
+    ['Arcanine-Hisui', 'arcanine-hisui'],
+    ['Indeedee-F', 'indeedee-female'],
+    ['Lucario-Mega', 'lucario-mega'],
+    ['Lucario-Mega-Z', 'lucario-mega-z'],
+    ['Floette-Mega', 'floette-mega'],
+    ['Floette-Eternal-Mega', 'floette-mega'],
+    ['Meowstic-F', 'meowstic-female'],
+    ['Meowstic-F-Mega', 'meowstic-female-mega'],
+    ['Meowstic-Mega', 'meowstic-male-mega'],
+    ['Meowstic-M-Mega', 'meowstic-male-mega'],
+    ['Meowstic-M', 'meowstic-male'],
+    ['Pyroar', 'pyroar-male'],
+    ['Squawkabilly', 'squawkabilly-green-plumage'],
+    ['Morpeko', 'morpeko-full-belly'],
+    ['Gourgeist', 'gourgeist-average'],
+    ['Lycanroc', 'lycanroc-midday'],
+  ])
+    assert.equal(resolveSprite(name, index), `${root}/${ids.get(target)}.png`);
+  const pokeball = `${root}/666-poke-ball.png`;
+  assert.equal(resolveSprite('Vivillon-Pokeball', index), pokeball);
+  assert.notEqual(pokeball, resolveSprite('Vivillon', index));
+  assert.notEqual(pokeball, resolveSprite('Vivillon-Fancy', index));
+  assert.equal(resolveSprite('Floette', index), `${root}/670.png`);
+  assert.equal(
+    resolveSprite('Sinistcha-Masterpiece', index),
+    `${root}/1013-masterpiece.png`
+  );
+  assert.notEqual(
+    resolveSprite('Meowstic-Mega', index),
+    resolveSprite('Meowstic-F-Mega', index)
+  );
+  assert.equal(resolveSprite('Unknownmon', index), null);
+});
+
+test('sprite sync deduplicates names, retains cached PNGs, and never falls back', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-sprites-'));
+  const sprites = join(directory, 'sprites');
+  const output = join(directory, 'catalog.json');
+  const root =
+    'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon';
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+  const requests = [];
+  const warnings = [];
+  const teams = [
+    {
+      members: [
+        { pokemon: 'Meowstic-M-Mega' },
+        { pokemon: 'meowstic m mega' },
+        { pokemon: 'Odd-Bird' },
+        { pokemon: 'odd bird' },
+        { pokemon: 'Lucario' },
+        { pokemon: 'Vivillon-Pokeball' },
+        { pokemon: 'vivillon pokeball' },
+      ],
+    },
+  ];
+  const catalog = { teams };
+  const index = {
+    results: [
+      {
+        name: 'meowstic-male-mega',
+        url: 'https://pokeapi.co/api/v2/pokemon/10314/',
+      },
+      { name: 'meowstic-male', url: 'https://pokeapi.co/api/v2/pokemon/678/' },
+      { name: 'lucario', url: 'https://pokeapi.co/api/v2/pokemon/448/' },
+    ],
+  };
+  try {
+    await mkdir(sprites, { recursive: true });
+    await writeFile(join(sprites, 'lucario.png'), png);
+    await writeFile(join(sprites, 'meowsticmmega.png'), Buffer.from('invalid'));
+    await writeFile(output, JSON.stringify(catalog));
+    const stats = await syncSprites(teams, index, {
+      directory: sprites,
+      load: async (address) => {
+        requests.push(address);
+        if (address.endsWith('/678.png')) return png;
+        if (address.endsWith('/10314.png')) return Buffer.from('invalid');
+        throw new Error('offline');
+      },
+      warn: (message) => warnings.push(message),
+    });
+    assert.deepEqual(stats, {
+      wanted: 5,
+      downloaded: 1,
+      failed: 2,
+      removed: 0,
+    });
+    assert.deepEqual(
+      requests.sort(),
+      [
+        `${root}/10314.png`,
+        `${root}/678.png`,
+        `${root}/666-poke-ball.png`,
+      ].sort()
+    );
+    assert.equal(
+      warnings.filter(
+        (message) => message === 'Sprite unavailable for Odd-Bird'
+      ).length,
+      1
+    );
+    assert.equal(
+      warnings.filter((message) => message.includes('meowsticmmega.png'))
+        .length,
+      1
+    );
+    assert.equal(
+      warnings.filter((message) => message.includes('vivillonpokeball.png'))
+        .length,
+      1
+    );
+    assert.deepEqual(await readdir(sprites), ['lucario.png', 'meowsticm.png']);
+    assert.deepEqual(await readFile(join(sprites, 'lucario.png')), png);
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test('item icons resolve source aliases, preserve local names, and fail safely', async () => {
+  const root =
+    'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items';
+  for (const [name, slug] of [
+    ['Leftovers', 'leftovers'],
+    ['Absolite Z', 'absolite_z'],
+    ['Venosaurite', 'venusaurite'],
+    ['Dragonitite', 'dragoninite'],
+    ['Staraptorite', 'staraptite'],
+  ])
+    assert.equal(resolveItemIcon(name), `${root}/i${slug}.png`);
+  assert.throws(() => validatePng(Buffer.from('not png')), /Invalid PNG/);
+
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-items-'));
+  const items = join(directory, 'items');
+  const output = join(directory, 'catalog.json');
+  const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10, 0]);
+  const warnings = [];
+  const requests = [];
+  const teams = [
+    {
+      members: [
+        { item: 'Leftovers' },
+        { item: 'Absolite Z' },
+        { item: 'Venosaurite' },
+        { item: 'VENOSAURITE!' },
+        { item: 'Dragonitite' },
+        { item: 'Staraptorite' },
+        { item: null },
+      ],
+    },
+  ];
+  const catalog = { teams };
+  try {
+    await mkdir(items, { recursive: true });
+    await writeFile(join(items, 'stale.png'), png);
+    await writeFile(join(items, 'absolitez.png'), Buffer.from('broken'));
+    await writeFile(output, JSON.stringify(catalog));
+    const stats = await syncItems(teams, {
+      directory: items,
+      load: async (address) => {
+        requests.push(address);
+        if (
+          address.endsWith('/ileftovers.png') ||
+          address.endsWith('/idragoninite.png') ||
+          address.endsWith('/istaraptite.png')
+        )
+          return png;
+        if (address.endsWith('/ivenusaurite.png')) throw new Error('offline');
+        return Buffer.from('not png');
+      },
+      warn: (message) => warnings.push(message),
+    });
+    assert.deepEqual(stats, {
+      wanted: 5,
+      downloaded: 3,
+      failed: 2,
+      removed: 1,
+    });
+    assert.equal(
+      requests.filter((address) => address.endsWith('/ivenusaurite.png'))
+        .length,
+      1
+    );
+    assert.equal(
+      warnings.filter((message) => message.includes('venosaurite.png')).length,
+      1
+    );
+    assert.match(warnings.join('\n'), /absolitez\.png: Invalid PNG sprite/);
+    assert.deepEqual(await readdir(items), [
+      'dragonitite.png',
+      'leftovers.png',
+      'staraptorite.png',
+    ]);
+    assert.deepEqual(JSON.parse(await readFile(output, 'utf8')), catalog);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });

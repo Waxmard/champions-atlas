@@ -6,6 +6,7 @@ const generation = Generations.get(0);
 const aliases: Record<string, string> = {
   aegislash: 'Aegislash-Shield',
   floetteeternalmega: 'Floette-Mega',
+  meowsticmega: 'Meowstic-M-Mega',
 };
 
 // Appearance-only forms: identical stats, types, abilities, and movesets, so a

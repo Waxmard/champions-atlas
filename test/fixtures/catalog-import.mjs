@@ -24,19 +24,19 @@ export const vrRoster = list(
   'Gengar Mega/Snorlax/Incineroar/Scrafty/Dragonite/Rillaboom'
 );
 export const mcPokemon = list(
-  'Gholdengo/Amoonguss/Iron Hands/Farigiraf/Pelipper/Basculegion'
+  'Gengar/Snorlax/Dragonite/Pelipper/Incineroar/Basculegion'
 );
 export const mcItems = list(
   'Choice Specs/Rocky Helmet/Assault Vest/Safety Goggles/Focus Sash/Mystic Water'
 );
 export const mbPokemon = list(
-  'Kingambit/Sinistcha/Rillaboom/Incineroar/Dragonite/Snorlax'
+  'Kingambit/Sinistcha/Farigiraf/Incineroar/Dragonite/Snorlax'
 );
 export const mbItems = list(
   'Black Glasses/Sitrus Berry/Miracle Seed/Charcoal/Life Orb/Leftovers'
 );
 export const devonPokemon = list(
-  'Charizard/Garchomp/Amoonguss/Incineroar/Rillaboom/Gholdengo'
+  'Charizard/Garchomp/Ampharos/Incineroar/Dragonite/Snorlax'
 );
 export const devonItems = list(
   'Charizardite Y/Clear Amulet/Sitrus Berry/Safety Goggles/Miracle Seed/Choice Specs'
@@ -201,8 +201,8 @@ export async function writeCache(directory, files) {
   return cache;
 }
 
-export function runImport(directory, env = {}) {
-  return execFileSync(process.execPath, [importScript], {
+export function runImport(directory, env = {}, args = []) {
+  return execFileSync(process.execPath, [importScript, ...args], {
     cwd: directory,
     env: {
       ...process.env,
@@ -475,6 +475,20 @@ export const writeYoutubeImportFixture = (directory, rows, payloads = {}) =>
       Object.entries(payloads).map(([id, payload]) => [`${id}.json`, payload])
     ),
   });
+
+export const pochTeamRow = (id, pokemon) => ({
+  id,
+  handle: id,
+  displayName: id,
+  date: publishedAt,
+  postUrl: `https://x.com/champions-atlas/status/${id}`,
+  rule: 'double',
+  mons: pokemon.map((name) => ({ name, gender: null })),
+});
+export const pochPage = (rows) =>
+  `<script>self.__next_f.push([1,${JSON.stringify(
+    `a:${JSON.stringify({ entries: [], x: rows })}`
+  )}])</script>`;
 
 export async function writeFetchMock(directory, config) {
   const configPath = join(directory, 'fetch-mock.json');
