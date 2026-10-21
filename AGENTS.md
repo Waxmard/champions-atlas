@@ -41,7 +41,6 @@ Read `docs/product-spec.md` before changing product behavior.
 ## UI design and component quality gates
 
 - When creating new components in `src/lib/components/` or executing layout redesigns across existing views:
-  - Validate template markup with `xd://mcp__designer_mcp_anti_pattern_check` (`genre: "modern-minimal"`) to detect AI styling tells, overused card containers, and visual hierarchy flaws.
-  - Validate accessibility with `xd://mcp__designer_mcp_audit_accessibility` to check WCAG compliance (unlabeled inputs, missing focus rings, button text, contrast).
-  - Use `xd://mcp__designer_mcp_generate_tokens` or `build_custom_tokens` when creating new color ramps.
+  - Validate accessibility of the rendered page with `xd://mcp__chrome_devtools_lighthouse_audit` (WCAG: labels, focus, button text, contrast).
+  - Review markup and visual hierarchy against the `frontend-design` and `better-interface` skills.
 - Omit these checks on minor styling tweaks, single-line bug fixes, or non-UI files (e.g. `src/lib/paste.ts`, data scripts, tests) to avoid token bloat and round-trip latency.

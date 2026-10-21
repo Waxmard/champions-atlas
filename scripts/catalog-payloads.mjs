@@ -5,6 +5,9 @@ import {
 } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import { parseVrPaste } from './catalog-sources.mjs';
+import { parsePaste } from '../src/lib/paste.ts';
+import { assetSlug as slug, basePokemon as base } from './sync-assets.mjs';
+import { reportsWithLadderNotes } from './catalog-results.mjs';
 function errorWithReason(reason, message) {
   const error = new Error(message);
   error.reason = reason;
@@ -157,4 +160,110 @@ export function rosterMatches(members, expectedSpecies) {
       'Paste species do not match the published roster'
     );
   return true;
+}
+export function enrich(team, data) {
+  const sets = parsePaste(data.paste);
+  const members = team.members.map((member) => {
+    const memberKey =
+      cosmeticForms[base(member.pokemon)] ?? base(member.pokemon);
+    const matches = sets.filter(
+      (set) =>
+        (cosmeticForms[base(set.pokemon)] ?? base(set.pokemon)) === memberKey &&
+        slug(set.item || '') === slug(member.item || '')
+    );
+    if (matches.length !== 1)
+      throw new Error(`Cannot match ${member.pokemon} in ${team.pasteUrl}`);
+    return { ...matches[0], pokemon: member.pokemon };
+  });
+  return {
+    ...team,
+    members,
+    reports: reportsWithLadderNotes(
+      team.reports ?? [],
+      data.notes,
+      team.pasteUrl
+    ),
+    paste: data.paste,
+    pasteNotes: typeof data.notes === 'string' ? data.notes : null,
+    pasteError: undefined,
+  };
+}
+
+export async function enrichPastes(
+  teams,
+  { loadPaste, previousTeams = [], limit = teams.length, concurrency = 3 }
+) {
+  const previous = new Map(previousTeams.map((team) => [team.pasteUrl, team]));
+
+  const baseReports = new Map(teams.map((team) => [team, team.reports ?? []]));
+  const withBaseReports = (team) => ({
+    ...team,
+    reports: baseReports.get(team),
+  });
+  for (const team of teams) {
+    const prior = previous.get(team.pasteUrl);
+    if (!prior?.paste) continue;
+    try {
+      Object.assign(
+        team,
+        enrich(withBaseReports(team), {
+          paste: prior.paste,
+          notes: prior.pasteNotes,
+        })
+      );
+    } catch {
+      // A changed sheet composition invalidates stale enrichment.
+    }
+  }
+  const selected = teams.slice(0, limit);
+  let enriched = 0;
+  let failed = 0;
+  let cursor = 0;
+  async function worker() {
+    while (cursor < selected.length) {
+      const team = selected[cursor++];
+      try {
+        Object.assign(
+          team,
+          enrich(withBaseReports(team), await loadPaste(team))
+        );
+        enriched++;
+      } catch (error) {
+        team.pasteError =
+          error instanceof Error ? error.message : String(error);
+        failed++;
+      }
+    }
+  }
+  await Promise.all(
+    Array.from(
+      { length: Math.min(Math.max(1, concurrency), selected.length) },
+      worker
+    )
+  );
+  return { attempted: selected.length, enriched, failed };
+}
+
+export function mergeSources(priorSources, frozenTeams, freshSources) {
+  const frozenUrls = new Set(
+    frozenTeams.flatMap((team) =>
+      (Array.isArray(team?.reports) ? team.reports : []).map(
+        (report) => report?.sourceUrl
+      )
+    )
+  );
+  const sheetHistory = frozenTeams.some((team) => team?.sheetIds?.length);
+  const merged = new Map();
+  const keyOf = ({ name, url }) => JSON.stringify([name, url]);
+  for (const source of Array.isArray(priorSources) ? priorSources : [])
+    if (
+      typeof source?.name === 'string' &&
+      typeof source.url === 'string' &&
+      (frozenUrls.has(source.url) ||
+        (sheetHistory && source.name === 'VGCPastes'))
+    )
+      merged.set(keyOf(source), source);
+  for (const source of freshSources)
+    merged.set(keyOf(source), { ...merged.get(keyOf(source)), ...source });
+  return [...merged.values()];
 }

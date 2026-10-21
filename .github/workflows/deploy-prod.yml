@@ -3,7 +3,12 @@ name: Deploy Production
 on:
   push:
     branches: [main]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      refresh_history:
+        description: Rebuild all historical regulations
+        type: boolean
+        default: false
   schedule:
     - cron: '17 8 * * *'
 
@@ -43,6 +48,7 @@ jobs:
           npm run import:catalog
         env:
           CHECK_SHEET: '1'
+          REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
           YOUTUBE_REFRESH: ${{ github.event_name == 'schedule' && '1' || '0' }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       - name: Enrich team tags

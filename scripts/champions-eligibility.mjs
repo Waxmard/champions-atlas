@@ -164,7 +164,7 @@ export function rejectIneligibleTeam(source, team, noteReason) {
   if (!error) return false;
   noteReason('ineligible_species');
   console.warn(
-    `${source}: skipped ${team.name || team.id || 'unnamed team'} (${error})`
+    `${source}: skipped ${team?.name || team?.id || 'unnamed team'} (${error})`
   );
   return true;
 }

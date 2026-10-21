@@ -88,7 +88,7 @@ preserves the previous file and exits unsuccessfully. A clean checkout needs
 network access for the initial import unless source files are already cached.
 The built app uses the bundled snapshot without fetching source data at runtime.
 
-Regenerate or refresh explicitly with:
+Run or explicitly rebuild the catalog with:
 
 ```sh
 npm run import:catalog
@@ -96,15 +96,26 @@ REFRESH=1 npm run import:catalog
 OFFLINE=1 npm run import:catalog
 ```
 
-The importer caches source files in `.cache/catalog`. `REFRESH=1` refreshes
-spreadsheet metadata. `OFFLINE=1` requires cached files. `PASTE_LIMIT` controls
-how many recent teams to fetch when explicitly set; by default every team gets
-full paste details. Already loaded compatible sets survive partial imports.
-Species and items are available for every imported team; moves, abilities, and
-spreads require an enriched paste. Unknown details never satisfy a filter.
-Imports replace the catalog atomically. Invalid spreadsheet data fails the
-import. Individual paste failures are reported on the team and in importer output;
-compatible previous sets are retained, otherwise details remain unknown.
+Routine imports refresh the current M-C slice. They retain eligible M-A, M-B,
+and `Unknown` records from the cached catalog after checking them against the
+checked-in regulation rosters; ineligible historical records are omitted with a
+warning. The cached catalog is the history baseline. If it is missing or empty,
+the importer bootstraps all available history.
+
+Set `REFRESH=1` to rebuild all history from current source data, replacing
+historical records that sources change or remove. The production workflow's
+**Rebuild all historical regulations** checkbox sets this flag for a manual run.
+Active-slice removals remain authoritative during routine imports.
+
+The importer caches source files in `.cache/catalog`. `OFFLINE=1` requires cached
+files. `PASTE_LIMIT` controls how many recent teams to fetch when explicitly set;
+by default every team gets full paste details. Already loaded compatible sets
+survive partial imports. Species and items are available for every imported
+team; moves, abilities, and spreads require an enriched paste. Unknown details
+never satisfy a filter. Imports replace the catalog atomically. Invalid
+spreadsheet data fails the import. Individual paste failures are reported on the
+team and in importer output; compatible previous sets are retained, otherwise
+details remain unknown.
 
 The importer also scans the complete public upload histories for [pokeaimMD](https://www.youtube.com/@pokeaimMD),
 [Pokeaim+](https://www.youtube.com/@pokeaimplus), [CybertronVGC](https://www.youtube.com/@CybertronVGC),
@@ -140,14 +151,18 @@ The first full-history scan can take time. `.cache/catalog/youtube-sources.json`
 stores a validated completed snapshot. A keyed online import reuses it unless
 `REFRESH=1` or `YOUTUBE_REFRESH=1` requests a full recrawl. `CHECK_SHEET=1` alone
 refreshes ordinary sources and selected paste payloads but reuses YouTube discovery.
-A failed enabled scan aborts the import without replacing the catalog, including in preview.
-`OFFLINE=1` never contacts YouTube and requires a valid snapshot when a key is
+A routine catalog import still scans the complete configured channel histories
+and playlist pages; it refreshes only M-C records and keeps eligible historical
+records from the catalog baseline. Historical YouTube records are not re-enriched
+or recomputed. A failed enabled scan aborts the import without replacing the
+catalog, including in preview. `OFFLINE=1` never contacts YouTube and requires a valid snapshot when a key is
 configured. Without a key, an existing valid snapshot is reused; an absent
 snapshot disables the source with a warning and retains previously imported
 channel-only teams. An invalid snapshot fails in keyless or offline mode; a keyed
 online import attempts a complete recrawl. A completed scan treats disappeared
-video/paste links as removals. Individual paste failures retain compatible prior
-sets and report the error.
+video/paste links as removals from the active slice; historical records remain
+frozen until a full-history rebuild. Individual paste failures retain compatible
+prior sets and report the error.
 
 Small standard Pokémon PNG sprites and 24px item icons are cached under ignored
 `static/` directories during catalog bootstrap. New or missing sprites use

@@ -127,6 +127,25 @@ then load it at import time with
 `export YOUTUBE_API_KEY="$(security find-generic-password -s champions-atlas:youtube-api-key -a "$USER" -w)"`.
 Never place the key in `.env`.
 
+Routine imports refresh the active M-C slice. They retain eligible M-A, M-B, and
+`Unknown` records from the cached catalog baseline after checking each record
+against its regulation roster. An ineligible historical record is omitted with a
+warning. Frozen records keep their stored provenance and linked-spread values;
+routine imports do not re-enrich them or use them as linked-spread donors.
+
+The cache entry for `src/lib/data/catalog.json` supplies the history baseline.
+If that catalog is missing or empty, the importer bootstraps all available
+history. `REFRESH=1 npm run import:catalog` rebuilds the full history from current
+source data, replacing changed or removed historical records. The production
+workflow exposes the same operation through its **Rebuild all historical
+regulations** manual-dispatch checkbox. Routine removals remain authoritative
+for M-C; removal of a frozen record takes effect only in a full-history rebuild.
+
+YouTube discovery remains complete during routine imports: playlist traversal
+and configured-channel history scans are unchanged. The importer does not use a
+date cutoff to reduce discovery. It admits teams and recomputes linked-spread
+provenance only for the active slice. Frozen records retain their existing data.
+
 ## Freshness and scheduling
 
 `.github/workflows/deploy-prod.yml` imports the catalog and deploys it on every
@@ -151,11 +170,12 @@ Without a key, an existing valid snapshot is reused, while an absent snapshot
 disables this source with a warning and retains previously imported channel-only
 teams. An invalid snapshot fails in offline or keyless mode; a keyed online
 import replaces it only after a successful complete crawl. Once an enabled scan
-begins, API, quota, or structural failures abort before catalog replacement, including in
-preview; preview's stale-cache option does not weaken YouTube discovery. A
-successful complete scan treats disappeared video/paste links as removals.
-Individual paste fetch failures retain compatible prior sets and expose the
-error.
+begins, API, quota, or structural failures abort before catalog replacement,
+including in preview; preview's stale-cache option does not weaken YouTube
+discovery. A successful complete scan treats disappeared video/paste links as
+removals from the active slice; frozen historical records remain until a
+full-history rebuild. Individual paste fetch failures retain compatible prior
+sets and expose the error.
 
 ## Reuse conditions
 
@@ -193,10 +213,12 @@ when the working set no longer matches the borrowed set. Different-paste variant
 keep separate identities and reports; a matching roster alone never establishes
 a relationship or merges teams.
 
-With a completed active discovery snapshot, each import recomputes additions
-from source originals. Removed links, rejected donors, and unavailable donor
-pastes cannot silently preserve active borrowed values. In inactive keyless mode,
-compatible previously attributed additions remain because discovery is unobserved.
+For active teams, a completed discovery snapshot lets each import recompute
+additions from source originals. Removed links, rejected donors, and unavailable
+donor pastes cannot silently preserve active borrowed values. Frozen historical
+teams keep their existing additions during routine imports. In inactive keyless
+mode, compatible previously attributed additions also remain because discovery
+is unobserved.
 
 Poch.ms records keep published values and leave the rest unknown. A missing set
 field or scalar stays unknown. The page publishes no spreads, so these records

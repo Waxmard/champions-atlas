@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -185,10 +185,11 @@ test('imports public index teams alongside the sheets and accounts for every row
     const again = await readCatalog(directory);
     assert.deepEqual(again.teams.map(({ id }) => id).sort(), ids);
     const second = runImport(directory);
-    const third = await readCatalog(directory);
-    assert.deepEqual(third.teams.map(({ id }) => id).sort(), ids);
-    assert.equal(third.sourceHash, again.sourceHash);
-    assert.equal(runImport(directory), second);
+    const routine = await readCatalog(directory);
+    assert.deepEqual(routine.teams.map(({ id }) => id).sort(), ids);
+    const third = runImport(directory);
+    assert.equal((await readCatalog(directory)).sourceHash, routine.sourceHash);
+    assert.equal(third, second);
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
@@ -358,7 +359,7 @@ test('PASTE_LIMIT spends sheet attempts first and reports limited candidates', a
       .slice(0, 3)
       .map((id) => full.teams.find(({ pasteUrl }) => pasteUrl.endsWith(id)).id);
 
-    const partial = runImport(directory, { PASTE_LIMIT: '3' });
+    const partial = runImport(directory, { PASTE_LIMIT: '2' });
     const partialCatalog = await readCatalog(directory);
     assert.deepEqual(
       partialCatalog.teams.map(({ id }) => id).sort(),
@@ -375,7 +376,7 @@ test('PASTE_LIMIT spends sheet attempts first and reports limited candidates', a
         'limit-only reuse must keep prior metadata unchanged'
       );
 
-    const zero = runImport(directory, { PASTE_LIMIT: '2' });
+    const zero = runImport(directory, { PASTE_LIMIT: '1' });
     assert.match(
       zero,
       /Victory Road: 3 discovered — 0 accepted, 3 retained, 0 skipped, 0 merged\./
@@ -385,7 +386,7 @@ test('PASTE_LIMIT spends sheet attempts first and reports limited candidates', a
       join(directory, '.cache/catalog/victory-road.html'),
       page(ids)
     );
-    const limited = runImport(directory, { PASTE_LIMIT: '2' });
+    const limited = runImport(directory, { PASTE_LIMIT: '1' });
     const limitedCatalog = await readCatalog(directory);
     assert.equal(limitedCatalog.teams.length, full.teams.length);
     assert.ok(
@@ -635,20 +636,14 @@ test('cached import rejects ineligible sheet, public, and Poch teams before asse
     });
     const fetchEnv = await writeFetchMock(directory, {});
     const outputPath = catalogPath(directory);
-    await mkdir(join(directory, 'src/lib/data'), { recursive: true });
-    await writeFile(
-      outputPath,
-      JSON.stringify({
-        teams: [
-          {
-            id: 'sentinel',
-            regulation: 'M-C',
-            members: illegalPokemon.map((pokemon) => ({ pokemon })),
-          },
-        ],
-      })
-    );
-
+    runImport(directory, { ...fetchEnv, PASTE_LIMIT: '4' });
+    const baseline = await readCatalog(directory);
+    baseline.teams.push({
+      id: 'sentinel',
+      regulation: 'M-C',
+      members: illegalPokemon.map((pokemon) => ({ pokemon })),
+    });
+    await writeFile(outputPath, JSON.stringify(baseline));
     const output = runImport(directory, { ...fetchEnv, PASTE_LIMIT: '4' }, [
       '--if-missing',
     ]);
@@ -667,16 +662,16 @@ test('cached import rejects ineligible sheet, public, and Poch teams before asse
     );
     assert.ok(!catalog.teams.some(({ sheetIds }) => sheetIds.includes('MC2')));
     assert.ok(catalog.teams.some(({ id }) => id === 'poch-x-unknown-valid'));
-    assert.match(output, /2\/2 pastes enriched/);
+    assert.match(output, /1\/1 pastes enriched/);
     assert.match(
       output,
       /Victory Road: 1 discovered — 0 accepted, 0 retained, 1 skipped, 0 merged\./
     );
     assert.match(
       output,
-      /Poch\.ms: 2 discovered — 1 accepted, 0 retained, 1 skipped, 0 merged\./
+      /Poch\.ms: 2 discovered — 0 accepted, 0 retained, 2 skipped, 0 merged\./
     );
-    assert.match(output, /ineligible_species=3/);
+    assert.match(output, /ineligible_species=2/);
     let assetRequests = JSON.parse(
       await readFile(fetchEnv.MOCK_FETCH_LOG, 'utf8')
     ).map((address) => new URL(address));
@@ -720,7 +715,7 @@ test('cached import rejects ineligible sheet, public, and Poch teams before asse
         team.members.some(({ pokemon }) => pokemon === 'Brute Bonnet')
       )
     );
-    assert.match(afterPrior, /ineligible_species=3/);
+    assert.match(afterPrior, /ineligible_species=2/);
     assetRequests = JSON.parse(
       await readFile(fetchEnv.MOCK_FETCH_LOG, 'utf8')
     ).map((address) => new URL(address));

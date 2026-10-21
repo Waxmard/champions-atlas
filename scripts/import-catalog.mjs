@@ -4,12 +4,8 @@ import { parse as parseCsvRecords } from 'csv-parse/sync';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parsePaste } from '../src/lib/paste.ts';
-import {
-  assetSlug as slug,
-  basePokemon as base,
-  restoreCatalogAssets,
-} from './sync-assets.mjs';
-import { cosmeticForms, resolveBattleForm } from '../src/lib/battle-forms.ts';
+import { restoreCatalogAssets } from './sync-assets.mjs';
+import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import {
   eligibilitySourceTexts,
@@ -28,6 +24,8 @@ import {
   resolvedPokemon,
   rosterMatches,
   validateIndexFormat,
+  enrichPastes,
+  mergeSources,
 } from './catalog-payloads.mjs';
 import { reportsWithLadderNotes } from './catalog-results.mjs';
 import {
@@ -46,6 +44,7 @@ import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
+const currentRegulation = 'M-C';
 export function parseCsv(text) {
   return parseCsvRecords(text, {
     relax_column_count: true,
@@ -265,33 +264,6 @@ export function deduplicate(teams) {
   return [...unique.values()];
 }
 
-export function enrich(team, data) {
-  const sets = parsePaste(data.paste);
-  const members = team.members.map((member) => {
-    const memberKey =
-      cosmeticForms[base(member.pokemon)] ?? base(member.pokemon);
-    const matches = sets.filter(
-      (set) =>
-        (cosmeticForms[base(set.pokemon)] ?? base(set.pokemon)) === memberKey &&
-        slug(set.item || '') === slug(member.item || '')
-    );
-    if (matches.length !== 1)
-      throw new Error(`Cannot match ${member.pokemon} in ${team.pasteUrl}`);
-    return { ...matches[0], pokemon: member.pokemon };
-  });
-  return {
-    ...team,
-    members,
-    reports: reportsWithLadderNotes(
-      team.reports ?? [],
-      data.notes,
-      team.pasteUrl
-    ),
-    paste: data.paste,
-    pasteNotes: typeof data.notes === 'string' ? data.notes : null,
-    pasteError: undefined,
-  };
-}
 const isVrPasteUrl = (value) => value.startsWith('https://www.vrpastes.com/');
 export function teamFromIndex(candidate, payload, canonicalNames) {
   if (
@@ -371,61 +343,6 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
   };
 }
 
-export async function enrichPastes(
-  teams,
-  { loadPaste, previousTeams = [], limit = teams.length, concurrency = 3 }
-) {
-  const previous = new Map(previousTeams.map((team) => [team.pasteUrl, team]));
-
-  const baseReports = new Map(teams.map((team) => [team, team.reports ?? []]));
-  const withBaseReports = (team) => ({
-    ...team,
-    reports: baseReports.get(team),
-  });
-  for (const team of teams) {
-    const prior = previous.get(team.pasteUrl);
-    if (!prior?.paste) continue;
-    try {
-      Object.assign(
-        team,
-        enrich(withBaseReports(team), {
-          paste: prior.paste,
-          notes: prior.pasteNotes,
-        })
-      );
-    } catch {
-      // A changed sheet composition invalidates stale enrichment.
-    }
-  }
-  const selected = teams.slice(0, limit);
-  let enriched = 0;
-  let failed = 0;
-  let cursor = 0;
-  async function worker() {
-    while (cursor < selected.length) {
-      const team = selected[cursor++];
-      try {
-        Object.assign(
-          team,
-          enrich(withBaseReports(team), await loadPaste(team))
-        );
-        enriched++;
-      } catch (error) {
-        team.pasteError =
-          error instanceof Error ? error.message : String(error);
-        failed++;
-      }
-    }
-  }
-  await Promise.all(
-    Array.from(
-      { length: Math.min(Math.max(1, concurrency), selected.length) },
-      worker
-    )
-  );
-  return { attempted: selected.length, enriched, failed };
-}
-
 export async function writeCatalog(path, catalog) {
   if (!catalog.teams.length)
     throw new Error('Refusing to write an empty catalog');
@@ -483,7 +400,26 @@ async function main() {
   } catch (error) {
     if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
   }
-  const previousTeams = priorCatalog?.teams || [];
+  const previousTeams = Array.isArray(priorCatalog?.teams)
+    ? priorCatalog.teams
+    : [];
+  const fullHistory = process.env.REFRESH === '1' || previousTeams.length === 0;
+  const activePreviousTeams = fullHistory
+    ? previousTeams
+    : previousTeams.filter((team) => team?.regulation === currentRegulation);
+  const reasons = new Map();
+  const noteReason = (reason) =>
+    reasons.set(reason, (reasons.get(reason) || 0) + 1);
+  const frozenTeams = fullHistory
+    ? []
+    : previousTeams
+        .filter((team) => team?.regulation !== currentRegulation)
+        .filter(
+          (team) => !rejectIneligibleTeam('Frozen history', team, noteReason)
+        );
+  const frozenIds = new Set(
+    frozenTeams.map((team) => team?.id).filter((id) => typeof id === 'string')
+  );
   const indexRefresh = process.env.REFRESH === '1' || checkSheet;
   const youtubeRefresh =
     process.env.REFRESH === '1' || process.env.YOUTUBE_REFRESH === '1';
@@ -493,7 +429,7 @@ async function main() {
     offline: process.env.OFFLINE === '1',
     apiKey: process.env.YOUTUBE_API_KEY,
   });
-  const youtubeRows = youtubeImportRows(youtubeSource, previousTeams);
+  const youtubeRows = youtubeImportRows(youtubeSource, activePreviousTeams);
   const teams = [];
   const csvs = [];
   const payloads = new Map();
@@ -514,6 +450,7 @@ async function main() {
     return pending;
   };
   for (const [regulation, gid] of Object.entries(tabs)) {
+    if (!fullHistory && regulation !== currentRegulation) continue;
     // Google CSV exports redirect to a Google-hosted download endpoint.
     const address = `${sheet}/export?format=csv&gid=${gid}`;
     let csv = null;
@@ -545,23 +482,25 @@ async function main() {
     parseVictoryRoad,
     indexRefresh
   );
-  const devonCorpHtml = await fetchCached(
-    'devoncorp-m-a.html',
-    devonCorpUrl,
-    parseDevonCorp,
-    indexRefresh
-  );
+  const devonCorpHtml = fullHistory
+    ? await fetchCached(
+        'devoncorp-m-a.html',
+        devonCorpUrl,
+        parseDevonCorp,
+        indexRefresh
+      )
+    : '';
   const pochHtml = await fetchCached(
     'poch-leaderboard.html',
     pochUrl,
     parsePoch,
     indexRefresh
   );
+  const devonCorp = fullHistory
+    ? parseDevonCorp(devonCorpHtml)
+    : { candidates: [], skipped: [] };
   const victoryRoad = parseVictoryRoad(victoryRoadHtml);
-  const devonCorp = parseDevonCorp(devonCorpHtml);
-  const reasons = new Map();
-  const noteReason = (reason) =>
-    reasons.set(reason, (reasons.get(reason) || 0) + 1);
+
   let unique = deduplicate(teams).filter(
     (team) =>
       !rejectIneligibleTeam(`${team.regulation} sheet`, team, noteReason)
@@ -575,11 +514,13 @@ async function main() {
     devonCorpHtml,
     pochHtml,
     youtubeHash,
+    currentRegulation,
+    JSON.stringify(frozenTeams),
     ...eligibilitySourceTexts,
   ]);
   const stats = await enrichPastes(unique, {
     limit: count,
-    previousTeams,
+    previousTeams: activePreviousTeams,
     loadPaste: (team) => loadPayload(team),
   });
   unique = unique.filter(
@@ -593,9 +534,8 @@ async function main() {
       const key = normalize(resolved.error ? member.pokemon : resolved.pokemon);
       if (!canonicalNames.has(key)) canonicalNames.set(key, member.pokemon);
     }
-  const poch = parsePoch(pochHtml, canonicalNames);
   const priorByKey = new Map();
-  for (const team of previousTeams)
+  for (const team of activePreviousTeams)
     if (team.pasteUrl && !priorByKey.has(`${team.pasteUrl}|${team.regulation}`))
       priorByKey.set(`${team.pasteUrl}|${team.regulation}`, team);
   const emitted = new Set(unique.map((team) => team.id));
@@ -619,7 +559,7 @@ async function main() {
     return prior;
   };
   const compatibleYoutubePrior = (candidate) => {
-    const prior = youtubePrior(candidate, previousTeams);
+    const prior = youtubePrior(candidate, activePreviousTeams);
     if (!prior || typeof prior.paste !== 'string') return null;
     const payload = { paste: prior.paste, notes: prior.pasteNotes };
     try {
@@ -641,6 +581,7 @@ async function main() {
     count === Infinity ? Infinity : Math.max(0, count - stats.attempted);
   let publicUsed = 0;
   const publicTeams = [];
+  const admittedCurrentYoutubeCandidates = [];
   const sourceStats = [];
   for (const { name, source, youtube = false, retainedTeams = [] } of [
     { name: 'Victory Road', source: victoryRoad },
@@ -673,12 +614,27 @@ async function main() {
     for (const [reason, total] of rowReasons)
       console.warn(`${name}: skipped ${total} rows (${reason})`);
     sourceStats.push({ name, counts, skipReasons });
-    const keep = (team, field) => {
+    const keep = (team, field, discoveryCandidate = null) => {
+      if (!fullHistory && team?.regulation !== currentRegulation) {
+        counts.skipped += 1;
+        addReason('outside_current_regulation');
+        return;
+      }
+      if (!fullHistory && frozenIds.has(team?.id)) {
+        counts.skipped += 1;
+        addReason('frozen_history_conflict');
+        console.warn(
+          `${name}: skipped ID ${team.id} (frozen history conflict)`
+        );
+        return;
+      }
       if (rejectIneligibleTeam(name, team, addReason)) {
         counts.skipped += 1;
         return;
       }
       publicTeams.push(team);
+      if (!fullHistory && youtube && discoveryCandidate)
+        admittedCurrentYoutubeCandidates.push(discoveryCandidate);
       if (emitted.has(team.id)) counts.merged += 1;
       else {
         emitted.add(team.id);
@@ -688,7 +644,11 @@ async function main() {
     const handleFailure = (candidate, prior, error) => {
       const reason = error.reason || 'paste_unavailable';
       if (prior && fallbackReasons.has(reason))
-        return keep({ ...prior, pasteError: error.message }, 'priorRetained');
+        return keep(
+          { ...prior, pasteError: error.message },
+          'priorRetained',
+          youtube ? candidate : null
+        );
       counts.skipped += 1;
       addReason(reason);
       console.warn(
@@ -697,6 +657,16 @@ async function main() {
     };
     for (const team of retainedTeams) keep(team, 'priorRetained');
     for (const candidate of source.candidates) {
+      if (
+        (youtube && youtubePrior(candidate, frozenTeams)) ||
+        (!fullHistory &&
+          candidate.regulation &&
+          candidate.regulation !== currentRegulation)
+      ) {
+        counts.skipped += 1;
+        addReason('outside_current_regulation');
+        continue;
+      }
       const prior = youtube
         ? compatibleYoutubePrior(candidate)
         : compatiblePrior(candidate);
@@ -708,12 +678,14 @@ async function main() {
                 candidate,
                 await payloads.get(candidate.pasteUrl)
               ),
-              'accepted'
+              'accepted',
+              candidate
             );
           } catch (error) {
             handleFailure(candidate, prior, error);
           }
-        } else if (prior) keep(prior, 'priorRetained');
+        } else if (prior)
+          keep(prior, 'priorRetained', youtube ? candidate : null);
         else {
           counts.skipped += 1;
           addReason('limited');
@@ -727,40 +699,58 @@ async function main() {
           youtube
             ? youtubeTeamFromPayload(candidate, payload)
             : teamFromIndex(candidate, payload, canonicalNames),
-          'accepted'
+          'accepted',
+          youtube ? candidate : null
         );
       } catch (error) {
         handleFailure(candidate, prior, error);
       }
     }
   }
-  const pochTeams = poch.teams.filter(
-    (team) => !rejectIneligibleTeam('Poch.ms', team, noteReason)
-  );
+  const parsedPoch = parsePoch(pochHtml, canonicalNames);
+  const pochInScope = fullHistory
+    ? parsedPoch.teams
+    : parsedPoch.teams.filter((team) => team.regulation === currentRegulation);
+  for (const team of parsedPoch.teams)
+    if (!fullHistory && team.regulation !== currentRegulation)
+      noteReason('outside_current_regulation');
+  const pochTeams = pochInScope.filter((team) => {
+    if (!fullHistory && frozenIds.has(team.id)) {
+      noteReason('frozen_history_conflict');
+      console.warn(`Poch.ms: skipped ID ${team.id} (frozen history conflict)`);
+      return false;
+    }
+    return !rejectIneligibleTeam('Poch.ms', team, noteReason);
+  });
   const pochCounts = {
-    discovered: poch.teams.length + poch.skipped.length,
+    discovered: parsedPoch.teams.length + parsedPoch.skipped.length,
     accepted: pochTeams.length,
     priorRetained: 0,
-    skipped: poch.skipped.length + poch.teams.length - pochTeams.length,
+    skipped:
+      parsedPoch.skipped.length + parsedPoch.teams.length - pochTeams.length,
     merged: 0,
   };
-  for (const entry of poch.skipped)
+  for (const entry of parsedPoch.skipped)
     noteReason(entry.reason || 'invalid_record');
   sourceStats.push({ name: 'Poch.ms', counts: pochCounts });
   const linked = enrichLinkedSpreads(
     deduplicate([...unique, ...publicTeams, ...pochTeams]),
     linkedSpreadPairs(
-      youtubeSource.channels.flatMap(({ candidates }) => candidates)
+      fullHistory
+        ? youtubeSource.channels.flatMap(({ candidates }) => candidates)
+        : admittedCurrentYoutubeCandidates
     ),
-    { active: youtubeSource.active, previousTeams }
+    { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
-  const catalogTeams = linked.teams;
+  const catalogTeams = fullHistory
+    ? linked.teams
+    : [...linked.teams, ...frozenTeams];
   if (linked.spread_conflict)
     reasons.set('spread_conflict', linked.spread_conflict);
-  await writeCatalog(output, {
-    updatedAt: new Date().toISOString(),
-    currentRegulation: 'M-C',
-    sources: [
+  const sources = mergeSources(
+    fullHistory ? [] : priorCatalog?.sources,
+    frozenTeams,
+    [
       { name: 'VGCPastes', url: `${sheet}/edit` },
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
@@ -770,7 +760,12 @@ async function main() {
           ({ retainedTeams }) => youtubeSource.active || retainedTeams.length
         )
         .map(({ name, url }) => ({ name, url })),
-    ],
+    ]
+  );
+  await writeCatalog(output, {
+    updatedAt: new Date().toISOString(),
+    currentRegulation,
+    sources,
     sourceHash,
     teams: catalogTeams,
   });
@@ -782,6 +777,10 @@ async function main() {
   if (reasons.size)
     console.log(
       `Skip reasons: ${[...reasons].map(([reason, total]) => `${reason}=${total}`).join(', ')}`
+    );
+  if (!fullHistory)
+    console.log(
+      `Frozen history: ${frozenTeams.length} teams retained; refreshing ${currentRegulation}.`
     );
   console.log(`Linked creator spreads: ${linked.enriched} members enriched.`);
   console.log(

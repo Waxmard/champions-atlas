@@ -485,32 +485,35 @@ for (const failedName of ['victory-road.html', 'M-C.csv']) {
     );
     const catalog = JSON.parse(result.bytes);
     assert.deepEqual(
-      catalog.teams.map((team) => team.name).sort(),
-      [
-        failedName === 'M-C.csv' ? 'Cached M-C' : 'Fresh M-C',
-        'Fresh M-B',
-      ].sort()
+      catalog.teams.map((team) => team.name),
+      [failedName === 'M-C.csv' ? 'Cached M-C' : 'Fresh M-C']
     );
     assert.equal(
       catalog.teams.some((team) => team.id === 'sentinel'),
       false
     );
-    for (const source of ['Victory Road', 'DevonCorp'])
-      assert.match(
-        result.stdout,
-        new RegExp(
-          `${source}: 1 discovered — 0 accepted, 0 retained, 1 skipped, 0 merged\\.`
-        )
-      );
-    assert.match(result.stdout, /limited=2/);
-    for (const gid of ['2001945654', '1458357160'])
-      assert.ok(
-        result.requests.some(
-          (request) =>
-            request.address === sheetAddress(gid) &&
-            request.redirect === 'follow'
-        )
-      );
+    assert.match(
+      result.stdout,
+      /Victory Road: 1 discovered — 0 accepted, 0 retained, 1 skipped, 0 merged\./
+    );
+    assert.match(
+      result.stdout,
+      /DevonCorp: 0 discovered — 0 accepted, 0 retained, 0 skipped, 0 merged\./
+    );
+    assert.match(result.stdout, /limited=1/);
+    assert.ok(
+      result.requests.some(
+        (request) =>
+          request.address === sheetAddress('2001945654') &&
+          request.redirect === 'follow'
+      )
+    );
+    assert.equal(
+      result.requests.some(
+        (request) => request.address === sheetAddress('1458357160')
+      ),
+      false
+    );
     assert.ok(
       result.requests.some(
         (request) =>

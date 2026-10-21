@@ -8,10 +8,9 @@ import {
   parseCsv,
   parseSheet,
   deduplicate,
-  enrich,
-  enrichPastes,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
+import { enrich, enrichPastes } from '../scripts/catalog-payloads.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 import { bestEvidence, evidenceGrade } from '../src/lib/catalog.ts';
 import {
