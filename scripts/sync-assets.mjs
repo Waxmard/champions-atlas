@@ -225,5 +225,3 @@ export async function restoreCatalogAssets(
   }
   return { sprites, items };
 }
-
-export { pokemonIndex };

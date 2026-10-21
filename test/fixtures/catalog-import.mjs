@@ -190,8 +190,7 @@ export const devonCorpPage = (extra = '') =>
   `<p><a href="https://youtu.be/Du3AZ5dpIv4?t=67">Link to YouTube Explanation</a></p>` +
   `</div>${extra}</div></article>`;
 
-export const reasonCheck = (reason) => (error) => error.reason === reason;
-export const reasonChecker = reasonCheck;
+export const reasonChecker = (reason) => (error) => error.reason === reason;
 
 export async function writeCache(directory, files) {
   const cache = join(directory, '.cache/catalog');

@@ -62,13 +62,11 @@ function validateSnapshot({ sourceText, snapshot }) {
     }
   }
 
-  const megaKeys = new Set();
   for (const [key, officialId] of Object.entries(megas)) {
     const species = battleSpecies(key);
     if (
       !key ||
       key !== normalize(key) ||
-      megaKeys.has(key) ||
       !species ||
       !/-Mega(?:-[XYZ])?$/i.test(species.name) ||
       !Object.hasOwn(pokemon, officialId)
@@ -76,7 +74,6 @@ function validateSnapshot({ sourceText, snapshot }) {
       throw new Error(
         `Invalid ${regulation} Mega key or roster reference: ${key}`
       );
-    megaKeys.add(key);
   }
   rowIdsByRegulation.set(regulation, rowIdsByKey);
   snapshots.set(regulation, snapshot);

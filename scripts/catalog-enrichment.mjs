@@ -155,9 +155,7 @@ function matchesKnownFields(original, donor) {
   if (
     originalMoves.some((move) => !donorMoves.includes(move)) ||
     (originalMoves.length === 4 &&
-      (donorMoves.length !== 4 ||
-        new Set(donorMoves).size !== 4 ||
-        originalMoves.some((move) => !donorMoves.includes(move))))
+      (donorMoves.length !== 4 || new Set(donorMoves).size !== 4))
   )
     return false;
   return true;
@@ -256,12 +254,7 @@ function proposalFor(
     return null;
 
   const originalSpread = rawSpreadFor(original, originalMember, cache);
-  if (
-    !originalSpread.valid ||
-    !missing(originalMember.spread) ||
-    !missing(originalSpread.spread)
-  )
-    return null;
+  if (!originalSpread.valid || !missing(originalSpread.spread)) return null;
   const donorSpread = rawSpreadFor(donor, donorMember, cache);
   if (!donorSpread.valid) return null;
   const spread = parseChampionsSpread(donorSpread.spread);

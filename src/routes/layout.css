@@ -209,7 +209,8 @@
     background: var(--color-accent);
     border-color: var(--color-accent);
   }
-  .stamp[data-grade='qualified'] {
+  .stamp[data-grade='qualified'],
+  .stamp[data-grade='source'] {
     color: var(--color-primary);
     background: transparent;
     border-color: var(--color-primary);
@@ -219,11 +220,6 @@
     background: var(--color-base-200);
     border-color: var(--color-base-300);
     font-weight: 600;
-  }
-  .stamp[data-grade='source'] {
-    color: var(--color-primary);
-    background: transparent;
-    border-color: var(--color-primary);
   }
   .stamp[data-grade='none'] {
     color: var(--color-muted);
