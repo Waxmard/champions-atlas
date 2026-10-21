@@ -104,11 +104,66 @@ test('canonicalMember preserves what it cannot canonicalize and is idempotent', 
   assert.deepEqual(canonicalMember(extra), extra);
 });
 
+test('canonicalMember canonicalizes item, ability, and move spellings', () => {
+  const canonical = canonicalMember(
+    member({
+      item: 'leftovers',
+      ability: 'limber',
+      moves: ['u-turn', 'protect'],
+      spread: '32 Spe / 2 HP',
+      set: [
+        'Pika @ leftovers',
+        'Ability: limber',
+        'adamant Nature',
+        'EVs: 32 Spe / 2 HP',
+        '- u-turn',
+      ].join('\n'),
+    })
+  );
+
+  assert.equal(canonical.item, 'Leftovers');
+  assert.equal(canonical.ability, 'Limber');
+  assert.deepEqual(canonical.moves, ['U-turn', 'Protect']);
+  assert.equal(
+    canonical.set,
+    [
+      'Pika @ Leftovers',
+      'Ability: Limber',
+      'Adamant Nature',
+      'EVs: 2 HP / 32 Spe',
+      '- U-turn',
+    ].join('\n')
+  );
+
+  const unknown = canonicalMember(
+    member({
+      item: 'Homebrew Item',
+      ability: 'Not Real',
+      moves: ['Totally Fake'],
+    })
+  );
+  assert.equal(unknown.item, 'Homebrew Item');
+  assert.equal(unknown.ability, 'Not Real');
+  assert.deepEqual(unknown.moves, ['Totally Fake']);
+
+  assert.deepEqual(
+    canonicalMember(member({ moves: ['Protect', 'Fake Out'] })).moves,
+    ['Protect', 'Fake Out']
+  );
+  assert.equal(
+    canonicalMember(member({ item: 'Staraptorite' })).item,
+    'Staraptorite'
+  );
+});
+
 test('migrateStoredData rewrites legacy teams and current sets once', () => {
   const legacy = member({
     pokemon: 'Pokemon0',
     nature: 'adamant',
     spread: '32 Spe / 32 Atk / 2 HP',
+    item: 'leftovers',
+    ability: 'limber',
+    moves: ['protect', 'u-turn'],
   });
   const members = Array.from({ length: 6 }, (_, index) =>
     index === 0
@@ -137,12 +192,19 @@ test('migrateStoredData rewrites legacy teams and current sets once', () => {
   const store = fakeStorage({
     [storageKey]: JSON.stringify([team]),
     [currentSetsKey]: JSON.stringify([
-      { id: 'pikachu', member: member({ spread: '32 Spe / 32 Atk / 2 HP' }) },
+      { id: 'pikachu', member: { ...legacy, pokemon: 'Pikachu' } },
     ]),
   });
 
   migrateStoredData(store.storage);
-  const savedTeam = JSON.parse(store.entries.get(storageKey))[0];
+  const rawTeam = store.entries.get(storageKey);
+  const rawSets = store.entries.get(currentSetsKey);
+  for (const raw of [rawTeam, rawSets]) {
+    assert.ok(raw.includes('"item":"Leftovers"'));
+    assert.ok(raw.includes('"ability":"Limber"'));
+    assert.ok(raw.includes('"moves":["Protect","U-turn"]'));
+  }
+  const savedTeam = JSON.parse(rawTeam)[0];
   assert.equal(savedTeam.members[0].spread, '2 HP / 32 Atk / 32 Spe');
   assert.equal(savedTeam.members[0].nature, 'Adamant');
   assert.equal(savedTeam.original.members[0].spread, '2 HP / 32 Atk / 32 Spe');

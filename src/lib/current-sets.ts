@@ -142,8 +142,11 @@ export function prepareCurrentSets(
   const overwritten = incoming
     .flatMap(({ id }) => {
       const existing = currentById.get(id);
+      const next = incomingById.get(id);
       return existing !== undefined &&
-        !sameEntry(existing, incomingById.get(id))
+        next !== undefined &&
+        !sameEntry(existing, next) &&
+        !sameSet(existing.member, next.member)
         ? [structuredClone(existing)]
         : [];
     })
@@ -168,12 +171,18 @@ export function saveCurrentSets(
       .filter(({ id }) => !replacementIds.has(id))
       .map(({ id }) => id)
   );
-  const eligible = plan.incoming.filter(({ id }) => !skippedIds.has(id));
   const latest = readCurrentSets(storage);
+  const latestById = new Map(latest.map((entry) => [entry.id, entry]));
+  const eligible = plan.incoming.filter((entry) => {
+    if (skippedIds.has(entry.id)) return false;
+    const latestEntry = latestById.get(entry.id);
+    return (
+      latestEntry === undefined || !sameSet(latestEntry.member, entry.member)
+    );
+  });
   if (eligible.length === 0) return latest;
 
   const currentById = new Map(plan.current.map((entry) => [entry.id, entry]));
-  const latestById = new Map(latest.map((entry) => [entry.id, entry]));
   for (const entry of eligible) {
     const latestEntry = latestById.get(entry.id);
     if (

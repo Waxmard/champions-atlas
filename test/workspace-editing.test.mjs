@@ -161,6 +161,39 @@ test('current-set saves share Browse identities, preserve snapshots, and skip id
   assert.equal(store.writes, writes);
 });
 
+test('current-set saves neither offer nor rewrite cosmetic-only differences', () => {
+  const incoming = member('Pikachu', {
+    item: 'Leftovers',
+    ability: 'Static',
+    moves: ['Protect', 'Fake Out'],
+    nature: 'Adamant',
+    spread: '32 HP / 2 Atk / 32 Spe',
+  });
+  const stored = {
+    ...incoming,
+    item: 'leftovers',
+    moves: ['Fake Out', 'Protect'],
+  };
+  const store = memoryStorage(serialized(stored));
+  const before = readCurrentSets(store.storage);
+  const writes = store.writes;
+
+  let plan = prepareCurrentSets(store.storage, [incoming]);
+  assert.deepEqual(plan.overwritten, []);
+  assert.deepEqual(saveCurrentSets(store.storage, plan, new Set()), before);
+  assert.equal(store.writes, writes);
+
+  const defining = { ...incoming, spread: '32 HP / 4 Atk / 30 Spe' };
+  plan = prepareCurrentSets(store.storage, [defining]);
+  assert.deepEqual(
+    plan.overwritten.map(({ id }) => id),
+    ['pikachu']
+  );
+  const sets = saveCurrentSets(store.storage, plan, new Set(['pikachu']));
+  assert.deepEqual(sets, [entry(defining)]);
+  assert.equal(store.writes, writes + 1);
+});
+
 test('bulk current-set saves six new snapshots with one write', () => {
   const unrelated = member('Ditto', {
     set: 'Ditto @ Leftovers\n- Protect',
