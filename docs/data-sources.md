@@ -103,7 +103,10 @@ Never place the key in `.env`.
 ## Freshness and scheduling
 
 `.github/workflows/deploy-prod.yml` imports the catalog and deploys it on every
-push to `main`, and once a day at 08:17 UTC. GitHub can delay a scheduled run.
+push to `main`, on manual dispatch, and once a day at 08:17 UTC. GitHub can delay
+a scheduled run. Only scheduled production imports set `YOUTUBE_REFRESH=1` to
+recrawl all configured channel histories. Pushes, manual dispatches, and PR previews
+reuse valid complete discovery snapshots; a cold cache can still require a crawl.
 The workflow serializes publication, and a failed import, tagging run, or build
 stops before deployment so the previously hosted build stays available. A source
 fetch or structural failure throws before the atomic catalog write, so the
@@ -112,9 +115,10 @@ workflow: dev, build, and typecheck generate a missing catalog and otherwise
 leave it in place.
 YouTube discovery stores only a validated, completed snapshot at
 `.cache/catalog/youtube-sources.json`. A keyed online import reuses a valid
-complete snapshot unless `REFRESH=1` requests a complete recrawl, and
-incrementally scans only newly configured channels when a valid cached snapshot
-holds a subset of the allowlist.
+complete snapshot unless `REFRESH=1` or `YOUTUBE_REFRESH=1` requests a complete
+recrawl. `CHECK_SHEET=1` alone reuses discovery. Without a full recrawl flag, the
+importer incrementally scans only newly configured channels when a valid cached
+snapshot holds a subset of the allowlist.
 `OFFLINE=1` never contacts YouTube; with a key it requires a valid snapshot.
 Without a key, an existing valid snapshot is reused, while an absent snapshot
 disables this source with a warning and retains previously imported channel-only
@@ -214,8 +218,11 @@ still imports.
 Exact duplicates share regulation, paste URL, and member species/items. Their
 sheet IDs and report links merge; different paste URLs remain separate variants.
 Imports are atomic, and source files are cached. `REFRESH=1` or `CHECK_SHEET=1`
-fetches every source, the Poch.ms leaderboard included; `OFFLINE=1` requires the
-cache. The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
+refreshes ordinary source indexes, the Poch.ms leaderboard included, and selected
+paste payloads. YouTube discovery refreshes separately with `REFRESH=1` or
+`YOUTUBE_REFRESH=1`; `YOUTUBE_REFRESH=1` alone leaves warm ordinary source and
+paste caches unchanged. `OFFLINE=1` requires the cache.
+The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
 accepted records, 92 of them with regulation `Unknown`, and 194 skipped records
 (reported singles and unsupported formats). The displayed snapshot date
 tracks catalog generation, not independent verification of source claims.

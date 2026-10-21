@@ -104,9 +104,10 @@ Imports replace the catalog atomically. Invalid spreadsheet data fails the
 import. Individual paste failures are reported on the team and in importer output;
 compatible previous sets are retained, otherwise details remain unknown.
 
-The importer also scans the complete public upload histories for [pokeaimMD](https://www.youtube.com/@pokeaimMD)
-and [Pokeaim+](https://www.youtube.com/@pokeaimplus). It admits only direct
-supported paste links with explicit Pokémon Champions doubles context and a
+The importer also scans the complete public upload histories for [pokeaimMD](https://www.youtube.com/@pokeaimMD),
+[Pokeaim+](https://www.youtube.com/@pokeaimplus), [CybertronVGC](https://www.youtube.com/@CybertronVGC),
+[PokeRoy](https://www.youtube.com/@PokeRoyVGC), and [CloverBells](https://www.youtube.com/@CloverBells).
+It admits only direct supported paste links with explicit Pokémon Champions doubles context and a
 supported M-A, M-B, or M-C regulation. Video dates provide sharing dates, not
 result claims; video presenters are not credited as team builders. Paste links
 and both channel/video provenance are retained.
@@ -128,14 +129,15 @@ Load it from Keychain only when running an import:
 
 ```sh
 export YOUTUBE_API_KEY="$(security find-generic-password -s champions-atlas:youtube-api-key -a "$USER" -w)"
-CHECK_SHEET=1 npm run import:catalog # Refresh source data and scan both full histories.
-OFFLINE=1 npm run import:catalog    # Replay from the completed local snapshot.
+CHECK_SHEET=1 YOUTUBE_REFRESH=1 npm run import:catalog # Refresh source data and scan all configured channel histories.
+OFFLINE=1 npm run import:catalog                      # Replay from the completed local snapshot.
 ```
 
 The first full-history scan can take time. `.cache/catalog/youtube-sources.json`
 stores a validated completed snapshot. A keyed online import reuses it unless
-`REFRESH=1` or `CHECK_SHEET=1` requests a full recrawl. A failed enabled scan
-aborts the import without replacing the catalog, including in preview.
+`REFRESH=1` or `YOUTUBE_REFRESH=1` requests a full recrawl. `CHECK_SHEET=1` alone
+refreshes ordinary sources and selected paste payloads but reuses YouTube discovery.
+A failed enabled scan aborts the import without replacing the catalog, including in preview.
 `OFFLINE=1` never contacts YouTube and requires a valid snapshot when a key is
 configured. Without a key, an existing valid snapshot is reused; an absent
 snapshot disables the source with a warning and retains previously imported

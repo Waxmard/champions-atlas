@@ -502,7 +502,8 @@ async function main() {
   }
   const previousTeams = priorCatalog?.teams || [];
   const indexRefresh = process.env.REFRESH === '1' || checkSheet;
-  const youtubeRefresh = process.env.REFRESH === '1';
+  const youtubeRefresh =
+    process.env.REFRESH === '1' || process.env.YOUTUBE_REFRESH === '1';
   const youtubeSource = await loadYoutubeSource({
     cache,
     refresh: youtubeRefresh,

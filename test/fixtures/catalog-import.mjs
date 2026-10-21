@@ -209,6 +209,7 @@ export function runImport(directory, env = {}) {
       OFFLINE: '1',
       CHECK_SHEET: '',
       REFRESH: '',
+      YOUTUBE_REFRESH: '',
       PASTE_LIMIT: '',
       YOUTUBE_API_KEY: '',
       ...env,

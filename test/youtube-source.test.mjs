@@ -29,6 +29,7 @@ import {
   prepareYoutubeRefreshFixture,
   youtubeQuotaFailureConfig,
   writeFetchMock,
+  writeCache,
   writeYoutubeImportFixture,
   youtubeChampionNotes as championNotes,
   youtubePasteUrl as pasteUrl,
@@ -600,6 +601,81 @@ test('imports YouTube variants, shares paste budgets, and retains only compatibl
   assert.ok(!catalog.teams.some(({ pasteUrl: url }) => url === retainedUrl));
 });
 
+test('YouTube-only refresh recrawls discovery without refreshing other sources', async (t) => {
+  for (const flag of ['', '0', '1']) {
+    await t.test(`YOUTUBE_REFRESH=${flag || 'unset'}`, async (t) => {
+      const directory = mkdtempSync(
+        join(tmpdir(), 'atlas-youtube-only-refresh-')
+      );
+      t.after(() => rmSync(directory, { recursive: true, force: true }));
+      const { mainVideo, config, cache, mockEnv } =
+        await prepareYoutubeRefreshFixture(directory);
+      await writeCache(directory, {
+        '0123456789abcdef.json': config.pastes['0123456789abcdef'],
+        '138b4ef886ba95e4.json': config.pastes['138b4ef886ba95e4'],
+      });
+      runImport(directory);
+      assert.ok(Array.isArray((await readCatalog(directory)).teams));
+      const beforeSnapshot = await readFile(snapshotPath(cache));
+      mainVideo.snippet.title = 'Scheduled YouTube refresh';
+      await writeFetchMock(directory, config);
+
+      const output = runImport(directory, {
+        ...mockEnv,
+        OFFLINE: '0',
+        YOUTUBE_API_KEY: apiKey,
+        YOUTUBE_REFRESH: flag,
+      });
+      assert.match(output, /Imported \d+ teams;/);
+      const catalog = await readCatalog(directory);
+      assert.ok(Array.isArray(catalog.teams));
+      const requests = JSON.parse(
+        await readFile(mockEnv.MOCK_FETCH_LOG, 'utf8')
+      );
+      const urls = requests.map((address) => new URL(address));
+      const youtubeRequests = urls.filter(
+        ({ hostname }) => hostname === 'www.googleapis.com'
+      );
+      const unrelatedHosts = new Set([
+        'docs.google.com',
+        'victoryroad.pro',
+        'devoncorp.press',
+        'poch.ms',
+        'pokepast.es',
+        'vrpaste-backend.vercel.app',
+      ]);
+      assert.equal(
+        urls.filter(({ hostname }) => unrelatedHosts.has(hostname)).length,
+        0
+      );
+
+      const refreshedSnapshot = await readFile(snapshotPath(cache));
+      if (flag === '1') {
+        assert.equal(
+          youtubeRequests.filter(({ pathname }) =>
+            pathname.endsWith('/youtube/v3/channels')
+          ).length,
+          youtubeChannels.length
+        );
+        assert.equal(
+          youtubeRequests.filter(({ pathname }) =>
+            pathname.endsWith('/youtube/v3/playlistItems')
+          ).length,
+          youtubeChannels.length
+        );
+        const snapshot = JSON.parse(refreshedSnapshot);
+        assert.equal(
+          snapshot.channels[0].candidates[0].video.title,
+          'Scheduled YouTube refresh'
+        );
+      } else {
+        assert.equal(youtubeRequests.length, 0);
+        assert.deepEqual(refreshedSnapshot, beforeSnapshot);
+      }
+    });
+  }
+});
+
 test('refreshes a shared paste once and leaves catalog and snapshot unchanged on failed crawl', async (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'atlas-youtube-refresh-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
@@ -638,6 +714,12 @@ test('refreshes a shared paste once and leaves catalog and snapshot unchanged on
   assert.match(output, /format_conflict=1/);
   const requests = JSON.parse(await readFile(mockEnv.MOCK_FETCH_LOG, 'utf8'));
   assert.equal(
+    requests.filter(
+      (address) => new URL(address).hostname === 'www.googleapis.com'
+    ).length,
+    0
+  );
+  assert.equal(
     requests.filter((address) => address === `${sharedUrl}/json`).length,
     1
   );
@@ -658,7 +740,8 @@ test('refreshes a shared paste once and leaves catalog and snapshot unchanged on
     runImport(directory, {
       ...failureEnv,
       OFFLINE: '0',
-      REFRESH: '1',
+      CHECK_SHEET: '1',
+      YOUTUBE_REFRESH: '1',
       YOUTUBE_API_KEY: apiKey,
     });
   } catch (error) {
