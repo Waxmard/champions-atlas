@@ -1,3 +1,5 @@
+import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
+
 export interface SpreadSource {
   pasteUrl: string;
   videoUrls: string[];
@@ -511,6 +513,110 @@ export function compareTeams(
     currentOrder ||
     priorityCompare(ea.priority, eb.priority) ||
     tiebreak ||
+    b.publishedAt.localeCompare(a.publishedAt) ||
+    a.id.localeCompare(b.id)
+  );
+}
+
+const browsePriority = (priority: Priority): Priority => [
+  priority[0] === 0
+    ? priority[1] === 1
+      ? 1
+      : 0
+    : priority[0] === 1
+      ? 2
+      : priority[0] === 3
+        ? 3
+        : priority[0] === 2
+          ? priority[1] === 0
+            ? 4
+            : priority[1] === 1
+              ? 5
+              : 6
+          : priority[0] === 4
+            ? 7
+            : priority[0] === 5
+              ? 8
+              : 9,
+  priority[1],
+  priority[2],
+  priority[3],
+  priority[4],
+];
+
+function isDirectYoutubeVideo(value: string): boolean {
+  try {
+    const url = new URL(value);
+    if (url.protocol !== 'https:') return false;
+    let id: string | null = null;
+    if (
+      ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname)
+    ) {
+      if (url.pathname === '/watch') id = url.searchParams.get('v');
+      else
+        id =
+          /^\/(?:live|shorts)\/([A-Za-z0-9_-]{11})\/?$/.exec(
+            url.pathname
+          )?.[1] ?? null;
+    } else if (url.hostname === 'youtu.be') {
+      id = /^\/([A-Za-z0-9_-]{11})\/?$/.exec(url.pathname)?.[1] ?? null;
+    }
+    return !!id && /^[A-Za-z0-9_-]{11}$/.test(id);
+  } catch {
+    return false;
+  }
+}
+
+const browseCache = new WeakMap<
+  Team,
+  { current: string; resource: number; priority: Priority }
+>();
+
+function browseRankingOf(team: Team, current: string) {
+  const cached = browseCache.get(team);
+  if (cached?.current === current) return cached;
+
+  const completeEvs =
+    team.members.length === 6 &&
+    team.members.every((member) =>
+      isCompleteSpread(parseChampionsSpread(member.spread))
+    );
+  const hasVideo =
+    team.reports.some((report) => isDirectYoutubeVideo(report.sourceUrl)) ||
+    team.members.some((member) =>
+      member.spreadSource?.videoUrls.some(isDirectYoutubeVideo)
+    );
+  let priority: Priority = [9, 0, 0, 0, 0];
+  for (const report of team.reports) {
+    const candidate = browsePriority(
+      evidence(report, team.regulation, current).priority
+    );
+    if (priorityCompare(candidate, priority) < 0) priority = candidate;
+  }
+  const result = {
+    current,
+    resource: completeEvs ? (hasVideo ? 0 : 1) : hasVideo ? 2 : 3,
+    priority,
+  };
+  browseCache.set(team, result);
+  return result;
+}
+
+export function compareBrowseTeams(a: Team, b: Team, current: string): number {
+  const customOrder =
+    Number(isCustomRulesTeam(a)) - Number(isCustomRulesTeam(b));
+  if (customOrder) return customOrder;
+  const unknownOrder =
+    Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
+  if (unknownOrder) return unknownOrder;
+
+  const ra = browseRankingOf(a, current);
+  const rb = browseRankingOf(b, current);
+  return (
+    scalarCompare(ra.resource, rb.resource) ||
+    scalarCompare(ra.priority[0], rb.priority[0]) ||
+    Number(b.regulation === current) - Number(a.regulation === current) ||
+    priorityCompare(ra.priority, rb.priority) ||
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)
   );

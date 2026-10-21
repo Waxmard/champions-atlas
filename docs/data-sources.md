@@ -248,13 +248,32 @@ a team remains legal or competitive now.
 
 ## Ranking and discovery
 
-The comparator orders non-custom teams ahead of known custom-rule records, known
-regulations ahead of Unknown, then achievement band, current-regulation status,
-and credential merit. A supplied recommendation tiebreak follows merit;
-publication time and team ID settle remaining ties. Newest shared is a deliberate
-date-only sort. Unknown regulation remains below every known regulation.
+Automatic team and set suggestions order non-custom teams ahead of known
+custom-rule records, known regulations ahead of Unknown, then achievement band,
+current-regulation status, and credential merit. A supplied recommendation
+tiebreak follows merit; publication time and team ID settle remaining ties.
+**Newest shared** is a deliberate date-only sort.
 
-Achievement bands, from highest to lowest, are: (1) Champions Champion Tier or
+Browse's **Recommended** order keeps the same custom-rule and unknown-regulation
+guards, then ranks resource groups: complete EVs with a video, complete EVs
+without a video, a video without complete EVs, and neither. Complete EVs require
+exactly six Pokémon with valid 66-point allocations, with each stat from 0 to 32;
+Nature is not required. Attributed imported EV additions count as working sets.
+A video is a direct HTTPS YouTube watch, live, Shorts, or youtu.be link with a
+valid 11-character video ID, attached to a report or EV-addition attribution.
+Channel and playlist links do not count. Multiple videos count the same as one.
+
+Within each resource group, Browse ranks Champion Tier or Champions positions
+1–100, Master Ball 1, qualifying major finishes, qualifying community finishes,
+Master Ball 2, Champions positions 101–1,000, Showdown positions 1–100, eligible
+lower Master Ball results, other reported results, then no result. Current
+regulation comes before credential merit within each band, followed by
+publication time and team ID. Every report can supply the team's best Browse
+band. Showdown Bo1, Bo3, and unspecified labels receive the same qualification;
+none implies closed team sheets. These Browse rules do not change evidence
+labels or automatic suggestions.
+
+For automatic suggestions, achievement bands, from highest to lowest, are: (1) Champions Champion Tier or
 explicit Champions global, peak, or season-finish position 1–100, then Master Ball
 1; (2) qualifying major-event finishes; (3) Master Ball 2, Champions positions
 101–1,000, then Showdown positions 1–100; (4) supported community finishes; (5)
