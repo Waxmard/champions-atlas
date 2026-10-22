@@ -5,16 +5,14 @@
 #   scripts/check-line-limit.sh            # scan the repo source set (CI)
 #   scripts/check-line-limit.sh FILE...    # check only the given files (local hook)
 #
-# Override the cap with LINE_LIMIT (default 800).
 set -euo pipefail
 
-LIMIT="${LINE_LIMIT:-800}"
+LIMIT=800
 
 # Folders this check never governs, even when the file matches the source set.
 # Substring match, so 'src/data/' skips everything beneath it.
 EXCLUDE_DIRS=(
   'node_modules/'   # vendored
-  '/migrations/'    # generated
   '/fixtures/'      # test data
 )
 

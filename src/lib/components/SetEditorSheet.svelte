@@ -162,11 +162,7 @@
       ? inGameMember
       : null
   );
-  const filteredPokemon = $derived(
-    suggestions.pokemon
-      .filter((option) => norm(option.pokemon, pokemonQuery))
-      .slice(0, 5)
-  );
+  const filteredPokemon = $derived(suggestions.pokemon.slice(0, 5));
   const filteredItems = $derived(
     suggestions.items
       .filter((option) => norm(option.value, itemQuery))
@@ -182,10 +178,9 @@
       ? form.nature
       : null
   );
+  const currentSpread = $derived(parseChampionsSpread(form.spread));
   const currentSpreadTotal = $derived(
-    parseChampionsSpread(form.spread)
-      ? championsSpreadTotal(parseChampionsSpread(form.spread)!)
-      : 0
+    currentSpread ? championsSpreadTotal(currentSpread) : 0
   );
   const subViewTitle = $derived(
     {
@@ -744,7 +739,7 @@
         {/if}
       </section>
     {:else if currentView === 'text'}
-      <section aria-label="Showdown set text" class="grid gap-3">
+      <div class="grid gap-3">
         <textarea
           id="set-raw-textarea"
           aria-label="Showdown set text"
@@ -762,7 +757,7 @@
               flush();
             }
           }}></textarea>
-      </section>
+      </div>
     {/if}
   </div>
   <footer

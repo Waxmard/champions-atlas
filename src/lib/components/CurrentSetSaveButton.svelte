@@ -194,7 +194,9 @@
       } else if (memberIndex === undefined) {
         statusMessage = "Recorded this team's in-game sets on this device.";
       } else {
-        statusMessage = `Recorded the in-game ${browsePokemon(pokemon ?? plan.incoming[0]!.member.pokemon)} set on this device.`;
+        const incoming = plan.incoming[0];
+        if (!incoming) throw new Error('no incoming set to record');
+        statusMessage = `Recorded the in-game ${browsePokemon(pokemon ?? incoming.member.pokemon)} set on this device.`;
       }
       if (changed) {
         void pushNow();
@@ -244,10 +246,11 @@
       }
       const latest = liveTeam();
       if (!latest) return;
-      const selectedMembers: Member[] =
-        memberIndex === undefined
-          ? latest.members
-          : [latest.members[memberIndex]!];
+      const member =
+        memberIndex === undefined ? undefined : latest.members[memberIndex];
+      if (memberIndex !== undefined && !member)
+        throw new Error('member not found');
+      const selectedMembers: Member[] = member ? [member] : latest.members;
       const plan = prepareCurrentSets(localStorage, selectedMembers);
       if (!plan.overwritten.length && !hasNewIncoming(plan)) {
         registry.refresh();

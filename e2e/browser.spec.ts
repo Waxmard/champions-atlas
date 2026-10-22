@@ -121,6 +121,7 @@ test(
       .first()
       .getAttribute('href');
     expect(detailHref).toBeTruthy();
+    if (!detailHref) throw new Error('team card link has no href');
     await page.screenshot({
       path: testInfo.outputPath('filtered-catalog.png'),
       fullPage: false,
@@ -131,7 +132,7 @@ test(
       await cards.first().getByRole('link').first().click();
     }
     await expect(page).toHaveURL(
-      new RegExp(`${detailHref!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
+      new RegExp(`${detailHref.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`)
     );
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(firstName);
     await expect(
@@ -196,7 +197,8 @@ test('invalid filters stay explicit; team deep links and missing teams work', as
     .first();
   const href = await card.getByRole('link').first().getAttribute('href');
   expect(href).toBeTruthy();
-  await page.goto(href!);
+  if (!href) throw new Error('team card link has no href');
+  await page.goto(href);
   await page.reload();
   await expect(
     page.getByRole('heading', { name: 'Results & sources' })
@@ -226,6 +228,7 @@ test('QoL picker clears untyped keyboard choices and permits reselecting', async
   await expect(remove).toBeVisible();
   const label = await remove.getAttribute('aria-label');
   expect(label).toBeTruthy();
+  if (!label) throw new Error('remove button is missing its aria-label');
   await expect(picker).toHaveValue('');
   await remove.click();
   await expect(remove).toHaveCount(0);
@@ -235,7 +238,7 @@ test('QoL picker clears untyped keyboard choices and permits reselecting', async
   ).toBeVisible();
   await picker.press('Enter');
   await expect(
-    page.getByRole('button', { name: label!, exact: true })
+    page.getByRole('button', { name: label, exact: true })
   ).toBeVisible();
   await expect(picker).toHaveValue('');
 });

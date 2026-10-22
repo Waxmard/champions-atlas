@@ -5,7 +5,7 @@ import { pushNow } from './sync.svelte';
 import { addCatalogToWishlist, useCatalogTeam } from './team-collections';
 import { activeTeamKey, readSavedTeams, type SavedTeam } from './workbench';
 
-export const SAVE_FAILURE =
+const SAVE_FAILURE =
   'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
 
 export function readSavedTeamsState(): {

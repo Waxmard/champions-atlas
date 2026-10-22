@@ -31,7 +31,7 @@
     errorMessage = $state(''),
     pendingId = $state('');
   const catalogIds = $derived(
-    new Set((data.catalog.teams as Team[]).map((team) => team.id))
+    new Set(data.catalog.teams.map((team) => team.id))
   );
 
   function displayTeam(entry: SavedTeam): Team {

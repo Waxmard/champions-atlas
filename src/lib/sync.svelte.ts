@@ -35,7 +35,7 @@ import { mergeSavedTeams, teamsSnapshot } from './team-sync.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
 
-export type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
+type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
 
 export const sync = $state({
   configured: false,
@@ -348,6 +348,7 @@ async function drain(generation: number, id: string) {
     const recoveryIds = new Map<string, string>();
     try {
       if (!db || !valid(generation, id)) return;
+      const firestore = db;
       const cached = record(account(id));
       if (!valid(generation, id)) return;
       if (cached) setsBase = cached.setsBase;
@@ -391,7 +392,7 @@ async function drain(generation: number, id: string) {
               if (!valid(generation, id))
                 throw new Error('Sync account changed.');
               const child = await transaction
-                .get(doc(db!, 'users', id, 'teams', teamId))
+                .get(doc(firestore, 'users', id, 'teams', teamId))
                 .catch(() => {
                   throw new Error(cloudReadError);
                 });
@@ -419,7 +420,7 @@ async function drain(generation: number, id: string) {
             if (!valid(generation, id))
               throw new Error('Sync account changed.');
             const child = await transaction.get(
-              doc(db!, 'users', id, 'pokemonSets', setId)
+              doc(firestore, 'users', id, 'pokemonSets', setId)
             );
             if (!valid(generation, id))
               throw new Error('Sync account changed.');
@@ -457,14 +458,17 @@ async function drain(generation: number, id: string) {
             ) {
               if (!valid(generation, id))
                 throw new Error('Sync account changed.');
-              transaction.set(doc(db!, 'users', id, 'teams', team.id), team);
+              transaction.set(
+                doc(firestore, 'users', id, 'teams', team.id),
+                team
+              );
             }
           }
           for (const teamId of manifest ?? []) {
             if (!mergedIds.includes(teamId)) {
               if (!valid(generation, id))
                 throw new Error('Sync account changed.');
-              transaction.delete(doc(db!, 'users', id, 'teams', teamId));
+              transaction.delete(doc(firestore, 'users', id, 'teams', teamId));
             }
           }
           if (!valid(generation, id)) throw new Error('Sync account changed.');
@@ -489,7 +493,7 @@ async function drain(generation: number, id: string) {
               if (!valid(generation, id))
                 throw new Error('Sync account changed.');
               transaction.set(
-                doc(db!, 'users', id, 'pokemonSets', entry.id),
+                doc(firestore, 'users', id, 'pokemonSets', entry.id),
                 entry
               );
             }
@@ -608,6 +612,7 @@ export function initSync(): void {
   const app = initializeApp(config);
   auth = getAuth(app);
   db = getFirestore(app);
+  const firestore = db;
   if (
     dev &&
     import.meta.env.VITE_FIREBASE_EMULATORS === '1' &&
@@ -662,7 +667,7 @@ export function initSync(): void {
       sync.user = user;
       const generation = session;
       unsubscribe = onSnapshot(
-        doc(db!, 'users', uid),
+        doc(firestore, 'users', uid),
         { includeMetadataChanges: true },
         (snapshot) => {
           if (generation !== session || snapshot.metadata.hasPendingWrites)
@@ -678,7 +683,7 @@ export function initSync(): void {
         }
       );
       unsubscribeSets = onSnapshot(
-        doc(db!, 'users', uid, 'pokemonSetState', 'manifest'),
+        doc(firestore, 'users', uid, 'pokemonSetState', 'manifest'),
         { includeMetadataChanges: true },
         (snapshot) => {
           if (generation !== session || snapshot.metadata.hasPendingWrites)

@@ -27,7 +27,6 @@
     normalize,
     regulationLabel,
     type Member,
-    type Team,
   } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
@@ -77,7 +76,7 @@
     showSwapPicker = $state(false),
     swapUnavailable = $state(false),
     appliedRevision = 0;
-  const teams = $derived(data.catalog.teams as Team[]);
+  const teams = $derived(data.catalog.teams);
   const allSpecies = $derived(
     [
       ...new Set(teams.flatMap((team) => team.members.map((m) => m.pokemon))),
@@ -247,7 +246,7 @@
   ): boolean {
     if (!draft) return false;
     try {
-      const latest = collections.liveInUseTeam(localStorage, draft!.id);
+      const latest = collections.liveInUseTeam(localStorage, draft.id);
       if (!latest || contentSnapshot(latest) !== baseline) {
         stale = true;
         message = '';
@@ -258,7 +257,8 @@
       const next = patch(latest);
       const pendingName = draft.name;
       saved = collections.teamsInUse(saveTeam(localStorage, next));
-      const persisted = saved.find(({ id }) => id === next.id)!;
+      const persisted = saved.find(({ id }) => id === next.id);
+      if (!persisted) throw new Error('saved team is missing after saving');
       baseline = contentSnapshot(persisted);
       draft = structuredClone($state.snapshot(persisted));
       if (!saveName) draft.name = pendingName;
@@ -366,11 +366,13 @@
       ?.focus({ preventScroll: true });
   const openSetEditor = (index: number, field: EditableSetField) => {
     if (editing) return;
+    const member = draft?.members[index];
+    if (!member) return;
     pendingSpecies = null;
     activeEditIndex = index;
     activeEditField = field;
     editorPending = false;
-    editorMember = structuredClone($state.snapshot(draft!.members[index]));
+    editorMember = structuredClone($state.snapshot(member));
   };
   function openSetDialog(node: HTMLDialogElement) {
     const restoreScroll = lockBodyScroll();
@@ -770,7 +772,7 @@
   {/if}
 
   {#if activeEditIndex !== null && draft && editorMember}
-    {@const editIndex = activeEditIndex!}
+    {@const editIndex = activeEditIndex}
     <dialog
       use:openSetDialog
       oncancel={handleDialogCancel}
@@ -782,7 +784,7 @@
         member={editorMember}
         originalMembers={draft.original.members}
         originalSlotMember={draft.original.members[editIndex]}
-        teams={data.catalog.teams as Team[]}
+        teams={data.catalog.teams}
         currentRegulation={current}
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}

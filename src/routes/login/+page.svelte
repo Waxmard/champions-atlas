@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Compass from '@lucide/svelte/icons/compass';
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import { Button } from '#lib/components/ui/button/index.js';
   import { signIn, sync } from '#lib/sync.svelte.js';
@@ -17,7 +16,7 @@
 >
   <div class="w-full max-w-sm">
     <div class="mb-5 flex justify-center">
-      <Compass class="size-14 text-base-content" aria-hidden="true" />
+      <img src="/favicon.svg" alt="" width="64" height="69" />
     </div>
     <div class="plate p-6">
       <h1

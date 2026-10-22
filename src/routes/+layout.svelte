@@ -39,7 +39,7 @@
       .split(/\s+/)
       .filter(Boolean)
       .slice(0, 2)
-      .map((part) => part[0]!.toUpperCase())
+      .map((part) => part.charAt(0).toUpperCase())
       .join('') || '?'
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
@@ -298,8 +298,9 @@
   <main id="main" class="flex min-h-svh items-center justify-center">
     <LoaderCircle
       class="size-6 animate-spin text-base-content/60"
-      aria-label="Loading"
+      aria-hidden="true"
     />
+    <span class="sr-only" role="status">Loading…</span>
   </main>
 {:else}
   <header
@@ -309,7 +310,11 @@
     <div
       class="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4 sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
     >
-      <a href={brandHref} class="nav-pill text-base-content hover:bg-base-200">
+      <a
+        href={brandHref}
+        class="nav-pill justify-start text-base-content hover:bg-base-200 sm:justify-center"
+      >
+        <img src="/favicon.svg" alt="" width="32" height="35" />
         <span
           class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
           >Champion's Atlas</span

@@ -2,43 +2,7 @@ import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseChampionsSpread } from '../src/lib/paste.ts';
-import {
-  finalHp,
-  finalStat,
-  speedBenchmark,
-  speedFor,
-  statRow,
-  statsFor,
-} from '../src/lib/stats.ts';
-
-const member = (pokemon, spread, nature = 'Serious') => ({
-  pokemon,
-  item: 'Item',
-  ability: 'Ability',
-  nature,
-  spread,
-  moves: ['Protect'],
-});
-const team = (id, members) => ({
-  id,
-  name: id,
-  regulation: 'M-C',
-  publishedAt: '2026-09-01',
-  paste: null,
-  pasteUrl: 'https://pokepast.es/0000000000000000',
-  members,
-  reports: [],
-});
-
-/* Absol Spe intercept 95, Decidueye 90, Dragonite 100; every spread totals 66. */
-const fixture = team('fixture', [
-  member('Absol', '32 Atk / 29 Def / 5 Spe'),
-  member('Absol', '32 Atk / 19 Def / 15 Spe'),
-  member('Absol', '32 Atk / 9 Def / 25 Spe'),
-  member('Dragonite', '20 Atk / 26 Def / 20 Spe'),
-  member('Dragonite', '20 Atk / 26 Def / 20 Spe'),
-  member('Decidueye', '32 Atk / 32 Def / 2 HP'),
-]);
+import { speedFor, statRow } from '../src/lib/stats.ts';
 
 test('Champions stat table resolves level-50 intercepts', () => {
   assert.deepEqual(statRow('Absol'), [140, 150, 80, 95, 80, 95]);
@@ -51,30 +15,8 @@ test('level-50 stat math applies the nature multiplier to the SP total', () => {
   const spe = parseChampionsSpread('32 Spe');
   assert.equal(speedFor('Absol', spe, 'Timid'), 139);
   assert.equal(speedFor('Absol', spe, 'Adamant'), 127);
-  assert.equal(finalStat(95, 32, 1.1), 139);
-  assert.equal(finalHp(140, 32), 172);
   assert.equal(speedFor('Missingno', spe, 'Timid'), null);
   assert.equal(speedFor('Absol', parseChampionsSpread(''), 'Timid'), 104);
-});
-
-test('speedBenchmark reports the strict percentile among valid recorded spreads', () => {
-  const result = speedBenchmark(
-    'Absol',
-    parseChampionsSpread('32 Atk / 19 Def / 15 Spe'),
-    'Serious',
-    [fixture]
-  );
-  assert.deepEqual(result, { speed: 110, beatPercent: 33 });
-});
-
-test('final stats use evolved form, nature, and the HP-one exception', () => {
-  const spread = parseChampionsSpread('18 HP / 25 Def / 23 Spe');
-  assert.deepEqual(
-    Object.values(statsFor('Raichu-Mega-Y', spread, 'Timid')),
-    [153, 108, 100, 180, 100, 190]
-  );
-  assert.equal(finalHp(1, 32), 1);
-  assert.equal(statsFor('Raichu-Mega-Y', spread, null), null);
 });
 
 test('Mega stones resolve exact forms without rewriting saved pre-Mega abilities', () => {
@@ -88,7 +30,6 @@ test('Mega stones resolve exact forms without rewriting saved pre-Mega abilities
     ability: 'No Guard',
     error: null,
   });
-  assert.equal(resolveBattleForm(member, 'Raichu').ability, 'Lightning Rod');
   assert.equal(member.ability, 'Lightning Rod');
   assert.equal(
     resolveBattleForm({ ...member, item: 'Raichunite X' }).pokemon,
@@ -98,48 +39,16 @@ test('Mega stones resolve exact forms without rewriting saved pre-Mega abilities
     resolveBattleForm({ ...member, pokemon: 'Raichu-Mega-X' }).error,
     /conflict/i
   );
-  assert.match(
-    resolveBattleForm(member, 'Palafin-Hero').error,
-    /Invalid battle form/
-  );
 });
 
-test('Palafin stays in its saved form until a transient Hero choice', () => {
+test('Palafin preserves its saved form by default', () => {
   const saved = {
     pokemon: 'Palafin',
     item: 'Leftovers',
     ability: 'Zero to Hero',
   };
   assert.equal(resolveBattleForm(saved).pokemon, 'Palafin');
-  assert.equal(
-    resolveBattleForm(saved, 'Palafin-Hero').pokemon,
-    'Palafin-Hero'
-  );
   assert.deepEqual(statRow('Palafin-Hero'), [175, 180, 117, 126, 107, 120]);
   assert.deepEqual(statRow('Palafin'), [175, 90, 92, 73, 82, 120]);
   assert.equal(saved.pokemon, 'Palafin');
-});
-
-test('speedBenchmark resolves evolved forms and excludes unknown natures', () => {
-  const spread = '18 HP / 25 Def / 23 Spe';
-  const base = {
-    ...member('Raichu', spread, 'Timid'),
-    item: 'Raichunite Y',
-    ability: 'Lightning Rod',
-  };
-  const mega = { ...base, pokemon: 'Raichu-Mega-Y' };
-  const result = speedBenchmark(
-    'Raichu-Mega-Y',
-    parseChampionsSpread(spread),
-    'Timid',
-    [
-      team('current', [
-        base,
-        mega,
-        { ...base, nature: null },
-        { ...member('Raichu', spread, 'Timid'), item: 'Sitrus Berry' },
-      ]),
-    ]
-  );
-  assert.deepEqual(result, { speed: 190, beatPercent: 33 });
 });

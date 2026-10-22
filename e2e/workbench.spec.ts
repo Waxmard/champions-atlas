@@ -1,7 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 import {
   expectDetailsSubView,
   expectMovesSubView,
+  missing,
   openWorkbench,
   peter,
 } from './workbench-helpers';
@@ -18,6 +20,10 @@ async function chooseOption(page: Page, picker: Locator, name: string) {
 }
 
 const storageKey = 'champions-atlas:teams:v1';
+const raichuTeam =
+  catalog.teams.find((team) =>
+    team.members.some((member) => member.pokemon === 'Raichu-Mega-Y')
+  ) ?? missing('Raichu-Mega-Y team');
 
 async function expectOverviewHub(editor: Locator) {
   for (const name of [
@@ -45,10 +51,11 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   page.on('pageerror', (error) => errors.push(error.message));
   await openWorkbench(page);
   const workbenchUrl = page.url();
-  const original = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0].original,
-    storageKey
-  );
+  const original = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0].original;
+  }, storageKey);
   expect(original.paste).toMatch(/Level:/);
   expect(
     original.members.every((member: { spread: string }) => !!member.spread)
@@ -60,19 +67,21 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   });
   const originalWeavile = peter.members.find(
     (member) => member.pokemon === 'Weavile'
-  )!;
+  );
+  if (!originalWeavile?.item || !originalWeavile.ability)
+    throw new Error('peter is missing the Weavile set');
   const beforeStorage = await page.evaluate(
     (key) => localStorage.getItem(key),
     storageKey
   );
   await expect(weavile.locator('[data-item-icon]')).toBeVisible();
   await expect(
-    weavile.getByText(originalWeavile.item!, { exact: true })
+    weavile.getByText(originalWeavile.item, { exact: true })
   ).toBeVisible();
   await expect(
     weavile
       .getByRole('button', { name: 'Edit Weavile ability', exact: true })
-      .getByText(originalWeavile.ability!, { exact: true })
+      .getByText(originalWeavile.ability, { exact: true })
   ).toBeVisible();
   for (const move of originalWeavile.moves)
     await expect(weavile.getByText(move, { exact: true })).toBeVisible();
@@ -136,9 +145,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .filter({ hasNotText: initialMoves[0] })
     .first();
   await expect(replacement).toBeVisible();
-  const replacementText = (await replacement.textContent())!
-    .replace(/Original/g, '')
-    .trim();
+  const replacementRaw = await replacement.textContent();
+  if (!replacementRaw) throw new Error('suggestion has no text');
+  const replacementText = replacementRaw.replace(/Original/g, '').trim();
   await replacement.click();
   await expect(move1).toHaveValue(replacementText);
 
@@ -154,10 +163,11 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await move3.press('Enter');
   await expect(move3).toHaveValue('Refilled Move');
 
-  const autosaved = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const autosaved = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(
     autosaved.members.find(
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
@@ -173,10 +183,11 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText('Custom saved item');
   await expect(weavile).toContainText('Test Move');
-  const storedAfterSave = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const storedAfterSave = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(storedAfterSave.original).toEqual(original);
   expect(
     storedAfterSave.members.filter(
@@ -257,9 +268,9 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
     .getByRole('button')
     .filter({ hasNotText: initialMoves[0] })
     .first();
-  const replacementText = (await replacement.textContent())!
-    .replace(/Original/g, '')
-    .trim();
+  const replacementRaw = await replacement.textContent();
+  if (!replacementRaw) throw new Error('suggestion has no text');
+  const replacementText = replacementRaw.replace(/Original/g, '').trim();
   await replacement.click();
   await expect(moveInputs[0]).toHaveValue(replacementText);
   await editor
@@ -299,10 +310,11 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
   ).toHaveCount(0);
   await page.getByRole('button', { name: 'Clear selected Pokémon' }).click();
   await expect(sneasler).toBeVisible();
-  const swapped = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const swapped = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(
     swapped.members.some(
       (member: { pokemon: string }) => member.pokemon === 'Sneasler'
@@ -367,6 +379,189 @@ test('page swap reports no overlap and clears its selection', async ({
   await page.getByRole('button', { name: 'Clear selected Pokémon' }).click();
   await expect(noOverlap).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Weavile set' })).toBeVisible();
+});
+
+test('manual EV disclosure stays within the viewport and supports keyboard and touch', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${raichuTeam.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    raichuTeam.name
+  );
+  const card = page.getByRole('region', {
+    name: 'Raichu-Mega-Y set',
+    exact: true,
+  });
+  await card
+    .getByRole('button', { name: 'Edit Raichu-Mega-Y EVs', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Raichu-Mega-Y set',
+    exact: true,
+  });
+  const suggestions = editor.getByRole('region', {
+    name: 'EV spread suggestions',
+  });
+  expect(
+    await editor.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth
+    )
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth
+    )
+  ).toBe(true);
+
+  const toggle = editor.locator('[data-ev-toggle]');
+  const manual = toggle.locator('xpath=..');
+  const sliders = editor.getByLabel('HP EV slider', { exact: true });
+  const numberInput = editor.getByLabel('HP EV', { exact: true });
+  await expect(toggle).toHaveText('Adjust EVs manually');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await expect(sliders).toBeHidden();
+  await expect(numberInput).toBeHidden();
+  await expect(
+    editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
+  ).toBeVisible();
+  await expect(
+    suggestions.getByText('Suggested spreads', { exact: true })
+  ).toBeVisible();
+
+  await toggle.focus();
+  await toggle.press('Enter');
+  await expect(manual).toHaveAttribute('open', '');
+  await expect(sliders).toBeVisible();
+  await toggle.press('Space');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).not.toHaveAttribute('open', '');
+  expect(
+    await editor.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth
+    )
+  ).toBe(true);
+});
+
+test('catalog spreads expand in ranked batches and autosave a newly revealed spread', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${raichuTeam.id}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    raichuTeam.name
+  );
+  const card = page.getByRole('region', {
+    name: 'Raichu-Mega-Y set',
+    exact: true,
+  });
+  await card
+    .getByRole('button', { name: 'Edit Raichu-Mega-Y EVs', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Raichu-Mega-Y set',
+    exact: true,
+  });
+  const suggestions = editor.getByRole('region', {
+    name: 'EV spread suggestions',
+  });
+  const rows = suggestions.getByRole('button', {
+    name: /^Use Timid spread .+$/,
+  });
+  const catalogRows = rows
+    .filter({ hasText: 'catalog team' })
+    .filter({ hasNotText: /Original team|My in-game set/ });
+  const spreadKeys = async (list: Locator) =>
+    Promise.all(
+      (await list.all()).map(async (row) =>
+        (await row.locator('span.font-mono').allTextContents()).join(' / ')
+      )
+    );
+  const storageBeforeExpansion = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    storageKey
+  );
+
+  const showMore = suggestions.getByRole('button', {
+    name: 'Show more',
+    exact: true,
+  });
+  await expect(showMore).toBeVisible();
+  const batch = 5;
+  const initialCatalogCount = await catalogRows.count();
+  expect(initialCatalogCount).toBeGreaterThan(0);
+  expect(initialCatalogCount).toBeLessThanOrEqual(batch);
+  await expect(rows).toHaveCount(initialCatalogCount + 1);
+  await expect(rows.first()).toContainText('Original team');
+  const initialRows = await spreadKeys(rows);
+
+  await showMore.click();
+  await expect(async () => {
+    expect(await catalogRows.count()).toBeGreaterThan(initialCatalogCount);
+  }).toPass();
+  const firstExpandedRows = await spreadKeys(rows);
+  expect(firstExpandedRows.slice(0, initialRows.length)).toEqual(initialRows);
+  const firstAddedCount = (await catalogRows.count()) - initialCatalogCount;
+  expect(firstAddedCount).toBeLessThanOrEqual(batch);
+  const newlyRevealedRow = catalogRows.nth(initialCatalogCount);
+  const newlyRevealedSpread = await newlyRevealedRow
+    .locator('span.font-mono')
+    .allTextContents();
+
+  let previousRows = firstExpandedRows;
+  let previousCatalogCount = await catalogRows.count();
+  while (await showMore.count()) {
+    await showMore.click();
+    await expect(async () => {
+      expect(await catalogRows.count()).toBeGreaterThan(previousCatalogCount);
+    }).toPass();
+    const currentCatalogCount = await catalogRows.count();
+    expect(currentCatalogCount - previousCatalogCount).toBeLessThanOrEqual(
+      batch
+    );
+    const currentRows = await spreadKeys(rows);
+    expect(currentRows.slice(0, previousRows.length)).toEqual(previousRows);
+    expect(new Set(currentRows).size).toBe(currentRows.length);
+    previousRows = currentRows;
+    previousCatalogCount = currentCatalogCount;
+  }
+  expect(new Set(previousRows).size).toBe(previousRows.length);
+  await expect(showMore).toHaveCount(0);
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(storageBeforeExpansion);
+  await expect(newlyRevealedRow).toBeVisible();
+
+  await newlyRevealedRow.click();
+  for (const chip of newlyRevealedSpread) {
+    const match = /^(\d+) (\w+)$/.exec(chip);
+    if (!match) throw new Error('unparsable spread chip ' + chip);
+    const [, value, stat] = match;
+    await expect(editor.getByLabel(`${stat} EV`, { exact: true })).toHaveValue(
+      value
+    );
+  }
+  const storedAfterSelection = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
+  const savedMember = storedAfterSelection.members.find(
+    (member: { pokemon: string }) => member.pokemon === 'Raichu-Mega-Y'
+  );
+  expect(savedMember.spread).toBe(newlyRevealedSpread.join(' / '));
+  expect(savedMember.nature).toBe('Timid');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).not.toBe(storageBeforeExpansion);
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
 });
 
 test('nature chips on the EV page set the nature and mark affected stats', async ({
@@ -528,7 +723,9 @@ for (const mutation of ['changed', 'deleted'] as const) {
       });
       await page.evaluate(
         ({ key, mutation }) => {
-          const teams = JSON.parse(localStorage.getItem(key)!);
+          const raw = localStorage.getItem(key);
+          if (!raw) throw new Error('no saved teams');
+          const teams = JSON.parse(raw);
           if (mutation === 'deleted') teams.splice(0, 1);
           else teams[0].name = 'Changed elsewhere';
           localStorage.setItem(key, JSON.stringify(teams));
@@ -581,10 +778,11 @@ test('pagehide flushes active editor input while preserving failed pending name'
   });
   await editor.getByLabel('Item', { exact: true }).fill('Pagehide item');
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-  const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const stored = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(stored.name).toBe(peter.name);
   expect(
     stored.members.find(

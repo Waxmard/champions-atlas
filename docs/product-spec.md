@@ -5,8 +5,8 @@ phone. Existing spreadsheets are awkward to browse, and missingNO loses filters
 when opening a team. The product focuses on reliable, fast discovery.
 
 This document records agreed behavior that lives nowhere else: discovery and
-browsing, saved-team editing and similarity rules, benchmark rules, and acceptance
-criteria. Import and result-ordering rules are in
+browsing, saved-team editing and similarity rules, and acceptance criteria.
+Import and result-ordering rules are in
 [data sources](data-sources.md), the synced record model is in
 [Firebase deployment and sync](firebase.md), and user-facing behavior, tooling,
 and commands are in the [README](../README.md) and `AGENTS.md`.
@@ -176,8 +176,13 @@ The two-Mega limit applies to Pokémon replacement suggestions.
 EV spread suggestions include only complete, standard pairs whose Nature matches
 the selected Nature and whose spread resolves to the current battle form.
 Matching immutable original and in-game pairs come first. Exact duplicate pairs
-appear once with their source labels combined. The list contains up to five
-additional unique catalog pairs after up to two matching saved-source pairs.
+appear once with their source labels combined. The initial list contains up to
+five additional unique catalog pairs after up to two matching saved-source pairs.
+**Show more** appends up to five additional catalog pairs in the same ranked
+order. It disappears when no eligible pairs remain and focuses the first newly
+revealed row. Expansion does not change saved teams. Selecting a spread, adjusting
+EVs, or selecting the same Nature preserves the expanded depth. Selecting a
+different Nature or reopening the EV editor resets the catalog allowance to five.
 Fewer rows appear when eligible recorded data is insufficient. Matching catalog
 pairs rank by the best actual source team's shared teammates and matching set
 details for those teammates, then by published results, regulation, and credentials.
@@ -189,22 +194,10 @@ Original field suggestions use exact Pokémon identity or a successfully
 resolved matching battle form, never unrelated base forms. In-game field values
 follow original values and precede catalog values.
 
-The selected-Nature rule applies to ordinary spread suggestions; benchmark
-answers retain their alternative-Nature behavior.
-
-You can also ask one benchmark question: survive a named move from a named
-opponent, take a KO, or outspeed. The opponent's set is
-the most common recorded current-regulation set for that species, filtered by
-held item when one is named. An outspeed query excludes Choice Scarf targets
-unless Choice Scarf is the named item, and applies the ×1.5 multiplier to the
-target's Speed whenever the target holds it. Each answer reports the fewest moved
-points, up to six equal-cost spreads for the Pokémon's own nature, and up to six
-more when a second nature reaches the goal for fewer points. When no 66-point
-spread reaches the goal, the answer says so and names the closest achievable
-result. Damage is one landed hit at full HP with the resolved battle form, actual
-item, and deterministic field-setting abilities. Benchmark Speed is unmodified
-level-50 Speed with only the Choice Scarf ×1.5 multiplier applied, never
-weather- or ability-adjusted turn order.
+Each spread shows its own unmodified level-50 Speed, without item, ability,
+weather, or other battle modifiers. The app ranks recorded sets rather than
+solving survive, KO, or outspeed benchmarks. It does not show a catalog Speed
+percentile or offer a calculator handoff.
 
 Inferred archetype and role tags are enrichment, never evidence: they carry no
 result label and never outrank a sourced result. They break ties among teams that

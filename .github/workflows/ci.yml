@@ -30,7 +30,7 @@ jobs:
             src/lib/data/catalog.json
             static/sprites
             static/items
-          key: catalog-${{ runner.os }}-${{ github.run_id }}
+          key: catalog-${{ runner.os }}-${{ hashFiles('scripts/**', 'package-lock.json') }}
           restore-keys: |
             catalog-${{ runner.os }}-
           save-always: true

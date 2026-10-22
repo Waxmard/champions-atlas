@@ -241,7 +241,7 @@ is unobserved.
 
 Poch.ms records keep published values and leave the rest unknown. A missing set
 field or scalar stays unknown. The page publishes no spreads, so these records
-never gain benchmark eligibility. A generated paste is an export of the published
+do not contribute EV spread suggestions. A generated paste is an export of the published
 set details, and only when at least one member publishes some; it is not an
 original paste. Every record carries an empty paste URL and no sheet IDs, so the
 importer never merges it with a sheet or paste record on shared species alone. A

@@ -1,8 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#172b4d" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 104">
   <style>
-    circle, path { stroke: #172b4d; }
-    @media (prefers-color-scheme: dark) { circle, path { stroke: #f4f8ff; } }
+    @media (prefers-color-scheme: dark) {
+      .crown { fill: #9abeff; }
+      .ring { stroke: #9abeff; }
+      .needle { fill: #f4f8ff; }
+    }
   </style>
-  <circle cx="12" cy="12" r="10" />
-  <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+  <path class="ring" fill="none" stroke="#2456d8" stroke-width="6" stroke-linecap="round" d="M22 37a34 34 0 1 0 52 0"/>
+  <path class="crown" fill="#2456d8" d="M22 37 18 15 35 24 48 7 61 24 78 15 74 37Z"/>
+  <path class="needle" fill="#172b4d" d="m61 46-9 24-23 10 10-24Z"/>
+  <path class="needle-half" fill="#ff6b70" d="m61 46-22 10 13 14Z"/>
 </svg>

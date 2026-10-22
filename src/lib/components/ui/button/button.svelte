@@ -28,7 +28,7 @@
     'icon-touch': 'size-11 p-0',
   };
 
-  export function buttonVariants({
+  function buttonVariants({
     variant = 'secondary',
     size = 'compact',
     class: className = '',

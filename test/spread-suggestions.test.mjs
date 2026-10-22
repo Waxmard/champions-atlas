@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { catalogSpreadSuggestions } from '../src/lib/workbench.ts';
+import {
+  catalogSpreadSuggestions,
+  originalSpreadSuggestion,
+} from '../src/lib/workbench.ts';
 
 const team = (
   id,
@@ -18,6 +21,14 @@ const member = (pokemon, nature = 'Modest', spread = null, extra = {}) => ({
   moves: ['Hydro Pump'],
   ...extra,
 });
+const raichu = {
+  pokemon: 'Raichu',
+  item: 'Raichunite Y',
+  ability: 'Lightning Rod',
+  nature: 'Timid',
+  spread: '18 HP / 25 Def / 23 Spe',
+  moves: ['Thunderbolt'],
+};
 const self = member('Rotom-Wash', 'Modest');
 const modestSpreads = [
   '31 HP / 4 Def / 31 SpA',
@@ -320,4 +331,163 @@ test('current and total observations break ties before source date and ID', () =
       { spread: modestSpreads[2], currentCount: 1, totalCount: 2 },
     ]
   );
+});
+
+test('catalog spreads aggregate current-regulation observations for the selected nature', () => {
+  const catalog = [
+    team('cur-1', 'M-C', [
+      { ...raichu, spread: '18 HP / 25 Def / 23 Spe', nature: 'Timid' },
+    ]),
+    team('cur-2', 'M-C', [
+      { ...raichu, spread: '18 HP / 25 Def / 23 Spe', nature: 'Timid' },
+    ]),
+    team('old-1', 'M-B', [
+      { ...raichu, spread: '4 HP / 30 Atk / 32 Spe', nature: 'Adamant' },
+    ]),
+    team('old-2', 'M-B', [
+      { ...raichu, spread: '4 HP / 30 Atk / 32 Spe', nature: 'Adamant' },
+    ]),
+    team('old-3', 'M-B', [
+      { ...raichu, spread: '4 HP / 30 Atk / 32 Spe', nature: 'Adamant' },
+    ]),
+    team('other-form', 'M-C', [
+      {
+        ...raichu,
+        pokemon: 'Pikachu',
+        item: null,
+        nature: 'Timid',
+        spread: '32 HP / 32 SpA / 2 Spe',
+      },
+    ]),
+    team('incomplete', 'M-C', [
+      { ...raichu, spread: '32 HP', nature: 'Timid' },
+    ]),
+  ];
+  const results = catalogSpreadSuggestions(raichu, catalog, 'M-C');
+  assert.deepEqual(
+    results.map(
+      ({ nature, spread, currentCount, totalCount, movedPoints }) => ({
+        nature,
+        spread,
+        currentCount,
+        totalCount,
+        movedPoints,
+      })
+    ),
+    [
+      {
+        nature: 'Timid',
+        spread: '18 HP / 25 Def / 23 Spe',
+        currentCount: 2,
+        totalCount: 2,
+        movedPoints: 0,
+      },
+    ]
+  );
+  assert.equal(typeof results[0].speed, 'number');
+  assert.deepEqual(
+    catalogSpreadSuggestions(
+      { ...raichu, pokemon: 'Missingno' },
+      catalog,
+      'M-C'
+    ),
+    []
+  );
+});
+
+test('own spreads keep the original nature and spread even when already used', () => {
+  const original = originalSpreadSuggestion(raichu, raichu);
+  assert.deepEqual(original, {
+    spread: '18 HP / 25 Def / 23 Spe',
+    nature: 'Timid',
+    source: 'Original team',
+    original: true,
+    deltas: [],
+    movedPoints: 0,
+    speed: 190,
+  });
+  assert.ok(
+    originalSpreadSuggestion({ ...raichu, pokemon: 'Raichu-Mega-Y' }, raichu)
+  );
+});
+
+test('catalog spreads original recommendations require complete standard sets and valid equal forms', () => {
+  for (const original of [
+    { ...raichu, spread: '32 HP' },
+    { ...raichu, spread: '18 HP / 25 Def / 22 Spe' },
+    { ...raichu, nature: 'Legacy' },
+    { ...raichu, nature: null },
+    { ...raichu, item: null },
+    { ...raichu, pokemon: 'Raichu-Mega-X' },
+    { ...raichu, pokemon: 'Raichu-Mega-Y', item: 'Raichunite X' },
+    { ...raichu, pokemon: 'Unknown' },
+  ])
+    assert.equal(originalSpreadSuggestion(raichu, original), undefined);
+  assert.equal(
+    originalSpreadSuggestion(raichu, { ...raichu, nature: 'Adamant' }),
+    undefined
+  );
+  for (const nature of [null, 'Legacy'])
+    assert.equal(
+      originalSpreadSuggestion({ ...raichu, nature }, raichu),
+      undefined
+    );
+  assert.equal(
+    originalSpreadSuggestion({ ...raichu, nature: 'tImId' }, raichu).nature,
+    'Timid'
+  );
+  assert.equal(
+    originalSpreadSuggestion(
+      { ...raichu, pokemon: 'Unknown' },
+      { ...raichu, pokemon: 'Unknown' }
+    ),
+    undefined
+  );
+  assert.equal(
+    originalSpreadSuggestion(
+      { ...raichu, pokemon: 'Raichu-Mega-Y', item: 'Raichunite X' },
+      raichu
+    ),
+    undefined
+  );
+});
+
+test('catalog paging budget absorbs a duplicate source row at the batch boundary', () => {
+  const saved = member('Rotom-Wash', 'Modest', modestSpreads[4]);
+  const original = originalSpreadSuggestion(self, saved);
+  assert.equal(original?.source, 'Original team');
+  const rows = [original];
+  const visibleCatalogCount = 5;
+  const revealed = '25 HP / 10 Def / 31 SpA';
+  const catalog = [
+    ...modestSpreads.map((spread, i) => source('batch-' + i, spread)),
+    source('batch-6', revealed),
+  ];
+  const page = catalogSpreadSuggestions(
+    self,
+    catalog,
+    'M-C',
+    visibleCatalogCount + rows.length + 1
+  );
+  assert.equal(page.length, visibleCatalogCount + rows.length + 1);
+  assert.deepEqual(spreadList(page), [
+    ...modestSpreads.map((spread) => ['Modest', spread]),
+    ['Modest', revealed],
+  ]);
+  const key = ({ nature, spread }) => nature + '|' + spread;
+  const rowKeys = new Set(rows.map(key));
+  const fresh = page.filter((option) => !rowKeys.has(key(option)));
+  assert.equal(fresh.length, visibleCatalogCount + 1);
+  assert.equal(fresh.at(-1)?.spread, revealed);
+
+  const shortfall = catalogSpreadSuggestions(
+    self,
+    catalog,
+    'M-C',
+    visibleCatalogCount + rows.length
+  );
+  const shown = shortfall.filter((option) => !rowKeys.has(key(option)));
+  assert.equal(shortfall.length, visibleCatalogCount + rows.length);
+  assert.equal(shown.length, visibleCatalogCount);
+  assert.ok(shown.every(({ spread }) => spread !== revealed));
 });
