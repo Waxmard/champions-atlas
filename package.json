@@ -64,6 +64,12 @@
     "fsevents": false,
     "lefthook": true
   },
+  "overrides": {
+    "@grpc/grpc-js": "^1.14.6",
+    "gaxios": {
+      "uuid": "^11.1.1"
+    }
+  },
   "engines": {
     "node": "^24.0.0"
   },
