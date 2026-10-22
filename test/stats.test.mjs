@@ -2,7 +2,7 @@ import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parseChampionsSpread } from '../src/lib/paste.ts';
-import { finalStat, speedFor, statRow } from '../src/lib/stats.ts';
+import { speedFor, statRow } from '../src/lib/stats.ts';
 
 test('Champions stat table resolves level-50 intercepts', () => {
   assert.deepEqual(statRow('Absol'), [140, 150, 80, 95, 80, 95]);
@@ -15,7 +15,6 @@ test('level-50 stat math applies the nature multiplier to the SP total', () => {
   const spe = parseChampionsSpread('32 Spe');
   assert.equal(speedFor('Absol', spe, 'Timid'), 139);
   assert.equal(speedFor('Absol', spe, 'Adamant'), 127);
-  assert.equal(finalStat(95, 32, 1.1), 139);
   assert.equal(speedFor('Missingno', spe, 'Timid'), null);
   assert.equal(speedFor('Absol', parseChampionsSpread(''), 'Timid'), 104);
 });

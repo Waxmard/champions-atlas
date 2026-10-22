@@ -1,7 +1,9 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 import {
   expectDetailsSubView,
   expectMovesSubView,
+  missing,
   openWorkbench,
   peter,
 } from './workbench-helpers';
@@ -18,8 +20,10 @@ async function chooseOption(page: Page, picker: Locator, name: string) {
 }
 
 const storageKey = 'champions-atlas:teams:v1';
-const raichuTeamId = 'm-c-b2039b4436fb6729';
-const raichuTeamName = "Danyul_YT's Raichu-Y Floette Team";
+const raichuTeam =
+  catalog.teams.find((team) =>
+    team.members.some((member) => member.pokemon === 'Raichu-Mega-Y')
+  ) ?? missing('Raichu-Mega-Y team');
 
 async function expectOverviewHub(editor: Locator) {
   for (const name of [
@@ -380,12 +384,12 @@ test('page swap reports no overlap and clears its selection', async ({
 test('manual EV disclosure stays within the viewport and supports keyboard and touch', async ({
   page,
 }) => {
-  await page.goto(`/teams/${raichuTeamId}`);
+  await page.goto(`/teams/${raichuTeam.id}`);
   await page
     .getByRole('button', { name: 'Use this team', exact: true })
     .click();
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    raichuTeamName
+    raichuTeam.name
   );
   const card = page.getByRole('region', {
     name: 'Raichu-Mega-Y set',
@@ -447,12 +451,12 @@ test('manual EV disclosure stays within the viewport and supports keyboard and t
 test('catalog spreads expand in ranked batches and autosave a newly revealed spread', async ({
   page,
 }) => {
-  await page.goto(`/teams/${raichuTeamId}`);
+  await page.goto(`/teams/${raichuTeam.id}`);
   await page
     .getByRole('button', { name: 'Use this team', exact: true })
     .click();
   await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
-    raichuTeamName
+    raichuTeam.name
   );
   const card = page.getByRole('region', {
     name: 'Raichu-Mega-Y set',
@@ -485,45 +489,43 @@ test('catalog spreads expand in ranked batches and autosave a newly revealed spr
     storageKey
   );
 
-  await expect(rows).toHaveCount(6);
-  await expect(catalogRows).toHaveCount(5);
-  await expect(rows.first()).toContainText('Original team');
-  const initialRows = await spreadKeys(rows);
   const showMore = suggestions.getByRole('button', {
     name: 'Show more',
     exact: true,
   });
   await expect(showMore).toBeVisible();
+  const batch = 5;
+  const initialCatalogCount = await catalogRows.count();
+  expect(initialCatalogCount).toBeGreaterThan(0);
+  expect(initialCatalogCount).toBeLessThanOrEqual(batch);
+  await expect(rows).toHaveCount(initialCatalogCount + 1);
+  await expect(rows.first()).toContainText('Original team');
+  const initialRows = await spreadKeys(rows);
 
   await showMore.click();
-  await expect(catalogRows).toHaveCount(10);
-  const firstBatchRows = await spreadKeys(rows);
-  expect(firstBatchRows.slice(0, initialRows.length)).toEqual(initialRows);
-  const newlyRevealedRow = catalogRows.nth(5);
+  await expect(async () => {
+    expect(await catalogRows.count()).toBeGreaterThan(initialCatalogCount);
+  }).toPass();
+  const firstExpandedRows = await spreadKeys(rows);
+  expect(firstExpandedRows.slice(0, initialRows.length)).toEqual(initialRows);
+  const firstAddedCount = (await catalogRows.count()) - initialCatalogCount;
+  expect(firstAddedCount).toBeLessThanOrEqual(batch);
+  const newlyRevealedRow = catalogRows.nth(initialCatalogCount);
   const newlyRevealedSpread = await newlyRevealedRow
     .locator('span.font-mono')
     .allTextContents();
 
-  await showMore.click();
-  await expect(catalogRows).toHaveCount(15);
-  const secondBatchRows = await spreadKeys(rows);
-  expect(secondBatchRows.slice(0, firstBatchRows.length)).toEqual(
-    firstBatchRows
-  );
-  expect(new Set(secondBatchRows).size).toBe(secondBatchRows.length);
-  await expect(showMore).toBeVisible();
-
-  let previousRows = secondBatchRows;
-  let previousCatalogCount = 15;
-  let finalPageCount = 0;
+  let previousRows = firstExpandedRows;
+  let previousCatalogCount = await catalogRows.count();
   while (await showMore.count()) {
     await showMore.click();
     await expect(async () => {
       expect(await catalogRows.count()).toBeGreaterThan(previousCatalogCount);
     }).toPass();
     const currentCatalogCount = await catalogRows.count();
-    finalPageCount = currentCatalogCount - previousCatalogCount;
-    expect(finalPageCount).toBeLessThanOrEqual(5);
+    expect(currentCatalogCount - previousCatalogCount).toBeLessThanOrEqual(
+      batch
+    );
     const currentRows = await spreadKeys(rows);
     expect(currentRows.slice(0, previousRows.length)).toEqual(previousRows);
     expect(new Set(currentRows).size).toBe(currentRows.length);
@@ -531,8 +533,6 @@ test('catalog spreads expand in ranked batches and autosave a newly revealed spr
     previousCatalogCount = currentCatalogCount;
   }
   expect(new Set(previousRows).size).toBe(previousRows.length);
-  expect(finalPageCount).toBeGreaterThan(0);
-  expect(finalPageCount).toBeLessThan(5);
   await expect(showMore).toHaveCount(0);
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)

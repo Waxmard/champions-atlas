@@ -451,3 +451,43 @@ test('catalog spreads original recommendations require complete standard sets an
     undefined
   );
 });
+
+test('catalog paging budget absorbs a duplicate source row at the batch boundary', () => {
+  const saved = member('Rotom-Wash', 'Modest', modestSpreads[4]);
+  const original = originalSpreadSuggestion(self, saved);
+  assert.equal(original?.source, 'Original team');
+  const rows = [original];
+  const visibleCatalogCount = 5;
+  const revealed = '25 HP / 10 Def / 31 SpA';
+  const catalog = [
+    ...modestSpreads.map((spread, i) => source('batch-' + i, spread)),
+    source('batch-6', revealed),
+  ];
+  const page = catalogSpreadSuggestions(
+    self,
+    catalog,
+    'M-C',
+    visibleCatalogCount + rows.length + 1
+  );
+  assert.equal(page.length, visibleCatalogCount + rows.length + 1);
+  assert.deepEqual(spreadList(page), [
+    ...modestSpreads.map((spread) => ['Modest', spread]),
+    ['Modest', revealed],
+  ]);
+  const key = ({ nature, spread }) => nature + '|' + spread;
+  const rowKeys = new Set(rows.map(key));
+  const fresh = page.filter((option) => !rowKeys.has(key(option)));
+  assert.equal(fresh.length, visibleCatalogCount + 1);
+  assert.equal(fresh.at(-1)?.spread, revealed);
+
+  const shortfall = catalogSpreadSuggestions(
+    self,
+    catalog,
+    'M-C',
+    visibleCatalogCount + rows.length
+  );
+  const shown = shortfall.filter((option) => !rowKeys.has(key(option)));
+  assert.equal(shortfall.length, visibleCatalogCount + rows.length);
+  assert.equal(shown.length, visibleCatalogCount);
+  assert.ok(shown.every(({ spread }) => spread !== revealed));
+});

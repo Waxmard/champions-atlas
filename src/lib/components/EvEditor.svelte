@@ -75,6 +75,8 @@
     }
     let catalogCount = 0;
     let hasMore = false;
+    // Saved-source duplicates take limit slots without counting as catalog
+    // rows; the final +1 proves another eligible spread exists for hasMore.
     for (const option of catalogSpreadSuggestions(
       member,
       teams,
@@ -200,9 +202,13 @@
   }
 </script>
 
-<div class="plate ev-editor-enter min-w-0 p-3.5 sm:p-4" aria-label="EV editor">
+<section
+  class="plate ev-editor-enter min-w-0 p-3.5 sm:p-4"
+  aria-label="EV editor"
+>
   <!-- Nature modifies the stats below -->
-  <div class="mb-4 grid gap-2 border-b pb-4" aria-label="Nature suggestions">
+  <fieldset class="mb-4 grid min-w-0 gap-2 border-b pb-4">
+    <legend class="sr-only">Nature</legend>
     <div class="flex flex-wrap items-baseline justify-between gap-3 px-0.5">
       <span class="term">Nature</span>
       <span class="value text-base-content/70">
@@ -255,7 +261,7 @@
         No catalog nature suggestions for this Pokémon.
       </p>
     {/if}
-  </div>
+  </fieldset>
   <p class="provenance mb-2 px-0.5">
     {formatChampionsSpread(values) || 'No EVs allocated'} · {total} / 66
   </p>
@@ -370,7 +376,7 @@
       {/each}
     </div>
   </details>
-</div>
+</section>
 {#snippet chips(value: string)}
   <div class="flex flex-wrap items-center gap-1.5">
     {#each value.split(' / ').filter(Boolean) as part (part)}

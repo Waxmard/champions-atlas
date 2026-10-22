@@ -3,7 +3,7 @@ import { normalize, type Member, type Team } from './catalog.ts';
 export type RoleFlag =
   'speed_control' | 'redirection' | 'weather' | 'hazard_control' | 'disruption';
 
-export const ROLE_FLAGS: RoleFlag[] = [
+const ROLE_FLAGS: RoleFlag[] = [
   'speed_control',
   'redirection',
   'weather',
@@ -11,7 +11,7 @@ export const ROLE_FLAGS: RoleFlag[] = [
   'disruption',
 ];
 
-export const ROLE_KEYWORDS: Record<RoleFlag, Set<string>> = {
+const ROLE_KEYWORDS: Record<RoleFlag, Set<string>> = {
   speed_control: new Set(
     ['Tailwind', 'Trick Room', 'Icy Wind', 'Thunder Wave', 'Electroweb'].map(
       normalize
@@ -69,7 +69,6 @@ export function roleFlags(member: Member): RoleFlag[] {
 
 export interface TeamTag {
   archetype: string;
-  speedMode: string;
   roles: Record<string, string>;
 }
 

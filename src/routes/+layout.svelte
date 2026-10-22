@@ -298,8 +298,9 @@
   <main id="main" class="flex min-h-svh items-center justify-center">
     <LoaderCircle
       class="size-6 animate-spin text-base-content/60"
-      aria-label="Loading"
+      aria-hidden="true"
     />
+    <span class="sr-only" role="status">Loading…</span>
   </main>
 {:else}
   <header

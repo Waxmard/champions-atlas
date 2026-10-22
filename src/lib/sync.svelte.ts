@@ -35,7 +35,7 @@ import { mergeSavedTeams, teamsSnapshot } from './team-sync.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
 
-export type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
+type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
 
 export const sync = $state({
   configured: false,

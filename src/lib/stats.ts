@@ -7,7 +7,7 @@ import {
   type ChampionsStat,
 } from './paste.ts';
 
-export type StatRow = [number, number, number, number, number, number];
+type StatRow = [number, number, number, number, number, number];
 
 const TABLE = statsData.stats as Record<string, number[] | undefined>;
 const STAT_ALIASES: Record<string, string> = {
@@ -33,13 +33,10 @@ export function statRow(pokemon: string): StatRow | null {
 }
 
 /* Level-50 stat from a 0-SP intercept and a neutral-nature intercept table. */
-export const finalStat = (intercept: number, sp: number, multiplier: number) =>
+const finalStat = (intercept: number, sp: number, multiplier: number) =>
   Math.floor((intercept + sp) * multiplier);
 
-export function natureMultiplier(
-  nature: string | null,
-  stat: ChampionsStat
-): number {
+function natureMultiplier(nature: string | null, stat: ChampionsStat): number {
   const effect = natureEffect(nature);
   if (effect?.raised === stat) return 1.1;
   if (effect?.lowered === stat) return 0.9;
