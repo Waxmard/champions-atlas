@@ -182,10 +182,9 @@
       ? form.nature
       : null
   );
+  const currentSpread = $derived(parseChampionsSpread(form.spread));
   const currentSpreadTotal = $derived(
-    parseChampionsSpread(form.spread)
-      ? championsSpreadTotal(parseChampionsSpread(form.spread)!)
-      : 0
+    currentSpread ? championsSpreadTotal(currentSpread) : 0
   );
   const subViewTitle = $derived(
     {

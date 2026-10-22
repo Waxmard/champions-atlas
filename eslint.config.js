@@ -19,6 +19,8 @@ export default defineConfig(
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
     rules: {
       'no-undef': 'off',
+      '@typescript-eslint/consistent-type-imports': 'error',
+      '@typescript-eslint/no-non-null-assertion': 'error',
     },
   },
   {

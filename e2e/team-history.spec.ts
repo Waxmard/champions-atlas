@@ -4,11 +4,12 @@ import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 import { newSavedTeam } from '../src/lib/workbench';
 import type { SavedTeam } from '../src/lib/workbench';
 import { browsePokemon, type Team } from '../src/lib/catalog';
+import { missing } from './workbench-helpers';
 
 const fixtureCatalog = catalog as { teams: Team[] };
-const fixture = fixtureCatalog.teams.find((team) =>
-  team.sheetIds.includes('MB809')
-)!;
+const fixture =
+  fixtureCatalog.teams.find((team) => team.sheetIds.includes('MB809')) ??
+  missing('Peter fixture team');
 const storageKey = 'champions-atlas:teams:v1';
 const weavileIndex = fixture.members.findIndex(
   ({ pokemon }) => pokemon === 'Weavile'
@@ -20,10 +21,8 @@ const currentSlot = (page: Page, index = weavileIndex) =>
   page.locator(`#pokemon-slot-${index}`);
 
 async function stored(page: Page): Promise<SavedTeam> {
-  return page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const raw = await page.evaluate((k) => localStorage.getItem(k), storageKey);
+  return JSON.parse(raw ?? missing('saved teams'))[0];
 }
 
 async function saveFixture(page: Page) {
@@ -237,7 +236,8 @@ test('a custom starting team has no public provenance and Restore original disca
     .getByRole('link', { name: 'Add custom team', exact: true })
     .click();
   await page.getByLabel('Team name', { exact: true }).fill('Custom history');
-  await page.getByLabel('Team text', { exact: true }).fill(fixture.paste!);
+  const paste = fixture.paste ?? missing('fixture paste');
+  await page.getByLabel('Team text', { exact: true }).fill(paste);
   await page
     .getByRole('button', { name: 'Save custom team', exact: true })
     .click();
@@ -285,7 +285,8 @@ test('original suggestions lead after edits and using the original set saves wit
     .getByLabel('Item suggestions', { exact: true })
     .getByRole('button')
     .first();
-  await expect(firstItem).toContainText(originalWeavile.item!);
+  const item = originalWeavile.item ?? missing('Weavile item');
+  await expect(firstItem).toContainText(item);
   await expect(firstItem).toContainText('Original');
   await firstItem.click();
   await expect
@@ -330,9 +331,9 @@ test('order and slot conflicts survive the original restore', async ({
 }) => {
   const team = newSavedTeam(fixture);
   team.members.reverse();
-  const editedMember = team.members.find(
-    ({ pokemon }) => pokemon === 'Weavile'
-  )!;
+  const editedMember =
+    team.members.find(({ pokemon }) => pokemon === 'Weavile') ??
+    missing('reordered Weavile');
   editedMember.set += '\nHappiness: 42';
   editedMember.privateMetadata = { retained: ['editor annotation'] };
   team.name = 'Reordered edited team';

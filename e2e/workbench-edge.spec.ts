@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 
-const peter = catalog.teams.find((team) => team.sheetIds.includes('MB809'))!;
+function findPeter() {
+  const found = catalog.teams.find((team) => team.sheetIds.includes('MB809'));
+  if (!found) throw new Error('catalog is missing the peter team');
+  return found;
+}
+
+const peter = findPeter();
 const storageKey = 'champions-atlas:teams:v1';
 const activeTeamKey = 'champions-atlas:active-team:v1';
 
@@ -50,7 +56,9 @@ test(
     );
     await expect(teambuilder).toHaveAttribute('target', '_blank');
     await page.getByLabel('Team name', { exact: true }).fill('My custom team');
-    await page.getByLabel('Team text', { exact: true }).fill(peter.paste!);
+    const paste = peter.paste;
+    if (!paste) throw new Error('peter has no paste text');
+    await page.getByLabel('Team text', { exact: true }).fill(paste);
     await page.getByRole('button', { name: 'Save custom team' }).click();
     await expect(page).toHaveURL(/\/my-teams\?team=/);
     await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
@@ -60,18 +68,21 @@ test(
       page.getByText('Original & history', { exact: true })
     ).toBeVisible();
 
-    const stored = await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)!)[0],
-      storageKey
-    );
+    const stored = await page.evaluate((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) throw new Error('no saved teams');
+      return JSON.parse(raw)[0];
+    }, storageKey);
     expect(stored.original.pasteUrl).toBe('');
     expect(stored.sources).toEqual([]);
     const storedWeavile = stored.original.members.find(
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
     );
-    expect(storedWeavile.item).toBe(
-      peter.members.find((member) => member.pokemon === 'Weavile')!.item
+    const peterWeavile = peter.members.find(
+      (member) => member.pokemon === 'Weavile'
     );
+    if (!peterWeavile) throw new Error('peter is missing Weavile');
+    expect(storedWeavile.item).toBe(peterWeavile.item);
     const weavile = page.getByRole('region', {
       name: 'Weavile set',
       exact: true,
@@ -94,10 +105,11 @@ test(
       (await set.inputValue()).replace(/Ability: .+/, 'Ability: Custom Ability')
     );
     await editor.getByRole('button', { name: 'Done', exact: true }).click();
-    const saved = await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)!)[0],
-      storageKey
-    );
+    const saved = await page.evaluate((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) throw new Error('no saved teams');
+      return JSON.parse(raw)[0];
+    }, storageKey);
     expect(
       saved.members.find(
         (member: { pokemon: string }) => member.pokemon === 'Weavile'
@@ -132,7 +144,9 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   const longName = 'VeryLongPokemonNameWithoutBreaks'.repeat(4);
   await page.evaluate(
     ({ key, longName }) => {
-      const teams = JSON.parse(localStorage.getItem(key)!);
+      const raw = localStorage.getItem(key);
+      if (!raw) throw new Error('no saved teams');
+      const teams = JSON.parse(raw);
       teams[0].members[0].ability = null;
       teams[0].members[0].moves = [];
       teams[0].members[1].pokemon = longName;
@@ -204,10 +218,11 @@ test('completed editor changes navigate without an unsaved warning', async ({
   await expect(page.getByLabel('Regulation')).toHaveValue('M-B');
   await saveCopies(page, 1);
   await saveWeavileItem(page, 'Saved item');
-  const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const stored = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(
     stored.members.find(
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
@@ -258,10 +273,11 @@ test('QoL deletion cancel keeps saved changes and both saved copies', async ({
   await saveCopies(page, 2);
   await saveWeavileItem(page, 'Cancel draft item');
   const selectedUrl = page.url();
-  const storedBefore = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    storageKey
-  );
+  const storedBefore = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return raw;
+  }, storageKey);
   let dialogMessage = '';
   page.once('dialog', async (dialog) => {
     dialogMessage = dialog.message();
@@ -277,7 +293,7 @@ test('QoL deletion cancel keeps saved changes and both saved copies', async ({
   expect(
     await page.evaluate((key) => localStorage.getItem(key), storageKey)
   ).toBe(storedBefore);
-  expect(JSON.parse(storedBefore!).length).toBe(2);
+  expect(JSON.parse(storedBefore).length).toBe(2);
 });
 
 test('QoL deletion replaces the selected copy and survives reload', async ({
@@ -285,17 +301,20 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
 }) => {
   await saveCopies(page, 2);
   await saveWeavileItem(page, 'Delete-only draft item');
-  const before = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!),
-    storageKey
-  );
+  const before = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw);
+  }, storageKey);
   const removedId = await page.evaluate(
     (key) => localStorage.getItem(key),
     activeTeamKey
   );
-  const remainingId = before.find(
+  const remaining = before.find(
     (team: { id: string }) => team.id !== removedId
-  )!.id;
+  );
+  if (!remaining) throw new Error('no remaining saved team');
+  const remainingId = remaining.id;
   let dialogMessage = '';
   page.once('dialog', async (dialog) => {
     dialogMessage = dialog.message();
@@ -313,10 +332,11 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
     page.getByRole('region', { name: 'Weavile set', exact: true })
   ).not.toContainText('Delete-only draft item');
   expect(
-    await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)!),
-      storageKey
-    )
+    await page.evaluate((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) throw new Error('no saved teams');
+      return JSON.parse(raw);
+    }, storageKey)
   ).toEqual(before.filter((team: { id: string }) => team.id !== removedId));
   expect(
     await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
@@ -328,10 +348,11 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
     await page.evaluate((key) => localStorage.getItem(key), activeTeamKey)
   ).toBe(remainingId);
   expect(
-    await page.evaluate(
-      (key) => JSON.parse(localStorage.getItem(key)!),
-      storageKey
-    )
+    await page.evaluate((key) => {
+      const raw = localStorage.getItem(key);
+      if (!raw) throw new Error('no saved teams');
+      return JSON.parse(raw);
+    }, storageKey)
   ).toEqual(before.filter((team: { id: string }) => team.id !== removedId));
 });
 
@@ -386,10 +407,11 @@ test('set edit commits on save and reopening my-teams restores active team', asy
   await editor.getByLabel('Item', { exact: true }).fill('Focus Sash');
   await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Done', exact: true }).click();
-  const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const stored = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   const storedWeavile = stored.members.find(
     (m: { pokemon: string }) => m.pokemon === 'Weavile'
   );
@@ -412,9 +434,11 @@ test('backdrop and blank-area clicks retain set edit until explicit action', asy
     name: 'Weavile set',
     exact: true,
   });
-  const originalAbility = peter.members.find(
+  const weavileMember = peter.members.find(
     (m: { pokemon: string }) => m.pokemon === 'Weavile'
-  )!.ability;
+  );
+  if (!weavileMember?.ability) throw new Error('weavile has no ability');
+  const originalAbility = weavileMember.ability;
   await weavile
     .getByRole('button', { name: 'Edit Weavile item', exact: true })
     .click();
@@ -545,7 +569,8 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
     .getByRole('button', { name: 'Use this team', exact: true })
     .click();
 
-  const member = peter.members.at(-1)!;
+  const member = peter.members.at(-1);
+  if (!member) throw new Error('peter has no members');
   const card = page.getByRole('region', {
     name: `${member.pokemon} set`,
     exact: true,
@@ -564,7 +589,8 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
   });
   await expect(editor).toBeInViewport();
   const box = await page.getByRole('dialog').boundingBox();
-  const viewport = (await page.viewportSize())!;
+  const viewport = await page.viewportSize();
+  if (!viewport) throw new Error('page has no viewport');
   expect(box?.x).toBeCloseTo(0, 0);
   expect(box?.y).toBeCloseTo(0, 0);
   expect(box?.width).toBeCloseTo(viewport.width, 0);
@@ -579,7 +605,9 @@ test('lower-slot nature editing stays visible and persists on mobile', async ({
   expect(await page.evaluate(() => scrollY)).toBe(before);
   const storedNature = await page.evaluate(
     ({ key, pokemon }) => {
-      const team = JSON.parse(localStorage.getItem(key)!)[0];
+      const raw = localStorage.getItem(key);
+      if (!raw) throw new Error('no saved teams');
+      const team = JSON.parse(raw)[0];
       return team.members.find(
         (saved: { pokemon: string }) => saved.pokemon === pokemon
       ).nature;
@@ -621,18 +649,24 @@ test('desktop editor hugs its content and pairs fields side by side', async ({
   });
   await expect(editor).toBeVisible();
 
-  const itemBox = (await editor
+  const itemBox = await editor
     .getByLabel('Item', { exact: true })
-    .boundingBox())!;
-  const abilityBox = (await editor
+    .boundingBox();
+  const abilityBox = await editor
     .getByLabel('Ability', { exact: true })
-    .boundingBox())!;
+    .boundingBox();
+  if (!itemBox || !abilityBox) throw new Error('editor fields have no box');
   expect(Math.abs(itemBox.y - abilityBox.y)).toBeLessThan(4);
   expect(abilityBox.x).toBeGreaterThan(itemBox.x);
 
-  const viewport = (await page.viewportSize())!;
+  const viewport = await page.viewportSize();
+  if (!viewport) throw new Error('page has no viewport');
   await expect
-    .poll(async () => (await editor.boundingBox())!.height)
+    .poll(async () => {
+      const box = await editor.boundingBox();
+      if (!box) throw new Error('editor has no box');
+      return box.height;
+    })
     .toBeLessThan(viewport.height - 300);
 
   await editor
@@ -645,7 +679,11 @@ test('desktop editor hugs its content and pairs fields side by side', async ({
     editor.getByRole('heading', { name: 'EV spread', exact: true })
   ).toBeVisible();
   await expect
-    .poll(async () => (await editor.boundingBox())!.height)
+    .poll(async () => {
+      const box = await editor.boundingBox();
+      if (!box) throw new Error('editor has no box');
+      return box.height;
+    })
     .toBeCloseTo(viewport.height - 64, 0);
 
   const scrollRegion = editor.locator('div.overflow-y-auto').first();

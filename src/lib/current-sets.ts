@@ -296,8 +296,11 @@ export function stageCurrentSets(
     .map(({ id }) => id)
     .sort();
   const committed = new Map(remoteEntries.map((entry) => [entry.id, entry]));
-  for (const id of pendingIds.slice(0, 350))
-    committed.set(id, desiredMap.get(id)!);
+  for (const id of pendingIds.slice(0, 350)) {
+    const entry = desiredMap.get(id);
+    if (!entry) throw new Error(`missing desired current set: ${id}`);
+    committed.set(id, entry);
+  }
   return {
     committed: validateCurrentSets(
       [...committed.values()].sort((a, b) =>

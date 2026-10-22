@@ -15,7 +15,12 @@ export class SavedTeamError extends Error {}
 const saveAndGet = (
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   team: SavedTeam
-): SavedTeam => saveTeam(storage, team).find((entry) => entry.id === team.id)!;
+): SavedTeam => {
+  const saved = saveTeam(storage, team).find((entry) => entry.id === team.id);
+  if (!saved)
+    throw new SavedTeamError('This team was not saved. Refresh the list.');
+  return saved;
+};
 
 export function resolveSavedTeamId(
   saved: SavedTeam[],

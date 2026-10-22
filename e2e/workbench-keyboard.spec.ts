@@ -102,9 +102,9 @@ test('move Enter preserves typed value and Tab Enter selects an exact suggestion
   await expect(move4).toBeFocused();
   await move4.fill('Ice');
   await expect(options.first()).toBeVisible();
-  const chosen = (await options.first().textContent())!
-    .replace(/Original/g, '')
-    .trim();
+  const text = await options.first().textContent();
+  if (text === null) throw new Error('move suggestion has no text');
+  const chosen = text.replace(/Original/g, '').trim();
   await page.keyboard.press('Tab');
   await expect(
     editor.getByRole('button', { name: 'Clear move 4' })

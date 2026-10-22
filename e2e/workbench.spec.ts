@@ -47,10 +47,11 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   page.on('pageerror', (error) => errors.push(error.message));
   await openWorkbench(page);
   const workbenchUrl = page.url();
-  const original = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0].original,
-    storageKey
-  );
+  const original = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0].original;
+  }, storageKey);
   expect(original.paste).toMatch(/Level:/);
   expect(
     original.members.every((member: { spread: string }) => !!member.spread)
@@ -62,19 +63,21 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   });
   const originalWeavile = peter.members.find(
     (member) => member.pokemon === 'Weavile'
-  )!;
+  );
+  if (!originalWeavile?.item || !originalWeavile.ability)
+    throw new Error('peter is missing the Weavile set');
   const beforeStorage = await page.evaluate(
     (key) => localStorage.getItem(key),
     storageKey
   );
   await expect(weavile.locator('[data-item-icon]')).toBeVisible();
   await expect(
-    weavile.getByText(originalWeavile.item!, { exact: true })
+    weavile.getByText(originalWeavile.item, { exact: true })
   ).toBeVisible();
   await expect(
     weavile
       .getByRole('button', { name: 'Edit Weavile ability', exact: true })
-      .getByText(originalWeavile.ability!, { exact: true })
+      .getByText(originalWeavile.ability, { exact: true })
   ).toBeVisible();
   for (const move of originalWeavile.moves)
     await expect(weavile.getByText(move, { exact: true })).toBeVisible();
@@ -138,9 +141,9 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
     .filter({ hasNotText: initialMoves[0] })
     .first();
   await expect(replacement).toBeVisible();
-  const replacementText = (await replacement.textContent())!
-    .replace(/Original/g, '')
-    .trim();
+  const replacementRaw = await replacement.textContent();
+  if (!replacementRaw) throw new Error('suggestion has no text');
+  const replacementText = replacementRaw.replace(/Original/g, '').trim();
   await replacement.click();
   await expect(move1).toHaveValue(replacementText);
 
@@ -156,10 +159,11 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await move3.press('Enter');
   await expect(move3).toHaveValue('Refilled Move');
 
-  const autosaved = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const autosaved = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(
     autosaved.members.find(
       (member: { pokemon: string }) => member.pokemon === 'Weavile'
@@ -175,10 +179,11 @@ test('save Peter, choose one slot, compare, edit, export, and preserve other fiv
   await expect(editor).toHaveCount(0);
   await expect(weavile).toContainText('Custom saved item');
   await expect(weavile).toContainText('Test Move');
-  const storedAfterSave = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const storedAfterSave = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(storedAfterSave.original).toEqual(original);
   expect(
     storedAfterSave.members.filter(
@@ -259,9 +264,9 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
     .getByRole('button')
     .filter({ hasNotText: initialMoves[0] })
     .first();
-  const replacementText = (await replacement.textContent())!
-    .replace(/Original/g, '')
-    .trim();
+  const replacementRaw = await replacement.textContent();
+  if (!replacementRaw) throw new Error('suggestion has no text');
+  const replacementText = replacementRaw.replace(/Original/g, '').trim();
   await replacement.click();
   await expect(moveInputs[0]).toHaveValue(replacementText);
   await editor
@@ -301,10 +306,11 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
   ).toHaveCount(0);
   await page.getByRole('button', { name: 'Clear selected Pokémon' }).click();
   await expect(sneasler).toBeVisible();
-  const swapped = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const swapped = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(
     swapped.members.some(
       (member: { pokemon: string }) => member.pokemon === 'Sneasler'
@@ -535,15 +541,18 @@ test('catalog spreads expand in ranked batches and autosave a newly revealed spr
 
   await newlyRevealedRow.click();
   for (const chip of newlyRevealedSpread) {
-    const [, value, stat] = /^(\d+) (\w+)$/.exec(chip)!;
+    const match = /^(\d+) (\w+)$/.exec(chip);
+    if (!match) throw new Error('unparsable spread chip ' + chip);
+    const [, value, stat] = match;
     await expect(editor.getByLabel(`${stat} EV`, { exact: true })).toHaveValue(
       value
     );
   }
-  const storedAfterSelection = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const storedAfterSelection = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   const savedMember = storedAfterSelection.members.find(
     (member: { pokemon: string }) => member.pokemon === 'Raichu-Mega-Y'
   );
@@ -714,7 +723,9 @@ for (const mutation of ['changed', 'deleted'] as const) {
       });
       await page.evaluate(
         ({ key, mutation }) => {
-          const teams = JSON.parse(localStorage.getItem(key)!);
+          const raw = localStorage.getItem(key);
+          if (!raw) throw new Error('no saved teams');
+          const teams = JSON.parse(raw);
           if (mutation === 'deleted') teams.splice(0, 1);
           else teams[0].name = 'Changed elsewhere';
           localStorage.setItem(key, JSON.stringify(teams));
@@ -767,10 +778,11 @@ test('pagehide flushes active editor input while preserving failed pending name'
   });
   await editor.getByLabel('Item', { exact: true }).fill('Pagehide item');
   await page.evaluate(() => window.dispatchEvent(new Event('pagehide')));
-  const stored = await page.evaluate(
-    (key) => JSON.parse(localStorage.getItem(key)!)[0],
-    storageKey
-  );
+  const stored = await page.evaluate((key) => {
+    const raw = localStorage.getItem(key);
+    if (!raw) throw new Error('no saved teams');
+    return JSON.parse(raw)[0];
+  }, storageKey);
   expect(stored.name).toBe(peter.name);
   expect(
     stored.members.find(

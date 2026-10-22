@@ -6,7 +6,8 @@ import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 const catalogTeams = (
   catalog as { teams: { id: string; name: string; sheetIds: string[] }[] }
 ).teams;
-const peter = catalogTeams.find((team) => team.sheetIds.includes('MB809'))!;
+const peter = catalogTeams.find((team) => team.sheetIds.includes('MB809'));
+if (!peter) throw new Error('catalog is missing the Peter fixture team');
 
 const reloadButton = (page: Page) =>
   page.getByRole('button', { name: 'Reload to update', exact: true });
