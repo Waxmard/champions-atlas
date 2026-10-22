@@ -51,6 +51,9 @@ npm run preview   # Serve the production build locally.
 | `static/`     | App icons and cached Pokémon assets                   |
 | `docs/`       | Product behavior, data sources, and deployment guides |
 
+The crowned-compass logo in `static/favicon.svg` is shared by the header,
+sign-in page, and favicon. Installed-app PNG icons are in `static/icons/`.
+
 ## Catalog
 
 The generated catalog is ignored by Git. `npm run dev`, `npm run build`, and
