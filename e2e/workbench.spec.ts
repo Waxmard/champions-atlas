@@ -18,6 +18,8 @@ async function chooseOption(page: Page, picker: Locator, name: string) {
 }
 
 const storageKey = 'champions-atlas:teams:v1';
+const raichuTeamId = 'm-c-b2039b4436fb6729';
+const raichuTeamName = "Danyul_YT's Raichu-Y Floette Team";
 
 async function expectOverviewHub(editor: Locator) {
   for (const name of [
@@ -367,6 +369,190 @@ test('page swap reports no overlap and clears its selection', async ({
   await page.getByRole('button', { name: 'Clear selected Pokémon' }).click();
   await expect(noOverlap).toHaveCount(0);
   await expect(page.getByRole('region', { name: 'Weavile set' })).toBeVisible();
+});
+
+test('manual EV disclosure stays within the viewport and supports keyboard and touch', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${raichuTeamId}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    raichuTeamName
+  );
+  const card = page.getByRole('region', {
+    name: 'Raichu-Mega-Y set',
+    exact: true,
+  });
+  await card
+    .getByRole('button', { name: 'Edit Raichu-Mega-Y EVs', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Raichu-Mega-Y set',
+    exact: true,
+  });
+  const suggestions = editor.getByRole('region', {
+    name: 'EV spread suggestions',
+  });
+  expect(
+    await editor.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth
+    )
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth
+    )
+  ).toBe(true);
+
+  const toggle = editor.locator('[data-ev-toggle]');
+  const manual = toggle.locator('xpath=..');
+  const sliders = editor.getByLabel('HP EV slider', { exact: true });
+  const numberInput = editor.getByLabel('HP EV', { exact: true });
+  await expect(toggle).toHaveText('Adjust EVs manually');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await expect(sliders).toBeHidden();
+  await expect(numberInput).toBeHidden();
+  await expect(
+    editor.getByText('Current: Timid (+Spe / -Atk)', { exact: true })
+  ).toBeVisible();
+  await expect(
+    suggestions.getByText('Suggested spreads', { exact: true })
+  ).toBeVisible();
+
+  await toggle.focus();
+  await toggle.press('Enter');
+  await expect(manual).toHaveAttribute('open', '');
+  await expect(sliders).toBeVisible();
+  await toggle.press('Space');
+  await expect(manual).not.toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).toHaveAttribute('open', '');
+  await toggle.click();
+  await expect(manual).not.toHaveAttribute('open', '');
+  expect(
+    await editor.evaluate(
+      (element) => element.scrollWidth <= element.clientWidth
+    )
+  ).toBe(true);
+});
+
+test('catalog spreads expand in ranked batches and autosave a newly revealed spread', async ({
+  page,
+}) => {
+  await page.goto(`/teams/${raichuTeamId}`);
+  await page
+    .getByRole('button', { name: 'Use this team', exact: true })
+    .click();
+  await expect(page.getByLabel('Team name', { exact: true })).toHaveValue(
+    raichuTeamName
+  );
+  const card = page.getByRole('region', {
+    name: 'Raichu-Mega-Y set',
+    exact: true,
+  });
+  await card
+    .getByRole('button', { name: 'Edit Raichu-Mega-Y EVs', exact: true })
+    .click();
+  const editor = page.getByRole('dialog', {
+    name: 'Edit Raichu-Mega-Y set',
+    exact: true,
+  });
+  const suggestions = editor.getByRole('region', {
+    name: 'EV spread suggestions',
+  });
+  const rows = suggestions.getByRole('button', {
+    name: /^Use Timid spread .+$/,
+  });
+  const catalogRows = rows
+    .filter({ hasText: 'catalog team' })
+    .filter({ hasNotText: /Original team|My in-game set/ });
+  const spreadKeys = async (list: Locator) =>
+    Promise.all(
+      (await list.all()).map(async (row) =>
+        (await row.locator('span.font-mono').allTextContents()).join(' / ')
+      )
+    );
+  const storageBeforeExpansion = await page.evaluate(
+    (key) => localStorage.getItem(key),
+    storageKey
+  );
+
+  await expect(rows).toHaveCount(6);
+  await expect(catalogRows).toHaveCount(5);
+  await expect(rows.first()).toContainText('Original team');
+  const initialRows = await spreadKeys(rows);
+  const showMore = suggestions.getByRole('button', {
+    name: 'Show more',
+    exact: true,
+  });
+  await expect(showMore).toBeVisible();
+
+  await showMore.click();
+  await expect(catalogRows).toHaveCount(10);
+  const firstBatchRows = await spreadKeys(rows);
+  expect(firstBatchRows.slice(0, initialRows.length)).toEqual(initialRows);
+  const newlyRevealedRow = catalogRows.nth(5);
+  const newlyRevealedSpread = await newlyRevealedRow
+    .locator('span.font-mono')
+    .allTextContents();
+
+  await showMore.click();
+  await expect(catalogRows).toHaveCount(15);
+  const secondBatchRows = await spreadKeys(rows);
+  expect(secondBatchRows.slice(0, firstBatchRows.length)).toEqual(
+    firstBatchRows
+  );
+  expect(new Set(secondBatchRows).size).toBe(secondBatchRows.length);
+  await expect(showMore).toBeVisible();
+
+  let previousRows = secondBatchRows;
+  let previousCatalogCount = 15;
+  let finalPageCount = 0;
+  while (await showMore.count()) {
+    await showMore.click();
+    await expect(async () => {
+      expect(await catalogRows.count()).toBeGreaterThan(previousCatalogCount);
+    }).toPass();
+    const currentCatalogCount = await catalogRows.count();
+    finalPageCount = currentCatalogCount - previousCatalogCount;
+    expect(finalPageCount).toBeLessThanOrEqual(5);
+    const currentRows = await spreadKeys(rows);
+    expect(currentRows.slice(0, previousRows.length)).toEqual(previousRows);
+    expect(new Set(currentRows).size).toBe(currentRows.length);
+    previousRows = currentRows;
+    previousCatalogCount = currentCatalogCount;
+  }
+  expect(new Set(previousRows).size).toBe(previousRows.length);
+  expect(finalPageCount).toBeGreaterThan(0);
+  expect(finalPageCount).toBeLessThan(5);
+  await expect(showMore).toHaveCount(0);
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).toBe(storageBeforeExpansion);
+  await expect(newlyRevealedRow).toBeVisible();
+
+  await newlyRevealedRow.click();
+  for (const chip of newlyRevealedSpread) {
+    const [, value, stat] = /^(\d+) (\w+)$/.exec(chip)!;
+    await expect(editor.getByLabel(`${stat} EV`, { exact: true })).toHaveValue(
+      value
+    );
+  }
+  const storedAfterSelection = await page.evaluate(
+    (key) => JSON.parse(localStorage.getItem(key)!)[0],
+    storageKey
+  );
+  const savedMember = storedAfterSelection.members.find(
+    (member: { pokemon: string }) => member.pokemon === 'Raichu-Mega-Y'
+  );
+  expect(savedMember.spread).toBe(newlyRevealedSpread.join(' / '));
+  expect(savedMember.nature).toBe('Timid');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), storageKey)
+  ).not.toBe(storageBeforeExpansion);
+  await editor.getByRole('button', { name: 'Done', exact: true }).click();
 });
 
 test('nature chips on the EV page set the nature and mark affected stats', async ({

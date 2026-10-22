@@ -12,7 +12,6 @@ import {
   sourceRows,
   youtubeChannelNames,
 } from '../src/lib/catalog.ts';
-import { buildBenchmarkIndex } from '../src/lib/benchmark-index.ts';
 import {
   catalogSuggestions,
   catalogSpreadSuggestions,
@@ -655,17 +654,6 @@ test('custom-rule source teams are excluded from every recommendation boundary w
     catalogSpreadSuggestions(rotom, [custom, control], 'M-C'),
     catalogSpreadSuggestions(rotom, [control], 'M-C')
   );
-
-  assert.deepEqual(buildBenchmarkIndex([custom], 'M-C').species, []);
-  assert.equal(buildBenchmarkIndex([custom], 'M-C').teamCount, 0);
-  const controlIndex = buildBenchmarkIndex([control], 'M-C');
-  assert.equal(controlIndex.teamCount, 1);
-  const rotomSpecies = controlIndex.species.find((entry) =>
-    /rotom/i.test(entry.pokemon)
-  );
-  assert.ok(rotomSpecies);
-  assert.equal(rotomSpecies.eligibleTeamCount, 1);
-  assert.deepEqual(buildBenchmarkIndex([custom, control], 'M-C'), controlIndex);
 
   const originalMember = {
     ...rotom,

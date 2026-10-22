@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import {
     balanceChampionsStat,
     CHAMPIONS_STATS,
@@ -10,11 +11,7 @@
     type ChampionsSpread,
     type ChampionsStat,
   } from '#lib/paste.js';
-  import { resolveBattleForm } from '#lib/battle-forms.js';
-  import { buildBenchmarkIndex } from '#lib/benchmarks.js';
   import { normalize, type Member, type Team } from '#lib/catalog.js';
-  import { speedBenchmark } from '#lib/stats.js';
-  import EvBenchmarkPanel from '#lib/components/EvBenchmarkPanel.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
     catalogSpreadSuggestions,
@@ -47,10 +44,8 @@
     onnaturechange: (nature: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
   } = $props();
-  const index = $derived(buildBenchmarkIndex(teams, currentRegulation));
-  const regulationTeams = $derived(
-    teams.filter((team) => team.regulation === currentRegulation)
-  );
+  let visibleCatalogCount = $state(5);
+  let suggestionSection: HTMLElement | null = null;
   const spreadKey = (candidateNature: string, candidateSpread: string) =>
     `${normalize(candidateNature)}|${normalize(candidateSpread)}`;
 
@@ -79,11 +74,12 @@
       }
     }
     let catalogCount = 0;
+    let hasMore = false;
     for (const option of catalogSpreadSuggestions(
       member,
       teams,
       currentRegulation,
-      7,
+      visibleCatalogCount + rows.length + 1,
       teammates
     )) {
       const key = spreadKey(option.nature, option.spread);
@@ -100,7 +96,10 @@
           existing.source += ` · ${source}`;
         continue;
       }
-      if (catalogCount === 5) continue;
+      if (catalogCount === visibleCatalogCount) {
+        hasMore = true;
+        continue;
+      }
       rows.push({
         spread: option.spread,
         nature: option.nature,
@@ -111,8 +110,16 @@
       });
       catalogCount++;
     }
-    return rows;
+    return { rows, hasMore };
   });
+  async function showMoreSpreads(): Promise<void> {
+    const previousRowCount = spreadSuggestions.rows.length;
+    visibleCatalogCount += 5;
+    await tick();
+    suggestionSection
+      ?.querySelectorAll<HTMLButtonElement>('[data-ev-suggestion]')
+      [previousRowCount]?.focus();
+  }
   const spread = $derived(member.spread || '');
   const nature = $derived(member.nature || '');
 
@@ -131,7 +138,6 @@
   );
   const total = $derived(championsSpreadTotal(values));
   const effect = $derived(natureEffect(nature));
-  const resolvedForm = $derived(resolveBattleForm(member));
 
   const clampEv = (value: number) => Math.max(0, Math.min(32, value || 0));
   function update(stat: (typeof CHAMPIONS_STATS)[number], value: number) {
@@ -224,6 +230,8 @@
                   : ''
             }`}
             onclick={() => {
+              if (normalize(option.value) !== normalize(member.nature ?? ''))
+                visibleCatalogCount = 5;
               if (option.inGame) {
                 if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
               } else onnaturechange(option.value);
@@ -374,7 +382,11 @@
   </div>
 {/snippet}
 
-<section class="plate mt-4 grid divide-y" aria-label="EV spread suggestions">
+<section
+  bind:this={suggestionSection}
+  class="plate mt-4 grid divide-y"
+  aria-label="EV spread suggestions"
+>
   <div class="px-3 py-2.5">
     <h3 class="term">Suggested spreads</h3>
     <p class="provenance mt-1">
@@ -382,14 +394,9 @@
       ranked by team fit and results.
     </p>
   </div>
-  {#each spreadSuggestions as option, i (option.spread + option.nature)}
-    {@const speed = speedBenchmark(
-      resolvedForm.pokemon,
-      parseChampionsSpread(option.spread),
-      option.nature,
-      regulationTeams
-    )}
+  {#each spreadSuggestions.rows as option, i (option.spread + option.nature)}
     <button
+      data-ev-suggestion
       type="button"
       class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-start transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
       option.spread
@@ -422,11 +429,7 @@
         >{option.source} · {option.movedPoints} points moved</span
       >
       {#if option.speed !== null}
-        <span class="provenance"
-          >Unmodified Speed {option.speed}{speed
-            ? ` · ${speed.beatPercent}% raw-Speed catalog percentile`
-            : ''}</span
-        >
+        <span class="provenance">Unmodified Speed {option.speed}</span>
       {/if}
     </button>
   {:else}
@@ -435,9 +438,18 @@
       manually.
     </p>
   {/each}
+  {#if spreadSuggestions.hasMore}
+    <Button
+      type="button"
+      variant="quiet"
+      size="touch"
+      class="w-full"
+      onclick={showMoreSpreads}
+    >
+      Show more
+    </Button>
+  {/if}
 </section>
-
-<EvBenchmarkPanel {member} {index} {currentRegulation} {onspreadchange} />
 
 <style>
   .range {
