@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/Waxmard/champions-atlas/compare/v1.9.0...v2.0.0) (2026-10-22)
+
+
+### ⚠ BREAKING CHANGES
+
+* paginate catalog EV spreads and drop EV benchmark tools ([#58](https://github.com/Waxmard/champions-atlas/issues/58))
+
+### Features
+
+* paginate catalog EV spreads and drop EV benchmark tools ([#58](https://github.com/Waxmard/champions-atlas/issues/58)) ([816ac60](https://github.com/Waxmard/champions-atlas/commit/816ac604cd9b5c0d1ee61af8464bec32e207e410))
+
 ## [1.9.0](https://github.com/Waxmard/champions-atlas/compare/v1.8.0...v1.9.0) (2026-10-21)
 
 
