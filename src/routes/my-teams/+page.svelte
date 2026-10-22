@@ -27,7 +27,6 @@
     normalize,
     regulationLabel,
     type Member,
-    type Team,
   } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
@@ -77,7 +76,7 @@
     showSwapPicker = $state(false),
     swapUnavailable = $state(false),
     appliedRevision = 0;
-  const teams = $derived(data.catalog.teams as Team[]);
+  const teams = $derived(data.catalog.teams);
   const allSpecies = $derived(
     [
       ...new Set(teams.flatMap((team) => team.members.map((m) => m.pokemon))),
@@ -782,7 +781,7 @@
         member={editorMember}
         originalMembers={draft.original.members}
         originalSlotMember={draft.original.members[editIndex]}
-        teams={data.catalog.teams as Team[]}
+        teams={data.catalog.teams}
         currentRegulation={current}
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
