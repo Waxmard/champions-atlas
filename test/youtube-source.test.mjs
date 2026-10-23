@@ -676,7 +676,7 @@ test('YouTube-only refresh recrawls discovery without refreshing other sources',
   }
 });
 
-test('refreshes a shared paste once and leaves catalog and snapshot unchanged on failed crawl', async (t) => {
+test('reuses a cached shared paste and leaves catalog and snapshot unchanged on failed crawl', async (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'atlas-youtube-refresh-'));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const {
@@ -706,12 +706,9 @@ test('refreshes a shared paste once and leaves catalog and snapshot unchanged on
     ({ pasteUrl: url }) => url === sharedUrl
   );
   assert.equal(sheetTeam.id, priorTeam.id);
-  assert.equal(sheetTeam.pasteNotes, 'Format: gen9vgcregulationmb');
+  assert.equal(sheetTeam.pasteNotes, 'Format: gen9championsvgc2026regmc');
   assert.ok(sheetTeam.sheetIds.includes('MC1'));
-  assert.ok(
-    !sheetTeam.reports.some(({ event }) => event.startsWith('pokeaimMD '))
-  );
-  assert.match(output, /format_conflict=1/);
+  assert.match(output, /pokeaimMD: .*0 skipped, 1 merged/);
   const requests = JSON.parse(await readFile(mockEnv.MOCK_FETCH_LOG, 'utf8'));
   assert.equal(
     requests.filter(
@@ -721,7 +718,7 @@ test('refreshes a shared paste once and leaves catalog and snapshot unchanged on
   );
   assert.equal(
     requests.filter((address) => address === `${sharedUrl}/json`).length,
-    1
+    0
   );
 
   const beforeCatalog = await readFile(catalogPath(directory), 'utf8');

@@ -352,8 +352,8 @@ test('fetch and budget: no historical URL or paste fetches, offline replay witho
   assert.doesNotMatch(onlineOutput, /limited=/);
   assert.equal(
     requests.filter((url) => url.includes('eeeeeeeeeeeeeeee')).length,
-    1,
-    'the shared paste must be fetched only for the current candidate'
+    0,
+    'the cached shared paste must not be refetched'
   );
 
   const replayCatalog = await readCatalog(directory);

@@ -19,6 +19,30 @@ import {
   youtubeTeamFromCandidate,
 } from './fixtures/catalog-import.mjs';
 
+test('reuses recorded YouTube rejections instead of re-reading pastes', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-youtube-decisions-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const pasteId = 'dddddddddddddddd';
+  const row = youtubeRow(youtubePasteUrl(pasteId), 'ddddddddddd', {
+    description: `${youtubePasteUrl(pasteId)}\nFormat: gen9ou`,
+  });
+  const cache = await writeYoutubeImportFixture(directory, [row], {
+    [pasteId]: pokePasteJson(pasteText(mcPokemon, mcItems), 'Format: gen9ou'),
+  });
+  const first = runImport(directory);
+  assert.match(first, /unsupported_format=1/);
+  assert.ok(!first.includes('YouTube decisions reused'));
+  const ids = (await readCatalog(directory)).teams.map(({ id }) => id).sort();
+  await rm(join(cache, `${pasteId}.json`));
+  const second = runImport(directory);
+  assert.match(second, /YouTube decisions reused from cache: 1\./);
+  assert.match(second, /unsupported_format=1/);
+  assert.deepEqual(
+    (await readCatalog(directory)).teams.map(({ id }) => id).sort(),
+    ids
+  );
+});
+
 test('YouTube budget, transient, and keyless priors reject ineligible teams', async (t) => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-youtube-eligibility-'));
   t.after(() => rm(directory, { recursive: true, force: true }));
