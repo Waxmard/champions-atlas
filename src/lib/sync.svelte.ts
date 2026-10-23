@@ -16,7 +16,6 @@ import {
   connectFirestoreEmulator,
   doc,
   getFirestore,
-  onSnapshot,
   runTransaction,
   serverTimestamp,
   Timestamp,
@@ -24,16 +23,35 @@ import {
   type Unsubscribe,
 } from 'firebase/firestore';
 import {
+  currentSetsChangedEvent,
   currentSetsKey,
   currentSetsSnapshot,
-  mergeCurrentSets,
   readCurrentSets,
-  stageCurrentSets,
+  readCurrentSetsValue,
+  rebaseStagedCurrentSets,
+  restoreStorageValue,
   type CurrentSet,
 } from './current-sets.ts';
-import { mergeSavedTeams, teamsSnapshot } from './team-sync.ts';
-import { canonicalSnapshot } from './team-history.ts';
+import {
+  stageCurrentSetsInTransaction,
+  watchCurrentSetDocument,
+} from './current-set-sync.ts';
+import {
+  mergeSavedTeams,
+  teamsSnapshot,
+  validateTeamIds,
+  validatedTeams,
+} from './team-sync.ts';
 import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
+import { canonicalSnapshot } from './team-history.ts';
+import {
+  readSyncCache,
+  saveSyncRebase,
+  storeCurrentSetSyncCache as store,
+  syncOwnerKey,
+  syncRecordKey,
+  wireCurrentSets,
+} from './storage-migration.ts';
 
 type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
 
@@ -46,10 +64,10 @@ export const sync = $state({
   revision: 0,
 });
 
-const ownerKey = 'champions-atlas:sync-owner:v2';
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let projectId = '';
+let activateUser: ((user: User) => void) | null = null;
 let session = 0;
 let uid = '';
 let unsubscribe: Unsubscribe | null = null;
@@ -61,175 +79,23 @@ let pending = false;
 let savePending = false;
 let running: Promise<void> | null = null;
 
-const recordKey = (owner: string) => `champions-atlas:sync:v2:${owner}`;
 const account = (id: string) => `${projectId}:${id}`;
 const valid = (generation: number, id: string) =>
   generation === session &&
   uid === id &&
   auth?.currentUser?.uid === id &&
-  localStorage.getItem(ownerKey) === account(id);
-
-function teams(value: unknown): SavedTeam[] {
-  if (!Array.isArray(value))
-    throw new Error(
-      'Saved teams could not be read. Existing data has been left untouched.'
-    );
-  return readSavedTeams({ getItem: () => JSON.stringify(value) });
-}
-
-function currentSets(value: unknown): CurrentSet[] {
-  const raw = JSON.stringify(value);
-  if (raw === undefined)
-    throw new Error(
-      'Current Pokémon sets could not be read. Existing data has been left untouched.'
-    );
-  return readCurrentSets({ getItem: () => raw });
-}
+  localStorage.getItem(syncOwnerKey) === account(id);
 
 const cloudReadError =
   'Cloud saved teams could not be read. Existing data has been left untouched.';
-const cloudSetsReadError =
-  'Cloud current Pokémon sets could not be read. Existing data has been left untouched.';
 const cacheReadError =
   'Sync cache could not be read. Existing data has been left untouched.';
 const switchInterruptedError =
   'Sync account switch was interrupted. Existing data has been preserved.';
 
-function teamIds(value: unknown): string[] {
-  if (
-    !Array.isArray(value) ||
-    value.length > 50 ||
-    new Set(value).size !== value.length ||
-    value.some(
-      (id) =>
-        typeof id !== 'string' ||
-        !id ||
-        new TextEncoder().encode(id).length > 1500 ||
-        id.includes('/') ||
-        id === '.' ||
-        id === '..' ||
-        /^__[\s\S]*__$/.test(id)
-    )
-  )
-    throw new Error(cloudReadError);
-
-  return value;
-}
-
-function currentSetIds(value: unknown): string[] {
-  if (
-    !Array.isArray(value) ||
-    value.length > 1500 ||
-    value.some(
-      (id, index) =>
-        typeof id !== 'string' ||
-        !/^[a-z0-9]{1,1500}$/.test(id) ||
-        (index > 0 && value[index - 1] >= id)
-    )
-  )
-    throw new Error(cloudSetsReadError);
-
-  return value;
-}
-
-function currentSetManifest(value: unknown): string[] {
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value) ||
-    Object.keys(value).sort().join(',') !== 'schemaVersion,setIds,updatedAt' ||
-    !('schemaVersion' in value) ||
-    value.schemaVersion !== 1 ||
-    !('updatedAt' in value) ||
-    !(value.updatedAt instanceof Timestamp) ||
-    !('setIds' in value)
-  )
-    throw new Error(cloudSetsReadError);
-  return currentSetIds(value.setIds);
-}
-
-function cloudCurrentSet(value: unknown, id: string): CurrentSet {
-  try {
-    const [entry] = currentSets([value]);
-    if (!entry || entry.id !== id) throw new Error();
-    return entry;
-  } catch {
-    throw new Error(cloudSetsReadError);
-  }
-}
-
-function record(owner: string): {
-  base: SavedTeam[] | null;
-  local: SavedTeam[];
-  setsBase: CurrentSet[] | null;
-  setsLocal: CurrentSet[];
-} | null {
-  const raw = localStorage.getItem(recordKey(owner));
-  if (raw === null) return null;
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    throw new Error(cacheReadError);
-  }
-  if (
-    !value ||
-    typeof value !== 'object' ||
-    Array.isArray(value) ||
-    !('base' in value) ||
-    !('local' in value)
-  )
-    throw new Error(cacheReadError);
-  const data = value as Record<string, unknown>;
-  let cachedSetsBase: CurrentSet[] | null = null;
-  let cachedSetsLocal: CurrentSet[] = [];
-  try {
-    if ('setsBase' in data)
-      cachedSetsBase =
-        data.setsBase === null ? null : currentSets(data.setsBase);
-    if ('setsLocal' in data) cachedSetsLocal = currentSets(data.setsLocal);
-  } catch {
-    throw new Error(cacheReadError);
-  }
-  return {
-    base: data.base === null ? null : teams(data.base),
-    local: teams(data.local),
-    setsBase: cachedSetsBase,
-    setsLocal: cachedSetsLocal,
-  };
-}
-
-function store(
-  owner: string,
-  nextBase: SavedTeam[] | null,
-  local: SavedTeam[],
-  nextSetsBase: CurrentSet[] | null,
-  setsLocal: CurrentSet[]
-) {
-  const checkedBase = nextBase === null ? null : teams(nextBase);
-  const checkedLocal = teams(local);
-  const checkedSetsBase =
-    nextSetsBase === null ? null : currentSets(nextSetsBase);
-  const checkedSetsLocal = currentSets(setsLocal);
-  localStorage.setItem(
-    recordKey(owner),
-    JSON.stringify({
-      base: checkedBase,
-      local: checkedLocal,
-      setsBase: checkedSetsBase,
-      setsLocal: checkedSetsLocal,
-    })
-  );
-}
-
 function fail(error: unknown) {
   sync.status = 'error';
   sync.error = error instanceof Error ? error.message : String(error);
-}
-
-function restoreStorageValue(key: string, raw: string | null) {
-  if (raw === null) localStorage.removeItem(key);
-  else localStorage.setItem(key, raw);
 }
 
 function invalidate() {
@@ -247,28 +113,31 @@ function invalidate() {
   running = null;
 }
 
-function adopt(id: string) {
+function adopt(id: string): void {
   const incoming = account(id);
-  const previous = localStorage.getItem(ownerKey);
+  const previous = localStorage.getItem(syncOwnerKey);
   if (previous?.startsWith('switching:'))
     throw new Error(switchInterruptedError);
   const working = readSavedTeams(localStorage);
   const workingSets = readCurrentSets(localStorage);
   if (previous === incoming) {
-    const cached = record(incoming);
+    const cached = readSyncCache(localStorage, incoming);
     base = cached?.base ?? null;
     setsBase = cached?.setsBase ?? null;
     store(incoming, base, working, setsBase, workingSets);
     return;
   }
   if (previous) {
-    const outgoing = record(previous);
+    const outgoing = readSyncCache(localStorage, previous);
     if (!outgoing) throw new Error(cacheReadError);
     store(previous, outgoing.base, working, outgoing.setsBase, workingSets);
   }
-  const cached = previous ? record(incoming) : null;
+  const cached = previous ? readSyncCache(localStorage, incoming) : null;
   const incomingTeams = previous ? (cached?.local ?? []) : working;
   const incomingSets = previous ? (cached?.setsLocal ?? []) : workingSets;
+  const incomingWireSets = cached
+    ? wireCurrentSets(cached.rawSetsLocal ?? incomingSets)
+    : incomingSets;
   const incomingBase = previous ? (cached?.base ?? null) : null;
   const incomingSetsBase = previous ? (cached?.setsBase ?? null) : null;
   if (!previous) {
@@ -279,7 +148,7 @@ function adopt(id: string) {
       incomingSetsBase,
       incomingSets
     );
-    localStorage.setItem(ownerKey, incoming);
+    localStorage.setItem(syncOwnerKey, incoming);
     base = incomingBase;
     setsBase = incomingSetsBase;
     return;
@@ -287,11 +156,12 @@ function adopt(id: string) {
 
   const rawTeams = localStorage.getItem(storageKey);
   const rawSets = localStorage.getItem(currentSetsKey);
+  const nextSetsRaw = JSON.stringify(incomingWireSets);
   const switching = `switching:${previous}:${incoming}`;
   try {
-    localStorage.setItem(ownerKey, switching);
+    localStorage.setItem(syncOwnerKey, switching);
     localStorage.setItem(storageKey, JSON.stringify(incomingTeams));
-    localStorage.setItem(currentSetsKey, JSON.stringify(incomingSets));
+    localStorage.setItem(currentSetsKey, nextSetsRaw);
     if (!cached)
       store(
         incoming,
@@ -300,15 +170,15 @@ function adopt(id: string) {
         incomingSetsBase,
         incomingSets
       );
-    localStorage.setItem(ownerKey, incoming);
+    localStorage.setItem(syncOwnerKey, incoming);
   } catch (error) {
     try {
-      restoreStorageValue(storageKey, rawTeams);
-      restoreStorageValue(currentSetsKey, rawSets);
-      restoreStorageValue(ownerKey, previous);
+      restoreStorageValue(localStorage, storageKey, rawTeams);
+      restoreStorageValue(localStorage, currentSetsKey, rawSets);
+      restoreStorageValue(localStorage, syncOwnerKey, previous);
     } catch {
       try {
-        localStorage.setItem(ownerKey, switching);
+        localStorage.setItem(syncOwnerKey, switching);
       } catch {
         throw new Error(switchInterruptedError);
       }
@@ -348,31 +218,34 @@ async function drain(generation: number, id: string) {
     const recoveryIds = new Map<string, string>();
     try {
       if (!db || !valid(generation, id)) return;
+      const owner = account(id);
       const firestore = db;
-      const cached = record(account(id));
+      const cacheKey = syncRecordKey(owner);
+      const cached = readSyncCache(localStorage, owner);
       if (!valid(generation, id)) return;
       if (cached) setsBase = cached.setsBase;
-      const capturedBase = base === null ? null : teams(base);
+      const capturedBase = base === null ? null : validatedTeams(base);
       const capturedLocal = readSavedTeams(localStorage);
-      const capturedSetsBase = setsBase === null ? null : currentSets(setsBase);
+      const capturedSetsBase =
+        setsBase === null ? null : readCurrentSetsValue(setsBase);
       const capturedSets = readCurrentSets(localStorage);
-      teamIds(capturedLocal.map((team) => team.id));
+      const guarded = () => valid(generation, id);
+      validateTeamIds(capturedLocal.map((team) => team.id));
       const ref = doc(db, 'users', id);
-      const setsRef = doc(db, 'users', id, 'pokemonSetState', 'manifest');
       sync.status = 'syncing';
       sync.error = '';
       const committed = await runTransaction(db, async (transaction) => {
-        if (!valid(generation, id)) throw new Error('Sync account changed.');
+        if (!guarded()) throw new Error('Sync account changed.');
         const snapshot = await transaction.get(ref);
-        if (!valid(generation, id)) throw new Error('Sync account changed.');
+        if (!guarded()) throw new Error('Sync account changed.');
         const parent = snapshot.data();
         let remote: SavedTeam[] = [];
         let manifest: string[] | null = null;
         if (snapshot.exists()) {
           if (!parent || !('schemaVersion' in parent)) {
             try {
-              remote = teams(parent?.teams);
-              teamIds(remote.map((team) => team.id));
+              remote = validatedTeams(parent?.teams);
+              validateTeamIds(remote.map((team) => team.id));
             } catch {
               throw new Error(cloudReadError);
             }
@@ -384,24 +257,22 @@ async function drain(generation: number, id: string) {
             )
               throw new Error(cloudReadError);
             try {
-              manifest = teamIds(parent.teamIds);
+              manifest = validateTeamIds(parent.teamIds);
             } catch {
               throw new Error(cloudReadError);
             }
             for (const teamId of manifest) {
-              if (!valid(generation, id))
-                throw new Error('Sync account changed.');
+              if (!guarded()) throw new Error('Sync account changed.');
               const child = await transaction
                 .get(doc(firestore, 'users', id, 'teams', teamId))
                 .catch(() => {
                   throw new Error(cloudReadError);
                 });
-              if (!valid(generation, id))
-                throw new Error('Sync account changed.');
+              if (!guarded()) throw new Error('Sync account changed.');
               if (!child.exists() || child.data().id !== teamId)
                 throw new Error(cloudReadError);
               try {
-                remote.push(...teams([child.data()]));
+                remote.push(...validatedTeams([child.data()]));
               } catch {
                 throw new Error(cloudReadError);
               }
@@ -409,40 +280,21 @@ async function drain(generation: number, id: string) {
           }
         }
 
-        if (!valid(generation, id)) throw new Error('Sync account changed.');
-        const setManifest = await transaction.get(setsRef);
-        if (!valid(generation, id)) throw new Error('Sync account changed.');
-        const setManifestExists = setManifest.exists();
-        const remoteSets: CurrentSet[] = [];
-        if (setManifestExists) {
-          const setIds = currentSetManifest(setManifest.data());
-          for (const setId of setIds) {
-            if (!valid(generation, id))
-              throw new Error('Sync account changed.');
-            const child = await transaction.get(
-              doc(firestore, 'users', id, 'pokemonSets', setId)
-            );
-            if (!valid(generation, id))
-              throw new Error('Sync account changed.');
-            if (!child.exists()) throw new Error(cloudSetsReadError);
-            remoteSets.push(cloudCurrentSet(child.data(), setId));
-          }
-        }
-
-        if (!valid(generation, id)) throw new Error('Sync account changed.');
         const merged = mergeSavedTeams(
           capturedBase,
           capturedLocal,
           remote,
           recoveryIds
         );
-        const mergedIds = teamIds(merged.map((team) => team.id));
-        const desiredSets = mergeCurrentSets(
-          capturedSetsBase,
-          capturedSets,
-          remoteSets
-        );
-        const stagedSets = stageCurrentSets(remoteSets, desiredSets);
+        const mergedIds = validateTeamIds(merged.map((team) => team.id));
+        const staged = await stageCurrentSetsInTransaction({
+          transaction,
+          firestore,
+          uid: id,
+          guard: guarded,
+          base: capturedSetsBase,
+          local: capturedSets,
+        });
 
         if (
           manifest === null ||
@@ -456,8 +308,7 @@ async function drain(generation: number, id: string) {
               canonicalSnapshot(team) !==
                 canonicalSnapshot(previous.get(team.id))
             ) {
-              if (!valid(generation, id))
-                throw new Error('Sync account changed.');
+              if (!guarded()) throw new Error('Sync account changed.');
               transaction.set(
                 doc(firestore, 'users', id, 'teams', team.id),
                 team
@@ -466,124 +317,74 @@ async function drain(generation: number, id: string) {
           }
           for (const teamId of manifest ?? []) {
             if (!mergedIds.includes(teamId)) {
-              if (!valid(generation, id))
-                throw new Error('Sync account changed.');
+              if (!guarded()) throw new Error('Sync account changed.');
               transaction.delete(doc(firestore, 'users', id, 'teams', teamId));
             }
           }
-          if (!valid(generation, id)) throw new Error('Sync account changed.');
+          if (!guarded()) throw new Error('Sync account changed.');
           transaction.set(ref, {
             schemaVersion: 2,
             teamIds: mergedIds,
             updatedAt: serverTimestamp(),
           });
         }
-
-        if (
-          !setManifestExists ||
-          currentSetsSnapshot(stagedSets.committed) !==
-            currentSetsSnapshot(remoteSets)
-        ) {
-          const previous = new Map(
-            remoteSets.map((entry) => [entry.id, entry])
-          );
-          for (const entry of stagedSets.committed) {
-            const old = previous.get(entry.id);
-            if (!old || canonicalSnapshot(entry) !== canonicalSnapshot(old)) {
-              if (!valid(generation, id))
-                throw new Error('Sync account changed.');
-              transaction.set(
-                doc(firestore, 'users', id, 'pokemonSets', entry.id),
-                entry
-              );
-            }
-          }
-          if (!valid(generation, id)) throw new Error('Sync account changed.');
-          transaction.set(setsRef, {
-            schemaVersion: 1,
-            setIds: stagedSets.committed.map(({ id: setId }) => setId),
-            updatedAt: serverTimestamp(),
-          });
-        }
-        return {
-          teams: merged,
-          sets: stagedSets.committed,
-          pendingIds: stagedSets.pendingIds,
-        };
+        return { teams: merged, ...staged };
       });
       if (!valid(generation, id)) return;
-      const current = readSavedTeams(localStorage);
-      const currentLocalSets = readCurrentSets(localStorage);
+      const rawTeams = localStorage.getItem(storageKey);
+      const rawSets = localStorage.getItem(currentSetsKey);
+      const rawCache = localStorage.getItem(cacheKey);
+      const current = readSavedTeams({ getItem: () => rawTeams });
+      const currentLocalSets = readCurrentSets({ getItem: () => rawSets });
       const rebased = mergeSavedTeams(
         capturedLocal,
         current,
         committed.teams,
         recoveryIds
       );
-      const pendingSetIds = new Set(committed.pendingIds);
-      const rebasedSetMap = new Map(
-        [
-          ...mergeCurrentSets(capturedSets, currentLocalSets, committed.sets),
-          ...currentLocalSets.filter((entry) => pendingSetIds.has(entry.id)),
-        ].map((entry) => [entry.id, entry])
+      const rebasedSets = rebaseStagedCurrentSets(
+        capturedSets,
+        currentLocalSets,
+        committed.stage,
+        committed.cloud.stored
       );
-      const checkedTeams = teams(rebased);
-      const checkedSets = currentSets(
-        [...rebasedSetMap.values()].sort((a, b) =>
-          a.id < b.id ? -1 : a.id > b.id ? 1 : 0
-        )
-      );
+      const checkedTeams = validatedTeams(rebased);
+      const checkedSets = readCurrentSetsValue(rebasedSets.local);
+      const checkedSetsRaw = JSON.stringify(rebasedSets.local);
       const teamChanged =
         teamsSnapshot(current) !== teamsSnapshot(checkedTeams);
-      const setsChanged =
-        currentSetsSnapshot(currentLocalSets) !==
-        currentSetsSnapshot(checkedSets);
-      if (!valid(generation, id)) return;
-      const rawTeams = localStorage.getItem(storageKey);
-      const rawSets = localStorage.getItem(currentSetsKey);
-      try {
-        if (teamChanged) {
+      const setsChanged = checkedSetsRaw !== rawSets;
+      if (!guarded()) throw new Error('Sync account changed.');
+      saveSyncRebase(
+        localStorage,
+        owner,
+        { teams: rawTeams, sets: rawSets, cache: rawCache },
+        {
+          base: committed.teams,
+          local: checkedTeams,
+          setsBase: rebasedSets.base,
+          setsLocal: rebasedSets.local,
+          teamsRaw: teamChanged ? JSON.stringify(checkedTeams) : rawTeams,
+          setsRaw: checkedSetsRaw,
+        },
+        () => {
           if (!valid(generation, id)) throw new Error('Sync account changed.');
-          localStorage.setItem(storageKey, JSON.stringify(checkedTeams));
         }
-        if (setsChanged) {
-          if (!valid(generation, id)) throw new Error('Sync account changed.');
-          localStorage.setItem(currentSetsKey, JSON.stringify(checkedSets));
-        }
-        if (!valid(generation, id)) throw new Error('Sync account changed.');
-        store(
-          account(id),
-          committed.teams,
-          checkedTeams,
-          committed.sets,
-          checkedSets
-        );
-      } catch (error) {
-        try {
-          if (valid(generation, id)) {
-            restoreStorageValue(storageKey, rawTeams);
-            restoreStorageValue(currentSetsKey, rawSets);
-          }
-        } catch {
-          throw error;
-        }
-        throw error;
-      }
+      );
       if (!valid(generation, id)) return;
       base = committed.teams;
-      setsBase = committed.sets;
+      setsBase = committed.stage.committed;
+      if (setsChanged) window.dispatchEvent(new Event(currentSetsChangedEvent));
       if (teamChanged || setsChanged) sync.revision++;
       if (
         teamsSnapshot(checkedTeams) !== teamsSnapshot(committed.teams) ||
         currentSetsSnapshot(checkedSets) !==
-          currentSetsSnapshot(committed.sets) ||
-        committed.pendingIds.length
+          currentSetsSnapshot(committed.stage.committed) ||
+        committed.stage.pendingIds.length
       ) {
         pending = true;
         savePending = true;
-      } else if (!pending && !savePending) {
-        sync.status = 'synced';
-      }
+      } else if (!pending && !savePending) sync.status = 'synced';
     } catch (error) {
       if (generation === session && uid === id) {
         pending = false;
@@ -633,7 +434,7 @@ export function initSync(): void {
     if (uid && document.visibilityState === 'visible') void request();
   });
   window.addEventListener('storage', (event) => {
-    if (event.key === ownerKey && uid && event.newValue !== account(uid)) {
+    if (event.key === syncOwnerKey && uid && event.newValue !== account(uid)) {
       invalidate();
       fail(
         new Error(
@@ -643,7 +444,7 @@ export function initSync(): void {
     } else if (event.key === currentSetsKey && uid) {
       try {
         if (!valid(session, uid)) return;
-        const cached = record(account(uid));
+        const cached = readSyncCache(localStorage, account(uid));
         if (!valid(session, uid)) return;
         if (cached) setsBase = cached.setsBase;
         void request();
@@ -652,6 +453,37 @@ export function initSync(): void {
       }
     }
   });
+  activateUser = (user) => {
+    try {
+      adopt(user.uid);
+      uid = user.uid;
+      sync.user = user;
+      const generation = session;
+      unsubscribe = watchCurrentSetDocument(
+        doc(firestore, 'users', uid),
+        () => valid(generation, user.uid),
+        () => void request(),
+        (error) => generation === session && fail(error)
+      );
+      unsubscribeSets = watchCurrentSetDocument(
+        doc(firestore, 'users', uid, 'pokemonSetState', 'manifest'),
+        () => valid(generation, user.uid),
+        (snapshot) => {
+          const next = canonicalSnapshot(
+            snapshot.exists() ? snapshot.data() : null
+          );
+          if (setManifestSnapshot !== null && setManifestSnapshot !== next)
+            sync.revision++;
+          setManifestSnapshot = next;
+          void request();
+        },
+        (error) => generation === session && fail(error)
+      );
+      void request();
+    } catch (error) {
+      fail(error);
+    }
+  };
   onAuthStateChanged(auth, (user) => {
     invalidate();
     sync.user = null;
@@ -661,54 +493,7 @@ export function initSync(): void {
       sync.error = '';
       return;
     }
-    try {
-      adopt(user.uid);
-      uid = user.uid;
-      sync.user = user;
-      const generation = session;
-      unsubscribe = onSnapshot(
-        doc(firestore, 'users', uid),
-        { includeMetadataChanges: true },
-        (snapshot) => {
-          if (generation !== session || snapshot.metadata.hasPendingWrites)
-            return;
-          try {
-            if (valid(generation, user.uid)) void request();
-          } catch (error) {
-            fail(error);
-          }
-        },
-        (error) => {
-          if (generation === session) fail(error);
-        }
-      );
-      unsubscribeSets = onSnapshot(
-        doc(firestore, 'users', uid, 'pokemonSetState', 'manifest'),
-        { includeMetadataChanges: true },
-        (snapshot) => {
-          if (generation !== session || snapshot.metadata.hasPendingWrites)
-            return;
-          try {
-            if (!valid(generation, user.uid)) return;
-            const next = canonicalSnapshot(
-              snapshot.exists() ? snapshot.data() : null
-            );
-            if (setManifestSnapshot !== null && setManifestSnapshot !== next)
-              sync.revision++;
-            setManifestSnapshot = next;
-            void request();
-          } catch (error) {
-            fail(error);
-          }
-        },
-        (error) => {
-          if (generation === session) fail(error);
-        }
-      );
-      void request();
-    } catch (error) {
-      fail(error);
-    }
+    activateUser?.(user);
   });
 }
 
@@ -756,7 +541,7 @@ export async function pushNow(): Promise<void> {
   try {
     if (!uid || !valid(session, uid)) return;
     const owner = account(uid);
-    const cached = record(owner);
+    const cached = readSyncCache(localStorage, owner);
     if (!valid(session, uid)) return;
     if (cached) setsBase = cached.setsBase;
     const local = readSavedTeams(localStorage);

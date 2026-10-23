@@ -292,6 +292,7 @@
   class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:border focus:bg-base-100 focus:p-3"
   >Skip to content</a
 >
+
 {#if isLogin}
   {@render children()}
 {:else if !startupReady || (sync.configured && (!sync.authResolved || !sync.user))}

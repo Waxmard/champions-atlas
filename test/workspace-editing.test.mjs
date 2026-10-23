@@ -707,7 +707,10 @@ test('current-set staging commits at most 350 sorted changes and rebases deferre
   const newEntries = Array.from({ length: 350 }, (_, index) =>
     entry(member(`Newmon${String(index).padStart(4, '0')}`))
   );
-  const newBatch = stageCurrentSets([], newEntries);
+  const newBatch = stageCurrentSets([], newEntries, {
+    setIds: [],
+    entries: [],
+  });
   assert.equal(newBatch.committed.length, 350);
   assert.deepEqual(newBatch.pendingIds, []);
   assert.equal(
@@ -725,7 +728,10 @@ test('current-set staging commits at most 350 sorted changes and rebases deferre
   const desired = remote.map(({ member: value }) =>
     entry({ ...value, item: 'New item' })
   );
-  const first = stageCurrentSets(remote, desired);
+  const first = stageCurrentSets(remote, desired, {
+    setIds: remote.map(({ id }) => id),
+    entries: remote,
+  });
   assert.equal(first.committed.length, 351);
   assert.equal(first.pendingIds.length, 1);
   assert.equal(first.pendingIds[0], desired[350].id);
@@ -744,7 +750,10 @@ test('current-set staging commits at most 350 sorted changes and rebases deferre
     restored.find(({ id }) => id === pending[0].id),
     pending[0]
   );
-  const second = stageCurrentSets(first.committed, restored);
+  const second = stageCurrentSets(first.committed, restored, {
+    setIds: first.setIds,
+    entries: first.committed,
+  });
   assert.deepEqual(second.pendingIds, []);
   assert.equal(
     currentSetsSnapshot(second.committed),
