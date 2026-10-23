@@ -3,7 +3,7 @@ import test from 'node:test';
 import { canonicalMember } from '../src/lib/paste.ts';
 import { migrateStoredData } from '../src/lib/storage-migration.ts';
 import { storageKey } from '../src/lib/workbench.ts';
-import { currentSetsKey } from '../src/lib/current-sets.ts';
+import { currentSetsKey, readCurrentSets } from '../src/lib/current-sets.ts';
 
 function member(changes = {}) {
   return {
@@ -232,4 +232,74 @@ test('migrateStoredData leaves unreadable data untouched', () => {
   assert.equal(store.writes, 0);
   assert.equal(store.entries.get(storageKey), '{"not":"a team list"');
   assert.equal(store.entries.get(currentSetsKey), '{"not":"a set list"');
+});
+
+test('migrateStoredData canonicalizes legacy Mega-Z IDs without changing the member', () => {
+  const legacyMember = {
+    ...member({
+      pokemon: 'Garchomp-Mega-Z',
+      set: 'Garchomp-Mega-Z @ Light Ball\nAbility: Static\nAdamant Nature\nEVs: 2 HP / 32 Atk / 32 Spe\n- Protect\n- Thunderbolt',
+    }),
+    customMetadata: { source: 'legacy', preserved: true },
+  };
+  const unrelated = { id: 'pikachu', member: member() };
+  const store = fakeStorage({
+    [storageKey]: '[]',
+    [currentSetsKey]: JSON.stringify([
+      { id: 'garchompmegaz', member: legacyMember },
+      unrelated,
+    ]),
+  });
+
+  migrateStoredData(store.storage);
+
+  const migratedRaw = store.entries.get(currentSetsKey);
+  const migrated = JSON.parse(migratedRaw);
+  assert.equal(migrated[0].id, 'garchomp');
+  assert.deepEqual(migrated[0].member, legacyMember);
+  assert.deepEqual(migrated[1], unrelated);
+  const writes = store.writes;
+  migrateStoredData(store.storage);
+  assert.equal(store.writes, writes);
+
+  const independentlyRead = fakeStorage({
+    [currentSetsKey]: JSON.stringify([
+      { id: 'garchompmegaz', member: legacyMember },
+    ]),
+  });
+  assert.equal(readCurrentSets(independentlyRead.storage)[0].id, 'garchomp');
+  assert.equal(
+    independentlyRead.entries.get(currentSetsKey),
+    JSON.stringify([{ id: 'garchompmegaz', member: legacyMember }])
+  );
+  assert.equal(independentlyRead.writes, 0);
+});
+
+test('readCurrentSets rejects invalid and collapsing IDs without startup writes', () => {
+  const savedTeams = '{ "saved": ["must", "stay", "byte-for-byte"] }';
+  const error =
+    'Current Pokémon sets could not be read. Existing data has been left untouched.';
+  const invalidCases = [
+    [{ id: 'unrelated', member: member({ pokemon: 'Garchomp-Mega-Z' }) }],
+    [
+      { id: 'garchomp', member: member({ pokemon: 'Garchomp' }) },
+      {
+        id: 'garchompmegaz',
+        member: member({ pokemon: 'Garchomp-Mega-Z' }),
+      },
+    ],
+  ];
+
+  for (const sets of invalidCases) {
+    const rawSets = JSON.stringify(sets);
+    const store = fakeStorage({
+      [storageKey]: savedTeams,
+      [currentSetsKey]: rawSets,
+    });
+    assert.throws(() => readCurrentSets(store.storage), { message: error });
+    migrateStoredData(store.storage);
+    assert.equal(store.writes, 0);
+    assert.equal(store.entries.get(currentSetsKey), rawSets);
+    assert.equal(store.entries.get(storageKey), savedTeams);
+  }
 });

@@ -32,6 +32,12 @@ const currentSetSchema = z
     id: idSchema,
     member: memberSchema,
   })
+  .transform((entry) =>
+    /[- ]mega[- ]z$/i.test(entry.member.pokemon) &&
+    entry.id === normalize(entry.member.pokemon)
+      ? { ...entry, id: pokemonId(entry.member.pokemon) }
+      : entry
+  )
   .superRefine(({ id, member }, context) => {
     if (id !== pokemonId(member.pokemon))
       context.addIssue({
