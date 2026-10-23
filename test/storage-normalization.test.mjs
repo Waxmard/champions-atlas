@@ -512,6 +512,26 @@ test('staging batches canonical writes and persists canonical cache ids', () => 
   );
 });
 
+test('rebasing drops a wire alias the member no longer justifies', () => {
+  const [base, megaZ] = legacyRegistry();
+  const stored = { setIds: ['garchompmegaz'], entries: [megaZ] };
+  const stage = (pending) => ({
+    committed: [],
+    pendingIds: [pending],
+    setIds: ['garchompmegaz'],
+    writes: [],
+  });
+  const local = [{ id: 'garchomp', member: base.member }];
+  assert.deepEqual(
+    rebaseStagedCurrentSets([], local, stage('garchomp'), stored).local,
+    local
+  );
+  assert.deepEqual(
+    rebaseStagedCurrentSets([], [megaZ], stage(megaZ.id), stored).local,
+    [megaZ]
+  );
+});
+
 test('cloud decoding resolves aliases and stages one canonical child', () => {
   const originals = legacyRegistry();
   const uid = 'test';

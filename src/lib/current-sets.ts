@@ -407,12 +407,17 @@ export function retainCurrentSetWireIds(
     physical.active.map((entry) => [entry.id, entry.originalId])
   );
   return validateCurrentSets(sets).map((entry) => {
-    const next = {
-      id: identities.get(entry.id) ?? entry.id,
-      member: entry.member,
-    };
-    inspectRawCurrentSet(next);
-    return next;
+    const wireId = identities.get(entry.id);
+    if (wireId && wireId !== entry.id) {
+      const wire = { id: wireId, member: entry.member };
+      try {
+        inspectRawCurrentSet(wire);
+        return wire;
+      } catch {
+        return { id: entry.id, member: entry.member };
+      }
+    }
+    return { id: entry.id, member: entry.member };
   });
 }
 

@@ -19,8 +19,6 @@ const changedSourcesError =
   'In-game sets changed while syncing. Review the latest sets and try again.';
 
 export interface SyncCacheSnapshot {
-  key: string;
-  raw: string;
   root: Record<string, unknown>;
 }
 
@@ -69,9 +67,8 @@ export function readSyncCacheSnapshot(
   storage: Pick<Storage, 'getItem'>,
   owner: string
 ): SyncCacheSnapshot | null {
-  const key = syncRecordKey(owner);
-  const raw = storage.getItem(key);
-  return raw === null ? null : { key, raw, root: recordRoot(raw) };
+  const raw = storage.getItem(syncRecordKey(owner));
+  return raw === null ? null : { root: recordRoot(raw) };
 }
 
 function savedTeams(value: unknown): SavedTeam[] {

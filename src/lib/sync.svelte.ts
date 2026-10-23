@@ -67,7 +67,6 @@ export const sync = $state({
 let auth: Auth | null = null;
 let db: Firestore | null = null;
 let projectId = '';
-let activateUser: ((user: User) => void) | null = null;
 let session = 0;
 let uid = '';
 let unsubscribe: Unsubscribe | null = null;
@@ -453,7 +452,7 @@ export function initSync(): void {
       }
     }
   });
-  activateUser = (user) => {
+  function activateUser(user: User) {
     try {
       adopt(user.uid);
       uid = user.uid;
@@ -483,7 +482,7 @@ export function initSync(): void {
     } catch (error) {
       fail(error);
     }
-  };
+  }
   onAuthStateChanged(auth, (user) => {
     invalidate();
     sync.user = null;
@@ -493,7 +492,7 @@ export function initSync(): void {
       sync.error = '';
       return;
     }
-    activateUser?.(user);
+    activateUser(user);
   });
 }
 

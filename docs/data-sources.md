@@ -294,7 +294,8 @@ Exact duplicates share regulation, paste URL, and member species/items. Their
 sheet IDs and report links merge; different paste URLs remain separate variants.
 Imports are atomic, and source files are cached. `REFRESH=1` or `CHECK_SHEET=1`
 refreshes ordinary source indexes, the Poch.ms leaderboard included. Paste
-payloads are immutable, so they are never refreshed: an import reuses a cached
+payloads are cached indefinitely and never refreshed by `REFRESH=1` (an author
+can still edit a paste behind its URL): an import reuses a cached
 paste and fetches a missing one, and deleting `.cache/catalog/<paste-id>.json` is
 the way to request it again. YouTube discovery refreshes separately with
 `REFRESH=1` or `YOUTUBE_REFRESH=1`; `YOUTUBE_REFRESH=1` alone leaves warm
