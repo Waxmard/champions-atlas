@@ -434,12 +434,12 @@
                   updateMember(index, 'item', event.currentTarget.value)}
               >
                 <option value="">Any item</option>
-                {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
-                    value={filter.item}>{filter.item}</option
-                  >{/if}
                 {#each options(filter.pokemon, 'item') as item (item)}<option
                     value={item}>{item}</option
                   >{/each}
+                {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
+                    value={filter.item}>{filter.item}</option
+                  >{/if}
               </select>
             </label>
 

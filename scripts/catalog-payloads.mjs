@@ -42,15 +42,14 @@ export const championRegulation = (value) => {
   );
 };
 
-async function loadVictoryRoadPayload(candidate, fetchCached, refresh) {
+async function loadVictoryRoadPayload(candidate, fetchCached) {
   const id = candidate.pasteUrl.split('/').at(-1);
   let text;
   try {
     text = await fetchCached(
       `vr-${id}.json`,
       vrPasteApi(id),
-      validateProviderJson,
-      refresh
+      validateProviderJson
     );
   } catch (error) {
     throw error.reason
@@ -66,15 +65,14 @@ async function loadVictoryRoadPayload(candidate, fetchCached, refresh) {
   }
 }
 
-async function loadPokepastePayload(candidate, fetchCached, refresh) {
+async function loadPokepastePayload(candidate, fetchCached) {
   const key = candidate.pasteUrl.split('/').at(-1);
   let text;
   try {
     text = await fetchCached(
       `${key}.json`,
       `${candidate.pasteUrl}/json`,
-      validateProviderJson,
-      refresh
+      validateProviderJson
     );
   } catch (error) {
     throw error.reason
@@ -96,10 +94,10 @@ async function loadPokepastePayload(candidate, fetchCached, refresh) {
   };
 }
 
-export function loadIndexPaste(candidate, fetchCached, refresh = false) {
+export function loadIndexPaste(candidate, fetchCached) {
   return isVrPasteUrl(candidate.pasteUrl)
-    ? loadVictoryRoadPayload(candidate, fetchCached, refresh)
-    : loadPokepastePayload(candidate, fetchCached, refresh);
+    ? loadVictoryRoadPayload(candidate, fetchCached)
+    : loadPokepastePayload(candidate, fetchCached);
 }
 
 export function validateIndexFormat(candidate, payload) {

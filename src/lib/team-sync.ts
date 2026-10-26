@@ -14,7 +14,33 @@ export function teamsSnapshot(teams: SavedTeam[]): string {
   );
 }
 
-function validated(value: unknown): SavedTeam[] {
+export function validateTeamIds(value: unknown): string[] {
+  if (
+    !Array.isArray(value) ||
+    value.length > 50 ||
+    new Set(value).size !== value.length ||
+    value.some(
+      (id) =>
+        typeof id !== 'string' ||
+        !id ||
+        new TextEncoder().encode(id).length > 1500 ||
+        id.includes('/') ||
+        id === '.' ||
+        id === '..' ||
+        /^__[\s\S]*__$/.test(id)
+    )
+  )
+    throw new Error(
+      'Cloud saved teams could not be read. Existing data has been left untouched.'
+    );
+  return value;
+}
+
+export function validatedTeams(value: unknown): SavedTeam[] {
+  if (!Array.isArray(value))
+    throw new Error(
+      'Saved teams could not be read. Existing data has been left untouched.'
+    );
   return readSavedTeams({ getItem: () => JSON.stringify(value) });
 }
 
@@ -24,9 +50,9 @@ export function mergeSavedTeams(
   remote: SavedTeam[],
   recoveryIds: Map<string, string>
 ): SavedTeam[] {
-  const original = base === null ? null : validated(base);
-  const left = validated(local);
-  const right = validated(remote);
+  const original = base === null ? null : validatedTeams(base);
+  const left = validatedTeams(local);
+  const right = validatedTeams(remote);
   const bases = new Map(original?.map((team) => [team.id, team]));
   const locals = new Map(left.map((team) => [team.id, team]));
   const remotes = new Map(right.map((team) => [team.id, team]));
@@ -82,5 +108,5 @@ export function mergeSavedTeams(
     if (selected) result.push(selected);
   }
   if (result.length + recovered.length > 50) throw new Error(roomError);
-  return validated([...result, ...recovered]);
+  return validatedTeams([...result, ...recovered]);
 }

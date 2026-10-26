@@ -169,6 +169,13 @@ discovery. A successful complete scan treats disappeared video/paste links as
 removals from the active slice; frozen historical records remain until a
 full-history rebuild. Individual paste fetch failures retain compatible prior
 sets and expose the error.
+Rejected candidates are memoized in `.cache/catalog/youtube-decisions.json`,
+keyed by video ID and paste URL, with the rejection reason and a digest of the
+video text. A later import reuses a recorded rejection without reading its paste
+and without spending the `PASTE_LIMIT` budget; transient reasons
+(`paste_unavailable`, `invalid_payload`) are never recorded, and an edited
+importer or eligibility snapshot discards the whole ledger. Deleting the file
+costs time only.
 
 ## Assets and preview cache
 
@@ -286,17 +293,20 @@ still imports.
 Exact duplicates share regulation, paste URL, and member species/items. Their
 sheet IDs and report links merge; different paste URLs remain separate variants.
 Imports are atomic, and source files are cached. `REFRESH=1` or `CHECK_SHEET=1`
-refreshes ordinary source indexes, the Poch.ms leaderboard included, and selected
-paste payloads. YouTube discovery refreshes separately with `REFRESH=1` or
-`YOUTUBE_REFRESH=1`; `YOUTUBE_REFRESH=1` alone leaves warm ordinary source and
-paste caches unchanged. `OFFLINE=1` requires the cache.
+refreshes ordinary source indexes, the Poch.ms leaderboard included. Paste
+payloads are cached indefinitely and never refreshed by `REFRESH=1` (an author
+can still edit a paste behind its URL): an import reuses a cached
+paste and fetches a missing one, and deleting `.cache/catalog/<paste-id>.json` is
+the way to request it again. YouTube discovery refreshes separately with
+`REFRESH=1` or `YOUTUBE_REFRESH=1`; `YOUTUBE_REFRESH=1` alone leaves warm
+ordinary source caches unchanged. `OFFLINE=1` requires the cache.
 The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
 accepted records, 92 of them with regulation `Unknown`, and 194 skipped records
 (reported singles and unsupported formats). The displayed snapshot date
 tracks catalog generation, not independent verification of source claims.
-By default every paste is fetched with three concurrent workers and reused from
-cache. Individual paste failures preserve compatible previous sets and expose an
-error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
+By default only a paste missing from the cache is fetched, with three concurrent
+workers. Individual paste failures preserve compatible previous sets and expose
+an error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
 partial-fetch option and does not erase compatible previously loaded sets. It
 counts candidate teams with the sheets first, so a limit below the sheet count
 leaves index teams unreached: those keep their previously validated record

@@ -19,14 +19,17 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   on the team.
 - Attach item, move, and ability constraints to the selected Pokémon. A matching
   item on a different teammate does not satisfy that constraint.
-- In Browse, a base Pokémon and its Mega share one selectable identity. Mawile
-  and Mawile-Mega share Mawile; Floette-Eternal, Floette-Eternal-Mega, and
+- In Browse, a base Pokémon and its Mega share one selectable identity.
+  Garchomp, Garchomp-Mega, and Garchomp-Mega-Z share Garchomp; Mawile and
+  Mawile-Mega share Mawile; Floette-Eternal, Floette-Eternal-Mega, and
   Floette-Mega share Floette-Eternal. Ordinary Floette remains separate. Held
-  item starts at Any item; an optional stone constraint applies to that same
-  actual team member. This Browse identity does not change imported
-  species/forms, exports, or battle calculations. Legacy filters canonicalize to
-  the shared identity while retaining explicit constraints; duplicate aliases
-  remain invalid.
+  item starts at Any item, followed by observed applicable Mega Stones ordered
+  by frequency, then other observed items by descending frequency with item-name
+  ties in deterministic ascending order. Options use the full catalog. An
+  optional item constraint applies to that same actual team member. This Browse
+  identity does not change imported species/forms, exports, or battle
+  calculations. Legacy filters canonicalize to the shared identity while
+  retaining explicit constraints; duplicate aliases remain invalid.
 - Default Browse to the current regulation; make older regulations available
   through All regulations.
 - Prioritize relevant results with the ordering in [data sources](data-sources.md).
@@ -93,8 +96,14 @@ Record and reuse one explicit **my in-game set** per Browse identity,
 representing the set currently in your Pokémon Champions box. Recording changes
 only Champion's Atlas, never Pokémon Champions, and does not save the team
 itself. A base Pokémon and its Mega share a slot; ordinary Floette and
-Floette-Eternal remain separate. Record individual committed sets or **Record
-all in-game sets** from the selected team's **My teams** overview, never from
+Floette-Eternal remain separate. Legacy Garchomp-Mega-Z slots normalize to the
+Garchomp identity when read. When a canonical slot and its legacy Mega-Z
+duplicate both exist, the canonical slot is kept and the duplicate is dropped
+silently on startup, during sync, and when another device shares it. The removal
+is permanent and keeps no backup. A lone legacy slot keeps its member and only
+takes the canonical id. Malformed data remains unreadable and untouched.
+Record individual committed sets or **Record all in-game sets** from the selected
+team's **My teams** overview, never from
 the editor. These secondary actions use the Save icon and appear only when a
 snapshot would change. Recording is unavailable while editing and never flushes
 pending editor input or a pending team name. Individual replacements use native
@@ -110,7 +119,8 @@ choice without overwriting data.
 
 Snapshots remain independent of teams. Team edits do not update them, and
 deleting a team does not delete them. The app does not auto-seed current sets
-from teams or keep snapshot history.
+from teams or create snapshot history during normal recording, and it keeps no
+in-game set backups.
 
 When a snapshot exists, its item, ability, nature, and move values appear as
 subtly source-labelled choices in the corresponding editor suggestion surfaces.

@@ -1,9 +1,32 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { Timestamp } from 'firebase/firestore';
+import { normalize, pokemonId } from '../src/lib/catalog.ts';
+import {
+  decodeCurrentSetCloud,
+  inspectCurrentSetCloud,
+} from '../src/lib/current-set-sync.ts';
 import { canonicalMember } from '../src/lib/paste.ts';
-import { migrateStoredData } from '../src/lib/storage-migration.ts';
+import {
+  applyGuardedStorageWrites,
+  composeSyncCache,
+  migrateStoredData,
+  readSyncCache,
+  readSyncCacheSnapshot,
+  syncRecordKey,
+  writeSyncCache,
+} from '../src/lib/storage-migration.ts';
 import { storageKey } from '../src/lib/workbench.ts';
-import { currentSetsKey } from '../src/lib/current-sets.ts';
+import {
+  currentSetsKey,
+  inspectCurrentSets,
+  inspectRawCurrentSet,
+  readCurrentSets,
+  readCurrentSetsValue,
+  rebaseStagedCurrentSets,
+  resolveLegacyDuplicates,
+  stageCurrentSets,
+} from '../src/lib/current-sets.ts';
 
 function member(changes = {}) {
   return {
@@ -15,6 +38,29 @@ function member(changes = {}) {
     spread: '2 HP / 32 Atk / 32 Spe',
     ...changes,
   };
+}
+
+function legacyRegistry() {
+  const base = member({
+    pokemon: 'Garchomp',
+    item: 'Life Orb',
+    ability: 'Rough Skin',
+    moves: ['Protect', 'Earthquake'],
+  });
+  return [
+    { id: 'garchomp', member: base },
+    {
+      id: 'garchompmegaz',
+      member: {
+        ...base,
+        pokemon: 'Garchomp-Mega-Z',
+        item: 'Garchompite Z',
+        ability: 'Sand Force',
+        set: 'Garchomp-Mega-Z @ Garchompite Z\nAbility: Sand Force\nAdamant Nature\nEVs: 2 HP / 32 Atk / 32 Spe\n- Protect\n- Earthquake',
+        customMetadata: { source: 'legacy', preserved: true },
+      },
+    },
+  ];
 }
 
 function fakeStorage(initial = {}) {
@@ -32,6 +78,10 @@ function fakeStorage(initial = {}) {
       setItem: (key, value) => {
         writes += 1;
         entries.set(key, value);
+      },
+      removeItem: (key) => {
+        writes += 1;
+        entries.delete(key);
       },
     },
   };
@@ -232,4 +282,355 @@ test('migrateStoredData leaves unreadable data untouched', () => {
   assert.equal(store.writes, 0);
   assert.equal(store.entries.get(storageKey), '{"not":"a team list"');
   assert.equal(store.entries.get(currentSetsKey), '{"not":"a set list"');
+});
+function syncCacheRecord(fields) {
+  return JSON.stringify({
+    base: null,
+    local: [],
+    setsBase: null,
+    setsLocal: [],
+    ...fields,
+  });
+}
+test('Mega-Z duplicates keep the canonical slot and drop the legacy one', () => {
+  const pairs = [
+    ['Garchomp', 'Garchomp-Mega-Z'],
+    ['Lucario', 'Lucario-Mega-Z'],
+    ['Absol', 'Absol-Mega-Z'],
+  ];
+  for (const [base, megaZ] of pairs) {
+    const sets = [
+      { id: pokemonId(base), member: member({ pokemon: base }) },
+      { id: normalize(megaZ), member: member({ pokemon: megaZ }) },
+    ];
+    assert.deepEqual(
+      resolveLegacyDuplicates(inspectCurrentSets(sets)).map(
+        ({ originalId, id }) => [originalId, id]
+      ),
+      [[pokemonId(base), pokemonId(base)]]
+    );
+    const store = fakeStorage({
+      [storageKey]: '[]',
+      [currentSetsKey]: JSON.stringify(sets),
+    });
+    assert.deepEqual(readCurrentSets(store.storage), [
+      { id: pokemonId(base), member: sets[0].member },
+    ]);
+
+    migrateStoredData(store.storage);
+    assert.equal(store.writes, 1);
+    assert.deepEqual(JSON.parse(store.entries.get(currentSetsKey)), [
+      { id: pokemonId(base), member: sets[0].member },
+    ]);
+    migrateStoredData(store.storage);
+    assert.equal(store.writes, 1);
+  }
+});
+
+test('a lone legacy Mega-Z slot normalizes without touching its member', () => {
+  const lone = [
+    { id: 'garchompmegaz', member: member({ pokemon: 'Garchomp-Mega-Z' }) },
+  ];
+  assert.deepEqual(inspectRawCurrentSet(lone[0]), {
+    originalId: 'garchompmegaz',
+    id: 'garchomp',
+    member: lone[0].member,
+  });
+  assert.deepEqual(readCurrentSetsValue(lone), [
+    { id: 'garchomp', member: lone[0].member },
+  ]);
+  const read = fakeStorage({
+    [currentSetsKey]: JSON.stringify(lone),
+  });
+  assert.deepEqual(readCurrentSets(read.storage), [
+    { id: 'garchomp', member: lone[0].member },
+  ]);
+});
+
+test('invalid registries reject without startup writes', () => {
+  const error =
+    'Current Pokémon sets could not be read. Existing data has been left untouched.';
+  const savedTeams = '{ "saved": ["must", "stay", "byte-for-byte"] }';
+  const pikachu = (changes) => ({ id: 'pikachu', member: member(changes) });
+  const invalid = [
+    [pikachu(), pikachu()],
+    [{ id: 'unrelated', member: member({ pokemon: 'Garchomp-Mega-Z' }) }],
+    [pikachu({ moves: ['Protect', 'protect'] })],
+    [pikachu({ moves: ['A', 'B', 'C', 'D', 'E'] })],
+    Array.from({ length: 1501 }, () => pikachu()),
+    [{ id: 'pikachu', member: {} }],
+  ];
+
+  for (const sets of invalid) {
+    const rawSets = JSON.stringify(sets);
+    const store = fakeStorage({
+      [storageKey]: savedTeams,
+      [currentSetsKey]: rawSets,
+    });
+    assert.throws(() => readCurrentSets(store.storage), { message: error });
+    migrateStoredData(store.storage);
+    assert.equal(store.writes, 0);
+    assert.equal(store.entries.get(currentSetsKey), rawSets);
+    assert.equal(store.entries.get(storageKey), savedTeams);
+  }
+});
+
+test('guarded writes roll back only values still owned by the operation', () => {
+  const values = { one: 'before-one', two: 'before-two' };
+  const before = Object.entries(values).map(([key, raw]) => ({ key, raw }));
+  const changes = Object.entries(values).map(([key, raw]) => ({
+    key,
+    before: raw,
+    after: `ours-${key}`,
+  }));
+  const apply = (target, writes = changes, guard) =>
+    applyGuardedStorageWrites(target, before, writes, guard);
+  const entries = new Map(Object.entries(values));
+  const storage = {
+    getItem: (key) => entries.get(key) ?? null,
+    setItem(key, value) {
+      if (key === 'two') {
+        entries.set('one', 'newer-sibling-write');
+        throw new Error('quota');
+      }
+      entries.set(key, value);
+    },
+    removeItem: (key) => entries.delete(key),
+  };
+  assert.throws(() => apply(storage), { message: 'quota' });
+  assert.equal(entries.get('one'), 'newer-sibling-write');
+  assert.equal(entries.get('two'), 'before-two');
+  assert.throws(() => apply(fakeStorage({ one: 'changed' }).storage), {
+    message: /In-game sets changed while syncing/,
+  });
+  const rollback = fakeStorage({ one: 'before-one', two: 'before-two' });
+  assert.throws(
+    () =>
+      apply(rollback.storage, changes.slice(0, 1), () => {
+        if (rollback.entries.get('one') === 'ours-one')
+          throw new Error('account changed');
+      }),
+    { message: 'account changed' }
+  );
+  assert.equal(rollback.entries.get('one'), 'before-one');
+  assert.equal(rollback.entries.get('two'), 'before-two');
+});
+
+test('staging batches canonical writes and persists canonical cache ids', () => {
+  const aliases = Array.from({ length: 351 }, (_, i) => {
+    const suffix = String(i).padStart(3, '0');
+    return {
+      id: `migration${suffix}megaz`,
+      member: member({ pokemon: `Migration${suffix}-Mega-Z` }),
+    };
+  });
+  const startup = fakeStorage({
+    [storageKey]: '[]',
+    [currentSetsKey]: JSON.stringify([
+      aliases[0],
+      { id: 'pikachu', member: member() },
+    ]),
+  });
+  migrateStoredData(startup.storage);
+  const startupWrites = startup.writes;
+  assert.deepEqual(
+    JSON.parse(startup.entries.get(currentSetsKey)).map(({ id }) => id),
+    ['migration000', 'pikachu']
+  );
+  migrateStoredData(startup.storage);
+  assert.equal(startup.writes, startupWrites);
+
+  const remote = readCurrentSetsValue(aliases);
+  const stored = {
+    setIds: aliases.map(({ id }) => id).sort(),
+    entries: aliases,
+  };
+  const first = stageCurrentSets(remote, remote, stored);
+  const writeIds = first.writes.map(({ id }) => id);
+  const deferredId = aliases.at(-1).id;
+  assert.equal(first.writes.length, 350);
+  assert.deepEqual(writeIds, [...writeIds].sort());
+  assert.deepEqual(first.pendingIds, [remote.at(-1).id]);
+  assert.deepEqual(first.setIds, [...writeIds, deferredId].sort());
+  assert.ok(first.writes.every(({ id }) => id === pokemonId(id)));
+  const rebased = rebaseStagedCurrentSets(remote, remote, first);
+  assert.ok(rebased.base.some(({ id }) => id === deferredId));
+  const working = fakeStorage({
+    [currentSetsKey]: JSON.stringify(rebased.local),
+  });
+  assert.ok(
+    JSON.parse(working.entries.get(currentSetsKey)).some(
+      ({ id }) => id === deferredId
+    )
+  );
+  assert.deepEqual(readCurrentSets(working.storage), remote);
+
+  const owner = 'demo:user';
+  const cache = fakeStorage({
+    [syncRecordKey(owner)]: syncCacheRecord({
+      setsBase: rebased.base,
+      setsLocal: rebased.local,
+      extraRootField: { preserve: true },
+    }),
+  });
+  const record = readSyncCache(cache.storage, owner);
+  assert.deepEqual(record.setsLocal, remote);
+  assert.deepEqual(record.rawSetsLocal, rebased.local);
+  const written = writeSyncCache(cache.storage, owner, {
+    base: null,
+    local: [],
+    setsBase: null,
+    setsLocal: remote,
+  });
+  const reloaded = readSyncCacheSnapshot(cache.storage, owner).root;
+  assert.equal(cache.entries.get(syncRecordKey(owner)), written);
+  assert.deepEqual([reloaded.setsBase, reloaded.setsLocal], [null, remote]);
+  assert.deepEqual(reloaded.extraRootField, { preserve: true });
+  assert.equal(
+    composeSyncCache(null, {
+      base: null,
+      local: [],
+      setsBase: null,
+      setsLocal: remote,
+    }),
+    JSON.stringify({
+      base: null,
+      local: [],
+      setsBase: null,
+      setsLocal: remote,
+    })
+  );
+
+  const second = stageCurrentSets(
+    first.committed,
+    readCurrentSets(working.storage),
+    {
+      setIds: first.setIds,
+      entries: [...stored.entries, ...first.writes],
+    }
+  );
+  assert.deepEqual(
+    [second.pendingIds, second.writes.map(({ id }) => id), second.setIds],
+    [[], [remote.at(-1).id], remote.map(({ id }) => id).sort()]
+  );
+});
+
+test('rebasing drops a wire alias the member no longer justifies', () => {
+  const [base, megaZ] = legacyRegistry();
+  const entries = [
+    ...Array.from({ length: 350 }, (_, i) => ({
+      id: `amigration${String(i).padStart(3, '0')}megaz`,
+      member: member({
+        pokemon: `AMigration${String(i).padStart(3, '0')}-Mega-Z`,
+      }),
+    })),
+    megaZ,
+  ];
+  const stored = { setIds: entries.map(({ id }) => id).sort(), entries };
+  const remote = readCurrentSetsValue(entries);
+  const local = remote.map((entry) => (entry.id === base.id ? base : entry));
+  const staged = stageCurrentSets(remote, local, stored);
+  assert.deepEqual(staged.pendingIds, ['garchomp']);
+  const rebased = rebaseStagedCurrentSets(remote, local, staged);
+  assert.deepEqual(readCurrentSetsValue(rebased.local), local);
+  assert.deepEqual(
+    rebased.local.find(({ id }) => id === base.id),
+    base
+  );
+  assert.deepEqual(
+    rebased.base.find(({ id }) => id === megaZ.id),
+    megaZ
+  );
+});
+
+test('cloud decoding resolves aliases and stages one canonical child', () => {
+  const originals = legacyRegistry();
+  const document = (entry) => ({
+    id: entry.id,
+    data: entry,
+  });
+  const decode = (
+    listed,
+    probes = [],
+    setIds = listed.map(({ data }) => data.id)
+  ) =>
+    decodeCurrentSetCloud(
+      inspectCurrentSetCloud(
+        {
+          schemaVersion: 1,
+          setIds: [...setIds].sort(),
+          updatedAt: Timestamp.fromMillis(4),
+        },
+        listed
+      ),
+      probes
+    );
+  const [base, megaZ] = originals;
+  const aliasOnly = decode([document(megaZ)], [{ id: 'garchomp', data: null }]);
+  assert.deepEqual(aliasOnly.canonical, [
+    { id: 'garchomp', member: megaZ.member },
+  ]);
+  assert.deepEqual(aliasOnly.stored.setIds, ['garchompmegaz']);
+  const aliasCurrent = readCurrentSetsValue([megaZ]);
+  const aliasStage = stageCurrentSets(
+    aliasOnly.canonical,
+    aliasCurrent,
+    aliasOnly.stored
+  );
+  assert.deepEqual(
+    [aliasStage.writes, aliasStage.setIds],
+    [aliasCurrent, ['garchomp']]
+  );
+
+  const stale = {
+    ...base,
+    member: { ...base.member, item: 'Choice Scarf' },
+  };
+  const both = decode([document(stale), document(megaZ)]);
+  assert.deepEqual(both.canonical, [{ id: 'garchomp', member: stale.member }]);
+  assert.ok(both.stored.entries.some(({ id }) => id === 'garchompmegaz'));
+  const desired = [{ id: 'garchomp', member: base.member }];
+  const bothStage = stageCurrentSets(both.canonical, desired, both.stored);
+  assert.deepEqual(bothStage.writes, desired);
+  assert.deepEqual(bothStage.setIds, ['garchomp']);
+
+  const raw = {
+    id: 'pikachu',
+    member: member({
+      nature: 'adamant',
+      spread: '32 Spe / 32 Atk / 2 HP',
+    }),
+  };
+  const rawDecoded = decode([document(raw)]);
+  assert.equal(rawDecoded.stored.entries[0].member.nature, 'adamant');
+  assert.deepEqual(rawDecoded.stored.entries, [raw]);
+  const canonicalRaw = [{ id: raw.id, member: canonicalMember(raw.member) }];
+  assert.deepEqual(
+    stageCurrentSets(rawDecoded.canonical, canonicalRaw, rawDecoded.stored)
+      .writes,
+    canonicalRaw
+  );
+
+  const invalidMember = {
+    ...megaZ,
+    member: { ...megaZ.member, moves: ['Protect', 'Protect'] },
+  };
+  const invalid = [
+    () => decode([], [], ['garchompmegaz']),
+    () => decode([{ id: 'garchomp', data: megaZ }], [], ['garchompmegaz']),
+    () => decode([document(invalidMember)]),
+    () => decode([document(megaZ)]),
+    () => decode([document(megaZ)], [], ['garchompmegaz', 'garchompmegaz']),
+    () => decode([document(megaZ)], [{ id: 'garchomp', data: megaZ }]),
+    () => decode([document(megaZ)], [{ id: 'pikachu', data: null }]),
+    () =>
+      decode(
+        [document(megaZ)],
+        [{ id: 'garchomp', data: { ...base, member: invalidMember.member } }]
+      ),
+  ];
+  for (const run of invalid)
+    assert.throws(run, {
+      message: /Cloud current Pokémon sets could not be read/,
+    });
 });

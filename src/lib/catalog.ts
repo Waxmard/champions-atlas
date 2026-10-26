@@ -1,3 +1,5 @@
+import { Generations } from '@smogon/calc/dist/data/index.js';
+import type { ID } from '@smogon/calc/dist/data/interface.js';
 import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
 
 export interface SpreadSource {
@@ -65,6 +67,9 @@ export const normalize = (text: string) =>
     .replace(/♂/g, 'm')
     .replace(/[^a-z0-9]/g, '');
 
+export const megaStoneTargets = (item: string) =>
+  Generations.get(0).items.get(normalize(item) as ID)?.megaStone;
+
 export function browsePokemon(name: string): string {
   if (
     ['floetteeternal', 'floetteeternalmega', 'floettemega'].includes(
@@ -72,7 +77,7 @@ export function browsePokemon(name: string): string {
     )
   )
     return 'Floette-Eternal';
-  return name.replace(/[- ]mega(?:[- ][xy])?$/i, '');
+  return name.replace(/[- ]mega(?:[- ][xyz])?$/i, '');
 }
 export const pokemonId = (name: string) => normalize(browsePokemon(name));
 export function isPasteUrl(value: string): boolean {
@@ -625,7 +630,7 @@ export function compareBrowseTeams(a: Team, b: Team, current: string): number {
   );
 }
 
-const optionsCache = new Map<string, string[]>();
+const optionsCache = new WeakMap<Team[], Map<string, string[]>>();
 
 export function getMemberOptions(
   teams: Team[],
@@ -634,24 +639,44 @@ export function getMemberOptions(
 ): string[] {
   const identity = pokemonId(pokemon);
   const key = `${identity}:${field}`;
-  let result = optionsCache.get(key);
+  let cache = optionsCache.get(teams);
+  if (!cache) {
+    cache = new Map();
+    optionsCache.set(teams, cache);
+  }
+  let result = cache.get(key);
   if (!result) {
-    result = [
-      ...new Set(
-        teams.flatMap((team) =>
-          team.members
-            .filter((member) => pokemonId(member.pokemon) === identity)
-            .flatMap((member) =>
-              field === 'move'
-                ? member.moves
-                : member[field]
-                  ? [member[field]]
-                  : []
+    const counts = new Map<string, number>();
+    for (const team of teams) {
+      for (const member of team.members) {
+        if (pokemonId(member.pokemon) !== identity) continue;
+        const values = field === 'move' ? member.moves : [member[field]];
+        for (const value of values)
+          if (value) counts.set(value, (counts.get(value) || 0) + 1);
+      }
+    }
+    result = [...counts.keys()];
+    if (field === 'item') {
+      const stones = new Set(
+        result.filter((item) => {
+          const mapping = megaStoneTargets(item);
+          return (
+            mapping &&
+            Object.entries(mapping).some(
+              ([base, mega]) =>
+                pokemonId(base) === identity || pokemonId(mega) === identity
             )
-        )
-      ),
-    ].sort();
-    optionsCache.set(key, result);
+          );
+        })
+      );
+      result.sort(
+        (a, b) =>
+          Number(stones.has(b)) - Number(stones.has(a)) ||
+          (counts.get(b) || 0) - (counts.get(a) || 0) ||
+          (a < b ? -1 : a > b ? 1 : 0)
+      );
+    } else result.sort();
+    cache.set(key, result);
   }
   return result;
 }

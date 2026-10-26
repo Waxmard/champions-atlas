@@ -93,6 +93,24 @@ owner interrupted. Sign-out preserves per-account snapshots. The current-set
 manifest listener and same-owner storage events request reconciliation rather
 than replacing local state.
 
+Cloud set members are validated against their original document IDs before
+normalization. When a canonical slot and a legacy Mega-Z duplicate both exist,
+the canonical slot is kept and the duplicate is dropped without a prompt, in the
+working registry, the account cache, and cloud data alike. The removal is
+permanent: no backup, download, or archive key is kept. A lone legacy slot
+normalizes to its canonical identity with its member unchanged, and entries whose
+original id already matches the canonical id are never dropped. If distinct
+legacy ids collapsed onto one canonical id, reading fails with the existing read
+error instead of guessing.
+Deferred local edits keep their canonical ID if the old Mega-Z ID no longer
+matches the member. A later sync pass writes the canonical child without
+blocking on that temporary local/cloud ID difference.
+
+Sync then writes the canonical child and a manifest that no longer lists the
+dropped legacy id. Old child documents remain unchanged and unlisted because the
+rules deny deletion. Without a connection, staging stops before any write and
+reports that cloud in-game sets need a connection.
+
 Deploy the updated rules for the current-set paths with the normal rules
 deployment. Until deployment, access to those paths fails visibly, while valid
 local saves remain available for retry. The emulator setup below tests rules

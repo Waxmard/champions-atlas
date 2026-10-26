@@ -150,6 +150,32 @@ test('Browse identities merge Mega aliases without merging functional forms', ()
     matchesTeam({ members: [member('Rotom', null)] }, [filter('Rotom-Wash')]),
     false
   );
+  const garchompMembers = [
+    member('Garchomp', null),
+    member('Garchomp-Mega', 'Garchompite'),
+    member('Garchomp-Mega-Z', 'Garchompite Z'),
+  ];
+  for (const pokemon of ['Garchomp', 'Garchomp-Mega', 'Garchomp-Mega-Z'])
+    assert.equal(browsePokemon(pokemon), 'Garchomp');
+  assert.ok(
+    matchesTeam({ members: garchompMembers }, [
+      filter('Garchomp', 'Garchompite'),
+      filter('Garchomp', 'Garchompite Z'),
+    ])
+  );
+  assert.equal(
+    matchesTeam({ members: garchompMembers.slice(0, 2) }, [
+      filter('Garchomp', 'Garchompite Z'),
+    ]),
+    false
+  );
+  assert.equal(
+    matchesTeam({ members: [garchompMembers[0], garchompMembers[2]] }, [
+      filter('Garchomp', 'Garchompite'),
+    ]),
+    false
+  );
+  assert.equal(browsePokemon('Porygon-Z'), 'Porygon-Z');
   assert.equal(browsePokemon('Charizard-mEgA-y'), 'Charizard');
   assert.equal(browsePokemon('FLOETTE eternal MEGA'), 'Floette-Eternal');
   assert.equal(browsePokemon('Rotom-Wash'), 'Rotom-Wash');
@@ -184,10 +210,71 @@ test('member options aggregate observed constraints across merged Browse forms',
   }
 });
 
+test('Garchomp item options rank observed stones before frequency-ranked items', () => {
+  const garchomp = [
+    ...Array(3).fill(member('Garchomp', 'Life Orb')),
+    ...Array(2).fill(member('Garchomp-Mega', 'Choice Scarf')),
+    member('Garchomp-Mega', 'Leftovers'),
+    member('Garchomp-Mega-Z', 'Sitrus Berry'),
+    member('Garchomp-Mega', 'Garchompite'),
+    ...Array(2).fill(member('Garchomp-Mega-Z', 'Garchompite Z')),
+    member('Garchomp', null),
+    member('Garchomp', ''),
+    member('Garchomp'),
+  ].map((entry, i) => ({
+    ...entry,
+    ability: ['Static', 'Pressure', 'Static'][i % 3],
+    moves: [['Protect'], ['Thunderbolt'], ['Protect']][i % 3],
+  }));
+  const fixture = garchomp.map((entry) => ({ members: [entry] }));
+  const expectedItems = [
+    'Garchompite Z',
+    'Garchompite',
+    'Life Orb',
+    'Choice Scarf',
+    'Leftovers',
+    'Sitrus Berry',
+  ];
+  for (const pokemon of ['Garchomp', 'Garchomp-Mega', 'Garchomp-Mega-Z'])
+    assert.deepEqual(getMemberOptions(fixture, pokemon, 'item'), expectedItems);
+  assert.deepEqual(getMemberOptions(fixture, 'Garchomp', 'ability'), [
+    'Pressure',
+    'Static',
+  ]);
+  assert.deepEqual(getMemberOptions(fixture, 'Garchomp', 'move'), [
+    'Protect',
+    'Thunderbolt',
+  ]);
+  assert.deepEqual(getMemberOptions([], 'Garchomp', 'item'), []);
+
+  const otherCatalog = [{ members: [member('Garchomp', 'Sitrus Berry')] }];
+  assert.deepEqual(getMemberOptions(otherCatalog, 'Garchomp-Mega-Z', 'item'), [
+    'Sitrus Berry',
+  ]);
+  assert.deepEqual(
+    getMemberOptions(fixture, 'Garchomp', 'item'),
+    expectedItems
+  );
+
+  const nonApplicableStone = [
+    ...Array(3).fill({ members: [member('Pikachu', 'Life Orb')] }),
+    { members: [member('Pikachu', 'Garchompite')] },
+    { members: [member('Pikachu', null)] },
+    { members: [member('Pikachu', '')] },
+    { members: [{ ...member('Pikachu'), item: undefined }] },
+  ];
+  assert.deepEqual(getMemberOptions(nonApplicableStone, 'Pikachu', 'item'), [
+    'Life Orb',
+    'Garchompite',
+  ]);
+});
+
 test('legacy Mega URLs restore and write canonical labels without changing constraints', () => {
   for (const [legacy, canonical, stone] of [
     ['Mawile-Mega', 'Mawile', 'Mawilite'],
     ['Charizard-Mega-X', 'Charizard', 'Charizardite X'],
+    ['Garchomp-Mega', 'Garchomp', 'Garchompite'],
+    ['Garchomp-Mega-Z', 'Garchomp', 'Garchompite Z'],
     ['Floette-Eternal-Mega', 'Floette-Eternal', 'Floettite'],
     ['Floette-Mega', 'Floette-Eternal', 'Floettite'],
   ]) {
@@ -213,6 +300,7 @@ test('legacy Mega URLs restore and write canonical labels without changing const
     }
   }
   for (const names of [
+    ['Garchomp', 'Garchomp-Mega-Z'],
     ['Mawile', 'Mawile-Mega'],
     ['Charizard-Mega-X', 'Charizard-Mega-Y'],
     ['Floette-Eternal', 'Floette-Mega'],

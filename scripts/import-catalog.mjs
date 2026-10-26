@@ -39,8 +39,16 @@ import {
   youtubePrior,
   youtubeRetainedSourceText,
 } from './youtube-source.mjs';
-import { youtubeIndexData } from './youtube-admission.mjs';
+import {
+  compatibleYoutubePrior,
+  youtubeTeamFromPayload as readYoutubeTeam,
+} from './youtube-priors.mjs';
 import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
+import {
+  readYoutubeDecisions,
+  retriableReasons,
+  writeYoutubeDecisions,
+} from './youtube-decisions.mjs';
 export const sheet =
   'https://docs.google.com/spreadsheets/d/1axlwmzPA49rYkqXh7zHvAtSP-TKbM0ijGYBPRflLSWw';
 const tabs = { 'M-C': '2001945654', 'M-B': '1458357160' };
@@ -264,7 +272,6 @@ export function deduplicate(teams) {
   return [...unique.values()];
 }
 
-const isVrPasteUrl = (value) => value.startsWith('https://www.vrpastes.com/');
 export function teamFromIndex(candidate, payload, canonicalNames) {
   if (
     !candidate ||
@@ -433,19 +440,10 @@ async function main() {
   const teams = [];
   const csvs = [];
   const payloads = new Map();
-  const youtubePasteUrls = new Set(
-    youtubeRows.flatMap(({ source }) =>
-      source.candidates.map(({ pasteUrl }) => pasteUrl)
-    )
-  );
   const loadPayload = (candidate) => {
     if (payloads.has(candidate.pasteUrl))
       return payloads.get(candidate.pasteUrl);
-    const refresh =
-      indexRefresh &&
-      (isVrPasteUrl(candidate.pasteUrl) ||
-        youtubePasteUrls.has(candidate.pasteUrl));
-    const pending = loadIndexPaste(candidate, fetchCached, refresh);
+    const pending = loadIndexPaste(candidate, fetchCached);
     payloads.set(candidate.pasteUrl, pending);
     return pending;
   };
@@ -558,31 +556,17 @@ async function main() {
     }
     return prior;
   };
-  const compatibleYoutubePrior = (candidate) => {
-    const prior = youtubePrior(candidate, activePreviousTeams);
-    if (!prior || typeof prior.paste !== 'string') return null;
-    const payload = { paste: prior.paste, notes: prior.pasteNotes };
-    try {
-      const data = youtubeIndexData(candidate, payload);
-      const team = teamFromIndex(data.candidate, data.payload, canonicalNames);
-      return team.id === prior.id && team.regulation === prior.regulation
-        ? { ...prior, regulationInference: team.regulationInference }
-        : null;
-    } catch {
-      return null;
-    }
-  };
   const youtubeTeamFromPayload = (candidate, payload) => {
-    const data = youtubeIndexData(candidate, payload);
-    return teamFromIndex(data.candidate, data.payload, canonicalNames);
+    return readYoutubeTeam(candidate, payload, canonicalNames, teamFromIndex);
   };
-  const fallbackReasons = new Set(['paste_unavailable', 'invalid_payload']);
   const publicBudget =
     count === Infinity ? Infinity : Math.max(0, count - stats.attempted);
   let publicUsed = 0;
   const publicTeams = [];
   const admittedYoutubeCandidates = [];
   const sourceStats = [];
+  const decisions = await readYoutubeDecisions(cache);
+  let reused = 0;
   for (const { name, source, youtube = false, retainedTeams = [] } of [
     { name: 'Victory Road', source: victoryRoad },
     { name: 'DevonCorp', source: devonCorp },
@@ -643,7 +627,7 @@ async function main() {
     };
     const handleFailure = (candidate, prior, error) => {
       const reason = error.reason || 'paste_unavailable';
-      if (prior && fallbackReasons.has(reason))
+      if (prior && retriableReasons.has(reason))
         return keep(
           { ...prior, pasteError: error.message },
           'priorRetained',
@@ -651,6 +635,7 @@ async function main() {
         );
       counts.skipped += 1;
       addReason(reason);
+      if (youtube) decisions.skip(candidate, reason);
       console.warn(
         `${name}: skipped ${candidate.pasteUrl} (${reason}: ${error.message})`
       );
@@ -667,8 +652,19 @@ async function main() {
         addReason('outside_current_regulation');
         continue;
       }
+      const memo = youtube ? decisions.reuse(candidate) : null;
+      if (memo) {
+        reused += 1;
+        counts.skipped += 1;
+        addReason(memo);
+        continue;
+      }
       const prior = youtube
-        ? compatibleYoutubePrior(candidate)
+        ? compatibleYoutubePrior(
+            candidate,
+            activePreviousTeams,
+            youtubeTeamFromPayload
+          )
         : compatiblePrior(candidate);
       if (publicUsed >= publicBudget) {
         if (prior && youtube && payloads.has(candidate.pasteUrl)) {
@@ -707,6 +703,7 @@ async function main() {
       }
     }
   }
+  await writeYoutubeDecisions(cache, decisions);
   const parsedPoch = parsePoch(pochHtml, canonicalNames);
   const pochInScope = fullHistory
     ? parsedPoch.teams
@@ -769,6 +766,7 @@ async function main() {
     fetchCached,
     refresh: process.env.REFRESH === '1',
   });
+  if (reused) console.log(`YouTube decisions reused from cache: ${reused}.`);
   logSourceSummaries(sourceStats, youtubeSource.active);
   if (reasons.size)
     console.log(
