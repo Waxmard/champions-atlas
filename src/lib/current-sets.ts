@@ -329,6 +329,7 @@ export interface CurrentSetStage {
   pendingIds: string[];
   setIds: string[];
   writes: CurrentSet[];
+  wireIds: ReadonlyMap<string, string>;
 }
 
 function wireEntries(stored: CurrentSetWireState) {
@@ -380,12 +381,11 @@ export function stageCurrentSets(
   const completedIds = new Set(completed.map(({ id }) => id));
   const committed = new Map(remoteEntries.map((entry) => [entry.id, entry]));
   for (const entry of completed) committed.set(entry.id, entry);
-  const setIds = [
-    ...physical.active
-      .filter(({ id }) => !completedIds.has(id))
-      .map(({ originalId }) => originalId),
-    ...completedIds,
-  ].sort();
+  const wireIds = new Map(
+    physical.active.map(({ id, originalId }) => [id, originalId])
+  );
+  for (const id of completedIds) wireIds.set(id, id);
+  const setIds = [...wireIds.values()].sort();
   return {
     committed: validateCurrentSets(
       [...committed.values()].sort((a, b) =>
@@ -395,17 +395,14 @@ export function stageCurrentSets(
     pendingIds,
     setIds,
     writes,
+    wireIds,
   };
 }
 
-export function retainCurrentSetWireIds(
+function retainCurrentSetWireIds(
   sets: CurrentSet[],
-  stored: CurrentSetWireState
+  identities: ReadonlyMap<string, string>
 ): CurrentSet[] {
-  const physical = wireEntries(stored);
-  const identities = new Map(
-    physical.active.map((entry) => [entry.id, entry.originalId])
-  );
   return validateCurrentSets(sets).map((entry) => {
     const wireId = identities.get(entry.id);
     if (wireId && wireId !== entry.id) {
@@ -424,8 +421,7 @@ export function retainCurrentSetWireIds(
 export function rebaseStagedCurrentSets(
   captured: CurrentSet[],
   current: CurrentSet[],
-  staged: CurrentSetStage,
-  stored: CurrentSetWireState
+  staged: CurrentSetStage
 ): { local: CurrentSet[]; base: CurrentSet[] } {
   const pending = new Set(staged.pendingIds);
   const local = new Map(
@@ -434,11 +430,8 @@ export function rebaseStagedCurrentSets(
       ...current.filter(({ id }) => pending.has(id)),
     ].map((entry) => [entry.id, entry])
   );
-  const entries = new Map(stored.entries.map((entry) => [entry.id, entry]));
-  for (const entry of staged.writes) entries.set(entry.id, entry);
-  const physical = { setIds: staged.setIds, entries: [...entries.values()] };
   return {
-    local: retainCurrentSetWireIds([...local.values()], physical),
-    base: retainCurrentSetWireIds(staged.committed, physical),
+    local: retainCurrentSetWireIds([...local.values()], staged.wireIds),
+    base: retainCurrentSetWireIds(staged.committed, staged.wireIds),
   };
 }

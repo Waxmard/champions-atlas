@@ -39,7 +39,10 @@ import {
   youtubePrior,
   youtubeRetainedSourceText,
 } from './youtube-source.mjs';
-import { youtubeIndexData } from './youtube-admission.mjs';
+import {
+  compatibleYoutubePrior,
+  youtubeTeamFromPayload as readYoutubeTeam,
+} from './youtube-priors.mjs';
 import { fetchCached as fetchCachedSource } from './catalog-cache.mjs';
 import {
   readYoutubeDecisions,
@@ -553,23 +556,8 @@ async function main() {
     }
     return prior;
   };
-  const compatibleYoutubePrior = (candidate) => {
-    const prior = youtubePrior(candidate, activePreviousTeams);
-    if (!prior || typeof prior.paste !== 'string') return null;
-    const payload = { paste: prior.paste, notes: prior.pasteNotes };
-    try {
-      const data = youtubeIndexData(candidate, payload);
-      const team = teamFromIndex(data.candidate, data.payload, canonicalNames);
-      return team.id === prior.id && team.regulation === prior.regulation
-        ? { ...prior, regulationInference: team.regulationInference }
-        : null;
-    } catch {
-      return null;
-    }
-  };
   const youtubeTeamFromPayload = (candidate, payload) => {
-    const data = youtubeIndexData(candidate, payload);
-    return teamFromIndex(data.candidate, data.payload, canonicalNames);
+    return readYoutubeTeam(candidate, payload, canonicalNames, teamFromIndex);
   };
   const publicBudget =
     count === Infinity ? Infinity : Math.max(0, count - stats.attempted);
@@ -672,7 +660,11 @@ async function main() {
         continue;
       }
       const prior = youtube
-        ? compatibleYoutubePrior(candidate)
+        ? compatibleYoutubePrior(
+            candidate,
+            activePreviousTeams,
+            youtubeTeamFromPayload
+          )
         : compatiblePrior(candidate);
       if (publicUsed >= publicBudget) {
         if (prior && youtube && payloads.has(candidate.pasteUrl)) {

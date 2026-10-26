@@ -67,6 +67,9 @@ export const normalize = (text: string) =>
     .replace(/♂/g, 'm')
     .replace(/[^a-z0-9]/g, '');
 
+export const megaStoneTargets = (item: string) =>
+  Generations.get(0).items.get(normalize(item) as ID)?.megaStone;
+
 export function browsePokemon(name: string): string {
   if (
     ['floetteeternal', 'floetteeternalmega', 'floettemega'].includes(
@@ -656,9 +659,7 @@ export function getMemberOptions(
     if (field === 'item') {
       const stones = new Set(
         result.filter((item) => {
-          const mapping = Generations.get(0).items.get(
-            normalize(item) as ID
-          )?.megaStone;
+          const mapping = megaStoneTargets(item);
           return (
             mapping &&
             Object.entries(mapping).some(

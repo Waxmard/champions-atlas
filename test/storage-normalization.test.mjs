@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { Timestamp } from 'firebase/firestore';
 import { normalize, pokemonId } from '../src/lib/catalog.ts';
-import { decodeCurrentSetCloud } from '../src/lib/current-set-sync.ts';
+import {
+  decodeCurrentSetCloud,
+  inspectCurrentSetCloud,
+} from '../src/lib/current-set-sync.ts';
 import { canonicalMember } from '../src/lib/paste.ts';
 import {
   applyGuardedStorageWrites,
@@ -401,11 +404,11 @@ test('guarded writes roll back only values still owned by the operation', () => 
     message: /In-game sets changed while syncing/,
   });
   const rollback = fakeStorage({ one: 'before-one', two: 'before-two' });
-  let ownerChecks = 0;
   assert.throws(
     () =>
       apply(rollback.storage, changes.slice(0, 1), () => {
-        if (++ownerChecks === 3) throw new Error('account changed');
+        if (rollback.entries.get('one') === 'ours-one')
+          throw new Error('account changed');
       }),
     { message: 'account changed' }
   );
@@ -450,7 +453,7 @@ test('staging batches canonical writes and persists canonical cache ids', () => 
   assert.deepEqual(first.pendingIds, [remote.at(-1).id]);
   assert.deepEqual(first.setIds, [...writeIds, deferredId].sort());
   assert.ok(first.writes.every(({ id }) => id === pokemonId(id)));
-  const rebased = rebaseStagedCurrentSets(remote, remote, first, stored);
+  const rebased = rebaseStagedCurrentSets(remote, remote, first);
   assert.ok(rebased.base.some(({ id }) => id === deferredId));
   const working = fakeStorage({
     [currentSetsKey]: JSON.stringify(rebased.local),
@@ -514,30 +517,36 @@ test('staging batches canonical writes and persists canonical cache ids', () => 
 
 test('rebasing drops a wire alias the member no longer justifies', () => {
   const [base, megaZ] = legacyRegistry();
-  const stored = { setIds: ['garchompmegaz'], entries: [megaZ] };
-  const stage = (pending) => ({
-    committed: [],
-    pendingIds: [pending],
-    setIds: ['garchompmegaz'],
-    writes: [],
-  });
-  const local = [{ id: 'garchomp', member: base.member }];
+  const entries = [
+    ...Array.from({ length: 350 }, (_, i) => ({
+      id: `amigration${String(i).padStart(3, '0')}megaz`,
+      member: member({
+        pokemon: `AMigration${String(i).padStart(3, '0')}-Mega-Z`,
+      }),
+    })),
+    megaZ,
+  ];
+  const stored = { setIds: entries.map(({ id }) => id).sort(), entries };
+  const remote = readCurrentSetsValue(entries);
+  const local = remote.map((entry) => (entry.id === base.id ? base : entry));
+  const staged = stageCurrentSets(remote, local, stored);
+  assert.deepEqual(staged.pendingIds, ['garchomp']);
+  const rebased = rebaseStagedCurrentSets(remote, local, staged);
+  assert.deepEqual(readCurrentSetsValue(rebased.local), local);
   assert.deepEqual(
-    rebaseStagedCurrentSets([], local, stage('garchomp'), stored).local,
-    local
+    rebased.local.find(({ id }) => id === base.id),
+    base
   );
   assert.deepEqual(
-    rebaseStagedCurrentSets([], [megaZ], stage(megaZ.id), stored).local,
-    [megaZ]
+    rebased.base.find(({ id }) => id === megaZ.id),
+    megaZ
   );
 });
 
 test('cloud decoding resolves aliases and stages one canonical child', () => {
   const originals = legacyRegistry();
-  const uid = 'test';
-  const root = `users/${uid}`;
   const document = (entry) => ({
-    path: `${root}/pokemonSets/${entry.id}`,
+    id: entry.id,
     data: entry,
   });
   const decode = (
@@ -545,23 +554,19 @@ test('cloud decoding resolves aliases and stages one canonical child', () => {
     probes = [],
     setIds = listed.map(({ data }) => data.id)
   ) =>
-    decodeCurrentSetCloud({
-      uid,
-      manifestPath: `${root}/pokemonSetState/manifest`,
-      manifest: {
-        schemaVersion: 1,
-        setIds: [...setIds].sort(),
-        updatedAt: Timestamp.fromMillis(4),
-      },
-      listed,
-      probes,
-    });
+    decodeCurrentSetCloud(
+      inspectCurrentSetCloud(
+        {
+          schemaVersion: 1,
+          setIds: [...setIds].sort(),
+          updatedAt: Timestamp.fromMillis(4),
+        },
+        listed
+      ),
+      probes
+    );
   const [base, megaZ] = originals;
-  const canonicalPath = `${root}/pokemonSets/garchomp`;
-  const aliasOnly = decode(
-    [document(megaZ)],
-    [{ path: canonicalPath, data: null }]
-  );
+  const aliasOnly = decode([document(megaZ)], [{ id: 'garchomp', data: null }]);
   assert.deepEqual(aliasOnly.canonical, [
     { id: 'garchomp', member: megaZ.member },
   ]);
@@ -597,7 +602,7 @@ test('cloud decoding resolves aliases and stages one canonical child', () => {
     }),
   };
   const rawDecoded = decode([document(raw)]);
-  assert.equal(rawDecoded.entries[0].member.nature, 'adamant');
+  assert.equal(rawDecoded.stored.entries[0].member.nature, 'adamant');
   assert.deepEqual(rawDecoded.stored.entries, [raw]);
   const canonicalRaw = [{ id: raw.id, member: canonicalMember(raw.member) }];
   assert.deepEqual(
@@ -612,15 +617,17 @@ test('cloud decoding resolves aliases and stages one canonical child', () => {
   };
   const invalid = [
     () => decode([], [], ['garchompmegaz']),
-    () =>
-      decode(
-        [{ path: `${root}/pokemonSets/garchomp`, data: megaZ }],
-        [],
-        ['garchompmegaz']
-      ),
+    () => decode([{ id: 'garchomp', data: megaZ }], [], ['garchompmegaz']),
     () => decode([document(invalidMember)]),
     () => decode([document(megaZ)]),
     () => decode([document(megaZ)], [], ['garchompmegaz', 'garchompmegaz']),
+    () => decode([document(megaZ)], [{ id: 'garchomp', data: megaZ }]),
+    () => decode([document(megaZ)], [{ id: 'pikachu', data: null }]),
+    () =>
+      decode(
+        [document(megaZ)],
+        [{ id: 'garchomp', data: { ...base, member: invalidMember.member } }]
+      ),
   ];
   for (const run of invalid)
     assert.throws(run, {

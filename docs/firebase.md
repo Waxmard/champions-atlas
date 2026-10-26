@@ -93,7 +93,7 @@ owner interrupted. Sign-out preserves per-account snapshots. The current-set
 manifest listener and same-owner storage events request reconciliation rather
 than replacing local state.
 
-Legacy Mega-Z document IDs are validated against their original paths before
+Cloud set members are validated against their original document IDs before
 normalization. When a canonical slot and a legacy Mega-Z duplicate both exist,
 the canonical slot is kept and the duplicate is dropped without a prompt, in the
 working registry, the account cache, and cloud data alike. The removal is
@@ -102,6 +102,9 @@ normalizes to its canonical identity with its member unchanged, and entries whos
 original id already matches the canonical id are never dropped. If distinct
 legacy ids collapsed onto one canonical id, reading fails with the existing read
 error instead of guessing.
+Deferred local edits keep their canonical ID if the old Mega-Z ID no longer
+matches the member. A later sync pass writes the canonical child without
+blocking on that temporary local/cloud ID difference.
 
 Sync then writes the canonical child and a manifest that no longer lists the
 dropped legacy id. Old child documents remain unchanged and unlisted because the

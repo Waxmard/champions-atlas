@@ -286,7 +286,7 @@ async function drain(generation: number, id: string) {
           recoveryIds
         );
         const mergedIds = validateTeamIds(merged.map((team) => team.id));
-        const staged = await stageCurrentSetsInTransaction({
+        const stage = await stageCurrentSetsInTransaction({
           transaction,
           firestore,
           uid: id,
@@ -327,7 +327,7 @@ async function drain(generation: number, id: string) {
             updatedAt: serverTimestamp(),
           });
         }
-        return { teams: merged, ...staged };
+        return { teams: merged, stage };
       });
       if (!valid(generation, id)) return;
       const rawTeams = localStorage.getItem(storageKey);
@@ -344,8 +344,7 @@ async function drain(generation: number, id: string) {
       const rebasedSets = rebaseStagedCurrentSets(
         capturedSets,
         currentLocalSets,
-        committed.stage,
-        committed.cloud.stored
+        committed.stage
       );
       const checkedTeams = validatedTeams(rebased);
       const checkedSets = readCurrentSetsValue(rebasedSets.local);

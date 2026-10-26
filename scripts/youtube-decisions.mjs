@@ -5,7 +5,12 @@ import { fileURLToPath } from 'node:url';
 import { eligibilitySourceTexts } from './champions-eligibility.mjs';
 
 const fileName = 'youtube-decisions.json';
-const sourceNames = ['import-catalog', 'catalog-payloads', 'youtube-admission'];
+const sourceNames = [
+  'import-catalog',
+  'catalog-payloads',
+  'youtube-admission',
+  'youtube-priors',
+];
 const maxDecisions = 20000;
 const keyPattern =
   /^[A-Za-z0-9_-]{11}\|https:\/\/(?:pokepast\.es\/[a-f0-9]{16}|www\.vrpastes\.com\/[A-Za-z0-9]{8})$/;

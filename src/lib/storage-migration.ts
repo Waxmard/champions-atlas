@@ -229,7 +229,6 @@ export function applyGuardedStorageWrites(
   try {
     verify();
     for (const write of writes) {
-      verify();
       if (write.after === write.before) continue;
       try {
         if (write.after === null) storage.removeItem(write.key);

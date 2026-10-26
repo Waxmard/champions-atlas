@@ -25,18 +25,17 @@ export const currentSetCloudReadError =
 const currentSetIdPattern = /^[a-z0-9]{1,1500}$/;
 
 export interface CurrentSetCloudDocument {
-  path: string;
+  id: string;
   data: unknown;
 }
 
 export interface CurrentSetCloudProbe {
-  path: string;
+  id: string;
   data: unknown | null;
 }
 
 export interface CurrentSetCloudSnapshot {
   setIds: string[];
-  entries: CurrentSet[];
   canonical: CurrentSet[];
   stored: { setIds: string[]; entries: CurrentSet[] };
   manifest: unknown | null;
@@ -63,24 +62,15 @@ export function watchCurrentSetDocument(
   );
 }
 
-export interface DecodeCurrentSetCloudInput {
-  uid: string;
-  manifestPath: string;
+export interface CurrentSetCloudListing {
   manifest: unknown | null;
+  setIds: string[];
   listed: CurrentSetCloudDocument[];
-  probes: CurrentSetCloudProbe[];
+  candidates: CurrentSetCandidate[];
 }
 
 function failCloudRead(): never {
   throw new Error(currentSetCloudReadError);
-}
-
-function currentSetManifestPath(uid: string): string {
-  return `users/${uid}/pokemonSetState/manifest`;
-}
-
-function currentSetDocumentPath(uid: string, id: string): string {
-  return `users/${uid}/pokemonSets/${id}`;
 }
 
 function currentSetIds(value: unknown): string[] {
@@ -114,26 +104,11 @@ function manifestIds(value: unknown | null): string[] {
 }
 
 function decodeCloudDocument(
-  uid: string,
   document: CurrentSetCloudDocument
 ): CurrentSetCandidate {
-  if (!document || typeof document !== 'object' || Array.isArray(document))
-    return failCloudRead();
-  if (typeof document.path !== 'string') return failCloudRead();
-  const id = document.path.slice(document.path.lastIndexOf('/') + 1);
-  if (
-    !currentSetIdPattern.test(id) ||
-    document.path !== currentSetDocumentPath(uid, id) ||
-    !document.data ||
-    typeof document.data !== 'object' ||
-    Array.isArray(document.data) ||
-    !('id' in document.data) ||
-    document.data.id !== id
-  )
-    return failCloudRead();
   try {
     const candidate = inspectRawCurrentSet(document.data);
-    if (candidate.originalId !== id) return failCloudRead();
+    if (candidate.originalId !== document.id) return failCloudRead();
     return candidate;
   } catch {
     return failCloudRead();
@@ -141,7 +116,6 @@ function decodeCloudDocument(
 }
 
 function listedCandidates(
-  uid: string,
   setIds: string[],
   documents: CurrentSetCloudDocument[]
 ): CurrentSetCandidate[] {
@@ -150,7 +124,7 @@ function listedCandidates(
   const found = new Set<string>();
   const candidates: CurrentSetCandidate[] = [];
   for (const document of documents) {
-    const candidate = decodeCloudDocument(uid, document);
+    const candidate = decodeCloudDocument(document);
     if (!expected.has(candidate.originalId) || found.has(candidate.originalId))
       return failCloudRead();
     found.add(candidate.originalId);
@@ -160,6 +134,15 @@ function listedCandidates(
   return candidates.sort((a, b) =>
     a.originalId < b.originalId ? -1 : a.originalId > b.originalId ? 1 : 0
   );
+}
+
+export function inspectCurrentSetCloud(
+  manifest: unknown | null,
+  listed: CurrentSetCloudDocument[]
+): CurrentSetCloudListing {
+  const setIds = manifestIds(manifest);
+  const candidates = listedCandidates(setIds, listed);
+  return { manifest, setIds, listed, candidates };
 }
 
 function aliasProbeIds(
@@ -175,23 +158,10 @@ function aliasProbeIds(
 }
 
 export function decodeCurrentSetCloud(
-  input: DecodeCurrentSetCloudInput
+  input: CurrentSetCloudListing,
+  probes: CurrentSetCloudProbe[]
 ): CurrentSetCloudSnapshot {
-  if (!input || typeof input !== 'object' || Array.isArray(input))
-    return failCloudRead();
-  const { uid, manifestPath, manifest, listed, probes } = input;
-  if (
-    typeof uid !== 'string' ||
-    !uid ||
-    uid.includes('/') ||
-    manifestPath !== currentSetManifestPath(uid) ||
-    !Array.isArray(listed) ||
-    !Array.isArray(probes)
-  )
-    return failCloudRead();
-
-  const setIds = manifestIds(manifest);
-  const candidates = listedCandidates(uid, setIds, listed);
+  const { manifest, setIds, listed, candidates } = input;
   const probeIds = aliasProbeIds(setIds, candidates);
   if (probes.length !== probeIds.length) return failCloudRead();
 
@@ -199,15 +169,8 @@ export function decodeCurrentSetCloud(
   for (const probe of probes) {
     if (!probe || typeof probe !== 'object' || Array.isArray(probe))
       return failCloudRead();
-    if (typeof probe.path !== 'string') return failCloudRead();
-    const id = probe.path.slice(probe.path.lastIndexOf('/') + 1);
-    if (
-      !currentSetIdPattern.test(id) ||
-      probe.path !== currentSetDocumentPath(uid, id) ||
-      !probeIds.includes(id) ||
-      probeById.has(id)
-    )
-      return failCloudRead();
+    const { id } = probe;
+    if (!probeIds.includes(id) || probeById.has(id)) return failCloudRead();
     probeById.set(id, probe);
   }
   if (probeById.size !== probeIds.length) return failCloudRead();
@@ -215,10 +178,7 @@ export function decodeCurrentSetCloud(
   for (const id of probeIds) {
     const probe = probeById.get(id);
     if (!probe) return failCloudRead();
-    if (probe.data !== null) {
-      const candidate = decodeCloudDocument(uid, probe);
-      if (candidate.originalId !== id) return failCloudRead();
-    }
+    if (probe.data !== null) decodeCloudDocument(probe);
   }
 
   const resolved = resolveLegacyDuplicates(candidates);
@@ -227,11 +187,11 @@ export function decodeCurrentSetCloud(
     if (canonicalIds.has(id)) return failCloudRead();
     canonicalIds.add(id);
   }
-  const entries = listed
-    .map(({ data }) => data as CurrentSet)
-    .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
   const storedEntries = new Map<string, CurrentSet>();
-  for (const entry of entries) storedEntries.set(entry.id, entry);
+  for (const { data } of listed) {
+    const entry = data as CurrentSet;
+    storedEntries.set(entry.id, entry);
+  }
   for (const { data } of probes) {
     if (data === null) continue;
     const entry = data as CurrentSet;
@@ -240,7 +200,6 @@ export function decodeCurrentSetCloud(
 
   return {
     setIds,
-    entries,
     canonical: resolved.map(({ id, member }) => ({ id, member })),
     stored: {
       setIds,
@@ -277,7 +236,6 @@ export async function readCurrentSetCloud(
   if (!navigator.onLine)
     throw new Error('Cloud in-game sets need a connection to sync.');
   assertCurrent(guard);
-  const manifestPath = currentSetManifestPath(uid);
   const manifestSnapshot = await getCurrent(
     transaction,
     doc(firestore, 'users', uid, 'pokemonSetState', 'manifest'),
@@ -287,38 +245,29 @@ export async function readCurrentSetCloud(
   const setIds = manifestIds(manifest);
   const listed: CurrentSetCloudDocument[] = [];
   for (const id of setIds) {
-    const path = currentSetDocumentPath(uid, id);
     const child = await getCurrent(
       transaction,
       doc(firestore, 'users', uid, 'pokemonSets', id),
       guard
     );
     if (!child.exists()) return failCloudRead();
-    listed.push({ path, data: child.data() });
+    listed.push({ id, data: child.data() });
   }
 
+  const listing = inspectCurrentSetCloud(manifest, listed);
   const probes: CurrentSetCloudProbe[] = [];
-  for (const id of aliasProbeIds(
-    setIds,
-    listedCandidates(uid, setIds, listed)
-  )) {
+  for (const id of aliasProbeIds(listing.setIds, listing.candidates)) {
     const child = await getCurrent(
       transaction,
       doc(firestore, 'users', uid, 'pokemonSets', id),
       guard
     );
     probes.push({
-      path: currentSetDocumentPath(uid, id),
+      id,
       data: child.exists() ? child.data() : null,
     });
   }
-  return decodeCurrentSetCloud({
-    uid,
-    manifestPath,
-    manifest,
-    listed,
-    probes,
-  });
+  return decodeCurrentSetCloud(listing, probes);
 }
 
 export interface CurrentSetTransactionInput {
@@ -332,7 +281,7 @@ export interface CurrentSetTransactionInput {
 
 export async function stageCurrentSetsInTransaction(
   input: CurrentSetTransactionInput
-): Promise<{ cloud: CurrentSetCloudSnapshot; stage: CurrentSetStage }> {
+): Promise<CurrentSetStage> {
   const cloud = await readCurrentSetCloud(
     input.transaction,
     input.firestore,
@@ -363,5 +312,5 @@ export async function stageCurrentSetsInTransaction(
       }
     );
   }
-  return { cloud, stage };
+  return stage;
 }

@@ -1,6 +1,6 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
-import { normalize, type Member } from './catalog.ts';
+import { megaStoneTargets, normalize, type Member } from './catalog.ts';
 
 const generation = Generations.get(0);
 const aliases: Record<string, string> = {
@@ -39,9 +39,7 @@ export function resolveBattleForm(
       ability: member.ability,
       error: `Unknown battle species: ${member.pokemon}`,
     };
-  const stone = member.item
-    ? generation.items.get(normalize(member.item) as ID)?.megaStone
-    : undefined;
+  const stone = member.item ? megaStoneTargets(member.item) : undefined;
   let matchedMega: string | undefined;
   if (stone) {
     for (const [base, mega] of Object.entries(stone)) {
