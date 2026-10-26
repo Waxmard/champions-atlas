@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.0](https://github.com/Waxmard/champions-atlas/compare/v2.0.0...v2.1.0) (2026-10-26)
+
+
+### Features
+
+* support Mega-Z forms in browse and in-game set sync ([#62](https://github.com/Waxmard/champions-atlas/issues/62)) ([584bd68](https://github.com/Waxmard/champions-atlas/commit/584bd68f649aa53c9a592021e7fe94d1ffc50569))
+
 ## [2.0.0](https://github.com/Waxmard/champions-atlas/compare/v1.9.0...v2.0.0) (2026-10-22)
 
 
