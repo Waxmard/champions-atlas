@@ -583,9 +583,7 @@
                 type="button"
                 variant="quiet"
                 size="icon-compact"
-                class={isWishlisted
-                  ? 'text-primary disabled:text-primary/80'
-                  : ''}
+                class="catalog-wishlist-button"
                 aria-label="Wishlist"
                 aria-pressed={isWishlisted}
                 title={isWishlisted

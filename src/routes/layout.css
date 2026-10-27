@@ -147,6 +147,15 @@
   );
 }
 
+.catalog-wishlist-button:not(:disabled) {
+  background-color: transparent;
+  border-color: transparent;
+  box-shadow: none;
+  translate: none;
+  color: color-mix(in oklab, var(--color-base-content) 70%, transparent);
+  transition: none;
+}
+
 @layer components {
   .plate {
     background: var(--color-base-100);

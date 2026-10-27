@@ -2,7 +2,6 @@ import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import type { Team } from './catalog';
 import { pushNow } from './sync.svelte';
-import { canonicalSnapshot } from './team-history.ts';
 import {
   addCatalogToWishlist,
   removeWishlistedTeam,
@@ -51,26 +50,6 @@ export function toggleCatalogWishlist(team: Team): {
       addCatalogToWishlist(localStorage, team);
       void pushNow();
       return { error: '', status: 'Added to Wishlist.' };
-    }
-    const snapshot = canonicalSnapshot(entry);
-    if (
-      !confirm(
-        `Remove “${entry.name}” from Wishlist? This deletes this saved copy and its edits. My teams copies are unchanged.`
-      )
-    )
-      return { error: '', status: '' };
-    const latest = readSavedTeams(localStorage).find(
-      (saved) => saved.id === entry.id
-    );
-    if (
-      !latest ||
-      latest.collection !== 'wishlist' ||
-      canonicalSnapshot(latest) !== snapshot
-    ) {
-      return {
-        error: 'This Wishlist team changed. Refresh before removing it.',
-        status: '',
-      };
     }
     removeWishlistedTeam(localStorage, entry.id);
     void pushNow();

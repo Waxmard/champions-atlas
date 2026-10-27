@@ -248,8 +248,8 @@ direction without changing its ID, original snapshot, edits, or sources. Moving
 from My teams is unavailable while edits are pending and rejects stale records
 or a conflicting Wishlist copy. Separate copies are never merged.
 
-The catalog **Wishlist** button adds a bookmark or, after confirmation, removes
-the matching saved Wishlist copy and its edits; My teams copies remain unchanged.
+The catalog **Wishlist** button adds a bookmark or immediately removes the
+matching saved Wishlist copy and its edits; My teams copies remain unchanged.
 If multiple Wishlist records match, remove them individually in Wishlist rather
 than deleting them together. Using a bookmarked catalog team promotes the same
 record; if multiple bookmarks match, choose one in Wishlist. Removal rejects a

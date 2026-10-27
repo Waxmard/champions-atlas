@@ -204,8 +204,9 @@
         onclick={useTeam}>Use this team</Button
       >
       <Button
-        variant="secondary"
+        variant="quiet"
         size="touch"
+        class="catalog-wishlist-button"
         aria-label="Wishlist"
         aria-pressed={wishlisted}
         title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}

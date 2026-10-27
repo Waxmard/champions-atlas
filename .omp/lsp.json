@@ -1,0 +1,12 @@
+{
+  "servers": {
+    "sourcekit-lsp": {
+      "rootMarkers": [
+        "capacitor.config.ts",
+        "Package.swift",
+        "*.xcodeproj",
+        "*.xcworkspace"
+      ]
+    }
+  }
+}
