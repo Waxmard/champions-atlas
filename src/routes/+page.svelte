@@ -18,12 +18,17 @@
     TYPE_COLORS,
     type PokemonType,
   } from '#lib/types.js';
-  import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
+  import {
+    browseStorageKey,
+    storageKey,
+    type SavedTeam,
+  } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
-    wishlistCatalogTeam,
+    toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
+  import { wishlistedCatalogEntries } from '#lib/team-collections.js';
   import { sync } from '#lib/sync.svelte.js';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
@@ -51,13 +56,6 @@
   let actionError = $state('');
   let status = $state('');
   const pending = new SvelteSet<string>();
-  const wishlisted = $derived(
-    new Set(
-      saved
-        .filter((entry) => entry.collection === 'wishlist')
-        .map((entry) => entry.original.id)
-    )
-  );
   const teams: Team[] = $derived(data.catalog.teams);
   const current = $derived(data.catalog.currentRegulation);
   const historicalRegulations = $derived(
@@ -218,6 +216,11 @@
   afterNavigate(restoreBrowse);
   onMount(() => {
     ready = true;
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === storageKey) refreshSaved();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   });
   $effect(() => {
     void sync.revision;
@@ -232,12 +235,10 @@
     if (pending.has(team.id)) return;
     pending.add(team.id);
     status = actionError = '';
-    const error = wishlistCatalogTeam(team);
-    if (error) actionError = error;
-    else {
-      refreshSaved();
-      status = 'Added to Wishlist.';
-    }
+    const result = toggleCatalogWishlist(team);
+    refreshSaved();
+    actionError = result.error;
+    status = result.status;
     pending.delete(team.id);
   }
   async function use(team: Team) {
@@ -576,7 +577,8 @@
             {#snippet actions()}
               {@const busy =
                 !ready || savedError !== '' || pending.has(team.id)}
-              {@const isWishlisted = wishlisted.has(team.id)}
+              {@const isWishlisted =
+                wishlistedCatalogEntries(saved, team).length > 0}
               <Button
                 type="button"
                 variant="quiet"
@@ -584,8 +586,12 @@
                 class={isWishlisted
                   ? 'text-primary disabled:text-primary/80'
                   : ''}
-                aria-label={isWishlisted ? 'Wishlisted' : 'Wishlist'}
-                disabled={busy || isWishlisted}
+                aria-label="Wishlist"
+                aria-pressed={isWishlisted}
+                title={isWishlisted
+                  ? 'Remove from Wishlist'
+                  : 'Add to Wishlist'}
+                disabled={busy}
                 onclick={() => wishlist(team)}
               >
                 {#if isWishlisted}

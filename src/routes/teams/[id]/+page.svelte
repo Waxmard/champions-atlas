@@ -23,14 +23,14 @@
     type Team,
   } from '#lib/catalog.js';
   import { activeSpreadSource } from '#lib/spread-provenance.js';
-  import { exportPaste } from '#lib/workbench.js';
+  import { exportPaste, storageKey, type SavedTeam } from '#lib/workbench.js';
   import { normalizeSet } from '#lib/paste.js';
-  import type { SavedTeam } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
-    wishlistCatalogTeam,
+    toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
+  import { wishlistedCatalogEntries } from '#lib/team-collections.js';
   import { sync } from '#lib/sync.svelte.js';
   import type { PageData } from './$types';
 
@@ -65,14 +65,14 @@
   let actionError = $state('');
   let status = $state('');
   let pending = $state(false);
-  const wishlisted = $derived(
-    saved.some(
-      (entry) =>
-        entry.collection === 'wishlist' && entry.original.id === team.id
-    )
-  );
+  const wishlisted = $derived(wishlistedCatalogEntries(saved, team).length > 0);
   onMount(() => {
     ready = true;
+    const onStorage = (event: StorageEvent) => {
+      if (!event.key || event.key === storageKey) refreshSaved();
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
   });
   $effect(() => {
     void sync.revision;
@@ -87,12 +87,10 @@
     if (pending) return;
     pending = true;
     status = actionError = '';
-    const error = wishlistCatalogTeam(team);
-    if (error) actionError = error;
-    else {
-      refreshSaved();
-      status = 'Added to Wishlist.';
-    }
+    const result = toggleCatalogWishlist(team);
+    refreshSaved();
+    actionError = result.error;
+    status = result.status;
     pending = false;
   }
   async function useTeam() {
@@ -208,7 +206,10 @@
       <Button
         variant="secondary"
         size="touch"
-        disabled={!ready || savedError !== '' || pending || wishlisted}
+        aria-label="Wishlist"
+        aria-pressed={wishlisted}
+        title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+        disabled={!ready || savedError !== '' || pending}
         onclick={wishlist}
       >
         {#if wishlisted}
@@ -216,7 +217,7 @@
         {:else}
           <Bookmark class="size-4" aria-hidden="true" />
         {/if}
-        <span>{wishlisted ? 'Wishlisted' : 'Wishlist'}</span>
+        <span>Wishlist</span>
       </Button>
     </div>
   </div>

@@ -5,7 +5,10 @@ import {
   getAuth,
   getRedirectResult,
   GoogleAuthProvider,
+  indexedDBLocalPersistence,
+  initializeAuth,
   onAuthStateChanged,
+  signInWithCredential,
   signInWithPopup,
   signInWithRedirect,
   signOut as signOutOfFirebase,
@@ -43,6 +46,7 @@ import {
   validatedTeams,
 } from './team-sync.ts';
 import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
+import { AtlasNative, isNativeApp } from './native.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
   readSyncCache,
@@ -409,7 +413,9 @@ export function initSync(): void {
   if (!config) return;
   projectId = config.projectId;
   const app = initializeApp(config);
-  auth = getAuth(app);
+  auth = isNativeApp
+    ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
+    : getAuth(app);
   db = getFirestore(app);
   const firestore = db;
   if (
@@ -424,7 +430,7 @@ export function initSync(): void {
     connectFirestoreEmulator(db, '127.0.0.1', 8080);
   }
   sync.configured = true;
-  void getRedirectResult(auth).catch(fail);
+  if (!isNativeApp) void getRedirectResult(auth).catch(fail);
   window.addEventListener('online', () => {
     if (uid) void request();
   });
@@ -500,15 +506,26 @@ export async function signIn(): Promise<void> {
   sync.status = 'syncing';
   sync.error = '';
   try {
-    await signInWithPopup(auth, new GoogleAuthProvider());
+    if (isNativeApp) {
+      const { idToken } = await AtlasNative.signInWithGoogle();
+      await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
+    } else {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    }
   } catch (error) {
     const code =
       error && typeof error === 'object' && 'code' in error
         ? String(error.code)
         : '';
+    if (isNativeApp && code === 'SIGN_IN_CANCELLED') {
+      sync.status = 'off';
+      sync.error = '';
+      return;
+    }
     if (
-      code === 'auth/popup-blocked' ||
-      code === 'auth/operation-not-supported-in-this-environment'
+      !isNativeApp &&
+      (code === 'auth/popup-blocked' ||
+        code === 'auth/operation-not-supported-in-this-environment')
     ) {
       try {
         await signInWithRedirect(auth, new GoogleAuthProvider());
@@ -526,10 +543,22 @@ export async function signOut(): Promise<void> {
   if (!auth) return;
   invalidate();
   sync.user = null;
+  let nativeError: unknown;
+  if (isNativeApp) {
+    try {
+      await AtlasNative.signOut();
+    } catch (error) {
+      nativeError = error;
+    }
+  }
   try {
     await signOutOfFirebase(auth);
-    sync.status = 'off';
-    sync.error = '';
+    if (nativeError) {
+      fail(nativeError);
+    } else {
+      sync.status = 'off';
+      sync.error = '';
+    }
   } catch (error) {
     fail(error);
   }

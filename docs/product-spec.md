@@ -215,16 +215,24 @@ already share the same teammates and set details and are equally proven; the
 keyword half of that tiebreak works without them. See
 [data sources](data-sources.md) for how they are generated and validated.
 
-Custom import starts in **My teams** with a required name and complete
+Custom text import starts in **My teams** with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
-ability, nature, EVs, and four unique moves, and happens in
-[Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder);
-Champion's Atlas accepts its exported text only. Imported text becomes the
-immutable original snapshot, where nickname, gender, and unknown lines remain
-intact; IVs, level, and Tera Type are omitted from displayed and exported
-Champions text. Custom teams are saved locally under the current regulation with
-legality unverified and no published source claims. File, URL, screenshot,
-rental-code, legality, and cross-device import are out of scope.
+ability, nature, EVs, and four unique moves. Export the text from
+[Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder)
+and paste it into Champion's Atlas. Imported text becomes the immutable original
+snapshot, where nickname, gender, and unknown lines remain intact; IVs, level,
+and Tera Type are omitted from displayed and exported Champions text. Custom
+teams are saved locally under the current regulation with legality unverified and
+no published result claims.
+
+In **Wishlist**, **Poképaste link** accepts a direct `pokepast.es` URL and
+**Import to Wishlist** saves the team without changing the active team. An
+existing bookmark is returned unchanged; a matching catalog team is bookmarked
+with its source metadata without a network request. Otherwise the app fetches
+the paste directly from Poképaste and applies the same six-set requirements as
+custom text import. A failed fetch or invalid paste leaves saved data unchanged
+and the link available to retry. File, screenshot, rental-code, and social-post
+imports are out of scope.
 
 Export current sets with Champions EV normalization, using 0–32 per stat. Omit
 IVs, level, Tera Type, and unknown values. Never assign edited teams new rental
@@ -235,15 +243,25 @@ spreads. Any borrowed or inferred spread must remain separate from sourced data.
 
 **Wishlist** is a bookmark collection over the same saved-team records: a record
 without a collection belongs to My teams, and a `wishlist` record is excluded
-from My teams selection, its active-team fallback, and deletion. Adding a catalog
-team that is already bookmarked returns the existing bookmark; adding one that is
-only in use leaves that team untouched. Using a bookmarked team promotes the
-same record, retaining its ID, original snapshot, sets, and sources, and separate
-My teams copies are never merged. Removal rejects a record that is no longer a
-bookmark so a stale Wishlist control cannot delete a promoted team. A bookmark
-whose source team leaves the catalog stays usable with its saved roster and no
-catalog details. Both collections share the same storage ceiling and sync path
-(see [storage and sync](firebase.md)).
+from My teams selection and its active-team fallback. Move a record in either
+direction without changing its ID, original snapshot, edits, or sources. Moving
+from My teams is unavailable while edits are pending and rejects stale records
+or a conflicting Wishlist copy. Separate copies are never merged.
+
+The catalog **Wishlist** button adds a bookmark or, after confirmation, removes
+the matching saved Wishlist copy and its edits; My teams copies remain unchanged.
+If multiple Wishlist records match, remove them individually in Wishlist rather
+than deleting them together. Using a bookmarked catalog team promotes the same
+record; if multiple bookmarks match, choose one in Wishlist. Removal rejects a
+record that is no longer a bookmark so a stale control cannot delete a promoted
+team. A bookmark whose source team leaves the catalog stays usable with its saved
+roster and no catalog details. Both collections share the same storage ceiling
+and sync path (see [storage and sync](firebase.md)).
+
+The bundled iOS app uses native Google sign-in and the same local storage and
+Firebase sync model. After a successful sign-in, it can open saved data offline;
+sync resumes when connected. A first sign-in may require connectivity. Native
+setup and signing are described in [Firebase deployment and sync](firebase.md).
 
 The My teams picker shows only in-use teams. Its icon-first search covers the
 current team name and each member's species, with exact, prefix, substring, and
@@ -256,7 +274,7 @@ renaming it.
 - Support installation as a PWA for personal use.
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
-- Native iOS app.
+- Native share extension.
 
 ## Acceptance criteria
 

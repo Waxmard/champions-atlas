@@ -5,7 +5,7 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
-  import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
+  import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
@@ -651,9 +651,10 @@
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <CurrentSetSaveButton
+            <MyTeamCollectionActions
               teamId={draft.id}
               {baseline}
+              {dirty}
               members={draft.members}
               disabled={editing || deleting || stale}
             />

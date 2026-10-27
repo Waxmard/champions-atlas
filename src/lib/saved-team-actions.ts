@@ -2,7 +2,14 @@ import { goto } from '$app/navigation';
 import { resolve } from '$app/paths';
 import type { Team } from './catalog';
 import { pushNow } from './sync.svelte';
-import { addCatalogToWishlist, useCatalogTeam } from './team-collections';
+import { canonicalSnapshot } from './team-history.ts';
+import {
+  addCatalogToWishlist,
+  removeWishlistedTeam,
+  SavedTeamError,
+  useCatalogTeam,
+  wishlistedCatalogEntries,
+} from './team-collections';
 import { activeTeamKey, readSavedTeams, type SavedTeam } from './workbench';
 
 const SAVE_FAILURE =
@@ -23,13 +30,56 @@ export function readSavedTeamsState(): {
   }
 }
 
-export function wishlistCatalogTeam(team: Team): string {
+export function toggleCatalogWishlist(team: Team): {
+  error: string;
+  status: string;
+} {
   try {
-    addCatalogToWishlist(localStorage, team);
+    const matches = wishlistedCatalogEntries(
+      readSavedTeams(localStorage),
+      team
+    );
+    if (matches.length > 1) {
+      return {
+        error:
+          'Multiple copies are in Wishlist. Remove them from Wishlist individually.',
+        status: '',
+      };
+    }
+    const entry = matches[0];
+    if (!entry) {
+      addCatalogToWishlist(localStorage, team);
+      void pushNow();
+      return { error: '', status: 'Added to Wishlist.' };
+    }
+    const snapshot = canonicalSnapshot(entry);
+    if (
+      !confirm(
+        `Remove “${entry.name}” from Wishlist? This deletes this saved copy and its edits. My teams copies are unchanged.`
+      )
+    )
+      return { error: '', status: '' };
+    const latest = readSavedTeams(localStorage).find(
+      (saved) => saved.id === entry.id
+    );
+    if (
+      !latest ||
+      latest.collection !== 'wishlist' ||
+      canonicalSnapshot(latest) !== snapshot
+    ) {
+      return {
+        error: 'This Wishlist team changed. Refresh before removing it.',
+        status: '',
+      };
+    }
+    removeWishlistedTeam(localStorage, entry.id);
     void pushNow();
-    return '';
-  } catch {
-    return SAVE_FAILURE;
+    return { error: '', status: 'Removed from Wishlist.' };
+  } catch (error) {
+    return {
+      error: error instanceof SavedTeamError ? error.message : SAVE_FAILURE,
+      status: '',
+    };
   }
 }
 
@@ -37,8 +87,8 @@ export async function openCatalogTeam(team: Team): Promise<string> {
   let entry: SavedTeam;
   try {
     entry = useCatalogTeam(localStorage, team);
-  } catch {
-    return SAVE_FAILURE;
+  } catch (error) {
+    return error instanceof SavedTeamError ? error.message : SAVE_FAILURE;
   }
   void pushNow();
   try {

@@ -19,6 +19,70 @@ Both projects use the Blaze plan and Firestore in native mode. The Firestore
 location is permanent. `.firebaserc` defaults to `champions-atlas-test`; the
 workflows pass `--project` explicitly, so only local commands use the default.
 
+## iOS app
+
+The Capacitor iOS project bundles the static app and uses Google Sign-In for
+native authentication. It requires Xcode 26 or later, an Apple signing team,
+and a Firebase iOS app registered in the project that owns your teams.
+
+1. In Firebase **Project settings** → **Your apps**, add an iOS app with the
+   bundle ID `com.maxwellward.championsatlas`. Enable Google under
+   **Authentication** → **Sign-in method** in that same project, then download
+   its `GoogleService-Info.plist`.
+2. Add these public configuration values to `ios/App/App/Info.plist`:
+   - `GIDClientID`: the iOS `CLIENT_ID` from `GoogleService-Info.plist`.
+   - `GIDServerClientID`: the same project's Web OAuth client ID below.
+   - `CFBundleURLTypes`: an array containing a dictionary with a
+     `CFBundleURLSchemes` array containing the iOS `REVERSED_CLIENT_ID`.
+3. Set the four `VITE_FIREBASE_*` build variables to the same project's web app
+   configuration. Shell variables override `.env.local`. If the API key is not
+   already in Keychain, add it without putting the value in shell history:
+
+   ```sh
+   security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -w
+   ```
+
+   When switching Firebase projects, replace the stored key with that project's
+   key:
+
+   ```sh
+   security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -U -w
+   ```
+
+   Load that key at build time:
+
+   ```sh
+   export VITE_FIREBASE_API_KEY="$(security find-generic-password -s champions-atlas:firebase-api-key -a "$USER" -w)"
+   ```
+
+4. Build the web app, copy it into the native project, and open Xcode:
+
+   ```sh
+   npm run build
+   npx cap sync ios
+   npx cap open ios
+   ```
+
+5. In Xcode, choose your signing team and iPhone, then build and run the app.
+
+The Google Web OAuth client IDs are public configuration:
+
+| Project                | Web OAuth client ID                                                        |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `champions-atlas`      | `287669775623-7fjtghdh0utvroqlpjhgajhhaso7tpev.apps.googleusercontent.com` |
+| `champions-atlas-test` | `809995612901-5t9ikagsdo6qqaug8rnpavg4ng7t72ri.apps.googleusercontent.com` |
+
+The checked-in iOS client ID, callback scheme, and Web OAuth client ID use
+`champions-atlas-test`. Replace all three when building for another Firebase
+project. The native project ignores copied web assets; run `npx cap sync ios`
+after each web build.
+
+On a signed-in iPhone, verify existing teams and current sets load, canceling
+sign-in leaves the login screen idle, and sign-out returns to the account gate.
+Then force-quit, enable Airplane Mode, reopen the app, and check that cached
+teams are available. Change a team offline, relaunch, reconnect, and verify the
+same change on a second signed-in client.
+
 ## Data model
 
 A signed-in user owns a manifest at `users/{uid}` containing exactly
@@ -228,8 +292,8 @@ the `VITE_FIREBASE_*` values, so it never reaches an emulator.
 
 ## Sign-in domains
 
-Sign-in opens a Google popup, and falls back to a full-page redirect when a
-browser blocks the popup. Firebase rejects the attempt with
+Browser sign-in opens a Google popup and falls back to a full-page redirect when
+the browser blocks it. Firebase rejects the attempt with
 `auth/unauthorized-domain` unless the page's hostname is listed under
 **Authentication** → **Settings** → **Authorized domains**. The default list
 covers `localhost`, the project's `firebaseapp.com` and `web.app` domains, and,

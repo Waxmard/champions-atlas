@@ -16,6 +16,7 @@ declare global {
   namespace App {
     interface PageState {
       fromCatalog?: boolean;
+      movedToWishlist?: 'moved' | 'active-failed';
     }
   }
 }

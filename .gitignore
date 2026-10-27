@@ -26,6 +26,7 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.test
+/GoogleService-Info.plist
 
 # Vite
 vite.config.js.timestamp-*

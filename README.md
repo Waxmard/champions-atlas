@@ -62,7 +62,8 @@ checked-in regulation rosters before reuse. An ineligible catalog triggers a
 cached import without forcing a YouTube recrawl. A failed rebuild preserves the
 previous file and exits unsuccessfully. A clean checkout needs network access
 for the initial import unless source files are already cached. The built app
-uses the bundled snapshot without fetching source data at runtime.
+uses the bundled catalog without fetching source data at runtime. Importing an
+unknown Poképaste link fetches that paste directly from Poképaste.
 
 A full refresh replaces historical records that sources change or remove.
 Offline imports require cached source files and do not disable asset downloads.
@@ -107,8 +108,16 @@ scan failures, including the stricter YouTube rule in preview.
 ## Using the app
 
 Browse by Pokémon and set filters; filters, sorting, and position survive opening
-a team and returning. **Wishlist** bookmarks catalog teams without adding them
-to **My teams**. Choose **Use this team**, or import a complete six-member
+a team and returning. Use the **Wishlist** button on a catalog team to add or
+remove its bookmark; removal confirms before deleting that saved copy and its
+edits. In **Wishlist**, paste a direct `pokepast.es` link and select **Import to
+Wishlist**. Existing bookmarks and catalog matches do not require a fetch; other
+links require a connection. Importing the same link again keeps the existing
+bookmark and its edits.
+
+Move a saved team between **Wishlist** and **My teams** without losing its edits
+or source history. Separate copies are not merged. Choose **Use this team** for
+a catalog team, or import a complete six-member
 [Showdown team](https://play.pokemonshowdown.com/teambuilder) through
 **Add custom team** in **My teams**.
 
@@ -122,14 +131,18 @@ remains unverified. **Record in-game set** and **Record all in-game sets**
 explicitly record committed sets as snapshots: they change Atlas only, never
 Pokémon Champions. Team edits do not update those snapshots.
 
-Saving requires browser storage; clearing origin storage removes local saved
-data. With Firebase configured, Google sign-in is required and syncs saved teams,
-their originals, and current-set snapshots across devices. Without configuration,
-the app runs local-only. Browse preferences remain device-local.
+Saving requires local storage; clearing it removes local saved data. With
+Firebase configured, Google sign-in is required and syncs saved teams, their
+originals, and current-set snapshots across devices. Without configuration, the
+web app runs local-only. Browse preferences remain device-local.
+
+The iOS app bundles the web app and uses native Google sign-in. After a
+successful sign-in, saved local data is available offline; synchronization
+requires a connection. See [Firebase deployment and sync](docs/firebase.md) for
+iOS configuration and signing, as well as release safety and recovery.
 
 See the [product specification](docs/product-spec.md) for editing, restoration,
-export, and snapshot contracts. Read [Firebase deployment and sync](docs/firebase.md)
-for rules-before-client releases, security, and recovery operations.
+export, and snapshot contracts.
 
 ## Documentation
 
