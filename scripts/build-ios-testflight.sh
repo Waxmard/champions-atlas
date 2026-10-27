@@ -122,7 +122,7 @@ xcodebuild \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID"
 
-xcrun altool \
+API_PRIVATE_KEYS_DIR="$WORK_DIR" xcrun altool \
   --upload-app \
   -f "$EXPORT_PATH/App.ipa" \
   --type ios \
