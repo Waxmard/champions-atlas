@@ -3,17 +3,36 @@ name: Deploy Preview
 on:
   pull_request:
     types: [labeled, synchronize]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      refresh_history:
+        description: Rebuild all historical regulations
+        type: boolean
+        default: false
+  schedule:
+    - cron: '17 8 * * *'
 
 permissions:
   contents: read
   pull-requests: write
 
+concurrency:
+  group: deploy-preview-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   deploy-preview:
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'deploy-preview') }}
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'deploy-preview') }}
     runs-on: ubuntu-24.04
     environment: preview
+    outputs:
+      channel_url: ${{ steps.channel.outputs.url }}
+      build_number: ${{ steps.meta.outputs.build_number }}
     steps:
+      - id: meta
+        run: echo "build_number=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
       - uses: actions/cache@v6
         with:
@@ -37,7 +56,9 @@ jobs:
           npm run import:catalog
         env:
           CHECK_SHEET: '1'
-          ALLOW_STALE_SOURCE_CACHE: '1'
+          REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
+          YOUTUBE_REFRESH: ${{ github.event_name == 'schedule' && '1' || '0' }}
+          ALLOW_STALE_SOURCE_CACHE: ${{ github.event_name == 'pull_request' && '1' || '0' }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       - name: Enrich team tags
         run: |
@@ -58,14 +79,56 @@ jobs:
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
       - run: npx firebase-tools deploy --only firestore:rules --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
-      - name: Deploy preview channel
+      - name: Deploy Hosting
         id: channel
         run: |
-          output=$(npx firebase-tools hosting:channel:deploy preview --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}" --json)
-          echo "$output" | jq '.result'
-          echo "url=$(echo "$output" | jq -r '.result | to_entries[0].value.url')" >> "$GITHUB_OUTPUT"
-      - uses: marocchino/sticky-pull-request-comment@v3
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            output=$(npx firebase-tools hosting:channel:deploy preview --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}" --json)
+            echo "$output" | jq '.result'
+            echo "url=$(echo "$output" | jq -r '.result | to_entries[0].value.url')" >> "$GITHUB_OUTPUT"
+          else
+            npx firebase-tools deploy --only hosting --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
+            echo "url=https://champions-atlas-test.web.app" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build
+          retention-days: 1
+
+  deploy-ios-testflight:
+    needs: deploy-preview
+    runs-on: macos-15
+    environment: preview
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v4
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v7
+        with:
+          name: web-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build
+      - name: Upload to TestFlight
+        id: testflight
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_PRIVATE_KEY" ] || [ -z "$APPLE_CERTIFICATE_P12_BASE64" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
+            echo '::notice::Skipping TestFlight upload: configure ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY, APPLE_CERTIFICATE_P12_BASE64, and APPLE_CERTIFICATE_PASSWORD in the preview environment.'
+            echo "status=skipped (Apple credentials not configured)" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          bash scripts/build-ios-testflight.sh
+          echo "status=uploaded to TestFlight (build $IOS_BUILD_NUMBER)" >> "$GITHUB_OUTPUT"
+        env:
+          IOS_BUILD_NUMBER: ${{ needs.deploy-preview.outputs.build_number }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+      - if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v3
         with:
           header: deploy-preview
           message: |
-            Preview deployed: ${{ steps.channel.outputs.url }}
+            Preview deployed: ${{ needs.deploy-preview.outputs.channel_url }}
+            iOS TestFlight: ${{ steps.testflight.outputs.status || 'failed' }}

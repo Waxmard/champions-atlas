@@ -35,6 +35,8 @@
 	<string>809995612901-t6q2lsbhtjpvpao33nv4v5npaqlhg71e.apps.googleusercontent.com</string>
 	<key>GIDServerClientID</key>
 	<string>809995612901-5t9ikagsdo6qqaug8rnpavg4ng7t72ri.apps.googleusercontent.com</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UIApplicationSceneManifest</key>
