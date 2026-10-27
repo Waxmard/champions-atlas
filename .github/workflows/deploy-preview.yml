@@ -100,7 +100,7 @@ jobs:
   deploy-ios-testflight:
     name: Upload iOS to TestFlight
     needs: deploy-preview
-    runs-on: macos-15
+    runs-on: macos-26
     environment: preview
     steps:
       - uses: actions/checkout@v7
