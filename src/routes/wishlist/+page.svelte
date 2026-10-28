@@ -5,6 +5,7 @@
   import { page } from '$app/state';
   import type { ResolvedPathname } from '$app/types';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import X from '@lucide/svelte/icons/x';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -36,6 +37,7 @@
     status = $state(''),
     errorMessage = $state(''),
     pendingId = $state('');
+  let feedbackDismissed = $state(false);
   let pasteLink = $state(''),
     importPending = $state(false),
     invalidLink = $state(false),
@@ -66,9 +68,9 @@
 
   function refresh() {
     try {
-      entries = readSavedTeams(localStorage).filter(
-        (entry) => entry.collection === 'wishlist'
-      );
+      entries = readSavedTeams(localStorage)
+        .filter((entry) => entry.collection === 'wishlist')
+        .reverse();
       storageError = '';
     } catch {
       entries = [];
@@ -95,6 +97,7 @@
 
   afterNavigate(() => {
     if (!page.state.movedToWishlist) return;
+    feedbackDismissed = false;
     status = 'Team moved to Wishlist.';
     if (page.state.movedToWishlist === 'active-failed')
       errorMessage =
@@ -140,6 +143,7 @@
       (sync.configured && (!sync.authResolved || !sync.user))
     )
       return false;
+    feedbackDismissed = false;
     status = errorMessage = '';
     invalidLink = false;
 
@@ -186,7 +190,7 @@
         addCatalogToWishlist(localStorage, catalogTeam);
         void pushNow();
         refresh();
-        status = 'Team is in Wishlist.';
+        status = 'Added to Wishlist.';
         return true;
       }
     } catch {
@@ -231,7 +235,7 @@
         );
         void pushNow();
         refresh();
-        status = 'Team is in Wishlist.';
+        status = 'Added to Wishlist.';
         return true;
       } catch {
         status = '';
@@ -268,7 +272,7 @@
     );
   }
 
-  async function processShares(retry: boolean) {
+  async function processShares(retry: boolean, explicit = false) {
     if (
       !isNativeApp ||
       !canProcessShares() ||
@@ -278,6 +282,7 @@
       (queueError && !retry)
     )
       return;
+    if (explicit) feedbackDismissed = false;
     queuePending = true;
     try {
       const { shares } = await AtlasNative.getPendingShares();
@@ -287,6 +292,7 @@
       for (const share of shares) {
         if (!canProcessShares()) return;
         blockedShare = share;
+        feedbackDismissed = false;
         const userId = sync.user?.uid;
         let owner: string | null;
         try {
@@ -324,6 +330,7 @@
   async function dismissShare() {
     if (!blockedShare || !canProcessShares() || queuePending || importPending)
       return;
+    feedbackDismissed = false;
     queuePending = true;
     try {
       await AtlasNative.acknowledgeShare({ id: blockedShare.id });
@@ -342,6 +349,7 @@
 
   async function use(entry: SavedTeam) {
     if (pendingId) return;
+    feedbackDismissed = false;
     pendingId = entry.id;
     status = errorMessage = '';
     let promoted: SavedTeam;
@@ -384,6 +392,7 @@
   async function remove(entry: SavedTeam) {
     if (pendingId) return;
     if (!confirm(`Remove “${entry.name}” from Wishlist?`)) return;
+    feedbackDismissed = false;
     pendingId = entry.id;
     status = errorMessage = '';
     const index = entries.findIndex(({ id }) => id === entry.id);
@@ -423,9 +432,9 @@
     From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
     finish importing.
   </p>
-  <details class="mt-6 max-w-3xl">
+  <details class="mt-1 max-w-3xl">
     <summary
-      class="min-h-11 cursor-pointer py-2 text-[0.9375rem] font-medium text-base-content/70"
+      class="min-h-11 cursor-pointer py-2 text-sm font-normal text-base-content/60"
     >
       Add a Poképaste manually
     </summary>
@@ -477,21 +486,46 @@
       </div>
     </form>
   </details>
-  <p
-    role="status"
-    aria-live="polite"
-    class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70"
-  >
-    {status}
-  </p>
-  {#if storageError || errorMessage}<p
-      id="wishlist-error"
+  {#if invalidLink && errorMessage}
+    <span id="wishlist-error" class="sr-only">{errorMessage}</span>
+  {/if}
+  {#if storageError}<p
       role="alert"
       class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >
-      {[storageError, errorMessage].filter(Boolean).join(' ')}
+      {storageError}
     </p>{/if}
+  {#if !feedbackDismissed && (status || errorMessage)}
+    <section
+      aria-label="Wishlist notification"
+      class="fixed right-[calc(1rem+env(safe-area-inset-right))] bottom-[calc(1rem+env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] z-40 ms-auto flex max-w-md items-center gap-2 rounded-box border bg-base-100 p-3 shadow-lg {errorMessage
+        ? 'border-error-content text-error-content'
+        : status === 'Already in Wishlist.'
+          ? 'border-warning-content text-warning-content'
+          : status === 'Loading Poképaste…'
+            ? 'border-base-300 text-base-content'
+            : 'border-success-content text-success-content'}"
+    >
+      <div
+        role={errorMessage ? 'alert' : 'status'}
+        aria-live={errorMessage ? undefined : 'polite'}
+        class="min-w-0 flex-1 text-sm break-words"
+      >
+        {#if errorMessage}<p>{errorMessage}</p>{/if}
+        {#if status}<p>{status}</p>{/if}
+      </div>
+      <Button
+        variant="quiet"
+        size="icon-touch"
+        class="shrink-0"
+        aria-label="Dismiss notification"
+        onclick={() => (feedbackDismissed = true)}
+      >
+        <X class="size-4" aria-hidden="true" />
+      </Button>
+    </section>
+  {/if}
   {#if queueError}
     <div role="alert" class="plate mt-2 max-w-[68ch] px-4 py-3">
       {queueError}
@@ -499,7 +533,7 @@
         <Button
           variant="quiet"
           disabled={queuePending || importPending}
-          onclick={() => processShares(true)}
+          onclick={() => processShares(true, true)}
         >
           Try again
         </Button>
@@ -514,7 +548,7 @@
         <Button
           variant="quiet"
           disabled={queuePending || importPending || !canProcessShares()}
-          onclick={() => processShares(true)}
+          onclick={() => processShares(true, true)}
         >
           Retry
         </Button>
