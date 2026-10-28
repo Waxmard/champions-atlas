@@ -20,49 +20,43 @@ workflows pass `--project` explicitly, so only local commands use the default.
 
 ## iOS app
 
-The Capacitor iOS project bundles the static app and uses Google Sign-In for
-native authentication. It requires Xcode 26 or later, an Apple signing team,
-and a Firebase iOS app registered in the project that owns your teams.
+The Capacitor iOS project bundles the static app and uses native Google Sign-In.
+Use a local Xcode install as the daily iPhone update loop; use TestFlight for
+distribution and release checks. Local installs require Xcode 26 or later, the
+existing paid Apple signing team, and a physical iPhone.
 
-1. In Firebase **Project settings** → **Your apps**, add an iOS app with the
-   bundle ID `com.maxwellward.championsatlas`. Enable Google under
-   **Authentication** → **Sign-in method** in that same project, then download
-   its `GoogleService-Info.plist`.
-2. Add these public configuration values to `ios/App/App/Info.plist`:
-   - `GIDClientID`: the iOS `CLIENT_ID` from `GoogleService-Info.plist`.
-   - `GIDServerClientID`: the same project's Web OAuth client ID below.
-   - `CFBundleURLTypes`: an array containing a dictionary with a
-     `CFBundleURLSchemes` array containing the iOS `REVERSED_CLIENT_ID`.
-3. Set the four `VITE_FIREBASE_*` build variables to the same project's web app
-   configuration. Shell variables override `.env.local`. If the API key is not
-   already in Keychain, add it without putting the value in shell history:
+### One-time configuration
 
-   ```sh
-   security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -w
-   ```
+The checked-in iOS client ID, callback scheme, and Web OAuth client ID use
+`champions-atlas-test`. Keep these values, the bundle ID
+`com.maxwellward.championsatlas`, and the native sign-in bridge for local installs.
+Use the matching Firebase web app configuration and automatic signing with the
+paid team, not a Personal Team. If Xcode or iOS requests it, pair and trust the
+iPhone and enable Developer Mode; a restart may be required.
 
-   When switching Firebase projects, replace the stored key with that project's
-   key:
+For a different Firebase project, register an iOS app with the same bundle ID in
+Firebase **Project settings** → **Your apps**, enable Google under
+**Authentication** → **Sign-in method**, and download `GoogleService-Info.plist`.
+Update all three public values in `ios/App/App/Info.plist` together:
 
-   ```sh
-   security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -U -w
-   ```
+- `GIDClientID`: the iOS `CLIENT_ID` from `GoogleService-Info.plist`.
+- `GIDServerClientID`: the same project's Web OAuth client ID below.
+- `CFBundleURLTypes`: an array containing a dictionary with a
+  `CFBundleURLSchemes` array containing the iOS `REVERSED_CLIENT_ID`.
 
-   Load that key at build time:
+Set the four `VITE_FIREBASE_*` build variables to the same project's web app
+configuration. Shell variables override `.env.local`. If the API key is not
+already in Keychain, add it without putting the value in shell history:
 
-   ```sh
-   export VITE_FIREBASE_API_KEY="$(security find-generic-password -s champions-atlas:firebase-api-key -a "$USER" -w)"
-   ```
+```sh
+security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -w
+```
 
-4. Build the web app, copy it into the native project, and open Xcode:
+When switching Firebase projects, replace the stored key with that project's key:
 
-   ```sh
-   npm run build
-   npx cap sync ios
-   npx cap open ios
-   ```
-
-5. In Xcode, choose your signing team and iPhone, then build and run the app.
+```sh
+security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -U -w
+```
 
 The Google Web OAuth client IDs are public configuration:
 
@@ -71,16 +65,63 @@ The Google Web OAuth client IDs are public configuration:
 | `champions-atlas`      | `287669775623-7fjtghdh0utvroqlpjhgajhhaso7tpev.apps.googleusercontent.com` |
 | `champions-atlas-test` | `809995612901-5t9ikagsdo6qqaug8rnpavg4ng7t72ri.apps.googleusercontent.com` |
 
-The checked-in iOS client ID, callback scheme, and Web OAuth client ID use
-`champions-atlas-test`. Replace all three when building for another Firebase
-project. The native project ignores copied web assets; run `npx cap sync ios`
-after each web build.
+### Install updates on an iPhone
 
-On a signed-in iPhone, verify existing teams and current sets load, canceling
-sign-in leaves the login screen idle, and sign-out returns to the account gate.
-Then force-quit, enable Airplane Mode, reopen the app, and check that cached
-teams are available. Change a team offline, relaunch, reconnect, and verify the
-same change on a second signed-in client.
+Before switching between TestFlight and a local install, confirm your teams and
+current sets have synced under the existing account. Preserve unsynced work with
+the app's export controls. Do not uninstall the app or clear its storage. Both
+installs use the same bundle identity: a local install replaces TestFlight, and
+a later TestFlight install switches it back. Check your data on the device after
+switching; preservation of every local record is not guaranteed. If Xcode rejects
+the replacement, stop and preserve your data before deciding how to proceed.
+
+1. Load the API key at build time. Keychain asks for approval; if it blocks, approve
+   the prompt rather than copying the key to a file.
+
+   ```sh
+   export VITE_FIREBASE_API_KEY="$(security find-generic-password -s champions-atlas:firebase-api-key -a "$USER" -w)"
+   ```
+
+2. Build the normal app, sync its assets into the native project, and open Xcode:
+
+   ```sh
+   make ios
+   ```
+
+   This does not install the app; press **Run** in Xcode after selecting your
+   physical iPhone and checking the scheme and signing settings below.
+
+   The normal build reuses a valid catalog; UI changes do not require a full
+   catalog or enrichment refresh. Do not use `build:e2e`, blank Firebase
+   variables, a fixture catalog, the development server as the device asset
+   source, or the TestFlight archive/upload script for this install.
+
+3. In Xcode, select the **App** scheme and your physical iPhone. Under
+   **Product** → **Scheme** → **Edit Scheme** → **Run** → **Info**, select
+   **Release** for **Build Configuration** and turn off **Debug executable**.
+   Verify automatic signing uses the paid team.
+4. With the iPhone online, press **Run** in Xcode. Sign in if needed, then confirm
+   your existing teams and current sets are available or restored through the
+   same account. A first launch may need online certificate verification.
+5. Disconnect the phone, stop or close Xcode, and launch from the home-screen
+   icon. The bundled app requires no `server.url`, live-reload connection, or Mac
+   process. Repeat the build, sync, and install steps only when you want an update.
+
+Local signing expires; an installation is not permanent. Check the actual
+profile's `ExpirationDate` in Xcode's signing/profile details or by read-only
+decoding the built app's `embedded.mobileprovision`. Do not export signing private
+keys. Launch online before leaving the Mac.
+
+Verify the device behavior before relying on it away from the Mac. With Xcode
+closed and the phone disconnected, open Browse and My teams, make a reversible set
+edit, and confirm it survives a force-quit and phone restart. With Wi-Fi off and
+cellular on, check sign-in and sync. After an online sign-in, enable Airplane Mode,
+force-quit and reopen the app, check Browse and saved teams, and confirm a
+reversible edit survives relaunch and syncs to a second signed-in client after
+reconnecting. Restore the edit. Also check that canceling sign-in leaves the login
+screen idle and signing out returns to the account gate. Offline startup depends
+on the persisted sign-in session and must be checked on the device; report an
+authentication block rather than assuming it works.
 
 ## Data model
 
@@ -198,9 +239,8 @@ preserves the account cache, and no migration clears browser storage.
 Deploy updated Firestore rules before or with a new client. Until those rules are
 deployed, child access fails visibly; successful local saves remain available
 for **Retry sync**. After a v2 migration, old clients fail their legacy read
-validation instead of clearing local storage. Install the updated TestFlight
-build to use the new client. Neither local implementation nor emulator checks
-deploy rules.
+validation instead of clearing local storage. Install an updated client to use
+the new format. Local Xcode installs and emulator checks do not deploy rules.
 
 The TestFlight workflow uses the GitHub `preview` environment and
 `champions-atlas-test`. It reads `VITE_FIREBASE_API_KEY`,
@@ -221,17 +261,19 @@ write**, then store it as a repository secret. The workflow needs a token other
 than `GITHUB_TOKEN` so that merging the release pull request triggers the
 `push`-triggered workflows.
 
-- A push to `main`, a manual run, or the daily schedule runs
-  `deploy-testflight.yml`. A pull request runs it when labeled
-  `deploy-testflight`; the label must exist on the repository.
+- A push to `main` runs `deploy-testflight.yml`. To run it manually, select
+  **Actions** → **Deploy TestFlight** → **Run workflow**, choose a branch, and
+  optionally select **Rebuild all historical regulations**. A feature-branch
+  push or pull request label does not trigger the workflow.
 - The workflow builds the app, deploys Firestore rules to
-  `champions-atlas-test`, and uploads the signed iOS build to TestFlight. A pull
-  request comment reports the upload status. The workflow runs independently of
-  CI and does not wait for CI checks.
+  `champions-atlas-test`, and uploads the signed iOS build to TestFlight. It runs
+  independently of CI and does not wait for CI checks.
 - After upload, wait for Apple to process the build. Accept the TestFlight
   invitation if needed, open TestFlight on your iPhone, and install or update
   Champion's Atlas when the build becomes available. An upload does not install
   the build automatically.
+- A [local Xcode install](#install-updates-on-an-iphone) skips Apple processing
+  and TestFlight installation but does not deploy Firestore rules.
 - A push to `main` also runs `release-please.yml`, which opens or updates a
   release pull request that bumps `package.json` and writes `CHANGELOG.md`. The
   workflow merges that pull request once the required status checks pass, then

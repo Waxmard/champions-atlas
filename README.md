@@ -29,8 +29,22 @@ npm run test:e2e                   # Run the full browser suite.
 Firebase-disabled bundle with a deterministic catalog fixture; they do not change
 the generated catalog or normal production builds. CI runs smoke coverage on pull
 requests and pushes to `main`. Select **Actions → CI → Run workflow** for the full
-browser suite. The TestFlight delivery workflow runs independently of CI; see
+browser suite. The TestFlight workflow runs independently of CI on pushes to
+`main`, or through **Actions** → **Deploy TestFlight** → **Run workflow**. For a
+manual run, select a branch and optionally **Rebuild all historical regulations**.
+A feature-branch push or pull request label does not upload a build. Apple must
+process an upload before you can install it through TestFlight. A local Xcode
+install skips those steps but does not deploy Firestore rules; ensure compatible
+rules are deployed before using changes that need them. See
 [Firebase deployment and sync](docs/firebase.md) for delivery and configuration.
+
+For a local iPhone update, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
+
+```sh
+make ios          # Build, sync iOS assets, and open Xcode.
+```
+
+Select your physical iPhone and press **Run** in Xcode to install the app.
 
 Format files or serve a built app with:
 
@@ -77,7 +91,7 @@ OFFLINE=1 npm run import:catalog # Replay cached sources.
 
 See [data sources and ranking limits](docs/data-sources.md) for source admission,
 active and historical records, cache freshness, partial-paste retention, assets,
-and preview failure policy.
+and import failure policy.
 
 ### YouTube credentials
 
@@ -103,7 +117,7 @@ CHECK_SHEET=1 YOUTUBE_REFRESH=1 npm run import:catalog # Refresh sources and sca
 
 See the [source freshness policy](docs/data-sources.md#freshness-and-scheduling)
 for completed snapshot reuse, complete crawls, keyless and offline operation, and
-scan failures, including the stricter YouTube rule in preview.
+scan failures.
 
 ## Using the app
 
@@ -136,10 +150,10 @@ Firebase configured, Google sign-in is required and syncs saved teams, their
 originals, and current-set snapshots across devices. Without configuration, the
 web app runs local-only. Browse preferences remain device-local.
 
-The iOS app bundles the web app and uses native Google sign-in. After a
-successful sign-in, saved local data is available offline; synchronization
-requires a connection. See [Firebase deployment and sync](docs/firebase.md) for
-iOS configuration and signing, as well as release safety and recovery.
+The iOS app bundles the web app and uses native Google sign-in. Use the
+[local iPhone install procedure](docs/firebase.md#install-updates-on-an-iphone)
+for daily updates, and TestFlight for distribution and release checks. Check
+offline access on the device; synchronization requires a connection.
 
 See the [product specification](docs/product-spec.md) for editing, restoration,
 export, and snapshot contracts.
