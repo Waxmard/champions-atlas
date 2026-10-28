@@ -174,12 +174,16 @@
     }
   }
 
-  function navigate(params: URLSearchParams, preservePosition = true) {
+  function navigate(
+    params: URLSearchParams,
+    preservePosition = true,
+    hash = ''
+  ) {
     const canonical = browseParams(params);
     rememberBrowse(canonical);
     const query = canonical.toString();
 
-    void goto(resolve(`?${query}`), {
+    void goto(resolve(`?${query}${hash}`), {
       replace: true,
       reset: false,
     }).then(() => {
@@ -204,13 +208,13 @@
       if (saved !== null) {
         const params = new URLSearchParams(saved);
         if (!browseKeys.some((key) => params.has(key))) throw new Error();
-        navigate(params);
+        navigate(params, true, page.url.hash);
         return;
       }
     } catch (error) {
       if (error instanceof DOMException) storageError = true;
     }
-    navigate(new URLSearchParams());
+    navigate(new URLSearchParams(), true, page.url.hash);
   }
 
   afterNavigate(restoreBrowse);

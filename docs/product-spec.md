@@ -149,9 +149,10 @@ team synchronize across devices.
 Saved teams can be deleted after confirmation. If the deleted team was active,
 the next saved team becomes active; deleting the last one returns to the empty
 My teams view. Deletion also discards unsaved edits to that team. The app
-remembers the last successfully visited browse, team-detail, or My teams URL for
-a bare-root reload and returns to it after sign-in. Explicit links take
-precedence, and a missing remembered detail falls back to browsing. The main
+remembers the last successfully visited URL and scroll position on this device
+for a bare-root reopen and returns to that page after sign-in. With no remembered
+page, it opens Browse. Explicit links take precedence, and a missing remembered
+detail falls back to browsing. Editors and dialogs reopen closed. The main
 navigation remains visible while scrolling, and selecting a Pokémon clears its
 search input for the next choice.
 

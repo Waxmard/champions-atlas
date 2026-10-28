@@ -3,33 +3,27 @@
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import { Avatar, DropdownMenu } from 'bits-ui';
   import { resolve } from '$app/paths';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
-  import { resolveSavedTeamId, teamsInUse } from '#lib/team-collections.js';
+  import { teamsInUse } from '#lib/team-collections.js';
 
   let { children } = $props();
-  const isHome = $derived(page.url.pathname === resolve('/'));
+  const isHome = $derived(page.route.id === '/');
   const isMyTeams = $derived(
-    page.url.pathname.startsWith(resolve('my-teams')) ||
-      page.url.pathname === resolve('wishlist')
+    page.route.id === '/my-teams' ||
+      page.route.id === '/my-teams/new' ||
+      page.route.id === '/wishlist'
   );
-  const isBrowse = $derived(
-    isHome ||
-      page.url.pathname.startsWith(
-        resolve('/teams/[id]', { id: 'x' }).slice(0, -1)
-      )
-  );
+  const isBrowse = $derived(isHome || page.route.id === '/teams/[id]');
   const isLogin = $derived(page.url.pathname === resolve('login'));
 
   const brandHref = $derived(
-    isHome || page.url.pathname.startsWith(resolve('teams/'))
-      ? resolve(`?${page.url.searchParams}`)
-      : resolve('?browse=all')
+    isBrowse ? resolve(`?${page.url.searchParams}`) : resolve('?browse=all')
   );
 
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
@@ -42,14 +36,23 @@
       .join('') || '?'
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
+  const lastScrollKey = 'champions-atlas:last-scroll:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
+  const authReturnSourceKey = 'champions-atlas:auth-return-source:v1';
   let initialUrl = $state<URL | null>(null);
   let startupReady = $state(false);
   let startupSettled = $state(false);
   let starting = false;
   let redirecting = false;
   let pendingReturn: string | null = null;
+  let returningRemembered = false;
   let headerHeight = $state(0);
+  type ScrollPosition = { url: string; x: number; y: number };
+  let initialScroll: ScrollPosition | null = null;
+  let pendingScroll: ScrollPosition | null = null;
+  let settledUrl: string | null = null;
+  let navigationGeneration = 0;
+  let scrollTimer: ReturnType<typeof setTimeout> | undefined;
 
   function validDestination(value: string | null): string | null {
     if (
@@ -111,28 +114,227 @@
     }
   }
 
-  function defaultDestination(): string {
-    try {
-      const id = resolveSavedTeamId(
-        teamsInUse(readSavedTeams(localStorage)),
-        null,
-        localStorage.getItem(activeTeamKey)
-      );
-
-      if (id) return resolve('my-teams') + '?team=' + encodeURIComponent(id);
-    } catch {
-      return resolve('/');
-    }
-    return resolve('/');
+  function urlString(
+    url: Readonly<Pick<URL, 'pathname' | 'search' | 'hash'>>
+  ): string {
+    return url.pathname + url.search + url.hash;
   }
 
-  function returnDestination(): string {
-    return (
-      pendingReturn ??
-      storedDestination('session', authReturnKey) ??
-      storedDestination('local', lastPageKey) ??
-      defaultDestination()
+  function readScroll(): ScrollPosition | null {
+    try {
+      const value: unknown = JSON.parse(
+        localStorage.getItem(lastScrollKey) ?? 'null'
+      );
+      if (!value || typeof value !== 'object') return null;
+      const { url, x, y } = value as Record<string, unknown>;
+      if (
+        typeof url !== 'string' ||
+        validDestination(url) !== url ||
+        typeof x !== 'number' ||
+        typeof y !== 'number' ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(y) ||
+        x < 0 ||
+        y < 0
+      )
+        return null;
+      return { url, x, y };
+    } catch {
+      return null;
+    }
+  }
+
+  function savePosition() {
+    const url = urlString(page.url);
+    if (
+      !startupReady ||
+      !startupSettled ||
+      redirecting ||
+      pendingScroll ||
+      settledUrl !== url ||
+      page.status >= 400 ||
+      (sync.configured && !sync.user) ||
+      validDestination(url) !== url
+    )
+      return;
+    let { scrollX: x, scrollY: y } = window;
+    const { position, left, top } = document.body.style;
+    if (position === 'fixed' && document.querySelector('dialog[open]')) {
+      const lockedX = Number.parseFloat(left);
+      const lockedY = Number.parseFloat(top);
+      if (Number.isFinite(lockedX)) x = -lockedX;
+      if (Number.isFinite(lockedY)) y = -lockedY;
+    }
+    updateStorage('local', lastPageKey, url);
+    updateStorage(
+      'local',
+      lastScrollKey,
+      JSON.stringify({
+        url,
+        x: Math.max(0, x),
+        y: Math.max(0, y),
+      })
     );
+  }
+
+  function flushPosition() {
+    clearTimeout(scrollTimer);
+    scrollTimer = undefined;
+    savePosition();
+  }
+
+  function debouncePosition() {
+    clearTimeout(scrollTimer);
+    scrollTimer = setTimeout(flushPosition, 200);
+  }
+
+  async function updateAfterRender() {
+    const generation = navigationGeneration;
+    await tick();
+    await new Promise<void>((done) => requestAnimationFrame(() => done()));
+    await new Promise<void>((done) => requestAnimationFrame(() => done()));
+    if (generation !== navigationGeneration) return;
+    if (pendingScroll) {
+      if (urlString(page.url) !== pendingScroll.url) return;
+      window.scrollTo({
+        left: pendingScroll.x,
+        top: pendingScroll.y,
+        behavior: 'instant',
+      });
+      pendingScroll = null;
+    }
+    savePosition();
+  }
+
+  function canonicalizing(from: URL, to: URL): boolean {
+    if (from.pathname !== to.pathname) return false;
+    if (from.pathname === resolve('/'))
+      return !['member', 'regulation', 'sort', 'page', 'type', 'custom'].some(
+        (key) => from.searchParams.has(key)
+      );
+    if (from.pathname !== resolve('my-teams')) return false;
+    const selected = from.searchParams.get('team');
+    const target = to.searchParams.get('team');
+    if (
+      to.hash ||
+      to.search !== (target ? '?team=' + encodeURIComponent(target) : '')
+    )
+      return false;
+    if (selected) return selected === target;
+    try {
+      return target === localStorage.getItem(activeTeamKey);
+    } catch {
+      return false;
+    }
+  }
+
+  beforeNavigate(({ from, to, type }) => {
+    if (!startupReady || redirecting || !pendingScroll || !from || !to) return;
+    navigationGeneration++;
+    if (
+      type !== 'goto' ||
+      urlString(from.url) !== pendingScroll.url ||
+      (urlString(to.url) !== pendingScroll.url &&
+        !canonicalizing(from.url, to.url))
+    )
+      pendingScroll = null;
+  });
+
+  afterNavigate(({ from, to, type }) => {
+    navigationGeneration++;
+    if (!to) return;
+    settledUrl = urlString(to.url);
+    if (!startupReady) return;
+    if (pendingScroll && settledUrl !== pendingScroll.url) {
+      if (
+        type === 'goto' &&
+        from &&
+        urlString(from.url) === pendingScroll.url &&
+        canonicalizing(from.url, to.url)
+      )
+        pendingScroll = { ...pendingScroll, url: settledUrl };
+      else pendingScroll = null;
+    }
+    if (!redirecting) void updateAfterRender();
+  });
+
+  function returnDestination(): string {
+    if (pendingReturn) return pendingReturn;
+    const session = storedDestination('session', authReturnKey);
+    if (session) {
+      try {
+        returningRemembered =
+          sessionStorage.getItem(authReturnSourceKey) === 'remembered';
+      } catch {
+        returningRemembered = false;
+      }
+      return session;
+    }
+    const remembered = storedDestination('local', lastPageKey);
+    returningRemembered = !!remembered;
+    return remembered ?? resolve('/');
+  }
+
+  function saveReturn(destination: string, remembered: boolean) {
+    pendingReturn = validDestination(destination);
+    returningRemembered = remembered;
+    updateStorage('session', authReturnKey, pendingReturn);
+    updateStorage(
+      'session',
+      authReturnSourceKey,
+      pendingReturn ? (remembered ? 'remembered' : 'explicit') : null
+    );
+  }
+
+  function clearReturn() {
+    pendingReturn = null;
+    returningRemembered = false;
+    updateStorage('session', authReturnKey, null);
+    updateStorage('session', authReturnSourceKey, null);
+  }
+
+  async function visitDestination(destination: string, remembered: boolean) {
+    if (remembered) {
+      const url = new URL(destination, page.url.origin);
+      const selected =
+        url.pathname === resolve('my-teams')
+          ? url.searchParams.get('team')
+          : null;
+      if (selected) {
+        try {
+          if (
+            !teamsInUse(readSavedTeams(localStorage)).some(
+              (team) => team.id === selected
+            )
+          )
+            destination = resolve('my-teams');
+        } catch {
+          destination = resolve('my-teams');
+        }
+      }
+    }
+    const incoming = initialUrl ? urlString(initialUrl) : null;
+    const explicit =
+      (incoming === destination && incoming !== resolve('/')) ||
+      (initialUrl?.pathname === resolve('login') &&
+        (pendingReturn === destination ||
+          storedDestination('session', authReturnKey) === destination));
+    if (initialScroll?.url === destination && (remembered || explicit))
+      pendingScroll = initialScroll;
+    initialScroll = null;
+    if (destination !== page.url.pathname + page.url.search + page.url.hash)
+      await goto(destination as ResolvedPathname, { replace: true });
+    if (
+      remembered &&
+      destination.startsWith(
+        resolve('/teams/[id]', { id: 'x' }).slice(0, -1)
+      ) &&
+      page.status === 404
+    ) {
+      pendingScroll = null;
+      updateStorage('local', lastPageKey, null);
+      await goto(resolve('?browse=all'), { replace: true });
+    }
   }
 
   async function resume() {
@@ -151,54 +353,28 @@
     const remembered = bareRoot
       ? storedDestination('local', lastPageKey)
       : null;
-    let destination = login
+    returningRemembered = !!remembered;
+    const destination = login
       ? returnDestination()
       : bareRoot
-        ? (remembered ?? defaultDestination())
+        ? (remembered ?? resolve('/'))
         : incoming;
 
-    if (bareRoot || login) {
-      const selected = destination.startsWith(resolve('my-teams') + '?')
-        ? new URL(destination, page.url.origin).searchParams.get('team')
-        : null;
-      if (selected) {
-        try {
-          if (
-            !teamsInUse(readSavedTeams(localStorage)).some(
-              (team) => team.id === selected
-            )
-          )
-            destination = resolve('my-teams');
-        } catch {
-          destination = resolve('my-teams');
-        }
-      }
-    }
-    const automaticDetail =
-      !!remembered &&
-      destination === remembered &&
-      remembered.startsWith(resolve('/teams/[id]', { id: 'x' }).slice(0, -1));
     if (sync.configured && !sync.user) {
-      pendingReturn = validDestination(destination);
-      if (pendingReturn) updateStorage('session', authReturnKey, pendingReturn);
+      saveReturn(destination, returningRemembered);
       if (!login) await goto(resolve('login'), { replace: true });
     } else {
-      if (destination !== incoming)
-        await goto(destination as ResolvedPathname, { replace: true });
-      if (automaticDetail && page.status === 404) {
-        updateStorage('local', lastPageKey, null);
-        await goto(resolve('?browse=all'), { replace: true });
-      }
-      if (login) {
-        pendingReturn = null;
-        updateStorage('session', authReturnKey, null);
-      }
+      await visitDestination(destination, returningRemembered);
+      if (login) clearReturn();
     }
     startupSettled = true;
     startupReady = true;
+    settledUrl = urlString(page.url);
+    void updateAfterRender();
   }
 
   onMount(() => {
+    initialScroll = readScroll();
     try {
       migrateStoredData(localStorage);
     } catch {
@@ -206,7 +382,26 @@
     }
     initialUrl = new URL(location.href);
     initSync();
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') flushPosition();
+    };
+    const onHashChange = () => {
+      navigationGeneration++;
+      pendingScroll = null;
+      settledUrl = urlString(new URL(location.href));
+      void updateAfterRender();
+    };
+    window.addEventListener('scroll', debouncePosition, { passive: true });
+    window.addEventListener('pagehide', flushPosition);
+    window.addEventListener('hashchange', onHashChange);
+    document.addEventListener('visibilitychange', onVisibility);
     return () => {
+      navigationGeneration++;
+      clearTimeout(scrollTimer);
+      window.removeEventListener('scroll', debouncePosition);
+      window.removeEventListener('pagehide', flushPosition);
+      window.removeEventListener('hashchange', onHashChange);
+      document.removeEventListener('visibilitychange', onVisibility);
       document.documentElement.style.removeProperty('--app-header-height');
     };
   });
@@ -228,41 +423,23 @@
 
     if ((sync.user && login) || (!sync.user && !login)) {
       redirecting = true;
-      const destination = sync.user ? returnDestination() : resolve('login');
       if (!sync.user) {
-        pendingReturn = validDestination(
-          page.url.pathname + page.url.search + page.url.hash
-        );
-        if (pendingReturn)
-          updateStorage('session', authReturnKey, pendingReturn);
-      }
-      void goto(destination as ResolvedPathname, { replace: true })
-        .then(() => {
-          if (sync.user) {
-            pendingReturn = null;
-            updateStorage('session', authReturnKey, null);
-          }
-        })
-        .finally(() => {
+        saveReturn(page.url.pathname + page.url.search + page.url.hash, false);
+        void goto(resolve('login'), { replace: true }).finally(() => {
           redirecting = false;
         });
+      } else {
+        const destination = returnDestination();
+        void visitDestination(destination, returningRemembered)
+          .then(clearReturn)
+          .finally(() => {
+            redirecting = false;
+            void updateAfterRender();
+          });
+      }
     }
   });
 
-  $effect(() => {
-    const url = page.url;
-
-    if (
-      !startupReady ||
-      url.pathname === resolve('login') ||
-      (url.pathname === resolve('/') && !url.search && !url.hash) ||
-      page.status >= 400 ||
-      (sync.configured && !sync.user)
-    )
-      return;
-
-    updateStorage('local', lastPageKey, url.pathname + url.search + url.hash);
-  });
   $effect(() => {
     if (headerHeight)
       document.documentElement.style.setProperty(
