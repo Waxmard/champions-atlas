@@ -21,7 +21,7 @@ workflows pass `--project` explicitly, so only local commands use the default.
 ## iOS app
 
 The Capacitor iOS project bundles the static app and uses native Google Sign-In.
-Use a local Xcode install as the daily iPhone update loop; use TestFlight for
+Use a local install as the daily iPhone update loop; use TestFlight for
 distribution and release checks. Local installs require Xcode 26 or later, the
 existing paid Apple signing team, and a physical iPhone.
 
@@ -75,6 +75,12 @@ a later TestFlight install switches it back. Check your data on the device after
 switching; preservation of every local record is not guaranteed. If Xcode rejects
 the replacement, stop and preserve your data before deciding how to proceed.
 
+Pair and trust the iPhone, enable Developer Mode and enable **Connect via network**
+in Xcode's **Devices and Simulators** window. Initial pairing may require USB.
+For routine updates, keep the Mac and unlocked iPhone online on the same Wi-Fi
+network and confirm the phone appears in `xcrun devicectl list devices --timeout 10`.
+Use the matching Firebase project configuration and the existing paid signing team.
+
 1. Load the API key at build time. Keychain asks for approval; if it blocks, approve
    the prompt rather than copying the key to a file.
 
@@ -82,30 +88,36 @@ the replacement, stop and preserve your data before deciding how to proceed.
    export VITE_FIREBASE_API_KEY="$(security find-generic-password -s champions-atlas:firebase-api-key -a "$USER" -w)"
    ```
 
-2. Build the normal app, sync its assets into the native project, and open Xcode:
+2. Build, install, and launch the app over Wi-Fi:
 
    ```sh
    make ios
    ```
 
-   This does not install the app; press **Run** in Xcode after selecting your
-   physical iPhone and checking the scheme and signing settings below.
+   This builds the normal web app, syncs Capacitor assets, builds the native app
+   in Release configuration, then installs and launches it using Apple's CLI.
+   It does not open Xcode or attach a debugger. The default device is
+   `Gengar Phone`; to select another device, run
+   `make ios IOS_DEVICE="Another Phone"` or use its device identifier. If the
+   name is missing or ambiguous, use the identifier from the device list.
 
    The normal build reuses a valid catalog; UI changes do not require a full
    catalog or enrichment refresh. Do not use `build:e2e`, blank Firebase
    variables, a fixture catalog, the development server as the device asset
    source, or the TestFlight archive/upload script for this install.
 
-3. In Xcode, select the **App** scheme and your physical iPhone. Under
-   **Product** → **Scheme** → **Edit Scheme** → **Run** → **Info**, select
-   **Release** for **Build Configuration** and turn off **Debug executable**.
-   Verify automatic signing uses the paid team.
-4. With the iPhone online, press **Run** in Xcode. Sign in if needed, then confirm
-   your existing teams and current sets are available or restored through the
-   same account. A first launch may need online certificate verification.
-5. Disconnect the phone, stop or close Xcode, and launch from the home-screen
-   icon. The bundled app requires no `server.url`, live-reload connection, or Mac
-   process. Repeat the build, sync, and install steps only when you want an update.
+3. With the iPhone online, sign in if needed, then confirm your existing teams and
+   current sets are available or restored through the same account. A first launch
+   may need online certificate verification.
+4. Close Xcode if open, force-quit the app, and launch it from the
+   home-screen icon. The bundled app requires no `server.url`, live-reload
+   connection, or Mac process. Repeat the install steps only when you want an update.
+
+If the CLI install fails, open the native project with `npx cap open ios` and
+use Xcode instead. Select the **App** scheme and your physical iPhone. Under
+**Product** → **Scheme** → **Edit Scheme** → **Run** → **Info**, select
+**Release** for **Build Configuration** and turn off **Debug executable**.
+Verify automatic signing uses the paid team, then press **Run** or Command-R.
 
 Local signing expires; an installation is not permanent. Check the actual
 profile's `ExpirationDate` in Xcode's signing/profile details or by read-only

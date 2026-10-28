@@ -33,7 +33,7 @@ browser suite. The TestFlight workflow runs independently of CI on pushes to
 `main`, or through **Actions** → **Deploy TestFlight** → **Run workflow**. For a
 manual run, select a branch and optionally **Rebuild all historical regulations**.
 A feature-branch push or pull request label does not upload a build. Apple must
-process an upload before you can install it through TestFlight. A local Xcode
+process an upload before you can install it through TestFlight. A local iPhone
 install skips those steps but does not deploy Firestore rules; ensure compatible
 rules are deployed before using changes that need them. See
 [Firebase deployment and sync](docs/firebase.md) for delivery and configuration.
@@ -41,10 +41,11 @@ rules are deployed before using changes that need them. See
 For a local iPhone update, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
 
 ```sh
-make ios          # Build, sync iOS assets, and open Xcode.
+make ios          # Build, install, and launch on an iPhone.
 ```
 
-Select your physical iPhone and press **Run** in Xcode to install the app.
+The default Wi-Fi target is Gengar Phone. Override it with
+`make ios IOS_DEVICE="Another Phone"` or a device identifier.
 
 Format files or serve a built app with:
 
