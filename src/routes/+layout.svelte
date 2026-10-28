@@ -11,6 +11,7 @@
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
   import { teamsInUse } from '#lib/team-collections.js';
+  import { normalizeInitialUrl } from '#lib/initial-url.js';
 
   let { children } = $props();
   const isHome = $derived(page.route.id === '/');
@@ -380,7 +381,7 @@
     } catch {
       /* storage unavailable */
     }
-    initialUrl = new URL(location.href);
+    initialUrl = normalizeInitialUrl(location.href, resolve('/'));
     initSync();
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flushPosition();
