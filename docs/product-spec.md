@@ -271,7 +271,6 @@ renaming it.
 
 ## Future scope
 
-- Support installation as a PWA for personal use.
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
 - Native share extension.

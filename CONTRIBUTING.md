@@ -42,4 +42,7 @@ tag, bumps the version, updates `CHANGELOG.md`, and tags the release
 ([release-please](.github/workflows/release-please.yml)). This is why commit hygiene
 matters: every commit on `main` is read by the release tooling.
 
-Deployment runs on push to `main` after the checks pass. See `docs/firebase.md` for hosting.
+The TestFlight workflow runs independently of CI on pushes to `main`, scheduled
+and manual runs, and pull requests labeled `deploy-testflight`. Apple must process
+an uploaded build before testers can install it in TestFlight. See
+[Firebase deployment and sync](docs/firebase.md) for delivery and configuration.

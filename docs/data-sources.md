@@ -129,7 +129,7 @@ routine imports do not re-enrich them or use them as linked-spread donors.
 The cache entry for `src/lib/data/catalog.json` supplies the history baseline.
 If that catalog is missing or empty, the importer bootstraps all available
 history. `REFRESH=1 npm run import:catalog` rebuilds the full history from current
-source data, replacing changed or removed historical records. The production
+source data, replacing changed or removed historical records. The TestFlight
 workflow exposes the same operation through its **Rebuild all historical
 regulations** manual-dispatch checkbox. Routine removals remain authoritative
 for M-C; removal of a frozen record takes effect only in a full-history rebuild.
@@ -141,17 +141,16 @@ provenance only for the active slice. Frozen records retain their existing data.
 
 ## Freshness and scheduling
 
-`.github/workflows/deploy-prod.yml` imports the catalog and deploys it on every
-push to `main`, on manual dispatch, and once a day at 08:17 UTC. GitHub can delay
-a scheduled run. Only scheduled production imports set `YOUTUBE_REFRESH=1` to
-recrawl all configured channel histories. Pushes, manual dispatches, and PR previews
-reuse valid complete discovery snapshots; a cold cache can still require a crawl.
-The workflow serializes publication, and a failed import, tagging run, or build
-stops before deployment so the previously hosted build stays available. A source
-fetch or structural failure throws before the atomic catalog write, so the
-previous catalog stays published. Nothing imports on a schedule outside that
-workflow: dev, build, and typecheck generate a missing catalog or rebuild one
-containing an ineligible team. Otherwise they reuse the catalog and restore assets.
+`.github/workflows/deploy-testflight.yml` imports the catalog for pushes to
+`main`, manual runs, labeled pull requests, and daily at 08:17 UTC. GitHub can
+delay a scheduled run. Only scheduled imports set `YOUTUBE_REFRESH=1` to recrawl
+all configured channel histories. Other runs reuse valid complete discovery
+snapshots; a cold cache can still require a crawl. A failed import, tagging run,
+or build stops the upload, leaving existing TestFlight builds unchanged. A source
+fetch or structural failure throws before the atomic catalog write, preserving
+the previous catalog. Nothing imports on a schedule outside that workflow: dev,
+build, and typecheck generate a missing catalog or rebuild one containing an
+ineligible team. Otherwise they reuse the catalog and restore assets.
 YouTube discovery stores only a validated, completed snapshot at
 `.cache/catalog/youtube-sources.json`. A keyed online import reuses a valid
 complete snapshot unless `REFRESH=1` or `YOUTUBE_REFRESH=1` requests a complete
@@ -164,7 +163,7 @@ disables this source with a warning and retains previously imported channel-only
 teams. An invalid snapshot fails in offline or keyless mode; a keyed online
 import replaces it only after a successful complete crawl. Once an enabled scan
 begins, API, quota, or structural failures abort before catalog replacement,
-including in preview; preview's stale-cache option does not weaken YouTube
+including in pull request runs; their stale-cache option does not weaken YouTube
 discovery. A successful complete scan treats disappeared video/paste links as
 removals from the active slice; frozen historical records remain until a
 full-history rebuild. Individual paste fetch failures retain compatible prior
@@ -177,7 +176,7 @@ and without spending the `PASTE_LIMIT` budget; transient reasons
 importer or eligibility snapshot discards the whole ledger. Deleting the file
 costs time only.
 
-## Assets and preview cache
+## Assets and pull request cache
 
 Catalog bootstrap caches standard Pokémon PNG sprites and 24px item icons in
 ignored `static/` directories. It uses PokéAPI's standard PNG artwork for new or
@@ -191,7 +190,7 @@ item names remain visible, and absent assets trigger no requests. Restart the
 development server or rebuild after adding assets. `OFFLINE=1` controls source
 discovery, not asset downloads.
 
-Preview imports refresh live sources with `CHECK_SHEET=1` and set
+Pull request imports refresh live sources with `CHECK_SHEET=1` and set
 `ALLOW_STALE_SOURCE_CACHE=1`. When an eligible transient HTTP or network failure
 occurs, the importer warns and reuses validated raw source cache, including CSVs.
 The existing retry policy remains unchanged.

@@ -1,4 +1,4 @@
-name: Deploy Web and TestFlight
+name: Deploy TestFlight
 
 on:
   pull_request:
@@ -19,17 +19,16 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: deploy-preview-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}
+  group: deploy-testflight-${{ github.event_name == 'pull_request' && github.event.pull_request.number || 'main' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
-  deploy-preview:
-    name: Build and deploy web
-    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'deploy-preview') }}
+  build-app:
+    name: Build app and deploy Firestore rules
+    if: ${{ github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'deploy-testflight') }}
     runs-on: ubuntu-24.04
     environment: preview
     outputs:
-      channel_url: ${{ steps.channel.outputs.url }}
       build_number: ${{ steps.meta.outputs.build_number }}
     steps:
       - id: meta
@@ -74,23 +73,11 @@ jobs:
         run: npm run eval:tags
       - run: npm run build
         env:
-          VITE_BUILD_ID: ${{ github.run_id }}
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
           VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
           VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
           VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
       - run: npx firebase-tools deploy --only firestore:rules --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
-      - name: Deploy Hosting
-        id: channel
-        run: |
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            output=$(npx firebase-tools hosting:channel:deploy preview --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}" --json)
-            echo "$output" | jq '.result'
-            echo "url=$(echo "$output" | jq -r '.result | to_entries[0].value.url')" >> "$GITHUB_OUTPUT"
-          else
-            npx firebase-tools deploy --only hosting --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
-            echo "url=https://champions-atlas-test.web.app" >> "$GITHUB_OUTPUT"
-          fi
       - uses: actions/upload-artifact@v7
         with:
           name: web-build-${{ github.run_id }}-${{ github.run_attempt }}
@@ -99,7 +86,7 @@ jobs:
 
   deploy-ios-testflight:
     name: Upload iOS to TestFlight
-    needs: deploy-preview
+    needs: build-app
     runs-on: macos-26
     environment: preview
     steps:
@@ -120,7 +107,7 @@ jobs:
           bash scripts/build-ios-testflight.sh
           echo "status=uploaded to TestFlight (build $IOS_BUILD_NUMBER)" >> "$GITHUB_OUTPUT"
         env:
-          IOS_BUILD_NUMBER: ${{ needs.deploy-preview.outputs.build_number }}
+          IOS_BUILD_NUMBER: ${{ needs.build-app.outputs.build_number }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
@@ -129,7 +116,6 @@ jobs:
       - if: always() && github.event_name == 'pull_request'
         uses: marocchino/sticky-pull-request-comment@v3
         with:
-          header: deploy-preview
+          header: deploy-testflight
           message: |
-            Preview deployed: ${{ needs.deploy-preview.outputs.channel_url }}
             iOS TestFlight: ${{ steps.testflight.outputs.status || 'failed' }}

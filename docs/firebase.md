@@ -1,12 +1,11 @@
 # Firebase deployment and sync
 
-Champion's Atlas builds to a static single-page application (SPA) and deploys to
-Firebase Hosting. It syncs saved teams and current Pokémon set snapshots through
-Cloud Firestore. With the
-`VITE_FIREBASE_*` variables the app requires Google sign-in: an unauthenticated
-visitor is redirected to `/login` and cannot reach the team browser until signed
-in. Without the variables it runs local-only and never initializes the Firebase
-SDK, because it cannot authenticate at all.
+Champion's Atlas bundles a static single-page app in its iOS app and distributes
+builds through TestFlight. It syncs saved teams and current Pokémon set snapshots
+through Cloud Firestore. With the `VITE_FIREBASE_*` variables the app requires
+Google sign-in: an unauthenticated user is redirected to `/login` and cannot
+reach the team browser until signed in. Without the variables it runs local-only
+and never initializes the Firebase SDK.
 
 ## Projects
 
@@ -196,26 +195,25 @@ preserves the account cache, and no migration clears browser storage.
 
 ## Secrets and continuous integration
 
-Deploy the updated Firestore rules before or with the new client. Until those
-rules are deployed, child access fails visibly; successful local saves remain
-available for **Retry sync**. After a v2 migration, old clients fail their legacy
-read validation instead of clearing local storage. Reload the app to use the
-new client. Neither local implementation nor emulator checks deploy rules.
+Deploy updated Firestore rules before or with a new client. Until those rules are
+deployed, child access fails visibly; successful local saves remain available
+for **Retry sync**. After a v2 migration, old clients fail their legacy read
+validation instead of clearing local storage. Install the updated TestFlight
+build to use the new client. Neither local implementation nor emulator checks
+deploy rules.
 
-The Firebase workflows read five secrets from GitHub environments:
-`VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-`VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, and `FIREBASE_TOKEN`.
-release-please reads one repository secret instead, because that job declares no
-environment: `RELEASE_PLEASE_TOKEN`.
+The TestFlight workflow uses the GitHub `preview` environment and
+`champions-atlas-test`. It reads `VITE_FIREBASE_API_KEY`,
+`VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`,
+`VITE_FIREBASE_APP_ID`, and `FIREBASE_TOKEN` from that environment. Create
+`FIREBASE_TOKEN` with `npx firebase-tools login:ci` using an account with access
+to the test project. The build inlines the four Firebase configuration values.
+The same environment supplies `YOUTUBE_API_KEY`, `TYPESAFE_API_KEY`,
+`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`,
+`APPLE_CERTIFICATE_P12_BASE64`, and `APPLE_CERTIFICATE_PASSWORD`.
 
-| Environment  | Project                | Values                                               |
-| ------------ | ---------------------- | ---------------------------------------------------- |
-| `production` | `champions-atlas`      | that project's web app config, plus `FIREBASE_TOKEN` |
-| `preview`    | `champions-atlas-test` | that project's web app config, plus the same token   |
-
-Create `FIREBASE_TOKEN` with `npx firebase-tools login:ci`, using an account that
-owns both projects. The build inlines the four `VITE_FIREBASE_*` values, so each
-environment must build with its own project's config.
+The release-please workflow reads the repository secret `RELEASE_PLEASE_TOKEN`
+instead, because its job declares no environment.
 
 Create `RELEASE_PLEASE_TOKEN` as a fine-grained personal access token for this
 repository with **Contents: Read and write** and **Pull requests: Read and
@@ -223,22 +221,21 @@ write**, then store it as a repository secret. The workflow needs a token other
 than `GITHUB_TOKEN` so that merging the release pull request triggers the
 `push`-triggered workflows.
 
-- A push to `main` runs `deploy-prod.yml`, which deploys Hosting and
-  `firestore.rules` to `champions-atlas`.
-- A pull request labeled `deploy-preview` runs `deploy-preview.yml`, which
-  deploys the rules and a Hosting preview channel to `champions-atlas-test`, then
-  comments the channel URL on the pull request.
-  The `deploy-preview` label must exist on the repository (`gh label create deploy-preview`); without it the job silently no-ops.
+- A push to `main`, a manual run, or the daily schedule runs
+  `deploy-testflight.yml`. A pull request runs it when labeled
+  `deploy-testflight`; the label must exist on the repository.
+- The workflow builds the app, deploys Firestore rules to
+  `champions-atlas-test`, and uploads the signed iOS build to TestFlight. A pull
+  request comment reports the upload status. The workflow runs independently of
+  CI and does not wait for CI checks.
+- After upload, wait for Apple to process the build. Accept the TestFlight
+  invitation if needed, open TestFlight on your iPhone, and install or update
+  Champion's Atlas when the build becomes available. An upload does not install
+  the build automatically.
 - A push to `main` also runs `release-please.yml`, which opens or updates a
   release pull request that bumps `package.json` and writes `CHANGELOG.md`. The
   workflow merges that pull request once the required status checks pass, then
   tags the release.
-
-Deploy by hand with:
-
-```sh
-npx firebase-tools deploy --only hosting,firestore:rules --project champions-atlas
-```
 
 ## Local development
 
@@ -249,8 +246,9 @@ npx firebase-tools deploy --only hosting,firestore:rules --project champions-atl
    npx firebase-tools apps:sdkconfig WEB <appId> --project champions-atlas-test
    ```
 
-2. Put them in `.env.local`, which is gitignored, then run `npm run dev` and sign
-   in with Google.
+2. Set the public configuration values in your shell or `.env.local`. Store the
+   API key in Keychain and load it as shown in [iOS app](#ios-app), then run
+   `npm run dev` and sign in with Google.
 3. Deploy the rules to the test project once, or sync fails with a permission
    error:
 
@@ -309,12 +307,3 @@ Two steps have no CLI equivalent:
    provider without an OAuth client ID, which only the console provisions.
 2. Accept the Firebase terms of service for the account, which happens when you
    first create or add a project in the console.
-
-`hosting:channel:deploy` adds each preview channel's domain to the project's
-authorized domains, so preview sign-in needs no manual change.
-
-## SPA routing
-
-Hosting rewrites every path to `/index.html`, so deep links such as `/teams/<id>`
-resolve on the client. The rewrite serves the shell with a 200 status, so a
-missing team renders the 404 page without an HTTP 404 status.

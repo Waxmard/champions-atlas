@@ -29,8 +29,8 @@ npm run test:e2e                   # Run the full browser suite.
 Firebase-disabled bundle with a deterministic catalog fixture; they do not change
 the generated catalog or normal production builds. CI runs smoke coverage on pull
 requests and pushes to `main`. Select **Actions → CI → Run workflow** for the full
-browser suite. Deployment workflows run independently of CI; see
-[Firebase deployment and sync](docs/firebase.md) for hosting.
+browser suite. The TestFlight delivery workflow runs independently of CI; see
+[Firebase deployment and sync](docs/firebase.md) for delivery and configuration.
 
 Format files or serve a built app with:
 
@@ -52,7 +52,7 @@ npm run preview   # Serve the production build locally.
 | `docs/`       | Product behavior, data sources, and deployment guides |
 
 The crowned-compass logo in `static/favicon.svg` is shared by the header,
-sign-in page, and favicon. Installed-app PNG icons are in `static/icons/`.
+sign-in page, and favicon. Native app icons are in `ios/App/App/Assets.xcassets`.
 
 ## Catalog
 
@@ -83,9 +83,9 @@ and preview failure policy.
 
 Enable YouTube Data API v3 in a Google Cloud project and restrict an API key to
 that API. Do not apply browser-referrer restrictions to this server-side key.
-Add it as the `YOUTUBE_API_KEY` GitHub Actions secret accessible to the production
-and preview environments. Both deployment workflows stop before import when the
-secret is empty. Never store the key in `.env`.
+Add it as the `YOUTUBE_API_KEY` GitHub Actions secret accessible to the `preview`
+environment. The TestFlight workflow stops before import when the secret is empty.
+Never store the key in `.env`.
 
 On macOS, store the key in Keychain; this command prompts for the value without
 placing it in shell history:
@@ -150,7 +150,7 @@ export, and snapshot contracts.
 | ------------------------------------------------------- | -------------------------------------------------------------- |
 | [Product specification](docs/product-spec.md)           | Agreed product behavior and future scope                       |
 | [Data sources and ranking limits](docs/data-sources.md) | Catalog admission, evidence, ranking, assets, and cache policy |
-| [Firebase deployment and sync](docs/firebase.md)        | Hosting, authentication, sync, release safety, and recovery    |
+| [Firebase deployment and sync](docs/firebase.md)        | TestFlight, authentication, sync, release safety, and recovery |
 
 ## License and contributing
 

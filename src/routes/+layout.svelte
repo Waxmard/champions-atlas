@@ -8,7 +8,6 @@
   import { onMount } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
-  import { claimAutoReload, watchForUpdate } from '#lib/app-version.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
   import { resolveSavedTeamId, teamsInUse } from '#lib/team-collections.js';
@@ -51,7 +50,6 @@
   let redirecting = false;
   let pendingReturn: string | null = null;
   let headerHeight = $state(0);
-  let updateReady = $state(false);
 
   function validDestination(value: string | null): string | null {
     if (
@@ -208,19 +206,7 @@
     }
     initialUrl = new URL(location.href);
     initSync();
-    const stopWatching = watchForUpdate({
-      running: import.meta.env.VITE_BUILD_ID,
-      onStale: (served) => {
-        if (
-          document.querySelector('dialog[open], [role="dialog"]') ||
-          !claimAutoReload(served)
-        )
-          updateReady = true;
-        else location.reload();
-      },
-    });
     return () => {
-      stopWatching();
       document.documentElement.style.removeProperty('--app-header-height');
     };
   });
@@ -342,16 +328,6 @@
       <div
         class="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-1 sm:order-3"
       >
-        {#if updateReady}
-          <span role="status" aria-live="polite">
-            <button
-              type="button"
-              onclick={() => location.reload()}
-              class="inline-flex min-h-11 items-center rounded-[var(--radius-field)] bg-info px-3 text-sm font-bold text-info-content outline-none hover:bg-info/70 focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98]"
-              >Reload to update</button
-            >
-          </span>
-        {/if}
         {#if sync.configured}
           {#if sync.status === 'syncing' || sync.status === 'error'}
             <span
