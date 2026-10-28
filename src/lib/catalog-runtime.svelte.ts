@@ -23,7 +23,6 @@ export const catalogState = new CatalogRuntimeState();
 let activeBundleHash: string | undefined;
 let initPromise: Promise<void> | null = null;
 let refreshPromise: Promise<boolean> | null = null;
-let listenersAttached = false;
 let lastVisibilityRefreshAt = 0;
 
 function openCatalogDb(): Promise<IDBDatabase> {
@@ -103,14 +102,8 @@ function applyValidatedBundle(
   bundle: CatalogBundle,
   bundleHash?: string
 ): void {
-  catalogState.catalog = {
-    updatedAt: bundle.updatedAt,
-    currentRegulation: bundle.currentRegulation,
-    sources: bundle.sources,
-    sourceHash: bundle.sourceHash,
-    teams: bundle.teams,
-  };
-  catalogState.tags = { teams: bundle.tags.teams };
+  catalogState.catalog = bundle;
+  catalogState.tags = bundle.tags;
   activeBundleHash = bundleHash ?? bundle.bundleHash;
 }
 
@@ -151,19 +144,16 @@ export function initCatalogRuntime(): Promise<void> {
   }
   if (initPromise) return initPromise;
 
-  if (!listenersAttached) {
-    listenersAttached = true;
-    window.addEventListener('online', () => {
-      void refreshCatalogNow();
-    });
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState !== 'visible') return;
-      const now = Date.now();
-      if (now - lastVisibilityRefreshAt < VISIBILITY_THROTTLE_MS) return;
-      lastVisibilityRefreshAt = now;
-      void refreshCatalogNow();
-    });
-  }
+  window.addEventListener('online', () => {
+    void refreshCatalogNow();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    const now = Date.now();
+    if (now - lastVisibilityRefreshAt < VISIBILITY_THROTTLE_MS) return;
+    lastVisibilityRefreshAt = now;
+    void refreshCatalogNow();
+  });
 
   initPromise = (async () => {
     try {

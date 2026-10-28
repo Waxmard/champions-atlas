@@ -1,3 +1,4 @@
+import { readBoundedJson } from './bounded-json.ts';
 import { parseCustomPaste } from './paste.ts';
 
 export type PokepastePayload = { url: string; title: string; paste: string };
@@ -63,31 +64,14 @@ export async function loadPokepaste(
     throw new Error('Poképaste returned non-JSON content.');
   }
 
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('Poképaste returned invalid JSON.');
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > 256 * 1024) {
-      void reader.cancel().catch(() => undefined);
-      throw new Error('Poképaste response exceeds 256 KiB.');
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
+  if (!response.body) throw new Error('Poképaste returned invalid JSON.');
   let data: unknown;
   try {
-    data = JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-  } catch {
-    throw new Error('Poképaste returned invalid JSON.');
+    data = await readBoundedJson(response, 256 * 1024, 'Poképaste');
+  } catch (error) {
+    if (!(error instanceof SyntaxError) && !(error instanceof TypeError))
+      throw error;
+    throw new Error('Poképaste returned invalid JSON.', { cause: error });
   }
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
     throw new Error('Poképaste returned an invalid paste.');

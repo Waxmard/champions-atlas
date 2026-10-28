@@ -6,11 +6,11 @@ import { join } from 'node:path';
 import test from 'node:test';
 import { writeCatalog } from '../scripts/import-catalog.mjs';
 import { buildCatalogRelease } from '../scripts/publish-catalog.mjs';
+import { readBoundedJson } from '../src/lib/bounded-json.ts';
 import bundledCatalog, {
   BUNDLE_MAX_BYTES,
   MANIFEST_MAX_BYTES,
   fetchCatalogUpdate,
-  readBoundedJson,
   tags as bundledTags,
   validateCatalogBundle,
   validateCatalogManifest,
@@ -155,7 +155,7 @@ test('validateCatalogManifest and validateCatalogBundle enforce schema, uniquene
     { status: 200, headers: { 'content-type': 'application/json' } }
   );
   await assert.rejects(
-    () => readBoundedJson(oversizedManifest, MANIFEST_MAX_BYTES),
+    () => readBoundedJson(oversizedManifest, MANIFEST_MAX_BYTES, 'Catalog'),
     /exceeds/
   );
   assert.equal(BUNDLE_MAX_BYTES, 15 * 1024 * 1024);
@@ -254,9 +254,9 @@ test('fetchCatalogUpdate skips matching hash, rejects older bundles, ignores fai
   );
   assert.ok(updated);
   assert.equal(updated.bundleHash, bundleHash);
-  assert.equal(updated.catalog.updatedAt, bundle.updatedAt);
-  assert.equal(updated.catalog.teams.length, 2);
-  assert.deepEqual(updated.tags, tags);
+  assert.equal(updated.bundle.updatedAt, bundle.updatedAt);
+  assert.equal(updated.bundle.teams.length, 2);
+  assert.deepEqual(updated.bundle.tags, tags);
 });
 
 test('writeCatalog keeps the previous timestamp when content is unchanged', async () => {

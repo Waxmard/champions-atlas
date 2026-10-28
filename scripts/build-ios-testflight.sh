@@ -18,23 +18,6 @@ fi
 
 npx cap sync ios
 
-if [[ "${SIMULATOR_SMOKE_ONLY:-0}" == "1" ]]; then
-  xcodebuild \
-    -project ios/App/App.xcodeproj \
-    -scheme App \
-    -configuration Release \
-    -destination 'generic/platform=iOS Simulator' \
-    -disableAutomaticPackageResolution \
-    -IDEPackageSupportDisableManifestSandbox=YES \
-    DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-    ATLAS_BUNDLE_ID="$IOS_BUNDLE_ID" \
-    MARKETING_VERSION="$MARKETING_VERSION" \
-    CURRENT_PROJECT_VERSION="$IOS_BUILD_NUMBER" \
-    CODE_SIGNING_ALLOWED=NO \
-    build
-  exit 0
-fi
-
 missing=()
 for var in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD; do
   if [[ -z "${!var:-}" ]]; then

@@ -14,6 +14,7 @@
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
+  import { SAVE_FAILURE } from '#lib/saved-team-actions.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
     addCatalogToWishlist,
@@ -29,9 +30,6 @@
     readSavedTeams,
     type SavedTeam,
   } from '#lib/workbench.js';
-  import type { PageData } from './$types';
-
-  let { data }: { data: PageData } = $props();
   let entries = $state<SavedTeam[]>([]);
   let ready = $state(false),
     loaded = $state(false),
@@ -181,13 +179,16 @@
         status = 'Already in Wishlist.';
         return true;
       }
-      if (data.catalog.teams.filter((team) => team.pasteUrl === url).length > 1)
+      if (
+        catalogState.catalog.teams.filter((team) => team.pasteUrl === url)
+          .length > 1
+      )
         throw new SavedTeamError(
           'Multiple catalog teams use this Poképaste. Open the team from Browse instead.'
         );
       const catalogTeam = resolveCatalogTeam(
         { pasteUrl: url },
-        (catalogState.catalog ?? data.catalog).teams
+        catalogState.catalog.teams
       );
       if (catalogTeam) {
         const alreadySaved =
@@ -202,9 +203,7 @@
       }
     } catch (error) {
       errorMessage =
-        error instanceof SavedTeamError
-          ? error.message
-          : 'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
+        error instanceof SavedTeamError ? error.message : SAVE_FAILURE;
       refresh();
       return false;
     }
@@ -239,8 +238,8 @@
         addPokepasteToWishlist(
           localStorage,
           payload,
-          (catalogState.catalog ?? data.catalog).currentRegulation,
-          (catalogState.catalog ?? data.catalog).teams
+          catalogState.catalog.currentRegulation,
+          catalogState.catalog.teams
         );
         void pushNow();
         refresh();
@@ -249,9 +248,7 @@
       } catch (error) {
         status = '';
         errorMessage =
-          error instanceof SavedTeamError
-            ? error.message
-            : 'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
+          error instanceof SavedTeamError ? error.message : SAVE_FAILURE;
         refresh();
         return false;
       }
@@ -582,12 +579,12 @@
         {#each entries as entry (entry.id)}
           {@const match = resolveCatalogTeam(
             entry.original,
-            data.catalog.teams
+            catalogState.catalog.teams
           )}
           <li class="min-w-0">
             <TeamCard
               team={displayTeam(entry)}
-              currentRegulation={data.catalog.currentRegulation}
+              currentRegulation={catalogState.catalog.currentRegulation}
               showRegulation
               query=""
               detailId={match?.id ?? null}

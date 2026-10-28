@@ -12,8 +12,5 @@ export const load: PageLoad = async ({ params }) => {
     team = catalogState.catalog.teams.find((entry) => entry.id === params.id);
   }
   if (!team) error(404, 'Team not found in this catalog.');
-  return {
-    team,
-    currentRegulation: catalogState.catalog.currentRegulation,
-  };
+  return { team };
 };

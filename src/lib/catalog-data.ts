@@ -2,6 +2,7 @@ import { z } from 'zod';
 import rawCatalog from './data/catalog.json' with { type: 'json' };
 import rawTags from './data/team-tags.json' with { type: 'json' };
 import { resolveBattleForm } from './battle-forms.ts';
+import { readBoundedJson } from './bounded-json.ts';
 import type { Team } from './catalog.ts';
 import { reportSchema, textSchema } from './spread-provenance.ts';
 import type { TeamTagsIndex } from './tags.ts';
@@ -166,37 +167,6 @@ export function defaultCatalogEndpoint(): string {
   return `https://${projectId}.web.app/catalog/manifest.json`;
 }
 
-export async function readBoundedJson(
-  response: Response,
-  maxBytes: number
-): Promise<unknown> {
-  if (!response.ok) {
-    void response.body?.cancel().catch(() => undefined);
-    throw new Error(`Catalog HTTP ${response.status}.`);
-  }
-  const reader = response.body?.getReader();
-  if (!reader) throw new Error('Catalog response body is missing.');
-  const chunks: Uint8Array[] = [];
-  let size = 0;
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    size += value.byteLength;
-    if (size > maxBytes) {
-      void reader.cancel().catch(() => undefined);
-      throw new Error(`Catalog response exceeds ${maxBytes} bytes.`);
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(size);
-  let offset = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, offset);
-    offset += chunk.byteLength;
-  }
-  return JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes));
-}
-
 async function fetchJsonWithLimit(
   url: string,
   maxBytes: number,
@@ -215,7 +185,7 @@ async function fetchJsonWithLimit(
       redirect: 'error',
       signal: controller.signal,
     });
-    return await readBoundedJson(response, maxBytes);
+    return await readBoundedJson(response, maxBytes, 'Catalog');
   } finally {
     clearTimeout(timer);
     outerSignal?.removeEventListener('abort', onAbort);
@@ -230,12 +200,7 @@ export async function fetchCatalogUpdate(
     signal?: AbortSignal;
     baselineUpdatedAt?: string;
   } = {}
-): Promise<{
-  catalog: CatalogData;
-  tags: TeamTagsIndex;
-  bundleHash: string;
-  bundle: CatalogBundle;
-} | null> {
+): Promise<{ bundleHash: string; bundle: CatalogBundle } | null> {
   const endpoint = (options.endpoint ?? defaultCatalogEndpoint()).trim();
   if (!endpoint) return null;
   const fetcher = options.fetcher ?? fetch;
@@ -277,18 +242,7 @@ export async function fetchCatalogUpdate(
     )
       return null;
 
-    return {
-      catalog: {
-        updatedAt: bundle.updatedAt,
-        currentRegulation: bundle.currentRegulation,
-        sources: bundle.sources,
-        sourceHash: bundle.sourceHash,
-        teams: bundle.teams,
-      },
-      tags: { teams: bundle.tags.teams },
-      bundleHash: manifest.bundleHash,
-      bundle,
-    };
+    return { bundleHash: manifest.bundleHash, bundle };
   } catch {
     return null;
   }

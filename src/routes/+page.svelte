@@ -40,11 +40,8 @@
     type MemberFilter,
     type Team,
   } from '#lib/catalog.js';
-  import type { PageData } from './$types';
-
   const browseKeys = ['member', 'regulation', 'sort', 'page', 'type', 'custom'];
   const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
-  let { data }: { data: PageData } = $props();
   let storageError = $state(false);
   let typeOpen = $state(false);
   let ready = $state(false);
@@ -53,7 +50,7 @@
   let actionError = $state('');
   let status = $state('');
   const pending = new SvelteSet<string>();
-  const catalog = $derived(catalogState.catalog ?? data.catalog);
+  const catalog = $derived(catalogState.catalog);
   const teams: Team[] = $derived(catalog.teams);
   const current = $derived(catalog.currentRegulation);
   const historicalRegulations = $derived(

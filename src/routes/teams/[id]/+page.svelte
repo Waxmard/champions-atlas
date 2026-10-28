@@ -40,9 +40,7 @@
     catalogState.catalog.teams.find((entry) => entry.id === data.team.id) ??
       data.team
   );
-  const currentRegulation = $derived(
-    catalogState.catalog.currentRegulation || data.currentRegulation
-  );
+  const currentRegulation = $derived(catalogState.catalog.currentRegulation);
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
   const hasActiveEnrichment = $derived(
     team.members.some((member) => activeSpreadSource(member) !== null)
@@ -363,11 +361,7 @@
           </li>
         {:else}
           {@const report = row.report}
-          {@const result = evidence(
-            report,
-            team.regulation,
-            data.currentRegulation
-          )}
+          {@const result = evidence(report, team.regulation, currentRegulation)}
           <li
             class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
           >

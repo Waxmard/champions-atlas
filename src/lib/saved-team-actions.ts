@@ -11,7 +11,7 @@ import {
 } from './team-collections';
 import { activeTeamKey, readSavedTeams, type SavedTeam } from './workbench';
 
-const SAVE_FAILURE =
+export const SAVE_FAILURE =
   'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
 
 export function readSavedTeamsState(): {
