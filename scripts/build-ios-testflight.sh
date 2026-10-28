@@ -27,7 +27,7 @@ if [[ "${SIMULATOR_SMOKE_ONLY:-0}" == "1" ]]; then
     -disableAutomaticPackageResolution \
     -IDEPackageSupportDisableManifestSandbox=YES \
     DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-    PRODUCT_BUNDLE_IDENTIFIER="$IOS_BUNDLE_ID" \
+    ATLAS_BUNDLE_ID="$IOS_BUNDLE_ID" \
     MARKETING_VERSION="$MARKETING_VERSION" \
     CURRENT_PROJECT_VERSION="$IOS_BUILD_NUMBER" \
     CODE_SIGNING_ALLOWED=NO \
@@ -103,7 +103,7 @@ xcodebuild \
   -destination 'generic/platform=iOS' \
   -archivePath "$ARCHIVE_PATH" \
   DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
-  PRODUCT_BUNDLE_IDENTIFIER="$IOS_BUNDLE_ID" \
+  ATLAS_BUNDLE_ID="$IOS_BUNDLE_ID" \
   MARKETING_VERSION="$MARKETING_VERSION" \
   CURRENT_PROJECT_VERSION="$IOS_BUILD_NUMBER" \
   -allowProvisioningUpdates \

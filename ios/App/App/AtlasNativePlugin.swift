@@ -8,7 +8,9 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "AtlasNative"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "signInWithGoogle", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "signOut", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "signOut", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getPendingShares", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "acknowledgeShare", returnType: CAPPluginReturnPromise)
     ]
 
     @objc func signInWithGoogle(_ call: CAPPluginCall) {
@@ -52,6 +54,30 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             GIDSignIn.sharedInstance.signOut()
             call.resolve()
+        }
+    }
+
+    @objc func getPendingShares(_ call: CAPPluginCall) {
+        do {
+            let shares = try ShareQueue().list().map { link -> [String: Any] in
+                ["id": link.id, "url": link.url, "createdAt": link.createdAt]
+            }
+            call.resolve(["shares": shares])
+        } catch {
+            call.reject("Shared links could not be read.", nil, error)
+        }
+    }
+
+    @objc func acknowledgeShare(_ call: CAPPluginCall) {
+        guard let id = call.getString("id") else {
+            call.reject("A shared link ID is required.")
+            return
+        }
+        do {
+            try ShareQueue().acknowledge(id: id)
+            call.resolve()
+        } catch {
+            call.reject("The shared link could not be removed.", nil, error)
         }
     }
 }

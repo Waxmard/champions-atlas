@@ -12,6 +12,7 @@
   import { migrateStoredData } from '#lib/storage-migration.js';
   import { teamsInUse } from '#lib/team-collections.js';
   import { normalizeInitialUrl } from '#lib/initial-url.js';
+  import { AtlasNative, isNativeApp } from '#lib/native.js';
 
   let { children } = $props();
   const isHome = $derived(page.route.id === '/');
@@ -54,6 +55,8 @@
   let settledUrl: string | null = null;
   let navigationGeneration = 0;
   let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+  let shareReadError = $state(false);
+  let checkingShares = false;
 
   function validDestination(value: string | null): string | null {
     if (
@@ -374,6 +377,38 @@
     void updateAfterRender();
   }
 
+  async function checkSharedLinks() {
+    if (
+      !isNativeApp ||
+      !startupSettled ||
+      redirecting ||
+      checkingShares ||
+      (sync.configured && !sync.authResolved) ||
+      page.url.pathname === resolve('wishlist')
+    )
+      return;
+    checkingShares = true;
+    try {
+      const { shares } = await AtlasNative.getPendingShares();
+      shareReadError = false;
+      if (!shares.length || (sync.configured && !sync.authResolved)) return;
+      if (sync.configured && !sync.user) {
+        saveReturn(resolve('wishlist'), false);
+        if (page.url.pathname !== resolve('login'))
+          await goto(resolve('login'), { replace: true }).catch(() => {});
+      } else if (
+        page.url.pathname !== resolve('login') &&
+        page.url.pathname !== resolve('wishlist')
+      ) {
+        await goto(resolve('wishlist')).catch(() => {});
+      }
+    } catch {
+      shareReadError = true;
+    } finally {
+      checkingShares = false;
+    }
+  }
+
   onMount(() => {
     initialScroll = readScroll();
     try {
@@ -385,6 +420,7 @@
     initSync();
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flushPosition();
+      else void checkSharedLinks();
     };
     const onHashChange = () => {
       navigationGeneration++;
@@ -412,6 +448,13 @@
   });
 
   $effect(() => {
+    if (startupSettled && (!sync.configured || sync.authResolved)) {
+      void sync.user;
+      void checkSharedLinks();
+    }
+  });
+
+  $effect(() => {
     if (
       !startupSettled ||
       !sync.configured ||
@@ -436,6 +479,7 @@
           .finally(() => {
             redirecting = false;
             void updateAfterRender();
+            void checkSharedLinks();
           });
       }
     }
@@ -451,6 +495,14 @@
   });
 </script>
 
+{#if shareReadError && page.url.pathname !== resolve('wishlist')}
+  <div role="alert" class="plate mx-4 mt-4 px-4 py-3">
+    Shared links could not be read. Try again.
+    <button type="button" class="btn btn-sm" onclick={() => checkSharedLinks()}>
+      Try again
+    </button>
+  </div>
+{/if}
 <a
   href="#main"
   class="sr-only focus:not-sr-only focus:fixed focus:start-3 focus:top-3 focus:z-50 focus:border focus:bg-base-100 focus:p-3"

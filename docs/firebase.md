@@ -34,6 +34,12 @@ Use the matching Firebase web app configuration and automatic signing with the
 paid team, not a Personal Team. If Xcode or iOS requests it, pair and trust the
 iPhone and enable Developer Mode; a restart may be required.
 
+Enable the App Group `group.com.maxwellward.championsatlas` for both the app
+ID `com.maxwellward.championsatlas` and the extension ID
+`com.maxwellward.championsatlas.shareextension` in the paid Apple developer
+account. Both targets must be provisioned with this group to queue shared links.
+The extension saves the link only; open Atlas to finish importing it.
+
 Print the test project's web app SDK configuration for the native build:
 
 ```sh

@@ -4,14 +4,21 @@ export type PokepastePayload = { url: string; title: string; paste: string };
 
 export function canonicalPokepasteUrl(input: string): string {
   const trimmed = input.trim();
+  const normalized = /^[\da-f]{16}$/i.test(trimmed)
+    ? `https://pokepast.es/${trimmed}`
+    : /^pokepast\.es\//i.test(trimmed)
+      ? `https://${trimmed}`
+      : trimmed;
   let url: URL;
   try {
-    url = new URL(trimmed);
+    url = new URL(normalized);
   } catch {
-    throw new Error('Enter a direct Poképaste link (https://pokepast.es/…).');
+    throw new Error('Enter a Poképaste link or 16-character paste ID.');
   }
-  const authority = /^https?:\/\/([^/?#\\]*)/i.exec(trimmed)?.[1];
-  const match = /^\/([\da-f]{16})\/?$/i.exec(url.pathname);
+  const authority = /^https?:\/\/([^/?#\\]*)/i.exec(normalized)?.[1];
+  const match = /^https?:\/\/[^/?#\\]*\/([\da-f]{16})\/?(?:[?#]|$)/i.exec(
+    normalized
+  );
   if (
     (url.protocol !== 'http:' && url.protocol !== 'https:') ||
     url.hostname !== 'pokepast.es' ||
@@ -22,7 +29,7 @@ export function canonicalPokepasteUrl(input: string): string {
     /[@:]/.test(authority) ||
     !match
   ) {
-    throw new Error('Enter a direct Poképaste link (https://pokepast.es/…).');
+    throw new Error('Enter a Poképaste link or 16-character paste ID.');
   }
   return `https://pokepast.es/${match[1].toLowerCase()}`;
 }

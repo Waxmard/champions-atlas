@@ -128,10 +128,12 @@ scan failures.
 Browse by Pokémon and set filters; filters, sorting, and position survive opening
 a team and returning. Use the **Wishlist** button on a catalog team to add or
 remove its bookmark; removal confirms before deleting that saved copy and its
-edits. In **Wishlist**, paste a direct `pokepast.es` link and select **Import to
-Wishlist**. Existing bookmarks and catalog matches do not require a fetch; other
-links require a connection. Importing the same link again keeps the existing
-bookmark and its edits.
+edits. From a Poképaste page, share the link to **Champion’s Atlas**, select
+**Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
+open **Add a Poképaste manually** in Wishlist and enter a `pokepast.es` link or
+16-character paste ID. Existing bookmarks and catalog matches do not require a
+fetch; other links require a connection. Importing the same link again keeps the
+existing bookmark and its edits.
 
 Move a saved team between **Wishlist** and **My teams** without losing its edits
 or source history. Separate copies are not merged. Choose **Use this team** for

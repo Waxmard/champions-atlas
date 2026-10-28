@@ -228,14 +228,15 @@ and Tera Type are omitted from displayed and exported Champions text. Custom
 teams are saved locally under the current regulation with legality unverified and
 no published result claims.
 
-In **Wishlist**, **Poképaste link** accepts a direct `pokepast.es` URL and
-**Import to Wishlist** saves the team without changing the active team. An
-existing bookmark is returned unchanged; a matching catalog team is bookmarked
-with its source metadata without a network request. Otherwise the app fetches
-the paste directly from Poképaste and applies the same six-set requirements as
-custom text import. A failed fetch or invalid paste leaves saved data unchanged
-and the link available to retry. File, screenshot, rental-code, and social-post
-imports are out of scope.
+From a Poképaste page, the iOS share extension accepts one direct link or paste
+ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
+The manual fallback accepts a `pokepast.es` link or 16-character paste ID.
+Imports do not change the active team. An existing bookmark is returned
+unchanged; a matching catalog team is bookmarked with its source metadata without
+a network request. Otherwise the app fetches the paste directly from Poképaste
+and applies the same six-set requirements as custom text import. A failed shared
+import remains queued for retry or dismissal without deleting a saved team. File,
+screenshot, rental-code, and social-post imports are out of scope.
 
 Export current sets with Champions EV normalization, using 0–32 per stat. Omit
 IVs, level, Tera Type, and unknown values. Never assign edited teams new rental
@@ -276,7 +277,6 @@ renaming it.
 
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
-- Native share extension.
 
 ## Acceptance criteria
 

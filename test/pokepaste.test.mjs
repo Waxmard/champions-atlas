@@ -79,6 +79,9 @@ const response = (body, contentType = 'application/json') =>
 test('canonical Poképaste links reject other authorities, protocols and paths', async () => {
   for (const input of [
     url,
+    ' 138B4EF886BA95E4 ',
+    'pokepast.es/138B4EF886BA95E4/?from=safari#team',
+    'HTTP://POKEPAST.ES/138B4EF886BA95E4/?from=safari#team',
     '  HTTP://POKEPAST.ES/138B4EF886BA95E4/?source=one#team  ',
     'https://pokepast.es/138b4ef886ba95e4?other=https://example.com/#x',
   ]) {
@@ -87,6 +90,8 @@ test('canonical Poképaste links reject other authorities, protocols and paths',
   for (const input of [
     '',
     '/138b4ef886ba95e4',
+    '#138b4ef886ba95e4',
+    'Check https://pokepast.es/138b4ef886ba95e4',
     'ftp://pokepast.es/138b4ef886ba95e4',
     'file://pokepast.es/138b4ef886ba95e4',
     'javascript:alert(1)',
@@ -106,12 +111,14 @@ test('canonical Poképaste links reject other authorities, protocols and paths',
     'https://pokepast.es//138b4ef886ba95e4',
     'https://pokepast.es/138b4ef886ba95e4/json',
     'https://pokepast.es/138b4ef886ba95e4//',
+    'https://pokepast.es/other/../138b4ef886ba95e4',
+    'https://pokepast.es\\138b4ef886ba95e4',
+    'https://pokepast.es/138b4ef886ba95e4\\',
     'https://pokepast.es/%31%33%38b4ef886ba95e4',
   ]) {
-    assert.throws(
-      () => canonicalPokepasteUrl(input),
-      /Enter a direct Poképaste link/
-    );
+    assert.throws(() => canonicalPokepasteUrl(input), {
+      message: 'Enter a Poképaste link or 16-character paste ID.',
+    });
   }
   let called = false;
   await assert.rejects(
@@ -119,7 +126,7 @@ test('canonical Poképaste links reject other authorities, protocols and paths',
       called = true;
       throw new Error('unexpected fetch');
     }),
-    /Enter a direct Poképaste link/
+    { message: 'Enter a Poképaste link or 16-character paste ID.' }
   );
   assert.equal(called, false);
 });
