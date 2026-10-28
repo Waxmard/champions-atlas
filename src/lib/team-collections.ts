@@ -40,6 +40,22 @@ export function resolveSavedTeamId(
     : fallbackId;
 }
 
+export function resolveCatalogTeam(
+  identity: { id?: string; pasteUrl?: string },
+  catalog: Team[]
+): Team | undefined {
+  const byId = identity.id && catalog.find((team) => team.id === identity.id);
+  if (byId) return byId;
+  if (!identity.pasteUrl || !isPasteUrl(identity.pasteUrl)) return undefined;
+  let match: Team | undefined;
+  for (const team of catalog) {
+    if (team.pasteUrl !== identity.pasteUrl) continue;
+    if (match) return undefined;
+    match = team;
+  }
+  return match;
+}
+
 export function wishlistedCatalogEntries(
   saved: SavedTeam[],
   team: Team
@@ -76,7 +92,11 @@ export function addPokepasteToWishlist(
       entry.collection === 'wishlist' && entry.original.pasteUrl === payload.url
   );
   if (existing) return existing;
-  const team = catalog.find((entry) => entry.pasteUrl === payload.url);
+  if (catalog.filter((team) => team.pasteUrl === payload.url).length > 1)
+    throw new SavedTeamError(
+      'Multiple catalog teams use this Poképaste. Open the team from Browse instead.'
+    );
+  const team = resolveCatalogTeam({ pasteUrl: payload.url }, catalog);
   if (team) return addCatalogToWishlist(storage, team);
   const custom = newCustomTeam(payload.title, currentRegulation, payload.paste);
   return saveAndGet(storage, {

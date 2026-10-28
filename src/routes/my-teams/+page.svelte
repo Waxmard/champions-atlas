@@ -103,7 +103,6 @@
   );
   const contentSnapshot = (team: Pick<SavedTeam, 'name' | 'members'>) =>
     canonicalSnapshot({ name: team.name, members: team.members });
-
   function revealPanel(node: HTMLElement) {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     node.dataset.motionReady = 'true';
@@ -111,7 +110,6 @@
     const frame = requestAnimationFrame(() => (node.dataset.open = 'true'));
     return { destroy: () => cancelAnimationFrame(frame) };
   }
-
   function openSaved(
     id: string | null,
     activeOverride?: string | null,
@@ -208,7 +206,6 @@
     appliedRevision = sync.revision;
     untrack(() => openSaved(draft?.id ?? page.url.searchParams.get('team')));
   });
-
   beforeNavigate(({ cancel, willUnload, shallow, type }) => {
     if (shallow && type === 'goto') return;
     if (willUnload) return;
@@ -239,7 +236,6 @@
 
     saveTeamName();
   }
-
   function persistChange(
     patch: (team: SavedTeam) => SavedTeam,
     saveName = false
@@ -565,6 +561,7 @@
         },
         current
       )}
+      {@const match = collections.resolveCatalogTeam(draft.original, teams)}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <header class="flex items-start justify-between gap-3 border-b pb-4">
           <div class="min-w-0">
@@ -587,6 +584,10 @@
                     : `Original source: ${listingReason(draft.original, draft.origin).label}`
                   : `Original result: ${originalResult.label}`}</span
               >
+              {#if match}<a
+                  class="inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                  href={resolve(`teams/${match.id}`)}>View catalog details</a
+                >{/if}
             </div>
           </div>
           <Button

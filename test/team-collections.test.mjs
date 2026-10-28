@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
+  resolveCatalogTeam,
   resolveSavedTeamId,
   teamsInUse,
   addCatalogToWishlist,
@@ -87,6 +88,66 @@ const names = (...labels) =>
       species.map((_, j) => `Other${i}${j}`)
     ),
   }));
+
+test('catalog resolution uses original IDs or unique canonical paste URLs without changing snapshots', () => {
+  const current = { ...catalogTeam('current'), pasteUrl };
+  const vrUrl = 'https://www.vrpastes.com/AbC12345';
+  const vrTeam = { ...catalogTeam('vr'), pasteUrl: vrUrl };
+  const saved = snapshot('obsolete');
+  saved.name = 'Edited name';
+  saved.members[0].item = 'Edited item';
+  saved.original.pasteUrl = pasteUrl;
+  const catalog = [current, vrTeam];
+  const before = structuredClone({ saved, catalog });
+
+  assert.equal(resolveCatalogTeam(saved.original, catalog), current);
+  assert.equal(
+    resolveCatalogTeam({ id: 'current', pasteUrl: vrUrl }, catalog),
+    current
+  );
+  assert.equal(resolveCatalogTeam({ pasteUrl: vrUrl }, catalog), vrTeam);
+  assert.equal(
+    resolveCatalogTeam({ id: '', pasteUrl: vrUrl }, catalog),
+    vrTeam
+  );
+  assert.deepEqual({ saved, catalog }, before);
+});
+
+test('catalog resolution rejects missing, malformed, unmatched, and ambiguous URLs', () => {
+  const current = { ...catalogTeam('current'), pasteUrl };
+  const duplicate = { ...catalogTeam('duplicate'), pasteUrl };
+  const malformedUrl = 'https://pokepast.es/abcdef1234567890?source=other';
+  const malformed = { ...catalogTeam('malformed'), pasteUrl: malformedUrl };
+  const blankId = catalogTeam('');
+  const catalog = [current, duplicate, malformed, blankId];
+  const before = structuredClone(catalog);
+
+  assert.equal(resolveCatalogTeam({}, catalog), undefined);
+  assert.equal(
+    resolveCatalogTeam({ id: '', pasteUrl: '' }, catalog),
+    undefined
+  );
+  assert.equal(
+    resolveCatalogTeam({ pasteUrl: malformedUrl }, catalog),
+    undefined
+  );
+  assert.equal(
+    resolveCatalogTeam(
+      { pasteUrl: 'https://pokepast.es/1111111111111111' },
+      catalog
+    ),
+    undefined
+  );
+  assert.equal(
+    resolveCatalogTeam({ id: 'obsolete', pasteUrl }, catalog),
+    undefined
+  );
+  assert.equal(
+    resolveCatalogTeam({ id: 'current', pasteUrl }, catalog),
+    current
+  );
+  assert.deepEqual(catalog, before);
+});
 
 test('legacy teams default to My Teams without rewriting; Wishlist is excluded from resolution', () => {
   const legacy = snapshot('legacy');
@@ -459,6 +520,37 @@ test('duplicate Poképaste import re-reads and preserves edited Wishlist bytes',
   assert.equal(result.sources[0].note, 'Retained source note');
   assert.equal(s.data, before);
   assert.equal(s.writes, writes);
+  const ambiguousCatalog = [
+    { ...catalogTeam('first'), pasteUrl },
+    { ...catalogTeam('second'), pasteUrl },
+  ];
+  assert.deepEqual(
+    addPokepasteToWishlist(s, payload, 'M-C', ambiguousCatalog),
+    result
+  );
+  assert.equal(s.data, before);
+  assert.equal(s.writes, writes);
+});
+
+test('ambiguous catalog Poképaste imports fail without writing', () => {
+  const catalog = [
+    { ...catalogTeam('first'), pasteUrl },
+    { ...catalogTeam('second'), pasteUrl },
+  ];
+  const s = storage([snapshot('keep')]);
+  s.active = 'keep';
+  const before = s.data;
+
+  assert.throws(
+    () => addPokepasteToWishlist(s, payload, 'M-C', catalog),
+    (error) =>
+      error instanceof SavedTeamError &&
+      error.message ===
+        'Multiple catalog teams use this Poképaste. Open the team from Browse instead.'
+  );
+  assert.equal(s.data, before);
+  assert.equal(s.active, 'keep');
+  assert.equal(s.writes, 0);
 });
 
 test('Poképaste catalog matches keep the catalog snapshot and My teams copy independent', () => {

@@ -68,6 +68,12 @@ original, not the edited version. Older saved teams show only metadata they
 retained. Custom originals are starting teams without public source claims;
 never backfill legacy originals from a refreshed catalog.
 
+Saved originals link to current catalog details when the original ID matches,
+or otherwise when their canonical Poképaste or VRPastes URL exactly and uniquely
+matches a catalog URL. Current details do not change the original evidence,
+saved edits, or independent team copies. Teams without a match remain usable
+without a catalog link or warning.
+
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
 restoration conflicts with the current roster.
@@ -231,12 +237,15 @@ no published result claims.
 From a Poképaste page, the iOS share extension accepts one direct link or paste
 ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
 The manual fallback accepts a `pokepast.es` link or 16-character paste ID.
-Imports do not change the active team. An existing bookmark is returned
-unchanged; a matching catalog team is bookmarked with its source metadata without
-a network request. Otherwise the app fetches the paste directly from Poképaste
-and applies the same six-set requirements as custom text import. A failed shared
-import remains queued for retry or dismissal without deleting a saved team. File,
-screenshot, rental-code, and social-post imports are out of scope.
+Imports do not change the active team. An existing bookmark for the link is
+returned unchanged, even if multiple catalog teams share that link. A unique
+catalog match is bookmarked with its source metadata without a network request.
+When multiple catalog teams share a link without an existing bookmark, import is
+rejected without fetching or saving. Otherwise the app fetches the paste
+directly from Poképaste and applies the same six-set requirements as custom text
+import. A failed shared import remains queued for retry or dismissal without
+deleting a saved team. File, screenshot, rental-code, and social-post imports
+are out of scope.
 
 Export current sets with Champions EV normalization, using 0–32 per stat. Omit
 IVs, level, Tera Type, and unknown values. Never assign edited teams new rental
@@ -258,9 +267,9 @@ If multiple Wishlist records match, remove them individually in Wishlist rather
 than deleting them together. Using a bookmarked catalog team promotes the same
 record; if multiple bookmarks match, choose one in Wishlist. Removal rejects a
 record that is no longer a bookmark so a stale control cannot delete a promoted
-team. A bookmark whose source team leaves the catalog stays usable with its saved
-roster and no catalog details. Both collections share the same storage ceiling
-and sync path (see [storage and sync](firebase.md)).
+team. A bookmark without a current catalog match stays usable with its saved
+roster and no catalog details link. Both collections share the same storage
+ceiling and sync path (see [storage and sync](firebase.md)).
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when

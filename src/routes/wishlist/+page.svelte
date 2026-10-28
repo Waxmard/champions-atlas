@@ -18,6 +18,7 @@
     addCatalogToWishlist,
     addPokepasteToWishlist,
     removeWishlistedTeam,
+    resolveCatalogTeam,
     SavedTeamError,
     useWishlistedTeam,
     wishlistedCatalogEntries,
@@ -47,9 +48,6 @@
   let queuePending = $state(false);
   let queueError = $state('');
   let blockedShare = $state<{ id: string; url: string } | null>(null);
-  const catalogIds = $derived(
-    new Set(data.catalog.teams.map((team) => team.id))
-  );
 
   function displayTeam(entry: SavedTeam): Team {
     return {
@@ -172,30 +170,40 @@
         errorMessage = 'Account changed. Import the Poképaste again.';
         return false;
       }
-      const catalogTeam = data.catalog.teams.find(
-        (team) => team.pasteUrl === url
-      );
       if (
         saved.some(
           (entry) =>
             entry.collection === 'wishlist' && entry.original.pasteUrl === url
-        ) ||
-        (catalogTeam && wishlistedCatalogEntries(saved, catalogTeam).length > 0)
+        )
       ) {
         refresh();
         status = 'Already in Wishlist.';
         return true;
       }
+      if (data.catalog.teams.filter((team) => team.pasteUrl === url).length > 1)
+        throw new SavedTeamError(
+          'Multiple catalog teams use this Poképaste. Open the team from Browse instead.'
+        );
+      const catalogTeam = resolveCatalogTeam(
+        { pasteUrl: url },
+        data.catalog.teams
+      );
       if (catalogTeam) {
-        addCatalogToWishlist(localStorage, catalogTeam);
-        void pushNow();
+        const alreadySaved =
+          wishlistedCatalogEntries(saved, catalogTeam).length > 0;
+        if (!alreadySaved) {
+          addCatalogToWishlist(localStorage, catalogTeam);
+          void pushNow();
+        }
         refresh();
-        status = 'Added to Wishlist.';
+        status = alreadySaved ? 'Already in Wishlist.' : 'Added to Wishlist.';
         return true;
       }
-    } catch {
+    } catch (error) {
       errorMessage =
-        'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
+        error instanceof SavedTeamError
+          ? error.message
+          : 'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
       refresh();
       return false;
     }
@@ -237,10 +245,12 @@
         refresh();
         status = 'Added to Wishlist.';
         return true;
-      } catch {
+      } catch (error) {
         status = '';
         errorMessage =
-          'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
+          error instanceof SavedTeamError
+            ? error.message
+            : 'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
         refresh();
         return false;
       }
@@ -569,14 +579,17 @@
     {#if entries.length}
       <ul class="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {#each entries as entry (entry.id)}
-          {@const available = catalogIds.has(entry.original.id)}
+          {@const match = resolveCatalogTeam(
+            entry.original,
+            data.catalog.teams
+          )}
           <li class="min-w-0">
             <TeamCard
               team={displayTeam(entry)}
               currentRegulation={data.catalog.currentRegulation}
               showRegulation
               query=""
-              detailAvailable={available}
+              detailId={match?.id ?? null}
             >
               {#snippet actions()}
                 <Button
