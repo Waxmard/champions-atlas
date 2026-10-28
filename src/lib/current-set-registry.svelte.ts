@@ -1,15 +1,13 @@
 import { onMount } from 'svelte';
 import {
   currentSetsChangedEvent,
-  currentSetsKey,
   readCurrentSets,
   type CurrentSet,
 } from './current-sets.ts';
 import { sync } from './sync.svelte';
 
 const ownerKey = 'champions-atlas:sync-owner:v2';
-const ownershipError =
-  'Sync account changed in another tab. Reopen My teams to continue.';
+const ownershipError = 'Sync account changed. Reopen My teams to continue.';
 
 export function currentSetOwnerMatches(): boolean {
   if (!sync.configured) return true;
@@ -50,14 +48,8 @@ export function createCurrentSetRegistry() {
   });
 
   onMount(() => {
-    function onStorage(event: StorageEvent) {
-      if (event.storageArea !== localStorage) return;
-      if (event.key === currentSetsKey || event.key === ownerKey) refresh();
-    }
-    window.addEventListener('storage', onStorage);
     window.addEventListener(currentSetsChangedEvent, refresh);
     return () => {
-      window.removeEventListener('storage', onStorage);
       window.removeEventListener(currentSetsChangedEvent, refresh);
     };
   });

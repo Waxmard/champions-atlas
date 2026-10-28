@@ -18,11 +18,7 @@
     TYPE_COLORS,
     type PokemonType,
   } from '#lib/types.js';
-  import {
-    browseStorageKey,
-    storageKey,
-    type SavedTeam,
-  } from '#lib/workbench.js';
+  import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
@@ -220,11 +216,6 @@
   afterNavigate(restoreBrowse);
   onMount(() => {
     ready = true;
-    const onStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === storageKey) refreshSaved();
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
   });
   $effect(() => {
     void sync.revision;
@@ -310,10 +301,6 @@
 
 <svelte:head>
   <title>Champion's Atlas — Find your next team</title>
-  <meta
-    name="description"
-    content="Find Pokémon Champions teams with persistent Pokémon and item filters, result evidence, and regulation-aware ordering."
-  />
 </svelte:head>
 
 <main id="main" class="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">

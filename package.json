@@ -8,7 +8,7 @@
   },
   "scripts": {
     "predev": "node scripts/import-catalog.mjs --if-missing && node scripts/jev-enrich.mjs --if-missing",
-    "dev": "vite dev --host",
+    "dev": "vite dev --host 127.0.0.1",
     "prebuild": "node scripts/import-catalog.mjs --if-missing && node scripts/jev-enrich.mjs --if-missing",
     "build": "vite build",
     "preview": "vite preview",

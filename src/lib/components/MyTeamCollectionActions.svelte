@@ -40,7 +40,7 @@
       errorMessage =
         error instanceof SavedTeamError
           ? error.message
-          : 'Could not move this team to Wishlist. Check browser storage access and available space. Your team was not changed.';
+          : 'Could not move this team to Wishlist. Check app storage access and available space. Your team was not changed.';
       pending = false;
       return;
     }

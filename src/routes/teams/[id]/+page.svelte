@@ -23,7 +23,7 @@
     type Team,
   } from '#lib/catalog.js';
   import { activeSpreadSource } from '#lib/spread-provenance.js';
-  import { exportPaste, storageKey, type SavedTeam } from '#lib/workbench.js';
+  import { exportPaste, type SavedTeam } from '#lib/workbench.js';
   import { normalizeSet } from '#lib/paste.js';
   import {
     openCatalogTeam,
@@ -68,11 +68,6 @@
   const wishlisted = $derived(wishlistedCatalogEntries(saved, team).length > 0);
   onMount(() => {
     ready = true;
-    const onStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === storageKey) refreshSaved();
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
   });
   $effect(() => {
     void sync.revision;
@@ -127,10 +122,6 @@
 
 <svelte:head>
   <title>{team.name} — Champion's Atlas</title>
-  <meta
-    name="description"
-    content={`${team.regulation} team by ${team.creator || 'an unlisted creator'}. View published team members, items, and result sources.`}
-  />
 </svelte:head>
 
 <main id="main" class="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">

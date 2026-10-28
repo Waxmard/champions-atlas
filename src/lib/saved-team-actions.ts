@@ -12,7 +12,7 @@ import {
 import { activeTeamKey, readSavedTeams, type SavedTeam } from './workbench';
 
 const SAVE_FAILURE =
-  'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+  'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
 
 export function readSavedTeamsState(): {
   saved: SavedTeam[];
@@ -24,7 +24,7 @@ export function readSavedTeamsState(): {
     return {
       saved: [],
       error:
-        'Saved teams could not be read, so Wishlist and Use are unavailable. Check browser storage access.',
+        'Saved teams could not be read, so Wishlist and Use are unavailable. Check app storage access.',
     };
   }
 }

@@ -23,7 +23,6 @@
   import {
     activeTeamKey,
     readSavedTeams,
-    storageKey,
     type SavedTeam,
   } from '#lib/workbench.js';
   import type { PageData } from './$types';
@@ -70,7 +69,7 @@
     } catch {
       entries = [];
       storageError =
-        'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
+        'Saved teams could not be read. Check app storage access. Existing data has been left untouched.';
     }
     loaded = true;
   }
@@ -79,14 +78,9 @@
     mounted = true;
     ready = true;
     refresh();
-    const onStorage = (event: StorageEvent) => {
-      if (!event.key || event.key === storageKey) refresh();
-    };
-    window.addEventListener('storage', onStorage);
     return () => {
       mounted = false;
       importController?.abort();
-      window.removeEventListener('storage', onStorage);
     };
   });
 
@@ -165,7 +159,7 @@
       }
     } catch {
       errorMessage =
-        'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+        'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
       refresh();
       return;
     }
@@ -208,7 +202,7 @@
       } catch {
         status = '';
         errorMessage =
-          'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.';
+          'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
         refresh();
       }
     } catch (error) {
@@ -239,7 +233,7 @@
       errorMessage =
         error instanceof SavedTeamError
           ? error.message
-          : 'Could not move this team to My teams. Check browser storage access and available space. Your Wishlist was not changed.';
+          : 'Could not move this team to My teams. Check app storage access and available space. Your Wishlist was not changed.';
       pendingId = '';
       refresh();
       return;

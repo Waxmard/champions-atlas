@@ -162,7 +162,7 @@
       nameError = '';
     } catch {
       storageError =
-        'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
+        'Saved teams could not be read. Check app storage access. Existing data has been left untouched.';
     }
   }
   function persistIfDirty() {
@@ -271,7 +271,7 @@
     } catch {
       message = '';
       errorMessage =
-        'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
+        'Could not save changes. Check app storage access and available space. Your edits are still here; existing saved data was not replaced.';
       return false;
     }
   }

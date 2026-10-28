@@ -1,14 +1,16 @@
 # Product specification
 
-Champion's Atlas helps you choose Pokémon Champions doubles teams on a
-phone. Existing spreadsheets are awkward to browse, and missingNO loses filters
-when opening a team. The product focuses on reliable, fast discovery.
+Champion's Atlas is an iOS app that helps you choose Pokémon Champions doubles
+teams. Existing spreadsheets are awkward to browse, and missingNO loses filters
+when opening a team. The product focuses on reliable, fast discovery. Browser
+development, preview, and tests are local shared-UI tools, not a supported website
+or PWA.
 
 This document records agreed behavior that lives nowhere else: discovery and
 browsing, saved-team editing and similarity rules, and acceptance criteria.
 Import and result-ordering rules are in
 [data sources](data-sources.md), the synced record model is in
-[Firebase deployment and sync](firebase.md), and user-facing behavior, tooling,
+[iOS installation and Firebase sync](firebase.md), and user-facing behavior, tooling,
 and commands are in the [README](../README.md) and `AGENTS.md`.
 
 ## Discovery and browsing
@@ -42,7 +44,7 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   returning. Back to teams stays visible while browsing a team.
 - Encode filters in the URL so a refresh or shared link restores the selection.
 - Save current teams locally. Configured account sync is described in
-  [Firebase deployment and sync](firebase.md).
+  [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
   silently modify imported teams.
 - Known custom-rule teams stay hidden from Browse by default; **Include
@@ -160,8 +162,8 @@ An explicit saved-team link with no saved teams keeps its URL and shows a
 missing-team notice. Resuming a deleted saved team opens the empty My teams view
 and clears its active selection.
 
-Saving requires available browser storage; clearing the origin's storage removes
-local saves. Only unsaved input prompts before navigation. Browse filters and
+Saving requires available app-local storage; clearing it removes local saves.
+Only unsaved input prompts before navigation. Browse filters and
 position remain device-local.
 
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
@@ -259,10 +261,10 @@ team. A bookmark whose source team leaves the catalog stays usable with its save
 roster and no catalog details. Both collections share the same storage ceiling
 and sync path (see [storage and sync](firebase.md)).
 
-The bundled iOS app uses native Google sign-in and the same local storage and
-Firebase sync model. After a successful sign-in, it can open saved data offline;
-sync resumes when connected. A first sign-in may require connectivity. Native
-setup and signing are described in [Firebase deployment and sync](firebase.md).
+The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
+After a successful sign-in, it can open saved data offline; sync resumes when
+connected. A first sign-in may require connectivity. Native setup and signing
+are described in [iOS installation and Firebase sync](firebase.md).
 
 The My teams picker shows only in-use teams. Its icon-first search covers the
 current team name and each member's species, with exact, prefix, substring, and

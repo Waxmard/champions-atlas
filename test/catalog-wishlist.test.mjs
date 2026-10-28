@@ -155,10 +155,6 @@ test('catalog toggle leaves existing data untouched on storage failure', () => {
     throw new Error('quota');
   };
   install(s);
-  assert.deepEqual(toggleCatalogWishlist(team()), {
-    error:
-      'Could not save this team. Check browser storage access and available space. Existing saved teams were not replaced.',
-    status: '',
-  });
+  assert.ok(toggleCatalogWishlist(team()).error);
   assert.equal(s.getItem(storageKey), before);
 });

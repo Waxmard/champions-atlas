@@ -1,14 +1,15 @@
 # Champion's Atlas
 
-Champion's Atlas is a mobile-friendly Pokémon Champions doubles team browser and
-editor combining multiple published sources, without claiming legality validation.
-It uses SvelteKit and TypeScript, daisyUI with Tailwind CSS, bits-ui primitives,
-and locally bundled Nunito Variable.
+Champion's Atlas is an iOS app for browsing and editing Pokémon Champions doubles
+teams from multiple published sources, without claiming legality validation. Its
+packaged UI uses SvelteKit and TypeScript, daisyUI with Tailwind CSS, bits-ui
+primitives, and locally bundled Nunito Variable.
 
 ## Development
 
-Use the Node 24 LTS environment selected by mise. Install dependencies and start
-the development server with:
+Use the Node 24 LTS environment selected by mise. The development server,
+preview, and Playwright suites are local tools for the shared UI, not a supported
+website or PWA. Install dependencies and start the loopback server with:
 
 ```sh
 mise install      # Install the project's Node runtime.
@@ -36,22 +37,24 @@ A feature-branch push or pull request label does not upload a build. Apple must
 process an upload before you can install it through TestFlight. A local iPhone
 install skips those steps but does not deploy Firestore rules; ensure compatible
 rules are deployed before using changes that need them. See
-[Firebase deployment and sync](docs/firebase.md) for delivery and configuration.
+[iOS installation and Firebase sync](docs/firebase.md) for delivery and configuration.
 
-For a local iPhone update, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
+For daily iPhone updates, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
 
 ```sh
 make ios          # Build, install, and launch on an iPhone.
 ```
 
 The default Wi-Fi target is Gengar Phone. Override it with
-`make ios IOS_DEVICE="Another Phone"` or a device identifier.
+`make ios IOS_DEVICE="Another Phone"` or a device identifier. Rebuilding and
+reinstalling packages UI updates in the app; Firebase Hosting cannot update an
+installed native bundle.
 
 Format files or serve a built app with:
 
 ```sh
 npm run format    # Format project files.
-npm run preview   # Serve the production build locally.
+npm run preview   # Serve the built shared UI locally.
 ```
 
 ## Layout
@@ -66,8 +69,8 @@ npm run preview   # Serve the production build locally.
 | `static/`     | App icons and cached Pokémon assets                   |
 | `docs/`       | Product behavior, data sources, and deployment guides |
 
-The crowned-compass logo in `static/favicon.svg` is shared by the header,
-sign-in page, and favicon. Native app icons are in `ios/App/App/Assets.xcassets`.
+The crowned-compass logo in `static/favicon.svg` is shared by the header and
+sign-in page. Native app icons are in `ios/App/App/Assets.xcassets`.
 
 ## Catalog
 
@@ -146,13 +149,13 @@ remains unverified. **Record in-game set** and **Record all in-game sets**
 explicitly record committed sets as snapshots: they change Atlas only, never
 Pokémon Champions. Team edits do not update those snapshots.
 
-Saving requires local storage; clearing it removes local saved data. With
-Firebase configured, Google sign-in is required and syncs saved teams, their
+Saving requires app-local storage; clearing it removes local saved data. With
+Firebase configured, native Google sign-in is required and syncs saved teams, their
 originals, and current-set snapshots across devices. Without configuration, the
-web app runs local-only. Browse preferences remain device-local.
+app runs local-only. Browse preferences remain device-local. The local browser
+harness does not authenticate or sync with Firebase.
 
-The iOS app bundles the web app and uses native Google sign-in. Use the
-[local iPhone install procedure](docs/firebase.md#install-updates-on-an-iphone)
+Use the [local iPhone install procedure](docs/firebase.md#install-updates-on-an-iphone)
 for daily updates, and TestFlight for distribution and release checks. Check
 offline access on the device; synchronization requires a connection.
 
@@ -165,7 +168,7 @@ export, and snapshot contracts.
 | ------------------------------------------------------- | -------------------------------------------------------------- |
 | [Product specification](docs/product-spec.md)           | Agreed product behavior and future scope                       |
 | [Data sources and ranking limits](docs/data-sources.md) | Catalog admission, evidence, ranking, assets, and cache policy |
-| [Firebase deployment and sync](docs/firebase.md)        | TestFlight, authentication, sync, release safety, and recovery |
+| [iOS installation and Firebase sync](docs/firebase.md)  | TestFlight, authentication, sync, release safety, and recovery |
 
 ## License and contributing
 

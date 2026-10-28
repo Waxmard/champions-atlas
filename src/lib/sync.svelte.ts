@@ -1,22 +1,16 @@
-import { browser, dev } from '$app/env';
+import { browser } from '$app/env';
 import { initializeApp } from 'firebase/app';
 import {
-  connectAuthEmulator,
-  getAuth,
-  getRedirectResult,
   GoogleAuthProvider,
   indexedDBLocalPersistence,
   initializeAuth,
   onAuthStateChanged,
   signInWithCredential,
-  signInWithPopup,
-  signInWithRedirect,
   signOut as signOutOfFirebase,
   type Auth,
   type User,
 } from 'firebase/auth';
 import {
-  connectFirestoreEmulator,
   doc,
   getFirestore,
   runTransaction,
@@ -408,54 +402,20 @@ function firebaseConfig() {
 }
 
 export function initSync(): void {
-  if (!browser || auth) return;
+  if (!browser || !isNativeApp || auth) return;
   const config = firebaseConfig();
   if (!config) return;
   projectId = config.projectId;
   const app = initializeApp(config);
-  auth = isNativeApp
-    ? initializeAuth(app, { persistence: indexedDBLocalPersistence })
-    : getAuth(app);
+  auth = initializeAuth(app, { persistence: indexedDBLocalPersistence });
   db = getFirestore(app);
   const firestore = db;
-  if (
-    dev &&
-    import.meta.env.VITE_FIREBASE_EMULATORS === '1' &&
-    projectId === 'demo-champions-atlas' &&
-    ['localhost', '127.0.0.1', '::1'].includes(location.hostname)
-  ) {
-    connectAuthEmulator(auth, 'http://127.0.0.1:9099', {
-      disableWarnings: true,
-    });
-    connectFirestoreEmulator(db, '127.0.0.1', 8080);
-  }
   sync.configured = true;
-  if (!isNativeApp) void getRedirectResult(auth).catch(fail);
   window.addEventListener('online', () => {
     if (uid) void request();
   });
   document.addEventListener('visibilitychange', () => {
     if (uid && document.visibilityState === 'visible') void request();
-  });
-  window.addEventListener('storage', (event) => {
-    if (event.key === syncOwnerKey && uid && event.newValue !== account(uid)) {
-      invalidate();
-      fail(
-        new Error(
-          'Sync account changed in another tab. Sign in again to continue.'
-        )
-      );
-    } else if (event.key === currentSetsKey && uid) {
-      try {
-        if (!valid(session, uid)) return;
-        const cached = readSyncCache(localStorage, account(uid));
-        if (!valid(session, uid)) return;
-        if (cached) setsBase = cached.setsBase;
-        void request();
-      } catch (error) {
-        fail(error);
-      }
-    }
   });
   function activateUser(user: User) {
     try {
@@ -506,36 +466,19 @@ export async function signIn(): Promise<void> {
   sync.status = 'syncing';
   sync.error = '';
   try {
-    if (isNativeApp) {
-      const { idToken } = await AtlasNative.signInWithGoogle();
-      await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
-    } else {
-      await signInWithPopup(auth, new GoogleAuthProvider());
-    }
+    const { idToken } = await AtlasNative.signInWithGoogle();
+    await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
   } catch (error) {
     const code =
       error && typeof error === 'object' && 'code' in error
         ? String(error.code)
         : '';
-    if (isNativeApp && code === 'SIGN_IN_CANCELLED') {
+    if (code === 'SIGN_IN_CANCELLED') {
       sync.status = 'off';
       sync.error = '';
       return;
     }
-    if (
-      !isNativeApp &&
-      (code === 'auth/popup-blocked' ||
-        code === 'auth/operation-not-supported-in-this-environment')
-    ) {
-      try {
-        await signInWithRedirect(auth, new GoogleAuthProvider());
-      } catch (redirectError) {
-        fail(redirectError);
-      }
-    } else {
-      sync.status = code === 'auth/popup-closed-by-user' ? 'off' : 'error';
-      sync.error = error instanceof Error ? error.message : String(error);
-    }
+    fail(error);
   }
 }
 
@@ -544,12 +487,10 @@ export async function signOut(): Promise<void> {
   invalidate();
   sync.user = null;
   let nativeError: unknown;
-  if (isNativeApp) {
-    try {
-      await AtlasNative.signOut();
-    } catch (error) {
-      nativeError = error;
-    }
+  try {
+    await AtlasNative.signOut();
+  } catch (error) {
+    nativeError = error;
   }
   try {
     await signOutOfFirebase(auth);
