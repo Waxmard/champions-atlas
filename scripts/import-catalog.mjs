@@ -350,12 +350,18 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
   };
 }
 
-export async function writeCatalog(path, catalog) {
+export async function writeCatalog(path, catalog, previous = null) {
   if (!catalog.teams.length)
     throw new Error('Refusing to write an empty catalog');
+  const signature = (value) => JSON.stringify({ ...value, updatedAt: null });
+  const stable = previous && signature(previous) === signature(catalog);
+  const next = {
+    ...catalog,
+    updatedAt: stable ? previous.updatedAt : catalog.updatedAt,
+  };
   await mkdir(dirname(path), { recursive: true });
   const temporary = `${path}.${process.pid}.tmp`;
-  await writeFile(temporary, JSON.stringify(catalog, null, 2) + '\n');
+  await writeFile(temporary, JSON.stringify(next, null, 2) + '\n');
   await rename(temporary, path);
 }
 
@@ -755,13 +761,14 @@ async function main() {
         .map(({ name, url }) => ({ name, url })),
     ]
   );
-  await writeCatalog(output, {
+  const nextCatalog = {
     updatedAt: new Date().toISOString(),
     currentRegulation,
     sources,
     sourceHash,
     teams: catalogTeams,
-  });
+  };
+  await writeCatalog(output, nextCatalog, priorCatalog);
   const { sprites, items } = await restoreCatalogAssets(catalogTeams, {
     fetchCached,
     refresh: process.env.REFRESH === '1',

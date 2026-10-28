@@ -4,6 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
+import { writeCatalog } from '../scripts/import-catalog.mjs';
 import { buildCatalogRelease } from '../scripts/publish-catalog.mjs';
 import bundledCatalog, {
   BUNDLE_MAX_BYTES,
@@ -256,4 +257,30 @@ test('fetchCatalogUpdate skips matching hash, rejects older bundles, ignores fai
   assert.equal(updated.catalog.updatedAt, bundle.updatedAt);
   assert.equal(updated.catalog.teams.length, 2);
   assert.deepEqual(updated.tags, tags);
+});
+
+test('writeCatalog keeps the previous timestamp when content is unchanged', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'catalog-write-'));
+  try {
+    const { catalog } = sampleFixture();
+    const target = join(dir, 'catalog.json');
+    const later = { ...catalog, updatedAt: '2026-10-25T06:17:00.000Z' };
+    await writeCatalog(target, later, catalog);
+    assert.equal(
+      JSON.parse(await readFile(target, 'utf8')).updatedAt,
+      catalog.updatedAt
+    );
+
+    await writeCatalog(
+      target,
+      { ...later, sourceHash: 'b'.repeat(64) },
+      catalog
+    );
+    assert.equal(
+      JSON.parse(await readFile(target, 'utf8')).updatedAt,
+      later.updatedAt
+    );
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

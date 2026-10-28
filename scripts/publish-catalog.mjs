@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { validateCatalogBundle } from '../src/lib/catalog-data.ts';
 import { teamEligibilityError } from './champions-eligibility.mjs';
 
 function isPlainObject(value) {
@@ -82,6 +83,7 @@ export async function buildCatalogRelease({
     teams: catalog.teams,
     tags: { teams: tags.teams },
   };
+  validateCatalogBundle(bundle);
   const bundleJson = JSON.stringify(bundle);
   const bundleHash = createHash('sha256').update(bundleJson).digest('hex');
   const bundlePath = `/catalog/bundle-${bundleHash}.json`;
