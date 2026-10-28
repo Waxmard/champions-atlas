@@ -7,6 +7,7 @@
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
+  import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
@@ -417,6 +418,7 @@
       /* storage unavailable */
     }
     initialUrl = normalizeInitialUrl(location.href, resolve('/'));
+    void initCatalogRuntime();
     initSync();
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') flushPosition();

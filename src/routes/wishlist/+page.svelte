@@ -13,6 +13,7 @@
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
     addCatalogToWishlist,
@@ -186,7 +187,7 @@
         );
       const catalogTeam = resolveCatalogTeam(
         { pasteUrl: url },
-        data.catalog.teams
+        (catalogState.catalog ?? data.catalog).teams
       );
       if (catalogTeam) {
         const alreadySaved =
@@ -238,8 +239,8 @@
         addPokepasteToWishlist(
           localStorage,
           payload,
-          data.catalog.currentRegulation,
-          data.catalog.teams
+          (catalogState.catalog ?? data.catalog).currentRegulation,
+          (catalogState.catalog ?? data.catalog).teams
         );
         void pushNow();
         refresh();

@@ -1,0 +1,74 @@
+name: Refresh Catalog
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+    inputs:
+      refresh_history:
+        description: Rebuild all historical regulations
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: catalog-publish
+  cancel-in-progress: false
+
+jobs:
+  publish-catalog:
+    name: Refresh and publish catalog
+    runs-on: ubuntu-24.04
+    environment: preview
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .cache/catalog
+            .cache/jev
+            src/lib/data/catalog.json
+            static/sprites
+            static/items
+          key: catalog-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            catalog-${{ runner.os }}-
+      - uses: jdx/mise-action@v4
+      - run: npm ci
+      - name: Check required secrets
+        run: |
+          if [ -z "$YOUTUBE_API_KEY" ]; then
+            echo '::error::YOUTUBE_API_KEY is not configured; refusing to skip YouTube sources.'
+            exit 1
+          fi
+          if [ -z "$TYPESAFE_API_KEY" ]; then
+            echo '::error::TYPESAFE_API_KEY is not configured; refusing to publish untagged.'
+            exit 1
+          fi
+          if [ -z "$FIREBASE_TOKEN" ]; then
+            echo '::error::FIREBASE_TOKEN is not configured; refusing to publish without Firebase access.'
+            exit 1
+          fi
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - name: Import catalog
+        run: npm run import:catalog
+        env:
+          CHECK_SHEET: '1'
+          YOUTUBE_REFRESH: '1'
+          REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      - name: Enrich team tags
+        run: npm run enrich:tags
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+      - name: Evaluate team tags
+        run: npm run eval:tags
+      - name: Build catalog release
+        run: npm run publish:catalog
+      - name: Deploy catalog to Firebase Hosting
+        run: npx firebase-tools deploy --only hosting --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"

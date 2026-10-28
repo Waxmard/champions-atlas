@@ -1,6 +1,8 @@
-import catalog from '#lib/catalog-data.js';
+import { catalogState } from '#lib/catalog-runtime.svelte.js';
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = () => ({
-  currentRegulation: catalog.currentRegulation,
+  get currentRegulation() {
+    return catalogState.catalog.currentRegulation;
+  },
 });

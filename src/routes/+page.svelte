@@ -25,6 +25,7 @@
     toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
   import { wishlistedCatalogEntries } from '#lib/team-collections.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { sync } from '#lib/sync.svelte.js';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
@@ -52,8 +53,9 @@
   let actionError = $state('');
   let status = $state('');
   const pending = new SvelteSet<string>();
-  const teams: Team[] = $derived(data.catalog.teams);
-  const current = $derived(data.catalog.currentRegulation);
+  const catalog = $derived(catalogState.catalog ?? data.catalog);
+  const teams: Team[] = $derived(catalog.teams);
+  const current = $derived(catalog.currentRegulation);
   const historicalRegulations = $derived(
     [...new Set(teams.map((team) => team.regulation))]
       .filter((value) => value !== current)
@@ -639,14 +641,14 @@
       </div>
     {/if}
     <p class="provenance mt-8 max-w-3xl">
-      Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}. Teams and result
-      claims via {#each data.catalog.sources as source, index (source.url)}<a
+      Catalog snapshot: {catalog.updatedAt.slice(0, 10)}. Teams and result
+      claims via {#each catalog.sources as source, index (source.url)}<a
           class="underline underline-offset-2"
           href={source.url}
           target="_blank"
           rel="external noreferrer">{source.name}</a
-        >{index < data.catalog.sources.length - 1 ? ', ' : ''}{/each}. Published
-      set details available for {teams.filter((team) => team.paste).length}
+        >{index < catalog.sources.length - 1 ? ', ' : ''}{/each}. Published set
+      details available for {teams.filter((team) => team.paste).length}
       teams.
     </p>
   </section>

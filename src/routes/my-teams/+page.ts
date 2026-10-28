@@ -1,5 +1,11 @@
-import catalog from '#lib/catalog-data.js';
-import tags from '#lib/data/team-tags.json';
+import { catalogState } from '#lib/catalog-runtime.svelte.js';
 import type { PageLoad } from './$types';
 
-export const load: PageLoad = () => ({ catalog, tags });
+export const load: PageLoad = () => ({
+  get catalog() {
+    return catalogState.catalog;
+  },
+  get tags() {
+    return catalogState.tags;
+  },
+});

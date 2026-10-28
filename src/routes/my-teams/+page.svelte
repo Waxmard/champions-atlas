@@ -29,7 +29,6 @@
     type Member,
   } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
-  import type { TeamTagsIndex } from '#lib/tags.js';
   import {
     activeTeamKey,
     deleteTeam,
@@ -42,12 +41,11 @@
     swapSuggestions,
     type SavedTeam,
   } from '#lib/workbench.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
   import * as collections from '#lib/team-collections.js';
-  import type { PageData } from './$types';
 
-  let { data }: { data: PageData } = $props();
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
     baseline = $state('');
@@ -76,7 +74,7 @@
     showSwapPicker = $state(false),
     swapUnavailable = $state(false),
     appliedRevision = 0;
-  const teams = $derived(data.catalog.teams);
+  const teams = $derived(catalogState.catalog.teams);
   const allSpecies = $derived(
     [
       ...new Set(teams.flatMap((team) => team.members.map((m) => m.pokemon))),
@@ -95,7 +93,7 @@
         )
     )
   );
-  const current = $derived(data.catalog.currentRegulation);
+  const current = $derived(catalogState.catalog.currentRegulation);
   const editing = $derived(activeEditIndex !== null);
   const dirty = $derived(
     (!!draft && draft.name !== (baseline ? JSON.parse(baseline).name : '')) ||
@@ -406,7 +404,7 @@
       teams,
       current,
       pokemon,
-      data.tags as TeamTagsIndex
+      catalogState.tags
     )[0];
     swapUnavailable = !best;
     if (!best) return;
@@ -786,11 +784,11 @@
         member={editorMember}
         originalMembers={draft.original.members}
         originalSlotMember={draft.original.members[editIndex]}
-        teams={data.catalog.teams}
+        {teams}
         currentRegulation={current}
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
-        tagIndex={data.tags as TeamTagsIndex}
+        tagIndex={catalogState.tags}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}

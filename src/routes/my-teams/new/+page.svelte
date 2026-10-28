@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { Button } from '#lib/components/ui/button/index.js';
   import { activeTeamKey, newCustomTeam, saveTeam } from '#lib/workbench.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import type { PageData } from './$types';
 
@@ -14,7 +15,11 @@
   async function save(event: SubmitEvent) {
     event.preventDefault();
     try {
-      const saved = newCustomTeam(name, data.currentRegulation, paste);
+      const saved = newCustomTeam(
+        name,
+        catalogState.catalog.currentRegulation || data.currentRegulation,
+        paste
+      );
       saveTeam(localStorage, saved);
       localStorage.setItem(activeTeamKey, saved.id);
       void pushNow();

@@ -31,11 +31,18 @@
     toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
   import { wishlistedCatalogEntries } from '#lib/team-collections.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { sync } from '#lib/sync.svelte.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
-  const team: Team = $derived(data.team);
+  const team: Team = $derived(
+    catalogState.catalog.teams.find((entry) => entry.id === data.team.id) ??
+      data.team
+  );
+  const currentRegulation = $derived(
+    catalogState.catalog.currentRegulation || data.currentRegulation
+  );
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
   const hasActiveEnrichment = $derived(
     team.members.some((member) => activeSpreadSource(member) !== null)
@@ -48,7 +55,7 @@
           .join('\n\n')
       : ''
   );
-  const strongest = $derived(bestEvidence(team, data.currentRegulation));
+  const strongest = $derived(bestEvidence(team, currentRegulation));
   const custom = $derived(isCustomRulesTeam(team));
   const reason = $derived(strongest.none ? listingReason(team) : null);
   const channels = $derived(youtubeChannelNames(team.reports));
