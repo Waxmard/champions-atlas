@@ -66,6 +66,7 @@
     "lefthook": true
   },
   "overrides": {
+    "@google-cloud/pubsub": "^6.3.1",
     "@grpc/grpc-js": "^1.14.6",
     "gaxios": {
       "uuid": "^11.1.1"
