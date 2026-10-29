@@ -423,14 +423,23 @@
     const next = document.querySelectorAll<HTMLElement>('[data-wishlist-use]')[
       Math.min(index, entries.length - 1)
     ];
-    (
-      next ?? document.querySelector<HTMLElement>('nav[aria-label="Main"] a')
-    )?.focus();
+    if (next) {
+      next.focus({ preventScroll: true });
+      next.scrollIntoView({ block: 'center' });
+    } else {
+      document.querySelector<HTMLElement>('nav[aria-label="Main"] a')?.focus();
+    }
   }
 </script>
 
 <svelte:head><title>Wishlist — Champion's Atlas</title></svelte:head>
-<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+<main
+  id="main"
+  class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12 {!feedbackDismissed &&
+  (status || errorMessage)
+    ? 'pb-32 sm:pb-32'
+    : ''}"
+>
   <SavedCollectionHeader
     collection="wishlist"
     title="Wishlist"
@@ -442,7 +451,7 @@
   </p>
   <details class="mt-1 max-w-3xl">
     <summary
-      class="min-h-11 cursor-pointer py-2 text-sm font-normal text-base-content/60"
+      class="min-h-11 cursor-pointer py-2 text-sm font-normal text-base-content/70"
     >
       Add a Poképaste manually
     </summary>
@@ -504,6 +513,8 @@
     >
       {storageError}
     </p>{/if}
+  <p role="status" aria-live="polite" class="sr-only">{status}</p>
+  <p role="alert" class="sr-only">{errorMessage}</p>
   {#if !feedbackDismissed && (status || errorMessage)}
     <section
       aria-label="Wishlist notification"
@@ -515,11 +526,7 @@
             ? 'border-base-300 text-base-content'
             : 'border-success-content text-success-content'}"
     >
-      <div
-        role={errorMessage ? 'alert' : 'status'}
-        aria-live={errorMessage ? undefined : 'polite'}
-        class="min-w-0 flex-1 text-sm break-words"
-      >
+      <div class="min-w-0 flex-1 text-sm break-words" aria-hidden="true">
         {#if errorMessage}<p>{errorMessage}</p>{/if}
         {#if status}<p>{status}</p>{/if}
       </div>

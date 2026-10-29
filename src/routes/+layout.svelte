@@ -7,6 +7,7 @@
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
+  import { Button } from '#lib/components/ui/button/index.js';
   import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
@@ -500,9 +501,9 @@
 {#if shareReadError && page.url.pathname !== resolve('wishlist')}
   <div role="alert" class="plate mx-4 mt-4 px-4 py-3">
     Shared links could not be read. Try again.
-    <button type="button" class="btn btn-sm" onclick={() => checkSharedLinks()}>
+    <Button variant="secondary" size="touch" onclick={() => checkSharedLinks()}>
       Try again
-    </button>
+    </Button>
   </div>
 {/if}
 <a
