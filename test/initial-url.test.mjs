@@ -12,6 +12,10 @@ test('normalizes an empty native path to the root', () => {
     '',
     '',
   ]);
+  assert.equal(
+    normalizeInitialUrl('capacitor://localhost', '/atlas/').pathname,
+    '/atlas/'
+  );
 });
 
 test('preserves query and fragment on an empty native path', () => {
@@ -38,12 +42,5 @@ test('preserves nonempty web paths', () => {
   assert.equal(
     normalizeInitialUrl('https://localhost/teams/example', '/').pathname,
     '/teams/example'
-  );
-});
-
-test('uses the supplied root for an empty native path', () => {
-  assert.equal(
-    normalizeInitialUrl('capacitor://localhost', '/atlas/').pathname,
-    '/atlas/'
   );
 });

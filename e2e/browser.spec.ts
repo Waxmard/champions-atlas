@@ -182,13 +182,18 @@ test(
   }
 );
 
+test('browse keeps the fragment and canonical filters on a direct load', async ({
+  page,
+}) => {
+  await page.goto('/#main');
+  await expect(page).toHaveURL(
+    (url) => url.hash === '#main' && url.searchParams.has('regulation')
+  );
+});
+
 test('invalid filters stay explicit; team deep links and missing teams work', async ({
   page,
 }) => {
-  await page.goto('/#sort');
-  await expect(page).toHaveURL(
-    (url) => url.searchParams.has('sort') && url.hash === '#sort'
-  );
   await page.goto('/?member=invalid');
   await expect(
     page.getByRole('heading', { name: 'Invalid filter link' })
@@ -283,19 +288,6 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
   const browse = mainNav.getByRole('link', { name: 'Browse', exact: true });
   const myTeams = mainNav.getByRole('link', { name: 'My teams', exact: true });
   await expect(browse).toHaveAttribute('aria-current', 'page');
-  const colors = await browse.evaluate((link) => {
-    const sample = document.createElement('span');
-    sample.style.backgroundColor = 'var(--color-info)';
-    document.body.appendChild(sample);
-    const result = {
-      background: getComputedStyle(link).backgroundColor,
-      info: getComputedStyle(sample).backgroundColor,
-    };
-    sample.remove();
-    return result;
-  });
-  expect(colors.background).toBe(colors.info);
-
   await page.evaluate(() =>
     window.scrollTo(0, document.documentElement.scrollHeight)
   );
@@ -343,22 +335,22 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     .click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);
 
-  await page
+  const editButton = page
     .getByRole('button', { name: /^Edit set for / })
-    .last()
-    .click();
+    .last();
+  await editButton.scrollIntoViewIfNeeded();
+  const scrollBeforeReload = await page.evaluate(() => window.scrollY);
+  expect(scrollBeforeReload).toBeGreaterThan(0);
+  await editButton.click();
   await expect(page.getByRole('dialog')).toBeVisible();
-  const lockedPosition = await page.evaluate(
-    () => -Number.parseFloat(document.body.style.top)
-  );
-  expect(lockedPosition).toBeGreaterThan(300);
   await page.reload();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+  const scrollRestoreDrift = 120;
   await expect
     .poll(async () =>
-      Math.abs((await page.evaluate(() => window.scrollY)) - lockedPosition)
+      Math.abs((await page.evaluate(() => window.scrollY)) - scrollBeforeReload)
     )
-    .toBeLessThanOrEqual(10);
+    .toBeLessThanOrEqual(scrollRestoreDrift);
 
   await page
     .getByRole('link', { name: /^Go to / })

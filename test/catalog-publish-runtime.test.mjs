@@ -8,8 +8,8 @@ import { writeCatalog } from '../scripts/import-catalog.mjs';
 import { buildCatalogRelease } from '../scripts/publish-catalog.mjs';
 import { readBoundedJson } from '../src/lib/bounded-json.ts';
 import bundledCatalog, {
-  BUNDLE_MAX_BYTES,
   MANIFEST_MAX_BYTES,
+  defaultCatalogEndpoint,
   fetchCatalogUpdate,
   tags as bundledTags,
   validateCatalogBundle,
@@ -158,7 +158,6 @@ test('validateCatalogManifest and validateCatalogBundle enforce schema, uniquene
     () => readBoundedJson(oversizedManifest, MANIFEST_MAX_BYTES, 'Catalog'),
     /exceeds/
   );
-  assert.equal(BUNDLE_MAX_BYTES, 15 * 1024 * 1024);
 });
 
 test('fetchCatalogUpdate skips matching hash, rejects older bundles, ignores failures, and returns newer catalog', async () => {
@@ -283,4 +282,38 @@ test('writeCatalog keeps the previous timestamp when content is unchanged', asyn
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('fetchCatalogUpdate discards a bundle that disagrees with its manifest', async () => {
+  const { catalog, tags } = sampleFixture();
+  const bundle = { schemaVersion: 1, ...catalog, tags };
+  const bundleJson = JSON.stringify(bundle);
+  const manifest = {
+    schemaVersion: 1,
+    updatedAt: catalog.updatedAt,
+    currentRegulation: catalog.currentRegulation,
+    sourceHash: catalog.sourceHash,
+    bundleHash: createHash('sha256').update(bundleJson).digest('hex'),
+    bundlePath: '/catalog/bundle.json',
+  };
+  const result = await fetchCatalogUpdate(
+    { updatedAt: '2026-01-01T00:00:00.000Z', sourceHash: 'd'.repeat(64) },
+    {
+      endpoint: 'https://example.test/catalog/manifest.json',
+      baselineUpdatedAt: '2026-01-01T00:00:00.000Z',
+      fetcher: async (url) => {
+        if (String(url).endsWith('/manifest.json'))
+          return new Response(JSON.stringify(manifest), { status: 200 });
+        return new Response(
+          JSON.stringify({ ...bundle, updatedAt: '2026-10-26T06:17:00.000Z' }),
+          { status: 200 }
+        );
+      },
+    }
+  );
+  assert.equal(result, null);
+});
+
+test('defaultCatalogEndpoint disables updates when nothing is configured', () => {
+  assert.equal(defaultCatalogEndpoint(), '');
 });

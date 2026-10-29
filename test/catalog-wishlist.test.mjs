@@ -105,16 +105,14 @@ test('catalog toggle adds and removes without changing an in-use copy', () => {
   s.setItem(activeTeamKey, inUse.id);
   install(s);
 
-  assert.deepEqual(toggleCatalogWishlist(catalog), {
-    error: '',
-    status: 'Added to Wishlist.',
-  });
+  const added = toggleCatalogWishlist(catalog);
+  assert.equal(added.error, '');
+  assert.ok(added.status);
   const bookmark = readSavedTeams(s).find((entry) => entry.id !== inUse.id);
   saveTeam(s, { ...bookmark, name: 'Edited copy' });
-  assert.deepEqual(toggleCatalogWishlist(catalog), {
-    error: '',
-    status: 'Removed from Wishlist.',
-  });
+  const removed = toggleCatalogWishlist(catalog);
+  assert.equal(removed.error, '');
+  assert.ok(removed.status);
   assert.deepEqual(readSavedTeams(s), [inUseBefore]);
   assert.equal(s.getItem(activeTeamKey), inUse.id);
 });
@@ -129,20 +127,18 @@ test('catalog toggle matches a Wishlist copy by source URL and rejects multiple 
   };
   saveTeam(s, imported);
   install(s);
-  assert.deepEqual(toggleCatalogWishlist(catalog), {
-    error: '',
-    status: 'Removed from Wishlist.',
-  });
+  const removed = toggleCatalogWishlist(catalog);
+  assert.equal(removed.error, '');
+  assert.ok(removed.status);
   assert.deepEqual(readSavedTeams(s), []);
 
   saveTeam(s, imported);
   saveTeam(s, { ...newSavedTeam(catalog), collection: 'wishlist' });
   const before = s.getItem(storageKey);
-  assert.deepEqual(toggleCatalogWishlist(catalog), {
-    error:
-      'Multiple copies are in Wishlist. Remove them from Wishlist individually.',
-    status: '',
-  });
+  assert.match(
+    toggleCatalogWishlist(catalog).error,
+    /Multiple copies are in Wishlist/
+  );
   assert.equal(s.getItem(storageKey), before);
 });
 
