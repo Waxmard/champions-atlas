@@ -1,7 +1,7 @@
 import bundledCatalog, {
   fetchCatalogUpdate,
   tags as bundledTags,
-  validateCatalogBundle,
+  selectStoredCatalogBundle,
   type CatalogBundle,
   type CatalogData,
 } from './catalog-data.ts';
@@ -159,16 +159,13 @@ export function initCatalogRuntime(): Promise<void> {
     try {
       const stored = await readStoredBundle();
       if (stored !== undefined) {
-        try {
-          const bundle = validateCatalogBundle(stored);
-          if (
-            Date.parse(bundle.updatedAt) >= Date.parse(bundledCatalog.updatedAt)
-          ) {
-            applyValidatedBundle(bundle, bundle.bundleHash);
-          } else {
-            await deleteStoredBundle().catch(() => undefined);
-          }
-        } catch {
+        const bundle = selectStoredCatalogBundle(
+          stored,
+          bundledCatalog.updatedAt
+        );
+        if (bundle) {
+          applyValidatedBundle(bundle, bundle.bundleHash);
+        } else {
           await deleteStoredBundle().catch(() => undefined);
         }
       }

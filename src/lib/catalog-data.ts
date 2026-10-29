@@ -126,6 +126,17 @@ export function validateCatalogBundle(value: unknown): CatalogBundle {
   return parsed.data as CatalogBundle;
 }
 
+export function selectStoredCatalogBundle(
+  value: unknown,
+  baselineUpdatedAt: string
+): CatalogBundle | null {
+  const parsed = bundleSchema.safeParse(value);
+  if (!parsed.success) return null;
+  return Date.parse(parsed.data.updatedAt) >= Date.parse(baselineUpdatedAt)
+    ? (parsed.data as CatalogBundle)
+    : null;
+}
+
 export function isEligibleCatalogCandidate(
   candidate: {
     updatedAt: string;

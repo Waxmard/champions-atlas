@@ -12,6 +12,7 @@ import bundledCatalog, {
   defaultCatalogEndpoint,
   fetchCatalogUpdate,
   tags as bundledTags,
+  selectStoredCatalogBundle,
   validateCatalogBundle,
   validateCatalogManifest,
 } from '../src/lib/catalog-data.ts';
@@ -36,6 +37,23 @@ function sampleFixture() {
   };
   return { catalog, tags };
 }
+test('stored catalog selection rejects invalid or older bundles', () => {
+  const { catalog, tags } = sampleFixture();
+  const bundle = { schemaVersion: 1, ...catalog, tags };
+  const baseline = '2026-10-24T06:17:00.000Z';
+  assert.deepEqual(selectStoredCatalogBundle(bundle, baseline), bundle);
+  assert.equal(
+    selectStoredCatalogBundle({ ...bundle, teams: [] }, baseline),
+    null
+  );
+  assert.equal(
+    selectStoredCatalogBundle(
+      { ...bundle, updatedAt: '2026-10-23T06:17:00.000Z' },
+      baseline
+    ),
+    null
+  );
+});
 
 test('buildCatalogRelease writes valid manifest and content-addressed bundle and rejects invalid inputs', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'catalog-publish-'));
