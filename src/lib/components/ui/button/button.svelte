@@ -7,12 +7,11 @@
   } from 'svelte/elements';
 
   export type ButtonVariant =
-    'primary' | 'secondary' | 'quiet' | 'destructive' | 'danger-quiet';
+    'primary' | 'quiet' | 'destructive' | 'danger-quiet';
   export type ButtonSize = 'compact' | 'dense' | 'icon-compact';
 
   const variants: Record<ButtonVariant, string> = {
     primary: 'btn-primary',
-    secondary: 'btn-soft [--btn-border:transparent]',
     quiet:
       'btn-ghost text-base-content/70 hover:text-base-content disabled:text-base-content/40',
     destructive:
@@ -29,7 +28,7 @@
   };
 
   function buttonVariants({
-    variant = 'secondary',
+    variant = 'quiet',
     size = 'compact',
     class: className = '',
   }: {
@@ -39,7 +38,7 @@
   } = {}): string {
     return twMerge(
       "btn whitespace-nowrap [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
-      variants[variant] ?? variants.secondary,
+      variants[variant] ?? variants.quiet,
       sizes[size] ?? sizes.compact,
       clsx(className)
     );
@@ -55,7 +54,7 @@
 <script lang="ts">
   let {
     class: className = '',
-    variant = 'secondary',
+    variant = 'quiet',
     size = 'compact',
     ref = $bindable(null),
     href = undefined,

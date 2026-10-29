@@ -180,7 +180,7 @@
       </div>
 
       <h1
-        class="mt-4 max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-break-word sm:text-4xl"
+        class="mt-4 max-w-3xl text-[1.75rem] leading-[1.4] font-extrabold tracking-tight wrap-anywhere sm:text-4xl"
       >
         {team.name}
       </h1>
@@ -248,7 +248,7 @@
       </div>
       {#if team.replicaStatus === '✔'}
         <Button
-          variant="secondary"
+          variant="quiet"
           size="compact"
           onclick={() => copy(team.replicaCode || '', 'Replica code')}
           ><Copy aria-hidden="true" />Copy replica code</Button
@@ -266,7 +266,7 @@
         <div class="flex flex-wrap items-center gap-2">
           {#if paste}
             <Button
-              variant="secondary"
+              variant="quiet"
               size="compact"
               onclick={() =>
                 copy(

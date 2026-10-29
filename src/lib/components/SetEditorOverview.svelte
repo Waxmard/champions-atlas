@@ -63,7 +63,7 @@
       </div>
     </div>
     <Button
-      variant="secondary"
+      variant="quiet"
       aria-label="Change Pokémon"
       onclick={() => onnavigate('pokemon')}
     >
@@ -73,7 +73,7 @@
 
   {#if originalAvailable}
     <Button
-      variant="secondary"
+      variant="quiet"
       disabled={!!originalReason}
       aria-describedby={originalReason ? 'original-set-reason' : undefined}
       onclick={onoriginal}>Use original set</Button

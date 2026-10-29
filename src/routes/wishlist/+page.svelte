@@ -413,27 +413,31 @@
     title="Wishlist"
     description="Teams to try later. Move a team to My teams when you're ready."
   />
-  <details class="mt-3 max-w-3xl">
+  <p
+    id="wishlist-share-hint"
+    class="mt-3 max-w-3xl text-[0.9375rem] leading-relaxed text-base-content/70"
+  >
+    From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
+    finish importing.
+  </p>
+  <details class="mt-1 max-w-3xl">
     <summary
-      aria-labelledby="wishlist-manual-label"
       aria-describedby="wishlist-share-hint"
-      class="min-h-11 cursor-pointer py-2 sm:min-h-0 sm:py-1"
+      class="block min-h-11 cursor-pointer list-none rounded-[var(--radius-field)] py-2 text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden"
     >
       <span
-        id="wishlist-share-hint"
-        class="block text-[0.9375rem] leading-relaxed text-base-content/70"
-      >
-        From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
-        finish importing.
-      </span>
-      <span
         id="wishlist-manual-label"
-        class="mt-1 block text-sm underline underline-offset-2"
+        class="text-sm underline underline-offset-2"
       >
         Add a Poképaste manually
       </span>
     </summary>
-    <form aria-label="Import Poképaste" novalidate onsubmit={submitPokepaste}>
+    <form
+      aria-label="Import Poképaste"
+      class="mt-2"
+      novalidate
+      onsubmit={submitPokepaste}
+    >
       <label for="pokepaste-link" class="term block">Poképaste link or ID</label
       >
       <input
@@ -563,7 +567,7 @@
               {#snippet actions()}
                 <Button
                   data-wishlist-use
-                  variant="secondary"
+                  variant="quiet"
                   disabled={!ready || !!pendingId}
                   onclick={() => use(entry)}>Move to My teams</Button
                 >

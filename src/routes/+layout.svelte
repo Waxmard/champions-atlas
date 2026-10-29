@@ -512,7 +512,7 @@
 {#if shareReadError && page.url.pathname !== resolve('wishlist')}
   <div role="alert" class="plate mx-4 mt-4 px-4 py-3">
     Shared links could not be read. Try again.
-    <Button variant="secondary" onclick={() => checkSharedLinks()}>
+    <Button variant="quiet" onclick={() => checkSharedLinks()}>
       Try again
     </Button>
   </div>

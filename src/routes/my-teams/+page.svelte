@@ -21,14 +21,7 @@
   import { canonicalSnapshot, restoreTeam } from '#lib/team-history.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
-  import {
-    bestEvidence,
-    evidenceGrade,
-    listingReason,
-    normalize,
-    regulationLabel,
-    type Member,
-  } from '#lib/catalog.js';
+  import { normalize, type Member } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import {
     activeTeamKey,
@@ -562,41 +555,19 @@
         {message}
       </p>{/if}
     {#if draft}
-      {@const originalResult = bestEvidence(
-        {
-          reports: draft.original.reports ?? [],
-          regulation: draft.original.regulation,
-        },
-        current
-      )}
       {@const match = collections.resolveCatalogTeam(draft.original, teams)}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <header class="flex items-start justify-between gap-3 border-b pb-4">
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <h2
-              class="text-xl leading-tight font-extrabold wrap-break-word text-base-content sm:text-[1.375rem]"
+              class="text-xl leading-[1.4] font-extrabold wrap-anywhere text-base-content sm:text-[1.375rem]"
             >
               {draft.name}
             </h2>
-            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span
-                class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
-                >{regulationLabel(draft.original.regulation)}</span
-              >
-              <span
-                class="stamp"
-                data-grade={evidenceGrade(originalResult.level)}
-                >{originalResult.none
-                  ? draft.origin === 'custom'
-                    ? listingReason(draft.original, draft.origin).label
-                    : `Original source: ${listingReason(draft.original, draft.origin).label}`
-                  : `Original result: ${originalResult.label}`}</span
-              >
-              {#if match}<a
-                  class="inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
-                  href={resolve(`teams/${match.id}`)}>View catalog details</a
-                >{/if}
-            </div>
+            {#if match}<a
+                class="mt-2 inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                href={resolve(`teams/${match.id}`)}>View catalog details</a
+              >{/if}
           </div>
           <Button
             variant="danger-quiet"
@@ -685,7 +656,9 @@
             {dirty ? 'Unsaved input.' : 'Saved on this device.'}
           </p>
           {#if draft.name !== draft.original.name}
-            <p class="provenance">Original: {draft.original.name}</p>
+            <p class="provenance max-w-full min-w-0 wrap-anywhere">
+              Original: {draft.original.name}
+            </p>
           {/if}
           <p class="provenance">
             Editing does not create a working rental code.

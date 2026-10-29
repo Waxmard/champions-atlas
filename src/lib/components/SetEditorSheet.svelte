@@ -706,7 +706,7 @@
         </p>
         {#if originalChanged && originalSlotMember}
           <Button
-            variant="secondary"
+            variant="quiet"
             disabled={!!originalReason}
             data-set-choice
             onpointerdown={(event) => event.preventDefault()}
@@ -774,7 +774,7 @@
     </p>
     <div class="flex justify-end gap-2">
       <Button
-        variant="secondary"
+        variant="quiet"
         onpointerdown={keepFocus}
         onclick={() => {
           activeSuggestions = null;
