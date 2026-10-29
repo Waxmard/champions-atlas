@@ -1,5 +1,16 @@
 # Changelog
 
+## [3.0.0](https://github.com/Waxmard/champions-atlas/compare/v2.1.0...v3.0.0) (2026-10-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* package as native iOS app with Wishlist and Poképaste sharing ([#67](https://github.com/Waxmard/champions-atlas/issues/67))
+
+### Features
+
+* package as native iOS app with Wishlist and Poképaste sharing ([#67](https://github.com/Waxmard/champions-atlas/issues/67)) ([86caeac](https://github.com/Waxmard/champions-atlas/commit/86caeac24d3e23ea46baa9415ee916a86748badf))
+
 ## [2.1.0](https://github.com/Waxmard/champions-atlas/compare/v2.0.0...v2.1.0) (2026-10-26)
 
 
