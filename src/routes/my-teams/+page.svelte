@@ -5,7 +5,7 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
-  import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
+  import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
@@ -29,7 +29,6 @@
     type Member,
   } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
-  import type { TeamTagsIndex } from '#lib/tags.js';
   import {
     activeTeamKey,
     deleteTeam,
@@ -42,12 +41,11 @@
     swapSuggestions,
     type SavedTeam,
   } from '#lib/workbench.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
   import * as collections from '#lib/team-collections.js';
-  import type { PageData } from './$types';
 
-  let { data }: { data: PageData } = $props();
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
     baseline = $state('');
@@ -76,7 +74,7 @@
     showSwapPicker = $state(false),
     swapUnavailable = $state(false),
     appliedRevision = 0;
-  const teams = $derived(data.catalog.teams);
+  const teams = $derived(catalogState.catalog.teams);
   const allSpecies = $derived(
     [
       ...new Set(teams.flatMap((team) => team.members.map((m) => m.pokemon))),
@@ -95,7 +93,7 @@
         )
     )
   );
-  const current = $derived(data.catalog.currentRegulation);
+  const current = $derived(catalogState.catalog.currentRegulation);
   const editing = $derived(activeEditIndex !== null);
   const dirty = $derived(
     (!!draft && draft.name !== (baseline ? JSON.parse(baseline).name : '')) ||
@@ -103,7 +101,6 @@
   );
   const contentSnapshot = (team: Pick<SavedTeam, 'name' | 'members'>) =>
     canonicalSnapshot({ name: team.name, members: team.members });
-
   function revealPanel(node: HTMLElement) {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     node.dataset.motionReady = 'true';
@@ -111,7 +108,6 @@
     const frame = requestAnimationFrame(() => (node.dataset.open = 'true'));
     return { destroy: () => cancelAnimationFrame(frame) };
   }
-
   function openSaved(
     id: string | null,
     activeOverride?: string | null,
@@ -162,7 +158,7 @@
       nameError = '';
     } catch {
       storageError =
-        'Saved teams could not be read. Check browser storage access. Existing data has been left untouched.';
+        'Saved teams could not be read. Check app storage access. Existing data has been left untouched.';
     }
   }
   function persistIfDirty() {
@@ -208,7 +204,6 @@
     appliedRevision = sync.revision;
     untrack(() => openSaved(draft?.id ?? page.url.searchParams.get('team')));
   });
-
   beforeNavigate(({ cancel, willUnload, shallow, type }) => {
     if (shallow && type === 'goto') return;
     if (willUnload) return;
@@ -239,7 +234,6 @@
 
     saveTeamName();
   }
-
   function persistChange(
     patch: (team: SavedTeam) => SavedTeam,
     saveName = false
@@ -271,7 +265,7 @@
     } catch {
       message = '';
       errorMessage =
-        'Could not save changes. Check browser storage access and available space. Your edits are still here; existing saved data was not replaced.';
+        'Could not save changes. Check app storage access and available space. Your edits are still here; existing saved data was not replaced.';
       return false;
     }
   }
@@ -410,7 +404,7 @@
       teams,
       current,
       pokemon,
-      data.tags as TeamTagsIndex
+      catalogState.tags
     )[0];
     swapUnavailable = !best;
     if (!best) return;
@@ -565,6 +559,7 @@
         },
         current
       )}
+      {@const match = collections.resolveCatalogTeam(draft.original, teams)}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <header class="flex items-start justify-between gap-3 border-b pb-4">
           <div class="min-w-0">
@@ -587,6 +582,10 @@
                     : `Original source: ${listingReason(draft.original, draft.origin).label}`
                   : `Original result: ${originalResult.label}`}</span
               >
+              {#if match}<a
+                  class="inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                  href={resolve(`teams/${match.id}`)}>View catalog details</a
+                >{/if}
             </div>
           </div>
           <Button
@@ -651,9 +650,10 @@
             </p>
           </div>
           <div class="flex flex-wrap items-center gap-2">
-            <CurrentSetSaveButton
+            <MyTeamCollectionActions
               teamId={draft.id}
               {baseline}
+              {dirty}
               members={draft.members}
               disabled={editing || deleting || stale}
             />
@@ -784,11 +784,11 @@
         member={editorMember}
         originalMembers={draft.original.members}
         originalSlotMember={draft.original.members[editIndex]}
-        teams={data.catalog.teams}
+        {teams}
         currentRegulation={current}
         initialField={activeEditField}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
-        tagIndex={data.tags as TeamTagsIndex}
+        tagIndex={catalogState.tags}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}

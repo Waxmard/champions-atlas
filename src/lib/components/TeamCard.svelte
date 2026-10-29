@@ -17,20 +17,21 @@
     showRegulation,
     query,
     actions,
-    detailAvailable = true,
+    detailId = team.id,
   }: {
     team: Team;
     currentRegulation: string;
     showRegulation: boolean;
     query: string;
     actions?: Snippet;
-    detailAvailable?: boolean;
+    detailId?: string | null;
   } = $props();
   const custom = $derived(isCustomRulesTeam(team));
   const source = $derived(sourceName(team, currentRegulation));
 
   function open(event: MouseEvent) {
     if (
+      detailId === null ||
       event.button ||
       event.metaKey ||
       event.ctrlKey ||
@@ -39,7 +40,7 @@
     )
       return;
     event.preventDefault();
-    void goto(resolve(`teams/${team.id}${query}`), {
+    void goto(resolve(`teams/${detailId}${query}`), {
       state: { fromCatalog: true },
     });
   }
@@ -74,22 +75,19 @@
 
 {#snippet resultEvidence()}
   <div class="min-w-0">
-    <span class="stamp" data-grade="source">{source}</span>
-    {#if custom}<p class="term mt-1">Custom rules</p>{/if}
-    {#if !detailAvailable}
-      <p class="provenance mt-1">
-        No longer in the catalog. Your saved team is still available.
-      </p>
+    {#if detailId !== null || source !== 'Listed in the catalog'}
+      <span class="stamp" data-grade="source">{source}</span>
     {/if}
+    {#if custom}<p class="term mt-1">Custom rules</p>{/if}
   </div>
 {/snippet}
 
 <article
   class="plate relative flex min-w-0 flex-col overflow-hidden transition-colors duration-200 hover:border-primary"
 >
-  {#if detailAvailable}
+  {#if detailId !== null}
     <a
-      href={resolve(`teams/${team.id}${query}`)}
+      href={resolve(`teams/${detailId}${query}`)}
       onclick={open}
       class="block flex-1 rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
     >
@@ -101,9 +99,9 @@
   <div
     class="mx-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t py-2.5"
   >
-    {#if detailAvailable}
+    {#if detailId !== null}
       <a
-        href={resolve(`teams/${team.id}${query}`)}
+        href={resolve(`teams/${detailId}${query}`)}
         onclick={open}
         class="min-w-0 flex-1 rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >

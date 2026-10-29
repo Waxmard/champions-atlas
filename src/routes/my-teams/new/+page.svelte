@@ -3,10 +3,8 @@
   import { resolve } from '$app/paths';
   import { Button } from '#lib/components/ui/button/index.js';
   import { activeTeamKey, newCustomTeam, saveTeam } from '#lib/workbench.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { pushNow } from '#lib/sync.svelte.js';
-  import type { PageData } from './$types';
-
-  let { data }: { data: PageData } = $props();
   let name = $state('');
   let paste = $state('');
   let message = $state('');
@@ -14,7 +12,11 @@
   async function save(event: SubmitEvent) {
     event.preventDefault();
     try {
-      const saved = newCustomTeam(name, data.currentRegulation, paste);
+      const saved = newCustomTeam(
+        name,
+        catalogState.catalog.currentRegulation,
+        paste
+      );
       saveTeam(localStorage, saved);
       localStorage.setItem(activeTeamKey, saved.id);
       void pushNow();
@@ -74,7 +76,8 @@
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <Button type="submit" variant="primary">Save custom team</Button>
       <p class="provenance">
-        Saves locally as {data.currentRegulation}; legality remains unverified.
+        Saves locally as {catalogState.catalog.currentRegulation}; legality
+        remains unverified.
       </p>
     </div>
   </form>

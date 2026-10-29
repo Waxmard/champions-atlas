@@ -1,0 +1,108 @@
+name: Deploy TestFlight
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      refresh_history:
+        description: Rebuild all historical regulations
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-testflight-main
+  cancel-in-progress: false
+
+jobs:
+  build-app:
+    name: Build app and deploy Firestore rules
+    runs-on: ubuntu-24.04
+    environment: preview
+    outputs:
+      build_number: ${{ steps.meta.outputs.build_number }}
+    steps:
+      - id: meta
+        run: echo "build_number=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+      - uses: actions/cache@v6
+        with:
+          path: |
+            .cache/catalog
+            .cache/jev
+            src/lib/data/catalog.json
+            static/sprites
+            static/items
+          key: catalog-${{ runner.os }}-${{ github.run_id }}
+          restore-keys: |
+            catalog-${{ runner.os }}-
+      - uses: jdx/mise-action@v4
+      - run: npm ci
+      - name: Import catalog
+        run: |
+          if [ -z "$YOUTUBE_API_KEY" ]; then
+            echo '::error::YOUTUBE_API_KEY is not configured; refusing to skip YouTube sources.'
+            exit 1
+          fi
+          npm run import:catalog
+        env:
+          CHECK_SHEET: '1'
+          YOUTUBE_REFRESH: '1'
+          REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      - name: Enrich team tags
+        run: |
+          if [ -z "$TYPESAFE_API_KEY" ]; then
+            echo '::error::TYPESAFE_API_KEY is not configured; refusing to deploy untagged.'
+            exit 1
+          fi
+          npm run enrich:tags
+        env:
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+      - name: Evaluate team tags
+        run: npm run eval:tags
+      - name: Build catalog release
+        run: npm run publish:catalog
+      - run: npm run build
+        env:
+          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
+      - run: npx firebase-tools deploy --only firestore:rules,hosting --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
+      - uses: actions/upload-artifact@v7
+        with:
+          name: web-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build
+          retention-days: 1
+
+  deploy-ios-testflight:
+    name: Upload iOS to TestFlight
+    needs: build-app
+    runs-on: macos-26
+    environment: preview
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v4
+      - run: npm ci --ignore-scripts
+      - uses: actions/download-artifact@v7
+        with:
+          name: web-build-${{ github.run_id }}-${{ github.run_attempt }}
+          path: build
+      - name: Upload to TestFlight
+        run: |
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_PRIVATE_KEY" ] || [ -z "$APPLE_CERTIFICATE_P12_BASE64" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
+            echo '::error::TestFlight upload requires ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY, APPLE_CERTIFICATE_P12_BASE64, and APPLE_CERTIFICATE_PASSWORD in the preview environment.'
+            exit 1
+          fi
+          bash scripts/build-ios-testflight.sh
+        env:
+          IOS_BUILD_NUMBER: ${{ needs.build-app.outputs.build_number }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}

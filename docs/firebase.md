@@ -1,23 +1,164 @@
-# Firebase deployment and sync
+# iOS installation and Firebase sync
 
-Champion's Atlas builds to a static single-page application (SPA) and deploys to
-Firebase Hosting. It syncs saved teams and current Pokémon set snapshots through
-Cloud Firestore. With the
-`VITE_FIREBASE_*` variables the app requires Google sign-in: an unauthenticated
-visitor is redirected to `/login` and cannot reach the team browser until signed
-in. Without the variables it runs local-only and never initializes the Firebase
-SDK, because it cannot authenticate at all.
+Champion's Atlas is an iOS app with a SvelteKit UI packaged locally in its
+Capacitor WebView. Firebase Authentication provides Google sign-in, and Cloud
+Firestore syncs saved teams and current Pokémon set snapshots. When the native
+app has the required `VITE_FIREBASE_*` variables, an unauthenticated user is
+redirected to `/login`. Without them, the app runs local-only and does not
+initialize Firebase.
 
 ## Projects
 
-| Purpose           | Project ID             | Project number | Firestore                  |
-| ----------------- | ---------------------- | -------------- | -------------------------- |
-| Production        | `champions-atlas`      | 287669775623   | `(default)`, `us-central1` |
-| Preview and local | `champions-atlas-test` | 809995612901   | `(default)`, `us-central1` |
+| Purpose                     | Project ID             | Project number | Firestore                  |
+| --------------------------- | ---------------------- | -------------- | -------------------------- |
+| Production                  | `champions-atlas`      | 287669775623   | `(default)`, `us-central1` |
+| Current iOS and development | `champions-atlas-test` | 809995612901   | `(default)`, `us-central1` |
 
 Both projects use the Blaze plan and Firestore in native mode. The Firestore
 location is permanent. `.firebaserc` defaults to `champions-atlas-test`; the
 workflows pass `--project` explicitly, so only local commands use the default.
+
+## iOS app
+
+The Capacitor iOS project bundles the static app and uses native Google Sign-In.
+Use a local install as the daily iPhone update loop; use TestFlight for
+distribution and release checks. Local installs require Xcode 26 or later, the
+existing paid Apple signing team, and a physical iPhone.
+
+### One-time configuration
+
+The checked-in iOS client ID, callback scheme, and Web OAuth client ID use
+`champions-atlas-test`. Keep these values, the bundle ID
+`com.maxwellward.championsatlas`, and the native sign-in bridge for local installs.
+Use the matching Firebase web app configuration and automatic signing with the
+paid team, not a Personal Team. If Xcode or iOS requests it, pair and trust the
+iPhone and enable Developer Mode; a restart may be required.
+
+Enable the App Group `group.com.maxwellward.championsatlas` for both the app
+ID `com.maxwellward.championsatlas` and the extension ID
+`com.maxwellward.championsatlas.shareextension` in the paid Apple developer
+account. Both targets must be provisioned with this group to queue shared links.
+The extension saves the link only; open Atlas to finish importing it.
+
+Print the test project's web app SDK configuration for the native build:
+
+```sh
+npx firebase-tools apps:list WEB --project champions-atlas-test
+npx firebase-tools apps:sdkconfig WEB <appId> --project champions-atlas-test
+```
+
+Deploy the Firestore rules to the test project before using sync, or access
+fails with a permission error:
+
+```sh
+npx firebase-tools deploy --only firestore:rules --project champions-atlas-test
+```
+
+For a different Firebase project, register an iOS app with the same bundle ID in
+Firebase **Project settings** → **Your apps**, enable Google under
+**Authentication** → **Sign-in method**, and download `GoogleService-Info.plist`.
+Update all three public values in `ios/App/App/Info.plist` together:
+
+- `GIDClientID`: the iOS `CLIENT_ID` from `GoogleService-Info.plist`.
+- `GIDServerClientID`: the same project's Web OAuth client ID below.
+- `CFBundleURLTypes`: an array containing a dictionary with a
+  `CFBundleURLSchemes` array containing the iOS `REVERSED_CLIENT_ID`.
+
+Set the four `VITE_FIREBASE_*` build variables to the same project's web app
+configuration. Shell variables override `.env.local`. If the API key is not
+already in Keychain, add it without putting the value in shell history:
+
+```sh
+security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -w
+```
+
+When switching Firebase projects, replace the stored key with that project's key:
+
+```sh
+security add-generic-password -s champions-atlas:firebase-api-key -a "$USER" -T "" -U -w
+```
+
+The Google Web OAuth client IDs are public configuration:
+
+| Project                | Web OAuth client ID                                                        |
+| ---------------------- | -------------------------------------------------------------------------- |
+| `champions-atlas`      | `287669775623-7fjtghdh0utvroqlpjhgajhhaso7tpev.apps.googleusercontent.com` |
+| `champions-atlas-test` | `809995612901-5t9ikagsdo6qqaug8rnpavg4ng7t72ri.apps.googleusercontent.com` |
+
+### Install updates on an iPhone
+
+Before switching between TestFlight and a local install, confirm your teams and
+current sets have synced under the existing account. Preserve unsynced work with
+the app's export controls. Do not uninstall the app or clear its storage. Both
+installs use the same bundle identity: a local install replaces TestFlight, and
+a later TestFlight install switches it back. Check your data on the device after
+switching; preservation of every local record is not guaranteed. If Xcode rejects
+the replacement, stop and preserve your data before deciding how to proceed.
+
+Pair and trust the iPhone, enable Developer Mode and enable **Connect via network**
+in Xcode's **Devices and Simulators** window. Initial pairing may require USB.
+For routine updates, keep the Mac and unlocked iPhone online on the same Wi-Fi
+network and confirm the phone appears in `xcrun devicectl list devices --timeout 10`.
+Use the matching Firebase project configuration and the existing paid signing team.
+
+1. Load the API key at build time. Keychain asks for approval; if it blocks, approve
+   the prompt rather than copying the key to a file.
+
+   ```sh
+   export VITE_FIREBASE_API_KEY="$(security find-generic-password -s champions-atlas:firebase-api-key -a "$USER" -w)"
+   ```
+
+2. Build, install, and launch the app over Wi-Fi:
+
+   ```sh
+   make ios
+   ```
+
+   This builds the shared UI, syncs Capacitor assets, builds the native app
+   in Release configuration, then installs and launches it using Apple's CLI.
+   It does not open Xcode or attach a debugger. Rebuild and reinstall to package
+   UI updates; Firebase Hosting cannot update an installed native bundle. The
+   default device is `Gengar Phone`; to select another device, run
+   `make ios IOS_DEVICE="Another Phone"` or use its device identifier. If the
+   name is missing or ambiguous, use the identifier from the device list.
+
+   The normal build reuses a valid catalog; UI changes do not require a full
+   catalog or enrichment refresh. Do not use `build:e2e`, blank Firebase
+   variables, a fixture catalog, the development server as the device asset
+   source, or the TestFlight archive/upload script for this install.
+
+3. With the iPhone online, sign in if needed, then confirm your existing teams and
+   current sets are available or restored through the same account. A first launch
+   may need online certificate verification.
+4. Close Xcode if open, force-quit the app, and launch it from the
+   home-screen icon. The bundled app requires no `server.url`, live-reload
+   connection, or Mac process. Repeat the install steps only when you want an update.
+
+Safari Web Inspector can inspect the embedded WebView's JavaScript and DOM when
+the WebView is inspectable. Xcode is used for native code and logs. The Release
+install does not guarantee WebView inspectability.
+
+If the CLI install fails, open the native project with `npx cap open ios` and
+use Xcode instead. Select the **App** scheme and your physical iPhone. Under
+**Product** → **Scheme** → **Edit Scheme** → **Run** → **Info**, select
+**Release** for **Build Configuration** and turn off **Debug executable**.
+Verify automatic signing uses the paid team, then press **Run** or Command-R.
+
+Local signing expires; an installation is not permanent. Check the actual
+profile's `ExpirationDate` in Xcode's signing/profile details or by read-only
+decoding the built app's `embedded.mobileprovision`. Do not export signing private
+keys. Launch online before leaving the Mac.
+
+Verify the device behavior before relying on it away from the Mac. With Xcode
+closed and the phone disconnected, open Browse and My teams, make a reversible set
+edit, and confirm it survives a force-quit and phone restart. With Wi-Fi off and
+cellular on, check sign-in and sync. After an online sign-in, enable Airplane Mode,
+force-quit and reopen the app, check Browse and saved teams, and confirm a
+reversible edit survives relaunch and syncs to a second signed-in client after
+reconnecting. Restore the edit. Also check that canceling sign-in leaves the login
+screen idle and signing out returns to the account gate. Offline startup depends
+on the persisted sign-in session and must be checked on the device; report an
+authentication block rather than assuming it works.
 
 ## Data model
 
@@ -90,8 +231,7 @@ Account switching validates and caches both local stores, then replaces both
 under the existing owner guard. If the switch fails, the client restores both
 original storage values and the former owner; if rollback fails, it marks the
 owner interrupted. Sign-out preserves per-account snapshots. The current-set
-manifest listener and same-owner storage events request reconciliation rather
-than replacing local state.
+manifest listener requests reconciliation rather than replacing local state.
 
 Cloud set members are validated against their original document IDs before
 normalization. When a canonical slot and a legacy Mega-Z duplicate both exist,
@@ -111,11 +251,6 @@ dropped legacy id. Old child documents remain unchanged and unlisted because the
 rules deny deletion. Without a connection, staging stops before any write and
 reports that cloud in-game sets need a connection.
 
-Deploy the updated rules for the current-set paths with the normal rules
-deployment. Until deployment, access to those paths fails visibly, while valid
-local saves remain available for retry. The emulator setup below tests rules
-locally and does not deploy them.
-
 Reconciliation continues while a set editor is open, but its mounted form does
 not refresh underneath you. If another device changes or deletes that team,
 the next save is rejected against the latest local working copy and retains
@@ -128,30 +263,28 @@ which account owns the working copy. First sign-in adopts existing local teams
 without trusting the old last-push marker. When a pre-existing cloud team has
 the same ID but different content, the cloud copy keeps that ID and the local
 copy is recovered, because historical edit order cannot be inferred. Signing out
-preserves the account cache, and no migration clears browser storage.
+preserves the account cache, and no migration clears app-local storage.
 
 ## Secrets and continuous integration
 
-Deploy the updated Firestore rules before or with the new client. Until those
-rules are deployed, child access fails visibly; successful local saves remain
-available for **Retry sync**. After a v2 migration, old clients fail their legacy
-read validation instead of clearing local storage. Reload the app to use the
-new client. Neither local implementation nor emulator checks deploy rules.
+Deploy updated Firestore rules before or with a new client. Until those rules are
+deployed, child access fails visibly; successful local saves remain available
+for **Retry sync**. After a v2 migration, old clients fail their legacy read
+validation instead of clearing local storage. Install an updated client to use
+the new format. Local Xcode installs do not deploy rules.
 
-The Firebase workflows read five secrets from GitHub environments:
-`VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`,
-`VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_APP_ID`, and `FIREBASE_TOKEN`.
-release-please reads one repository secret instead, because that job declares no
-environment: `RELEASE_PLEASE_TOKEN`.
+The TestFlight workflow uses the GitHub `preview` environment and
+`champions-atlas-test`. It reads `VITE_FIREBASE_API_KEY`,
+`VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`,
+`VITE_FIREBASE_APP_ID`, and `FIREBASE_TOKEN` from that environment. Create
+`FIREBASE_TOKEN` with `npx firebase-tools login:ci` using an account with access
+to the test project. The build inlines the four Firebase configuration values.
+The same environment supplies `YOUTUBE_API_KEY`, `TYPESAFE_API_KEY`,
+`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`,
+`APPLE_CERTIFICATE_P12_BASE64`, and `APPLE_CERTIFICATE_PASSWORD`.
 
-| Environment  | Project                | Values                                               |
-| ------------ | ---------------------- | ---------------------------------------------------- |
-| `production` | `champions-atlas`      | that project's web app config, plus `FIREBASE_TOKEN` |
-| `preview`    | `champions-atlas-test` | that project's web app config, plus the same token   |
-
-Create `FIREBASE_TOKEN` with `npx firebase-tools login:ci`, using an account that
-owns both projects. The build inlines the four `VITE_FIREBASE_*` values, so each
-environment must build with its own project's config.
+The release-please workflow reads the repository secret `RELEASE_PLEASE_TOKEN`
+instead, because its job declares no environment.
 
 Create `RELEASE_PLEASE_TOKEN` as a fine-grained personal access token for this
 repository with **Contents: Read and write** and **Pull requests: Read and
@@ -159,82 +292,30 @@ write**, then store it as a repository secret. The workflow needs a token other
 than `GITHUB_TOKEN` so that merging the release pull request triggers the
 `push`-triggered workflows.
 
-- A push to `main` runs `deploy-prod.yml`, which deploys Hosting and
-  `firestore.rules` to `champions-atlas`.
-- A pull request labeled `deploy-preview` runs `deploy-preview.yml`, which
-  deploys the rules and a Hosting preview channel to `champions-atlas-test`, then
-  comments the channel URL on the pull request.
-  The `deploy-preview` label must exist on the repository (`gh label create deploy-preview`); without it the job silently no-ops.
+- A push to `main` runs `deploy-testflight.yml`. To run it manually, select
+  **Actions** → **Deploy TestFlight** → **Run workflow**, choose a branch, and
+  optionally select **Rebuild all historical regulations**. A feature-branch
+  push or pull request label does not trigger the workflow.
+- The workflow builds the app, deploys Firestore rules to
+  `champions-atlas-test`, and uploads the signed iOS build to TestFlight. It runs
+  independently of CI and does not wait for CI checks.
+- After upload, wait for Apple to process the build. Accept the TestFlight
+  invitation if needed, open TestFlight on your iPhone, and install or update
+  Champion's Atlas when the build becomes available. An upload does not install
+  the build automatically.
+- A [local Xcode install](#install-updates-on-an-iphone) skips Apple processing
+  and TestFlight installation but does not deploy Firestore rules.
 - A push to `main` also runs `release-please.yml`, which opens or updates a
   release pull request that bumps `package.json` and writes `CHANGELOG.md`. The
   workflow merges that pull request once the required status checks pass, then
   tags the release.
 
-Deploy by hand with:
+## Local shared-UI development
 
-```sh
-npx firebase-tools deploy --only hosting,firestore:rules --project champions-atlas
-```
-
-## Local development
-
-1. Print the test project's web app config and copy the four values:
-
-   ```sh
-   npx firebase-tools apps:list WEB --project champions-atlas-test
-   npx firebase-tools apps:sdkconfig WEB <appId> --project champions-atlas-test
-   ```
-
-2. Put them in `.env.local`, which is gitignored, then run `npm run dev` and sign
-   in with Google.
-3. Deploy the rules to the test project once, or sync fails with a permission
-   error:
-
-   ```sh
-   npx firebase-tools deploy --only firestore:rules --project champions-atlas-test
-   ```
-
-### Test sync without a cloud project
-
-The app connects to the Firebase Emulator Suite only in a development build with
-`VITE_FIREBASE_EMULATORS=1`, the project ID `demo-champions-atlas`, and a
-loopback hostname, so a production build always talks to the configured project.
-The repository `firebase.json` does not configure emulator ports. Create a
-temporary config outside the repository with the repository's absolute rules
-path; this example uses Auth on port 9099 and Firestore on port 8080:
-
-```json
-{
-  "firestore": { "rules": "/absolute/path/to/champions-atlas/firestore.rules" },
-  "emulators": {
-    "auth": { "host": "127.0.0.1", "port": 9099 },
-    "firestore": { "host": "127.0.0.1", "port": 8080 },
-    "ui": { "enabled": false }
-  }
-}
-```
-
-Start the emulators with that temporary config and run the development server
-against the isolated demo project:
-
-```sh
-./node_modules/.bin/firebase emulators:start --only auth,firestore --project demo-champions-atlas --config /tmp/champions-atlas-firebase.json
-VITE_FIREBASE_API_KEY=demo-key VITE_FIREBASE_AUTH_DOMAIN=demo-champions-atlas.firebaseapp.com VITE_FIREBASE_PROJECT_ID=demo-champions-atlas VITE_FIREBASE_APP_ID=demo-app VITE_FIREBASE_EMULATORS=1 npm run dev -- --host 127.0.0.1 --port 5199 --strictPort
-```
-
-The emulator serves `firestore.rules` from the temporary config. Sign in with a
-test account; there is no bypass for real accounts. `npm run build:e2e` blanks
-the `VITE_FIREBASE_*` values, so it never reaches an emulator.
-
-## Sign-in domains
-
-Sign-in opens a Google popup, and falls back to a full-page redirect when a
-browser blocks the popup. Firebase rejects the attempt with
-`auth/unauthorized-domain` unless the page's hostname is listed under
-**Authentication** → **Settings** → **Authorized domains**. The default list
-covers `localhost`, the project's `firebaseapp.com` and `web.app` domains, and,
-in these projects, `127.0.0.1`. Opening the dev server by LAN IP fails until you
-add that hostname.
+Run `npm run dev` to serve the shared UI on loopback for local browser
+development. The browser harness does not initialize Firebase or provide
+authentication or sync, even when Firebase build variables are set. Use the
+iPhone app to check native Google sign-in and sync.
 
 ## Manual console steps
 
@@ -245,12 +326,3 @@ Two steps have no CLI equivalent:
    provider without an OAuth client ID, which only the console provisions.
 2. Accept the Firebase terms of service for the account, which happens when you
    first create or add a project in the console.
-
-`hosting:channel:deploy` adds each preview channel's domain to the project's
-authorized domains, so preview sign-in needs no manual change.
-
-## SPA routing
-
-Hosting rewrites every path to `/index.html`, so deep links such as `/teams/<id>`
-resolve on the client. The rewrite serves the shell with a 200 status, so a
-missing team renders the 404 page without an HTTP 404 status.

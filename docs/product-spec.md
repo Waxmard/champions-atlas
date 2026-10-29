@@ -1,14 +1,16 @@
 # Product specification
 
-Champion's Atlas helps you choose Pokémon Champions doubles teams on a
-phone. Existing spreadsheets are awkward to browse, and missingNO loses filters
-when opening a team. The product focuses on reliable, fast discovery.
+Champion's Atlas is an iOS app that helps you choose Pokémon Champions doubles
+teams. Existing spreadsheets are awkward to browse, and missingNO loses filters
+when opening a team. The product focuses on reliable, fast discovery. Browser
+development, preview, and tests are local shared-UI tools, not a supported website
+or PWA.
 
 This document records agreed behavior that lives nowhere else: discovery and
 browsing, saved-team editing and similarity rules, and acceptance criteria.
 Import and result-ordering rules are in
 [data sources](data-sources.md), the synced record model is in
-[Firebase deployment and sync](firebase.md), and user-facing behavior, tooling,
+[iOS installation and Firebase sync](firebase.md), and user-facing behavior, tooling,
 and commands are in the [README](../README.md) and `AGENTS.md`.
 
 ## Discovery and browsing
@@ -42,7 +44,7 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   returning. Back to teams stays visible while browsing a team.
 - Encode filters in the URL so a refresh or shared link restores the selection.
 - Save current teams locally. Configured account sync is described in
-  [Firebase deployment and sync](firebase.md).
+  [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
   silently modify imported teams.
 - Known custom-rule teams stay hidden from Browse by default; **Include
@@ -65,6 +67,12 @@ and source metadata available when saved; show that metadata as evidence for the
 original, not the edited version. Older saved teams show only metadata they
 retained. Custom originals are starting teams without public source claims;
 never backfill legacy originals from a refreshed catalog.
+
+Saved originals link to current catalog details when the original ID matches,
+or otherwise when their canonical Poképaste or VRPastes URL exactly and uniquely
+matches a catalog URL. Current details do not change the original evidence,
+saved edits, or independent team copies. Teams without a match remain usable
+without a catalog link or warning.
 
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
@@ -149,9 +157,10 @@ team synchronize across devices.
 Saved teams can be deleted after confirmation. If the deleted team was active,
 the next saved team becomes active; deleting the last one returns to the empty
 My teams view. Deletion also discards unsaved edits to that team. The app
-remembers the last successfully visited browse, team-detail, or My teams URL for
-a bare-root reload and returns to it after sign-in. Explicit links take
-precedence, and a missing remembered detail falls back to browsing. The main
+remembers the last successfully visited URL and scroll position on this device
+for a bare-root reopen and returns to that page after sign-in. With no remembered
+page, it opens Browse. Explicit links take precedence, and a missing remembered
+detail falls back to browsing. Editors and dialogs reopen closed. The main
 navigation remains visible while scrolling, and selecting a Pokémon clears its
 search input for the next choice.
 
@@ -159,8 +168,8 @@ An explicit saved-team link with no saved teams keeps its URL and shows a
 missing-team notice. Resuming a deleted saved team opens the empty My teams view
 and clears its active selection.
 
-Saving requires available browser storage; clearing the origin's storage removes
-local saves. Only unsaved input prompts before navigation. Browse filters and
+Saving requires available app-local storage; clearing it removes local saves.
+Only unsaved input prompts before navigation. Browse filters and
 position remain device-local.
 
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
@@ -215,16 +224,28 @@ already share the same teammates and set details and are equally proven; the
 keyword half of that tiebreak works without them. See
 [data sources](data-sources.md) for how they are generated and validated.
 
-Custom import starts in **My teams** with a required name and complete
+Custom text import starts in **My teams** with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
-ability, nature, EVs, and four unique moves, and happens in
-[Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder);
-Champion's Atlas accepts its exported text only. Imported text becomes the
-immutable original snapshot, where nickname, gender, and unknown lines remain
-intact; IVs, level, and Tera Type are omitted from displayed and exported
-Champions text. Custom teams are saved locally under the current regulation with
-legality unverified and no published source claims. File, URL, screenshot,
-rental-code, legality, and cross-device import are out of scope.
+ability, nature, EVs, and four unique moves. Export the text from
+[Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder)
+and paste it into Champion's Atlas. Imported text becomes the immutable original
+snapshot, where nickname, gender, and unknown lines remain intact; IVs, level,
+and Tera Type are omitted from displayed and exported Champions text. Custom
+teams are saved locally under the current regulation with legality unverified and
+no published result claims.
+
+From a Poképaste page, the iOS share extension accepts one direct link or paste
+ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
+The manual fallback accepts a `pokepast.es` link or 16-character paste ID.
+Imports do not change the active team. An existing bookmark for the link is
+returned unchanged, even if multiple catalog teams share that link. A unique
+catalog match is bookmarked with its source metadata without a network request.
+When multiple catalog teams share a link without an existing bookmark, import is
+rejected without fetching or saving. Otherwise the app fetches the paste
+directly from Poképaste and applies the same six-set requirements as custom text
+import. A failed shared import remains queued for retry or dismissal without
+deleting a saved team. File, screenshot, rental-code, and social-post imports
+are out of scope.
 
 Export current sets with Champions EV normalization, using 0–32 per stat. Omit
 IVs, level, Tera Type, and unknown values. Never assign edited teams new rental
@@ -235,15 +256,25 @@ spreads. Any borrowed or inferred spread must remain separate from sourced data.
 
 **Wishlist** is a bookmark collection over the same saved-team records: a record
 without a collection belongs to My teams, and a `wishlist` record is excluded
-from My teams selection, its active-team fallback, and deletion. Adding a catalog
-team that is already bookmarked returns the existing bookmark; adding one that is
-only in use leaves that team untouched. Using a bookmarked team promotes the
-same record, retaining its ID, original snapshot, sets, and sources, and separate
-My teams copies are never merged. Removal rejects a record that is no longer a
-bookmark so a stale Wishlist control cannot delete a promoted team. A bookmark
-whose source team leaves the catalog stays usable with its saved roster and no
-catalog details. Both collections share the same storage ceiling and sync path
-(see [storage and sync](firebase.md)).
+from My teams selection and its active-team fallback. Move a record in either
+direction without changing its ID, original snapshot, edits, or sources. Moving
+from My teams is unavailable while edits are pending and rejects stale records
+or a conflicting Wishlist copy. Separate copies are never merged.
+
+The catalog **Wishlist** button adds a bookmark or immediately removes the
+matching saved Wishlist copy and its edits; My teams copies remain unchanged.
+If multiple Wishlist records match, remove them individually in Wishlist rather
+than deleting them together. Using a bookmarked catalog team promotes the same
+record; if multiple bookmarks match, choose one in Wishlist. Removal rejects a
+record that is no longer a bookmark so a stale control cannot delete a promoted
+team. A bookmark without a current catalog match stays usable with its saved
+roster and no catalog details link. Both collections share the same storage
+ceiling and sync path (see [storage and sync](firebase.md)).
+
+The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
+After a successful sign-in, it can open saved data offline; sync resumes when
+connected. A first sign-in may require connectivity. Native setup and signing
+are described in [iOS installation and Firebase sync](firebase.md).
 
 The My teams picker shows only in-use teams. Its icon-first search covers the
 current team name and each member's species, with exact, prefix, substring, and
@@ -253,10 +284,8 @@ renaming it.
 
 ## Future scope
 
-- Support installation as a PWA for personal use.
 - AI integration and separately verified subscription/API billing options.
 - Screenshot and team-ID import.
-- Native iOS app.
 
 ## Acceptance criteria
 

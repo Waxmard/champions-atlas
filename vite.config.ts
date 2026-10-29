@@ -51,17 +51,6 @@ export default defineConfig({
           filename.split(/[/\\]/).includes('node_modules') ? undefined : true,
       },
     }),
-    {
-      name: 'emit-build-version',
-      applyToEnvironment: (environment) => environment.name === 'client',
-      generateBundle() {
-        this.emitFile({
-          type: 'asset',
-          fileName: 'version.json',
-          source: JSON.stringify({ buildId: process.env.VITE_BUILD_ID ?? '' }),
-        });
-      },
-    },
   ],
   build: {
     // ponytail: catalog.json (1170 teams) ships as one ~4 MB data chunk for

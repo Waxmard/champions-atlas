@@ -144,7 +144,7 @@ const membersSchema = z
     (members) =>
       new Set(members.map((member) => normalize(member.pokemon))).size === 6
   );
-const originalSchema = z.looseObject({
+export const originalSchema = z.looseObject({
   id: textSchema,
   name: textSchema,
   regulation: textSchema,

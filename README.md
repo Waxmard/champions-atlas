@@ -1,14 +1,15 @@
 # Champion's Atlas
 
-Champion's Atlas is a mobile-friendly Pokémon Champions doubles team browser and
-editor combining multiple published sources, without claiming legality validation.
-It uses SvelteKit and TypeScript, daisyUI with Tailwind CSS, bits-ui primitives,
-and locally bundled Nunito Variable.
+Champion's Atlas is an iOS app for browsing and editing Pokémon Champions doubles
+teams from multiple published sources, without claiming legality validation. Its
+packaged UI uses SvelteKit and TypeScript, daisyUI with Tailwind CSS, bits-ui
+primitives, and locally bundled Nunito Variable.
 
 ## Development
 
-Use the Node 24 LTS environment selected by mise. Install dependencies and start
-the development server with:
+Use the Node 24 LTS environment selected by mise. The development server,
+preview, and Playwright suites are local tools for the shared UI, not a supported
+website or PWA. Install dependencies and start the loopback server with:
 
 ```sh
 mise install      # Install the project's Node runtime.
@@ -29,14 +30,20 @@ npm run test:e2e                   # Run the full browser suite.
 Firebase-disabled bundle with a deterministic catalog fixture; they do not change
 the generated catalog or normal production builds. CI runs smoke coverage on pull
 requests and pushes to `main`. Select **Actions → CI → Run workflow** for the full
-browser suite. Deployment workflows run independently of CI; see
-[Firebase deployment and sync](docs/firebase.md) for hosting.
+browser suite. The TestFlight workflow runs independently of CI on pushes to
+`main` or by manual dispatch. See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration) for delivery and configuration.
+
+For daily iPhone updates, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
+
+```sh
+make ios          # Build, install, and launch on an iPhone.
+```
 
 Format files or serve a built app with:
 
 ```sh
 npm run format    # Format project files.
-npm run preview   # Serve the production build locally.
+npm run preview   # Serve the built shared UI locally.
 ```
 
 ## Layout
@@ -48,11 +55,11 @@ npm run preview   # Serve the production build locally.
 | `scripts/`    | Catalog import, enrichment, and maintenance commands  |
 | `test/`       | Node tests and built-app smoke checks                 |
 | `e2e/`        | Desktop and mobile browser tests                      |
-| `static/`     | App icons and cached Pokémon assets                   |
+| `static/`     | Cached Pokémon assets and type badges                 |
 | `docs/`       | Product behavior, data sources, and deployment guides |
 
-The crowned-compass logo in `static/favicon.svg` is shared by the header,
-sign-in page, and favicon. Installed-app PNG icons are in `static/icons/`.
+The crowned-compass logo in `static/favicon.svg` is shared by the header and
+sign-in page. Native app icons are in `ios/App/App/Assets.xcassets`.
 
 ## Catalog
 
@@ -62,7 +69,8 @@ checked-in regulation rosters before reuse. An ineligible catalog triggers a
 cached import without forcing a YouTube recrawl. A failed rebuild preserves the
 previous file and exits unsuccessfully. A clean checkout needs network access
 for the initial import unless source files are already cached. The built app
-uses the bundled snapshot without fetching source data at runtime.
+uses the bundled catalog without fetching source data at runtime. Importing an
+unknown Poképaste link fetches that paste directly from Poképaste.
 
 A full refresh replaces historical records that sources change or remove.
 Offline imports require cached source files and do not disable asset downloads.
@@ -76,15 +84,15 @@ OFFLINE=1 npm run import:catalog # Replay cached sources.
 
 See [data sources and ranking limits](docs/data-sources.md) for source admission,
 active and historical records, cache freshness, partial-paste retention, assets,
-and preview failure policy.
+and import failure policy.
 
 ### YouTube credentials
 
 Enable YouTube Data API v3 in a Google Cloud project and restrict an API key to
 that API. Do not apply browser-referrer restrictions to this server-side key.
-Add it as the `YOUTUBE_API_KEY` GitHub Actions secret accessible to the production
-and preview environments. Both deployment workflows stop before import when the
-secret is empty. Never store the key in `.env`.
+Add it as the `YOUTUBE_API_KEY` GitHub Actions secret accessible to the `preview`
+environment. The TestFlight workflow stops before import when the secret is empty.
+Never store the key in `.env`.
 
 On macOS, store the key in Keychain; this command prompts for the value without
 placing it in shell history:
@@ -102,13 +110,23 @@ CHECK_SHEET=1 YOUTUBE_REFRESH=1 npm run import:catalog # Refresh sources and sca
 
 See the [source freshness policy](docs/data-sources.md#freshness-and-scheduling)
 for completed snapshot reuse, complete crawls, keyless and offline operation, and
-scan failures, including the stricter YouTube rule in preview.
+scan failures.
 
 ## Using the app
 
 Browse by Pokémon and set filters; filters, sorting, and position survive opening
-a team and returning. **Wishlist** bookmarks catalog teams without adding them
-to **My teams**. Choose **Use this team**, or import a complete six-member
+a team and returning. Use the **Wishlist** button on a catalog team to add or
+remove its bookmark; removal confirms before deleting that saved copy and its
+edits. From a Poképaste page, share the link to **Champion’s Atlas**, select
+**Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
+open **Add a Poképaste manually** in Wishlist and enter a `pokepast.es` link or
+16-character paste ID. Existing bookmarks and catalog matches do not require a
+fetch; other links require a connection. Importing the same link again keeps the
+existing bookmark and its edits.
+
+Move a saved team between **Wishlist** and **My teams** without losing its edits
+or source history. Separate copies are not merged. Choose **Use this team** for
+a catalog team, or import a complete six-member
 [Showdown team](https://play.pokemonshowdown.com/teambuilder) through
 **Add custom team** in **My teams**.
 
@@ -122,14 +140,14 @@ remains unverified. **Record in-game set** and **Record all in-game sets**
 explicitly record committed sets as snapshots: they change Atlas only, never
 Pokémon Champions. Team edits do not update those snapshots.
 
-Saving requires browser storage; clearing origin storage removes local saved
-data. With Firebase configured, Google sign-in is required and syncs saved teams,
-their originals, and current-set snapshots across devices. Without configuration,
-the app runs local-only. Browse preferences remain device-local.
+Saving requires app-local storage; clearing it removes local saved data. With
+Firebase configured, native Google sign-in is required and syncs saved teams, their
+originals, and current-set snapshots across devices. Without configuration, the
+app runs local-only. Browse preferences remain device-local. Check offline access
+on the device; synchronization requires a connection.
 
 See the [product specification](docs/product-spec.md) for editing, restoration,
-export, and snapshot contracts. Read [Firebase deployment and sync](docs/firebase.md)
-for rules-before-client releases, security, and recovery operations.
+export, and snapshot contracts.
 
 ## Documentation
 
@@ -137,7 +155,7 @@ for rules-before-client releases, security, and recovery operations.
 | ------------------------------------------------------- | -------------------------------------------------------------- |
 | [Product specification](docs/product-spec.md)           | Agreed product behavior and future scope                       |
 | [Data sources and ranking limits](docs/data-sources.md) | Catalog admission, evidence, ranking, assets, and cache policy |
-| [Firebase deployment and sync](docs/firebase.md)        | Hosting, authentication, sync, release safety, and recovery    |
+| [iOS installation and Firebase sync](docs/firebase.md)  | TestFlight, authentication, sync, release safety, and recovery |
 
 ## License and contributing
 

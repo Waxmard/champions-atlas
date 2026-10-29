@@ -42,4 +42,7 @@ tag, bumps the version, updates `CHANGELOG.md`, and tags the release
 ([release-please](.github/workflows/release-please.yml)). This is why commit hygiene
 matters: every commit on `main` is read by the release tooling.
 
-Deployment runs on push to `main` after the checks pass. See `docs/firebase.md` for hosting.
+The TestFlight workflow runs on pushes to `main` and by manual dispatch. See
+[iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration)
+for delivery and configuration. A local Xcode install does not deploy Firestore
+rules.

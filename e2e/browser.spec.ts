@@ -182,6 +182,15 @@ test(
   }
 );
 
+test('browse keeps the fragment and canonical filters on a direct load', async ({
+  page,
+}) => {
+  await page.goto('/#main');
+  await expect(page).toHaveURL(
+    (url) => url.hash === '#main' && url.searchParams.has('regulation')
+  );
+});
+
 test('invalid filters stay explicit; team deep links and missing teams work', async ({
   page,
 }) => {
@@ -279,7 +288,6 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
   const browse = mainNav.getByRole('link', { name: 'Browse', exact: true });
   const myTeams = mainNav.getByRole('link', { name: 'My teams', exact: true });
   await expect(browse).toHaveAttribute('aria-current', 'page');
-
   await page.evaluate(() =>
     window.scrollTo(0, document.documentElement.scrollHeight)
   );
@@ -326,6 +334,23 @@ test('QoL pinned navigation stays reachable across scroll and viewport sizes', a
     .getByRole('button', { name: 'Use this team', exact: true })
     .click();
   await expect(page).toHaveURL(/\/my-teams\?team=/);
+
+  const editButton = page
+    .getByRole('button', { name: /^Edit set for / })
+    .last();
+  await editButton.scrollIntoViewIfNeeded();
+  const scrollBeforeReload = await page.evaluate(() => window.scrollY);
+  expect(scrollBeforeReload).toBeGreaterThan(0);
+  await editButton.click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  const scrollRestoreDrift = 120;
+  await expect
+    .poll(async () =>
+      Math.abs((await page.evaluate(() => window.scrollY)) - scrollBeforeReload)
+    )
+    .toBeLessThanOrEqual(scrollRestoreDrift);
 
   await page
     .getByRole('link', { name: /^Go to / })

@@ -22,8 +22,10 @@
   import {
     openCatalogTeam,
     readSavedTeamsState,
-    wishlistCatalogTeam,
+    toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
+  import { wishlistedCatalogEntries } from '#lib/team-collections.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { sync } from '#lib/sync.svelte.js';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
@@ -38,11 +40,8 @@
     type MemberFilter,
     type Team,
   } from '#lib/catalog.js';
-  import type { PageData } from './$types';
-
   const browseKeys = ['member', 'regulation', 'sort', 'page', 'type', 'custom'];
   const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
-  let { data }: { data: PageData } = $props();
   let storageError = $state(false);
   let typeOpen = $state(false);
   let ready = $state(false);
@@ -51,15 +50,9 @@
   let actionError = $state('');
   let status = $state('');
   const pending = new SvelteSet<string>();
-  const wishlisted = $derived(
-    new Set(
-      saved
-        .filter((entry) => entry.collection === 'wishlist')
-        .map((entry) => entry.original.id)
-    )
-  );
-  const teams: Team[] = $derived(data.catalog.teams);
-  const current = $derived(data.catalog.currentRegulation);
+  const catalog = $derived(catalogState.catalog);
+  const teams: Team[] = $derived(catalog.teams);
+  const current = $derived(catalog.currentRegulation);
   const historicalRegulations = $derived(
     [...new Set(teams.map((team) => team.regulation))]
       .filter((value) => value !== current)
@@ -176,12 +169,16 @@
     }
   }
 
-  function navigate(params: URLSearchParams, preservePosition = true) {
+  function navigate(
+    params: URLSearchParams,
+    preservePosition = true,
+    hash = ''
+  ) {
     const canonical = browseParams(params);
     rememberBrowse(canonical);
     const query = canonical.toString();
 
-    void goto(resolve(`?${query}`), {
+    void goto(resolve(`?${query}${hash}`), {
       replace: true,
       reset: false,
     }).then(() => {
@@ -206,13 +203,13 @@
       if (saved !== null) {
         const params = new URLSearchParams(saved);
         if (!browseKeys.some((key) => params.has(key))) throw new Error();
-        navigate(params);
+        navigate(params, true, page.url.hash);
         return;
       }
     } catch (error) {
       if (error instanceof DOMException) storageError = true;
     }
-    navigate(new URLSearchParams());
+    navigate(new URLSearchParams(), true, page.url.hash);
   }
 
   afterNavigate(restoreBrowse);
@@ -232,12 +229,10 @@
     if (pending.has(team.id)) return;
     pending.add(team.id);
     status = actionError = '';
-    const error = wishlistCatalogTeam(team);
-    if (error) actionError = error;
-    else {
-      refreshSaved();
-      status = 'Added to Wishlist.';
-    }
+    const result = toggleCatalogWishlist(team);
+    refreshSaved();
+    actionError = result.error;
+    status = result.status;
     pending.delete(team.id);
   }
   async function use(team: Team) {
@@ -305,10 +300,6 @@
 
 <svelte:head>
   <title>Champion's Atlas — Find your next team</title>
-  <meta
-    name="description"
-    content="Find Pokémon Champions teams with persistent Pokémon and item filters, result evidence, and regulation-aware ordering."
-  />
 </svelte:head>
 
 <main id="main" class="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
@@ -576,16 +567,19 @@
             {#snippet actions()}
               {@const busy =
                 !ready || savedError !== '' || pending.has(team.id)}
-              {@const isWishlisted = wishlisted.has(team.id)}
+              {@const isWishlisted =
+                wishlistedCatalogEntries(saved, team).length > 0}
               <Button
                 type="button"
                 variant="quiet"
                 size="icon-compact"
-                class={isWishlisted
-                  ? 'text-primary disabled:text-primary/80'
-                  : ''}
-                aria-label={isWishlisted ? 'Wishlisted' : 'Wishlist'}
-                disabled={busy || isWishlisted}
+                class="catalog-wishlist-button"
+                aria-label="Wishlist"
+                aria-pressed={isWishlisted}
+                title={isWishlisted
+                  ? 'Remove from Wishlist'
+                  : 'Add to Wishlist'}
+                disabled={busy}
                 onclick={() => wishlist(team)}
               >
                 {#if isWishlisted}
@@ -644,14 +638,14 @@
       </div>
     {/if}
     <p class="provenance mt-8 max-w-3xl">
-      Catalog snapshot: {data.catalog.updatedAt.slice(0, 10)}. Teams and result
-      claims via {#each data.catalog.sources as source, index (source.url)}<a
+      Catalog snapshot: {catalog.updatedAt.slice(0, 10)}. Teams and result
+      claims via {#each catalog.sources as source, index (source.url)}<a
           class="underline underline-offset-2"
           href={source.url}
           target="_blank"
           rel="external noreferrer">{source.name}</a
-        >{index < data.catalog.sources.length - 1 ? ', ' : ''}{/each}. Published
-      set details available for {teams.filter((team) => team.paste).length}
+        >{index < catalog.sources.length - 1 ? ', ' : ''}{/each}. Published set
+      details available for {teams.filter((team) => team.paste).length}
       teams.
     </p>
   </section>

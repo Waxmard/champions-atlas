@@ -1,29 +1,27 @@
-name: Deploy Production
+name: Refresh Catalog
 
 on:
-  push:
-    branches: [main]
+  schedule:
+    - cron: '17 6 * * *'
   workflow_dispatch:
     inputs:
       refresh_history:
         description: Rebuild all historical regulations
         type: boolean
         default: false
-  schedule:
-    - cron: '17 8 * * *'
 
 permissions:
   contents: read
 
 concurrency:
-  group: catalog-production
+  group: catalog-publish
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    if: github.ref == 'refs/heads/main'
+  publish-catalog:
+    name: Refresh and publish catalog
     runs-on: ubuntu-24.04
-    environment: production
+    environment: preview
     steps:
       - uses: actions/checkout@v7
       - uses: actions/cache@v6
@@ -39,34 +37,38 @@ jobs:
             catalog-${{ runner.os }}-
       - uses: jdx/mise-action@v4
       - run: npm ci
-      - name: Import catalog
+      - name: Check required secrets
         run: |
           if [ -z "$YOUTUBE_API_KEY" ]; then
             echo '::error::YOUTUBE_API_KEY is not configured; refusing to skip YouTube sources.'
             exit 1
           fi
-          npm run import:catalog
-        env:
-          CHECK_SHEET: '1'
-          REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
-          YOUTUBE_REFRESH: ${{ github.event_name == 'schedule' && '1' || '0' }}
-          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      - name: Enrich team tags
-        run: |
           if [ -z "$TYPESAFE_API_KEY" ]; then
-            echo '::error::TYPESAFE_API_KEY is not configured; refusing to deploy untagged.'
+            echo '::error::TYPESAFE_API_KEY is not configured; refusing to publish untagged.'
             exit 1
           fi
-          npm run enrich:tags
+          if [ -z "$FIREBASE_TOKEN" ]; then
+            echo '::error::FIREBASE_TOKEN is not configured; refusing to publish without Firebase access.'
+            exit 1
+          fi
+        env:
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+      - name: Import catalog
+        run: npm run import:catalog
+        env:
+          CHECK_SHEET: '1'
+          YOUTUBE_REFRESH: '1'
+          REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
+          YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      - name: Enrich team tags
+        run: npm run enrich:tags
         env:
           TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
       - name: Evaluate team tags
         run: npm run eval:tags
-      - run: npm run build
-        env:
-          VITE_BUILD_ID: ${{ github.run_id }}
-          VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ secrets.VITE_FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ secrets.VITE_FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_APP_ID: ${{ secrets.VITE_FIREBASE_APP_ID }}
-      - run: npx firebase-tools deploy --only hosting,firestore:rules --project champions-atlas --token "${{ secrets.FIREBASE_TOKEN }}"
+      - name: Build catalog release
+        run: npm run publish:catalog
+      - name: Deploy catalog to Firebase Hosting
+        run: npx firebase-tools deploy --only hosting --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"

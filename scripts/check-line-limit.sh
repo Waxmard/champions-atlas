@@ -21,7 +21,7 @@ EXCLUDE_DIRS=(
 is_source() {
   local f="$1" ex
   case "$f" in
-  src/*.ts | src/*.svelte | src/*.css | scripts/*.mjs | e2e/*.ts | test/*.mjs) ;;
+  src/*.ts | src/*.svelte | src/*.css | scripts/*.mjs | scripts/*.sh | e2e/*.ts | test/*.mjs) ;;
   *) return 1 ;;
   esac
   for ex in ${EXCLUDE_DIRS[@]+"${EXCLUDE_DIRS[@]}"}; do

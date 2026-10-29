@@ -7,6 +7,7 @@ src/lib/data/team-tags.json
 playwright-report/
 test-results/
 mise.local.toml
+/.omp/skills/
 firebase-debug.log
 
 # Output
@@ -26,6 +27,10 @@ Thumbs.db
 .env.*
 !.env.example
 !.env.test
+/GoogleService-Info.plist
+
+# Swift LSP (xcode-build-server, machine-specific)
+/buildServer.json
 
 # Vite
 vite.config.js.timestamp-*
