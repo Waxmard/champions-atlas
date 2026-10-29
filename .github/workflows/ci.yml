@@ -32,29 +32,5 @@ jobs:
           restore-keys: |
             catalog-${{ runner.os }}-
           save-always: true
-      - uses: actions/cache@v6
-        with:
-          path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-playwright-
-      - name: Install browsers while checks run
-        run: |
-          npx playwright install --with-deps chromium webkit > /tmp/playwright-install.log 2>&1 &
-          install=$!
-          make ci
-          wait "$install" || { cat /tmp/playwright-install.log; exit 1; }
-          cat /tmp/playwright-install.log
-      - name: Run browser smoke
-        if: github.event_name != 'workflow_dispatch'
-        run: npm run test:e2e:smoke
-      - name: Run full browser suite
-        if: github.event_name == 'workflow_dispatch'
-        run: npm run test:e2e
-      - uses: actions/upload-artifact@v7
-        if: failure()
-        with:
-          name: playwright-traces
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 7
+      - name: Run CI checks
+        run: make ci

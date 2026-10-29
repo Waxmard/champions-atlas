@@ -448,7 +448,6 @@
     <Button
       type="button"
       variant="quiet"
-      size="touch"
       class="w-full"
       onclick={showMoreSpreads}
     >

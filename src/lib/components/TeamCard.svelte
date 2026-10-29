@@ -53,7 +53,7 @@
       >{/if}
     <span class="provenance ms-auto shrink-0">{team.publishedAt}</span>
   </div>
-  <h2 class="mt-1.5 text-lg leading-tight font-extrabold wrap-break-word">
+  <h2 class="mt-1.5 text-lg leading-[1.4] font-extrabold wrap-anywhere">
     {team.name}
   </h2>
   <ul class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3" aria-label="Team members">
@@ -103,12 +103,12 @@
       <a
         href={resolve(`teams/${detailId}${query}`)}
         onclick={open}
-        class="min-w-0 flex-1 rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        class="min-w-0 flex-auto rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {@render resultEvidence()}
       </a>
     {:else}
-      <div class="min-w-0 flex-1">
+      <div class="min-w-0 flex-auto">
         {@render resultEvidence()}
       </div>
     {/if}

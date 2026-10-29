@@ -63,8 +63,7 @@
       </div>
     </div>
     <Button
-      variant="secondary"
-      size="touch"
+      variant="quiet"
       aria-label="Change Pokémon"
       onclick={() => onnavigate('pokemon')}
     >
@@ -74,8 +73,7 @@
 
   {#if originalAvailable}
     <Button
-      variant="secondary"
-      size="touch"
+      variant="quiet"
       disabled={!!originalReason}
       aria-describedby={originalReason ? 'original-set-reason' : undefined}
       onclick={onoriginal}>Use original set</Button
@@ -219,7 +217,6 @@
   <div class="pt-1 text-center">
     <Button
       variant="quiet"
-      size="touch"
       aria-label="Edit Showdown text"
       onclick={() => onnavigate('text')}
     >

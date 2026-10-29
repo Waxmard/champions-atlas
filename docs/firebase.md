@@ -123,9 +123,9 @@ Use the matching Firebase project configuration and the existing paid signing te
    name is missing or ambiguous, use the identifier from the device list.
 
    The normal build reuses a valid catalog; UI changes do not require a full
-   catalog or enrichment refresh. Do not use `build:e2e`, blank Firebase
-   variables, a fixture catalog, the development server as the device asset
-   source, or the TestFlight archive/upload script for this install.
+   catalog or enrichment refresh. Do not use blank Firebase variables, the
+   development server as the device asset source, or the TestFlight
+   archive/upload script for this install.
 
 3. With the iPhone online, sign in if needed, then confirm your existing teams and
    current sets are available or restored through the same account. A first launch

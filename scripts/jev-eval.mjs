@@ -13,7 +13,6 @@ import {
 } from './jev-enrich.mjs';
 
 const output = resolve('src/lib/data/team-tags.json');
-/* Not test-results/: Playwright clears that directory on every e2e run. */
 const report = resolve('.cache/jev/eval.json');
 const AGREEMENT = 0.9;
 const CONFIDENCE = 0.6;

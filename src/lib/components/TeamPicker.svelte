@@ -131,7 +131,7 @@
       </Combobox.Input>
       <Button
         variant="quiet"
-        size="icon-touch"
+        size="icon-compact"
         class="absolute end-0.5 top-1/2 -translate-y-1/2"
         aria-label="Show saved teams"
         aria-haspopup="listbox"

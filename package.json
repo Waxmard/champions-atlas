@@ -27,16 +27,12 @@
     "sync:stats": "node scripts/sync-stats.mjs",
     "enrich:tags": "node scripts/jev-enrich.mjs",
     "eval:tags": "node scripts/jev-eval.mjs",
-    "publish:catalog": "node scripts/publish-catalog.mjs",
-    "build:e2e": "E2E_CATALOG_FIXTURE=1 VITE_CATALOG_URL= VITE_FIREBASE_API_KEY= VITE_FIREBASE_AUTH_DOMAIN= VITE_FIREBASE_PROJECT_ID= VITE_FIREBASE_APP_ID= npm run build",
-    "test:e2e": "npm run build:e2e && playwright test",
-    "test:e2e:smoke": "npm run build:e2e && playwright test --grep @smoke"
+    "publish:catalog": "node scripts/publish-catalog.mjs"
   },
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
     "@eslint/js": "^10.0.1",
     "@lucide/svelte": "^1.57.0",
-    "@playwright/test": "^1.64.1",
     "@sveltejs/adapter-static": "^4.0.0",
     "@sveltejs/kit": "^3.0.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",

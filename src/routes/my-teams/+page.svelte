@@ -11,8 +11,8 @@
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
-  import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import Copy from '@lucide/svelte/icons/copy';
+  import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -20,14 +20,8 @@
   import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
   import { canonicalSnapshot, restoreTeam } from '#lib/team-history.js';
   import { copyText } from '#lib/clipboard.js';
-  import {
-    bestEvidence,
-    evidenceGrade,
-    listingReason,
-    normalize,
-    regulationLabel,
-    type Member,
-  } from '#lib/catalog.js';
+  import { notify } from '#lib/notifications.js';
+  import { normalize, type Member } from '#lib/catalog.js';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import {
     activeTeamKey,
@@ -259,7 +253,7 @@
       storageError = '';
       nameError = '';
       errorMessage = '';
-      message = 'Saved on this device.';
+      message = '';
       void pushNow();
       return true;
     } catch {
@@ -294,20 +288,19 @@
     }));
   }
   function restoreOriginal() {
+    if (!draft || editing || deleting) return;
     if (
-      !draft ||
-      editing ||
-      deleting ||
       !confirm('Restore the original team? Your current sets will be replaced.')
     )
       return;
-    persistChange((team) => restoreTeam(team), true);
+    if (persistChange((team) => restoreTeam(team), true))
+      notify('Original team restored.');
   }
   function restoreSlot(index: number) {
     if (!draft || editing || deleting) return;
     const member = $state.snapshot(draft.original.members[index]);
     if (!member) return;
-    persistChange((team) => {
+    const restored = persistChange((team) => {
       const conflict = rosterConflict(member, team.members, index);
       if (conflict === 'duplicate')
         throw new Error('This Pokémon is already in another slot.');
@@ -320,6 +313,7 @@
         ),
       };
     });
+    if (restored) notify('Original set restored.');
   }
   function slotRevertReason(index: number): string {
     const target = visitBaseline?.members[index];
@@ -350,8 +344,10 @@
           slot === index ? structuredClone($state.snapshot(target)) : existing
         ),
       }))
-    )
+    ) {
+      notify('Set changes reverted.');
       void tick().then(() => focusSetField(index, 'pokemon'));
+    }
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -425,12 +421,10 @@
     if (!draft || editing) return;
     showExport = true;
     const ok = await copyText(exportPaste(draft.members));
-    message = ok
-      ? 'Team text copied. Unknown fields are omitted; no stats were guessed.'
-      : '';
     errorMessage = ok
       ? ''
       : 'Clipboard unavailable. Select and copy the export text below.';
+    if (ok) notify('Team text copied.');
   }
   async function removeSelectedTeam() {
     if (!draft || editing || deleting) return;
@@ -491,7 +485,7 @@
     } catch {
       activeFailed = true;
     }
-    message = 'Team deleted.';
+    notify('Team deleted.');
     errorMessage = activeFailed
       ? 'Team deleted, but the active team could not be remembered.'
       : '';
@@ -507,11 +501,7 @@
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
 
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <SavedCollectionHeader
-    collection="my-teams"
-    title="My teams"
-    description="Keep your original. Explore changes. Save your own version."
-  />
+  <SavedCollectionHeader collection="my-teams" title="My teams" />
   {#if storageError || errorMessage}<p
       role="alert"
       class="plate mt-5 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
@@ -542,56 +532,47 @@
         />
       </div>
     {:else}
-      <p class="plate mt-8 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
-        No saved teams yet. Open a catalog team and choose “Use this team”.
-      </p>
+      <div class="plate mt-8 max-w-xl px-4 py-3">
+        <p class="text-[0.9375rem] leading-relaxed">
+          No saved teams yet. Open a catalog team and choose “Use this team”.
+        </p>
+        <Button
+          href={resolve('my-teams/new')}
+          variant="quiet"
+          class="-ms-2 mt-1"
+        >
+          <Plus class="size-4" aria-hidden="true" />
+          <span>Add custom team</span>
+        </Button>
+      </div>
     {/if}
   {/if}
   {#if ready && !storageError}
-    <p role="status" class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70">
-      {message}
-    </p>
+    {#if message}<p
+        role="status"
+        class="mt-4 text-[0.9375rem] text-base-content/70"
+      >
+        {message}
+      </p>{/if}
     {#if draft}
-      {@const originalResult = bestEvidence(
-        {
-          reports: draft.original.reports ?? [],
-          regulation: draft.original.regulation,
-        },
-        current
-      )}
       {@const match = collections.resolveCatalogTeam(draft.original, teams)}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
         <header class="flex items-start justify-between gap-3 border-b pb-4">
-          <div class="min-w-0">
+          <div class="min-w-0 flex-1">
             <h2
-              class="text-xl leading-tight font-extrabold wrap-break-word text-base-content sm:text-[1.375rem]"
+              class="text-xl leading-[1.4] font-extrabold wrap-anywhere text-base-content sm:text-[1.375rem]"
             >
               {draft.name}
             </h2>
-            <div class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-              <span
-                class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
-                >{regulationLabel(draft.original.regulation)}</span
-              >
-              <span
-                class="stamp"
-                data-grade={evidenceGrade(originalResult.level)}
-                >{originalResult.none
-                  ? draft.origin === 'custom'
-                    ? listingReason(draft.original, draft.origin).label
-                    : `Original source: ${listingReason(draft.original, draft.origin).label}`
-                  : `Original result: ${originalResult.label}`}</span
-              >
-              {#if match}<a
-                  class="inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
-                  href={resolve(`teams/${match.id}`)}>View catalog details</a
-                >{/if}
-            </div>
+            {#if match}<a
+                class="mt-2 inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
+                href={resolve(`teams/${match.id}`)}>View catalog details</a
+              >{/if}
           </div>
           <Button
-            variant="quiet"
-            size="icon-touch"
-            class="shrink-0 text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
+            variant="danger-quiet"
+            size="icon-compact"
+            class="shrink-0"
             aria-label="Delete team"
             title="Delete team"
             disabled={editing || deleting}
@@ -649,17 +630,9 @@
               {nameError}
             </p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <MyTeamCollectionActions
-              teamId={draft.id}
-              {baseline}
-              {dirty}
-              members={draft.members}
-              disabled={editing || deleting || stale}
-            />
+          <div class="flex flex-wrap items-center gap-1.5">
             <Button
-              variant="secondary"
-              size="touch"
+              variant="quiet"
               data-team-action="copy"
               disabled={editing || deleting}
               onclick={copyPaste}
@@ -667,17 +640,15 @@
               <Copy class="size-4" aria-hidden="true" />
               <span>Copy team text</span>
             </Button>
-            {#if !pendingSpecies && !showSwapPicker}
-              <Button
-                variant="secondary"
-                size="touch"
-                disabled={editing}
-                onclick={() => (showSwapPicker = true)}
-              >
-                <ArrowLeftRight class="size-4" aria-hidden="true" />
-                <span>Change a Pokémon</span>
-              </Button>
-            {/if}
+            <MyTeamCollectionActions
+              teamId={draft.id}
+              {baseline}
+              {dirty}
+              members={draft.members}
+              disabled={editing || deleting || stale}
+              onswap={() => (showSwapPicker = true)}
+              swapDisabled={editing || !!pendingSpecies || showSwapPicker}
+            />
           </div>
         </div>
         <div class="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -685,7 +656,9 @@
             {dirty ? 'Unsaved input.' : 'Saved on this device.'}
           </p>
           {#if draft.name !== draft.original.name}
-            <p class="provenance">Original: {draft.original.name}</p>
+            <p class="provenance max-w-full min-w-0 wrap-anywhere">
+              Original: {draft.original.name}
+            </p>
           {/if}
           <p class="provenance">
             Editing does not create a working rental code.
@@ -699,7 +672,7 @@
             <span>{pendingSpecies}</span>
             <Button
               variant="quiet"
-              size="icon-touch"
+              size="icon-compact"
               aria-label="Clear selected Pokémon"
               onclick={cancelSpeciesSwap}><X class="size-4" /></Button
             >

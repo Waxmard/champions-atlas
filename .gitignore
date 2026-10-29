@@ -4,8 +4,6 @@ static/sprites/
 static/items/
 src/lib/data/catalog.json
 src/lib/data/team-tags.json
-playwright-report/
-test-results/
 mise.local.toml
 /.omp/skills/
 firebase-debug.log
