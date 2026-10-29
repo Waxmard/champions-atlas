@@ -146,8 +146,13 @@ changes before selection. Selecting the suggestion applies the complete saved
 snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
 
-Suggestions are keyboard-operable. Operation errors use alerts, and successful
-actions use status messages.
+Suggestions are keyboard-operable. Operation errors use alerts. Deliberate
+actions, including Wishlist changes, imports, collection moves, deletions,
+restorations, copying, and in-game recording, use one temporary status message
+below navigation for three seconds. The message survives navigation but is not
+stored or replayed. Autosaved fields and background sync do not produce these
+messages. Validation errors and failed shared imports remain available until
+corrected or dismissed.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a

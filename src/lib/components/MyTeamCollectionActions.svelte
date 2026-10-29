@@ -5,6 +5,7 @@
   import type { Member } from '#lib/catalog.js';
   import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
+  import { notify } from '#lib/notifications.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import {
     moveInUseTeamToWishlist,
@@ -24,14 +25,13 @@
   let { teamId, baseline, members, disabled, dirty }: Props = $props();
   let pending = $state(false),
     movedId = $state<string | null>(null),
-    errorMessage = $state(''),
-    statusMessage = $state('');
+    errorMessage = $state('');
 
   async function move() {
     if (disabled || dirty || pending || movedId === teamId) return;
     const id = teamId;
     pending = true;
-    errorMessage = statusMessage = '';
+    errorMessage = '';
     let previousActiveId: string | null;
     try {
       previousActiveId = localStorage.getItem(activeTeamKey);
@@ -46,9 +46,7 @@
     }
 
     movedId = id;
-    statusMessage = 'Team moved to Wishlist.';
     void pushNow();
-    let activeFailed = false;
     try {
       const replacement = resolveSavedTeamId(
         readSavedTeams(localStorage),
@@ -58,14 +56,14 @@
       if (replacement) localStorage.setItem(activeTeamKey, replacement);
       else localStorage.removeItem(activeTeamKey);
     } catch {
-      activeFailed = true;
       errorMessage =
         'Team moved to Wishlist, but the active team could not be remembered.';
+      pending = false;
+      notify('Team moved to Wishlist.');
+      return;
     }
     try {
-      await goto(resolve('wishlist'), {
-        state: { movedToWishlist: activeFailed ? 'active-failed' : 'moved' },
-      });
+      await goto(resolve('wishlist'));
     } catch {
       const navigationError =
         'Team moved to Wishlist, but Wishlist could not be opened.';
@@ -75,6 +73,7 @@
     } finally {
       pending = false;
     }
+    notify('Team moved to Wishlist.');
   }
 </script>
 
@@ -94,11 +93,4 @@
   style="color: var(--color-error-content)"
 >
   {errorMessage}
-</p>
-<p
-  role="status"
-  aria-live="polite"
-  class="provenance order-last basis-full {statusMessage ? '' : 'sr-only'}"
->
-  {statusMessage}
 </p>

@@ -325,9 +325,9 @@ test('QoL deletion replaces the selected copy and survives reload', async ({
   expect(dialogMessage).toContain('This cannot be undone.');
   await expect(page).toHaveURL('/my-teams?team=' + remainingId);
   await expect(page.locator('[data-team-picker]')).toBeVisible();
-  await expect(page.locator('main > p[role="status"]')).toHaveText(
-    'Team deleted.'
-  );
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Team deleted.' })
+  ).toHaveText('Team deleted.');
   await expect(
     page.getByRole('region', { name: 'Weavile set', exact: true })
   ).not.toContainText('Delete-only draft item');

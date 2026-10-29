@@ -20,6 +20,7 @@
   import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
   import { canonicalSnapshot, restoreTeam } from '#lib/team-history.js';
   import { copyText } from '#lib/clipboard.js';
+  import { notify } from '#lib/notifications.js';
   import {
     bestEvidence,
     evidenceGrade,
@@ -259,7 +260,7 @@
       storageError = '';
       nameError = '';
       errorMessage = '';
-      message = 'Saved on this device.';
+      message = '';
       void pushNow();
       return true;
     } catch {
@@ -294,20 +295,19 @@
     }));
   }
   function restoreOriginal() {
+    if (!draft || editing || deleting) return;
     if (
-      !draft ||
-      editing ||
-      deleting ||
       !confirm('Restore the original team? Your current sets will be replaced.')
     )
       return;
-    persistChange((team) => restoreTeam(team), true);
+    if (persistChange((team) => restoreTeam(team), true))
+      notify('Original team restored.');
   }
   function restoreSlot(index: number) {
     if (!draft || editing || deleting) return;
     const member = $state.snapshot(draft.original.members[index]);
     if (!member) return;
-    persistChange((team) => {
+    const restored = persistChange((team) => {
       const conflict = rosterConflict(member, team.members, index);
       if (conflict === 'duplicate')
         throw new Error('This Pokémon is already in another slot.');
@@ -320,6 +320,7 @@
         ),
       };
     });
+    if (restored) notify('Original set restored.');
   }
   function slotRevertReason(index: number): string {
     const target = visitBaseline?.members[index];
@@ -350,8 +351,10 @@
           slot === index ? structuredClone($state.snapshot(target)) : existing
         ),
       }))
-    )
+    ) {
+      notify('Set changes reverted.');
       void tick().then(() => focusSetField(index, 'pokemon'));
+    }
   }
   const focusSetField = (index: number, field: EditableSetField) =>
     document
@@ -425,12 +428,10 @@
     if (!draft || editing) return;
     showExport = true;
     const ok = await copyText(exportPaste(draft.members));
-    message = ok
-      ? 'Team text copied. Unknown fields are omitted; no stats were guessed.'
-      : '';
     errorMessage = ok
       ? ''
       : 'Clipboard unavailable. Select and copy the export text below.';
+    if (ok) notify('Team text copied.');
   }
   async function removeSelectedTeam() {
     if (!draft || editing || deleting) return;
@@ -491,7 +492,7 @@
     } catch {
       activeFailed = true;
     }
-    message = 'Team deleted.';
+    notify('Team deleted.');
     errorMessage = activeFailed
       ? 'Team deleted, but the active team could not be remembered.'
       : '';

@@ -1,11 +1,9 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { afterNavigate, goto, replaceState } from '$app/navigation';
+  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import { page } from '$app/state';
   import type { ResolvedPathname } from '$app/types';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import X from '@lucide/svelte/icons/x';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -13,6 +11,7 @@
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
+  import { notify } from '#lib/notifications.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { SAVE_FAILURE } from '#lib/saved-team-actions.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
@@ -34,10 +33,8 @@
   let ready = $state(false),
     loaded = $state(false),
     storageError = $state(''),
-    status = $state(''),
     errorMessage = $state(''),
     pendingId = $state('');
-  let feedbackDismissed = $state(false);
   let pasteLink = $state(''),
     importPending = $state(false),
     invalidLink = $state(false),
@@ -92,22 +89,6 @@
     };
   });
 
-  afterNavigate(() => {
-    if (!page.state.movedToWishlist) return;
-    feedbackDismissed = false;
-    status = 'Team moved to Wishlist.';
-    if (page.state.movedToWishlist === 'active-failed')
-      errorMessage =
-        'Team moved to Wishlist, but the active team could not be remembered.';
-    replaceState(
-      resolve(`/wishlist?${page.url.searchParams.toString()}${page.url.hash}`),
-      {
-        ...page.state,
-        movedToWishlist: undefined,
-      }
-    );
-  });
-
   $effect(() => {
     void sync.revision;
     if (ready) untrack(refresh);
@@ -140,8 +121,7 @@
       (sync.configured && (!sync.authResolved || !sync.user))
     )
       return false;
-    feedbackDismissed = false;
-    status = errorMessage = '';
+    errorMessage = '';
     invalidLink = false;
 
     let url: string;
@@ -176,7 +156,7 @@
         )
       ) {
         refresh();
-        status = 'Already in Wishlist.';
+        notify('Already in Wishlist.');
         return true;
       }
       if (
@@ -198,7 +178,7 @@
           void pushNow();
         }
         refresh();
-        status = alreadySaved ? 'Already in Wishlist.' : 'Added to Wishlist.';
+        notify(alreadySaved ? 'Already in Wishlist.' : 'Added to Wishlist.');
         return true;
       }
     } catch (error) {
@@ -211,7 +191,6 @@
     const controller = new AbortController();
     importController = controller;
     importPending = true;
-    status = 'Loading Poképaste…';
     let timedOut = false;
     const timer = window.setTimeout(() => {
       timedOut = true;
@@ -221,7 +200,6 @@
       const payload = await loadPokepaste(url, fetch, controller.signal);
       if (!mounted || (controller.signal.aborted && !timedOut)) return false;
       if (timedOut) {
-        status = '';
         errorMessage = 'Poképaste request timed out. Try again.';
         return false;
       }
@@ -231,7 +209,6 @@
           sync.user?.uid !== userId ||
           localStorage.getItem(syncOwnerKey) !== owner
         ) {
-          status = '';
           errorMessage = 'Account changed. Import the Poképaste again.';
           return false;
         }
@@ -243,10 +220,9 @@
         );
         void pushNow();
         refresh();
-        status = 'Added to Wishlist.';
+        notify('Added to Wishlist.');
         return true;
       } catch (error) {
-        status = '';
         errorMessage =
           error instanceof SavedTeamError ? error.message : SAVE_FAILURE;
         refresh();
@@ -254,7 +230,6 @@
       }
     } catch (error) {
       if (!mounted) return false;
-      status = '';
       errorMessage = timedOut
         ? 'Poképaste request timed out. Try again.'
         : error instanceof TypeError
@@ -280,7 +255,7 @@
     );
   }
 
-  async function processShares(retry: boolean, explicit = false) {
+  async function processShares(retry: boolean) {
     if (
       !isNativeApp ||
       !canProcessShares() ||
@@ -290,7 +265,6 @@
       (queueError && !retry)
     )
       return;
-    if (explicit) feedbackDismissed = false;
     queuePending = true;
     try {
       const { shares } = await AtlasNative.getPendingShares();
@@ -300,7 +274,6 @@
       for (const share of shares) {
         if (!canProcessShares()) return;
         blockedShare = share;
-        feedbackDismissed = false;
         const userId = sync.user?.uid;
         let owner: string | null;
         try {
@@ -338,7 +311,6 @@
   async function dismissShare() {
     if (!blockedShare || !canProcessShares() || queuePending || importPending)
       return;
-    feedbackDismissed = false;
     queuePending = true;
     try {
       await AtlasNative.acknowledgeShare({ id: blockedShare.id });
@@ -357,9 +329,9 @@
 
   async function use(entry: SavedTeam) {
     if (pendingId) return;
-    feedbackDismissed = false;
     pendingId = entry.id;
-    status = errorMessage = '';
+    errorMessage = '';
+    invalidLink = false;
     let promoted: SavedTeam;
     try {
       promoted = useWishlistedTeam(localStorage, entry.id);
@@ -373,12 +345,15 @@
       return;
     }
     void pushNow();
-    status = 'Team moved to My teams.';
     try {
       localStorage.setItem(activeTeamKey, promoted.id);
     } catch {
       errorMessage =
         'Your team was saved, but the active team could not be remembered.';
+      refresh();
+      notify('Team moved to My teams.');
+      pendingId = '';
+      return;
     }
     try {
       await goto(
@@ -390,19 +365,18 @@
       errorMessage = errorMessage
         ? `${errorMessage} Could not open My teams.`
         : 'Could not open My teams. Your team was saved.';
-      pendingId = '';
       refresh();
-      return;
     }
+    notify('Team moved to My teams.');
     pendingId = '';
   }
 
   async function remove(entry: SavedTeam) {
     if (pendingId) return;
     if (!confirm(`Remove “${entry.name}” from Wishlist?`)) return;
-    feedbackDismissed = false;
     pendingId = entry.id;
-    status = errorMessage = '';
+    errorMessage = '';
+    invalidLink = false;
     const index = entries.findIndex(({ id }) => id === entry.id);
     try {
       removeWishlistedTeam(localStorage, entry.id);
@@ -416,7 +390,7 @@
       return;
     }
     void pushNow();
-    status = 'Removed from Wishlist.';
+    notify('Removed from Wishlist.');
     refresh();
     pendingId = '';
     await tick();
@@ -433,13 +407,7 @@
 </script>
 
 <svelte:head><title>Wishlist — Champion's Atlas</title></svelte:head>
-<main
-  id="main"
-  class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12 {!feedbackDismissed &&
-  (status || errorMessage)
-    ? 'pb-32 sm:pb-32'
-    : ''}"
->
+<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
   <SavedCollectionHeader
     collection="wishlist"
     title="Wishlist"
@@ -455,12 +423,7 @@
     >
       Add a Poképaste manually
     </summary>
-    <form
-      aria-label="Import Poképaste"
-      aria-busy={importPending}
-      novalidate
-      onsubmit={submitPokepaste}
-    >
+    <form aria-label="Import Poképaste" novalidate onsubmit={submitPokepaste}>
       <label for="pokepaste-link" class="term block">Poképaste link or ID</label
       >
       <input
@@ -492,19 +455,38 @@
       <p id="wishlist-help" class="provenance mt-2">
         Paste a pokepast.es link or its 16-character ID.
       </p>
+      {#if invalidLink && errorMessage}
+        <p
+          id="wishlist-error"
+          role="alert"
+          class="mt-2 text-sm text-error-content"
+        >
+          {errorMessage}
+        </p>
+      {/if}
       <div class="mt-4 flex flex-wrap items-center gap-3">
         <Button
           type="submit"
           variant="primary"
+          aria-busy={importPending}
           disabled={!ready || !!storageError || importPending || queuePending}
           >Import to Wishlist</Button
         >
+        {#if importPending}
+          <p role="status" class="provenance">Loading Poképaste…</p>
+        {/if}
         <p class="provenance">Legality remains unverified.</p>
       </div>
     </form>
   </details>
-  {#if invalidLink && errorMessage}
-    <span id="wishlist-error" class="sr-only">{errorMessage}</span>
+  {#if !invalidLink && errorMessage}
+    <p
+      role="alert"
+      class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
+      {errorMessage}
+    </p>
   {/if}
   {#if storageError}<p
       role="alert"
@@ -513,34 +495,6 @@
     >
       {storageError}
     </p>{/if}
-  <p role="status" aria-live="polite" class="sr-only">{status}</p>
-  <p role="alert" class="sr-only">{errorMessage}</p>
-  {#if !feedbackDismissed && (status || errorMessage)}
-    <section
-      aria-label="Wishlist notification"
-      class="fixed right-[calc(1rem+env(safe-area-inset-right))] bottom-[calc(1rem+env(safe-area-inset-bottom))] left-[calc(1rem+env(safe-area-inset-left))] z-40 ms-auto flex max-w-md items-center gap-2 rounded-box border bg-base-100 p-3 shadow-lg {errorMessage
-        ? 'border-error-content text-error-content'
-        : status === 'Already in Wishlist.'
-          ? 'border-warning-content text-warning-content'
-          : status === 'Loading Poképaste…'
-            ? 'border-base-300 text-base-content'
-            : 'border-success-content text-success-content'}"
-    >
-      <div class="min-w-0 flex-1 text-sm break-words" aria-hidden="true">
-        {#if errorMessage}<p>{errorMessage}</p>{/if}
-        {#if status}<p>{status}</p>{/if}
-      </div>
-      <Button
-        variant="quiet"
-        size="icon-touch"
-        class="shrink-0"
-        aria-label="Dismiss notification"
-        onclick={() => (feedbackDismissed = true)}
-      >
-        <X class="size-4" aria-hidden="true" />
-      </Button>
-    </section>
-  {/if}
   {#if queueError}
     <div role="alert" class="plate mt-2 max-w-[68ch] px-4 py-3">
       {queueError}
@@ -548,7 +502,7 @@
         <Button
           variant="quiet"
           disabled={queuePending || importPending}
-          onclick={() => processShares(true, true)}
+          onclick={() => processShares(true)}
         >
           Try again
         </Button>
@@ -563,7 +517,7 @@
         <Button
           variant="quiet"
           disabled={queuePending || importPending || !canProcessShares()}
-          onclick={() => processShares(true, true)}
+          onclick={() => processShares(true)}
         >
           Retry
         </Button>

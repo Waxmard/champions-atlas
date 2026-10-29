@@ -19,6 +19,7 @@
     type PokemonType,
   } from '#lib/types.js';
   import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
+  import { notify } from '#lib/notifications.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
@@ -48,7 +49,6 @@
   let saved = $state.raw<SavedTeam[]>([]);
   let savedError = $state('');
   let actionError = $state('');
-  let status = $state('');
   const pending = new SvelteSet<string>();
   const catalog = $derived(catalogState.catalog);
   const teams: Team[] = $derived(catalog.teams);
@@ -228,17 +228,17 @@
   function wishlist(team: Team) {
     if (pending.has(team.id)) return;
     pending.add(team.id);
-    status = actionError = '';
+    actionError = '';
     const result = toggleCatalogWishlist(team);
     refreshSaved();
     actionError = result.error;
-    status = result.status;
+    if (result.status) notify(result.status);
     pending.delete(team.id);
   }
   async function use(team: Team) {
     if (pending.has(team.id)) return;
     pending.add(team.id);
-    status = actionError = '';
+    actionError = '';
     const error = await openCatalogTeam(team);
     if (error) actionError = error;
     else refreshSaved();
@@ -326,7 +326,6 @@
     >
       {savedError || actionError}
     </p>{/if}
-  <p role="status" aria-live="polite" class="sr-only">{status}</p>
 
   <div class="mt-4">
     <Button

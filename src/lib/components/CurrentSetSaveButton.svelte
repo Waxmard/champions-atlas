@@ -3,6 +3,7 @@
   import { tick } from 'svelte';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
   import { browsePokemon, type Member } from '#lib/catalog.js';
+  import { notify } from '#lib/notifications.js';
   import {
     currentSetsChangedEvent,
     currentSetsSnapshot,
@@ -39,7 +40,6 @@
     disabled = false,
   }: Props = $props();
   let alertMessage = $state('');
-  let statusMessage = $state('');
   let pendingPlan = $state.raw<CurrentSetSavePlan | null>(null);
   let checkedIds = $state<string[]>([]);
   let dialogTrigger: HTMLButtonElement | null = null;
@@ -187,16 +187,19 @@
         ({ id }) => !replacementIds.has(id)
       );
       if (checklist && !changed) {
-        statusMessage = 'No in-game sets changed.';
+        notify('No in-game sets changed.');
       } else if (checklist && skippedConflict) {
-        statusMessage =
-          'Recorded in-game sets on this device. Kept unselected Pokémon sets.';
+        notify(
+          'Recorded in-game sets on this device. Kept unselected Pokémon sets.'
+        );
       } else if (memberIndex === undefined) {
-        statusMessage = "Recorded this team's in-game sets on this device.";
+        notify("Recorded this team's in-game sets on this device.");
       } else {
         const incoming = plan.incoming[0];
         if (!incoming) throw new Error('no incoming set to record');
-        statusMessage = `Recorded the in-game ${browsePokemon(pokemon ?? incoming.member.pokemon)} set on this device.`;
+        notify(
+          `Recorded the in-game ${browsePokemon(pokemon ?? incoming.member.pokemon)} set on this device.`
+        );
       }
       if (changed) {
         void pushNow();
@@ -217,7 +220,6 @@
     const plan = pendingPlan;
     if (!plan || saving || (!checkedIds.length && !hasNewIncoming(plan)))
       return;
-    statusMessage = '';
     alertMessage = '';
     const replacementIds = new Set(checkedIds);
     try {
@@ -233,7 +235,6 @@
   }
 
   export function save(event: MouseEvent): void {
-    statusMessage = '';
     alertMessage = '';
     if (saving || pendingPlan || disabled) return;
     const trigger = event.currentTarget as HTMLButtonElement;
@@ -254,7 +255,7 @@
       const plan = prepareCurrentSets(localStorage, selectedMembers);
       if (!plan.overwritten.length && !hasNewIncoming(plan)) {
         registry.refresh();
-        statusMessage = 'No in-game sets changed.';
+        notify('No in-game sets changed.');
         restoreFocus(trigger, triggerWasFocused);
         return;
       }
@@ -321,16 +322,6 @@
     style="color: var(--color-error-content)"
   >
     {registry.error || alertMessage}
-  </p>
-  <p
-    role="status"
-    aria-live="polite"
-    class="provenance mt-2 {statusMessage ? '' : 'sr-only'} {memberIndex ===
-    undefined
-      ? 'order-last basis-full'
-      : ''}"
-  >
-    {statusMessage}
   </p>
   {#if pendingPlan}
     <dialog
