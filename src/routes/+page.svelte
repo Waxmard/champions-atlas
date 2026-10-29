@@ -88,6 +88,9 @@
         (ALL_TYPES as string[]).includes(value)
       )
   );
+  const filterCount = $derived(
+    selectedTypes.length + (includeCustomRules ? 1 : 0)
+  );
   const allPokemon = $derived(
     [
       ...new Set(
@@ -343,23 +346,41 @@
       variant="quiet"
       class="shrink-0 max-sm:size-11 max-sm:px-0"
       aria-expanded={typeOpen}
+      aria-controls="browse-filters"
       onclick={() => (typeOpen = !typeOpen)}
     >
       <Filter class="size-4" aria-hidden="true" />
-      <span class="max-sm:sr-only">Filter by type</span>
-      {#if selectedTypes.length}<span class="badge badge-primary"
-          >{selectedTypes.length}</span
+      <span class="max-sm:sr-only">Filters</span>
+      {#if filterCount}<span class="badge badge-primary">{filterCount}</span
         >{/if}
     </Button>
   </div>
 
   {#if typeOpen}
-    <div class="mt-2">
+    <div id="browse-filters" class="mt-2 space-y-2">
       <TypeFilter
         options={ALL_TYPES}
         selected={selectedTypes}
         onselect={setTypes}
       />
+      <label
+        for="include-custom-rules"
+        class="term inline-flex min-h-11 cursor-pointer items-center gap-2.5"
+      >
+        <input
+          id="include-custom-rules"
+          type="checkbox"
+          name="custom"
+          value="1"
+          autocomplete="off"
+          class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
+          checked={includeCustomRules}
+          disabled={!ready}
+          onchange={(event) =>
+            changeOption('custom', event.currentTarget.checked ? '1' : '')}
+        />
+        Include custom-rule teams
+      </label>
     </div>
   {/if}
   {#if selectedTypes.length}
@@ -518,27 +539,6 @@
     </label>
   </div>
 
-  <div class="mt-4">
-    <label
-      for="include-custom-rules"
-      class="term inline-flex min-h-11 cursor-pointer items-center gap-2.5"
-    >
-      <input
-        id="include-custom-rules"
-        type="checkbox"
-        name="custom"
-        value="1"
-        autocomplete="off"
-        class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
-        checked={includeCustomRules}
-        disabled={!ready}
-        onchange={(event) =>
-          changeOption('custom', event.currentTarget.checked ? '1' : '')}
-      />
-      Include custom-rule teams
-    </label>
-  </div>
-
   <section aria-label="Matching teams" class="mt-5 min-w-0">
     <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
       <p
@@ -603,7 +603,7 @@
           class="mt-8 flex items-center justify-center gap-4"
         >
           <Button
-            variant="secondary"
+            variant="quiet"
             disabled={pageNumber === 1}
             onclick={() => changeOption('page', String(pageNumber - 1))}
             >Previous</Button
@@ -612,7 +612,7 @@
             >Page {pageNumber} of {pageCount}</span
           >
           <Button
-            variant="secondary"
+            variant="quiet"
             disabled={pageNumber === pageCount}
             onclick={() => changeOption('page', String(pageNumber + 1))}
             >Next</Button
@@ -630,7 +630,7 @@
         </p>
         <Button
           type="button"
-          variant="secondary"
+          variant="quiet"
           class="mt-5"
           disabled={!ready}
           onclick={clearFilters}>Clear filters</Button

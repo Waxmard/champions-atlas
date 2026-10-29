@@ -1,8 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
   import Bookmark from '@lucide/svelte/icons/bookmark';
-  import Plus from '@lucide/svelte/icons/plus';
-  import { Button } from '#lib/components/ui/button/index.js';
 
   let {
     collection,
@@ -11,12 +9,12 @@
   }: {
     collection: 'my-teams' | 'wishlist';
     title: string;
-    description: string;
+    description?: string;
   } = $props();
 </script>
 
 <header
-  class="flex flex-col gap-4 border-b border-base-300 pb-5 sm:flex-row sm:items-end sm:justify-between"
+  class="flex flex-col gap-3 border-b border-base-300 pb-4 sm:flex-row sm:items-end sm:justify-between"
 >
   <div class="min-w-0">
     <h1
@@ -24,11 +22,13 @@
     >
       {title}
     </h1>
-    <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      {description}
-    </p>
+    {#if description}
+      <p
+        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+      >
+        {description}
+      </p>
+    {/if}
   </div>
   <div class="flex flex-wrap items-center gap-2 sm:shrink-0 sm:self-end">
     <nav
@@ -58,11 +58,5 @@
         <span>Wishlist</span>
       </a>
     </nav>
-    {#if collection === 'my-teams'}
-      <Button href={resolve('my-teams/new')} variant="quiet" size="compact">
-        <Plus class="size-4" aria-hidden="true" />
-        <span>Add custom team</span>
-      </Button>
-    {/if}
   </div>
 </header>

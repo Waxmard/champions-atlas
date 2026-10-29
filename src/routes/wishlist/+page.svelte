@@ -413,15 +413,25 @@
     title="Wishlist"
     description="Teams to try later. Move a team to My teams when you're ready."
   />
-  <p class="mt-3 text-[0.9375rem] text-base-content/70">
-    From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
-    finish importing.
-  </p>
-  <details class="mt-1 max-w-3xl">
+  <details class="mt-3 max-w-3xl">
     <summary
-      class="min-h-11 cursor-pointer py-2 text-sm font-normal text-base-content/70"
+      aria-labelledby="wishlist-manual-label"
+      aria-describedby="wishlist-share-hint"
+      class="min-h-11 cursor-pointer py-2 sm:min-h-0 sm:py-1"
     >
-      Add a Poképaste manually
+      <span
+        id="wishlist-share-hint"
+        class="block text-[0.9375rem] leading-relaxed text-base-content/70"
+      >
+        From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
+        finish importing.
+      </span>
+      <span
+        id="wishlist-manual-label"
+        class="mt-1 block text-sm underline underline-offset-2"
+      >
+        Add a Poképaste manually
+      </span>
     </summary>
     <form aria-label="Import Poképaste" novalidate onsubmit={submitPokepaste}>
       <label for="pokepaste-link" class="term block">Poképaste link or ID</label
@@ -558,9 +568,8 @@
                   onclick={() => use(entry)}>Move to My teams</Button
                 >
                 <Button
-                  variant="quiet"
+                  variant="danger-quiet"
                   size="icon-compact"
-                  class="text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
                   aria-label="Remove from Wishlist"
                   title="Remove from Wishlist"
                   disabled={!ready || !!pendingId}

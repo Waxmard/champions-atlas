@@ -12,6 +12,7 @@
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import Copy from '@lucide/svelte/icons/copy';
+  import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -507,11 +508,7 @@
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
 
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <SavedCollectionHeader
-    collection="my-teams"
-    title="My teams"
-    description="Keep your original. Explore changes. Save your own version."
-  />
+  <SavedCollectionHeader collection="my-teams" title="My teams" />
   {#if storageError || errorMessage}<p
       role="alert"
       class="plate mt-5 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
@@ -542,15 +539,28 @@
         />
       </div>
     {:else}
-      <p class="plate mt-8 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
-        No saved teams yet. Open a catalog team and choose “Use this team”.
-      </p>
+      <div class="plate mt-8 max-w-xl px-4 py-3">
+        <p class="text-[0.9375rem] leading-relaxed">
+          No saved teams yet. Open a catalog team and choose “Use this team”.
+        </p>
+        <Button
+          href={resolve('my-teams/new')}
+          variant="quiet"
+          class="-ms-2 mt-1"
+        >
+          <Plus class="size-4" aria-hidden="true" />
+          <span>Add custom team</span>
+        </Button>
+      </div>
     {/if}
   {/if}
   {#if ready && !storageError}
-    <p role="status" class="mt-4 min-h-6 text-[0.9375rem] text-base-content/70">
-      {message}
-    </p>
+    {#if message}<p
+        role="status"
+        class="mt-4 text-[0.9375rem] text-base-content/70"
+      >
+        {message}
+      </p>{/if}
     {#if draft}
       {@const originalResult = bestEvidence(
         {
@@ -589,9 +599,9 @@
             </div>
           </div>
           <Button
-            variant="quiet"
+            variant="danger-quiet"
             size="icon-compact"
-            class="shrink-0 text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
+            class="shrink-0"
             aria-label="Delete team"
             title="Delete team"
             disabled={editing || deleting}

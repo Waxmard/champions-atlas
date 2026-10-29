@@ -299,7 +299,7 @@
 <div class={memberIndex === undefined ? 'contents' : 'px-2.5'}>
   {#if memberIndex === undefined && canRecord()}
     <Button
-      variant="secondary"
+      variant="quiet"
       {disabled}
       aria-describedby={`in-game-sets-description-${teamId}`}
       onpointerdown={keepFocus}

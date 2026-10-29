@@ -1,6 +1,9 @@
 <script lang="ts">
+  import { goto } from '$app/navigation';
+  import { resolve } from '$app/paths';
   import { DropdownMenu } from 'bits-ui';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
+  import Plus from '@lucide/svelte/icons/plus';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -31,10 +34,18 @@
   </DropdownMenu.Trigger>
   <DropdownMenu.Portal>
     <DropdownMenu.Content
-      align="end"
-      sideOffset={6}
-      class="picker-popover-enter z-50 min-w-52 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
+      side="right"
+      align="start"
+      sideOffset={8}
+      class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
     >
+      <DropdownMenu.Item
+        class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+        onSelect={() => void goto(resolve('my-teams/new'))}
+      >
+        <Plus class="size-4" aria-hidden="true" />
+        Add custom team
+      </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row cursor-pointer outline-none data-disabled:opacity-50 data-highlighted:bg-info data-highlighted:text-info-content"
         disabled={moveDisabled || pending}
