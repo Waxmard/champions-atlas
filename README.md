@@ -31,24 +31,13 @@ Firebase-disabled bundle with a deterministic catalog fixture; they do not chang
 the generated catalog or normal production builds. CI runs smoke coverage on pull
 requests and pushes to `main`. Select **Actions → CI → Run workflow** for the full
 browser suite. The TestFlight workflow runs independently of CI on pushes to
-`main`, or through **Actions** → **Deploy TestFlight** → **Run workflow**. For a
-manual run, select a branch and optionally **Rebuild all historical regulations**.
-A feature-branch push or pull request label does not upload a build. Apple must
-process an upload before you can install it through TestFlight. A local iPhone
-install skips those steps but does not deploy Firestore rules; ensure compatible
-rules are deployed before using changes that need them. See
-[iOS installation and Firebase sync](docs/firebase.md) for delivery and configuration.
+`main` or by manual dispatch. See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration) for delivery and configuration.
 
 For daily iPhone updates, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
 
 ```sh
 make ios          # Build, install, and launch on an iPhone.
 ```
-
-The default Wi-Fi target is Gengar Phone. Override it with
-`make ios IOS_DEVICE="Another Phone"` or a device identifier. Rebuilding and
-reinstalling packages UI updates in the app; Firebase Hosting cannot update an
-installed native bundle.
 
 Format files or serve a built app with:
 
@@ -66,7 +55,7 @@ npm run preview   # Serve the built shared UI locally.
 | `scripts/`    | Catalog import, enrichment, and maintenance commands  |
 | `test/`       | Node tests and built-app smoke checks                 |
 | `e2e/`        | Desktop and mobile browser tests                      |
-| `static/`     | App icons and cached Pokémon assets                   |
+| `static/`     | Cached Pokémon assets and type badges                 |
 | `docs/`       | Product behavior, data sources, and deployment guides |
 
 The crowned-compass logo in `static/favicon.svg` is shared by the header and
@@ -154,12 +143,8 @@ Pokémon Champions. Team edits do not update those snapshots.
 Saving requires app-local storage; clearing it removes local saved data. With
 Firebase configured, native Google sign-in is required and syncs saved teams, their
 originals, and current-set snapshots across devices. Without configuration, the
-app runs local-only. Browse preferences remain device-local. The local browser
-harness does not authenticate or sync with Firebase.
-
-Use the [local iPhone install procedure](docs/firebase.md#install-updates-on-an-iphone)
-for daily updates, and TestFlight for distribution and release checks. Check
-offline access on the device; synchronization requires a connection.
+app runs local-only. Browse preferences remain device-local. Check offline access
+on the device; synchronization requires a connection.
 
 See the [product specification](docs/product-spec.md) for editing, restoration,
 export, and snapshot contracts.

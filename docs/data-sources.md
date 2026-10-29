@@ -141,14 +141,16 @@ provenance only for the active slice. Frozen records retain their existing data.
 
 ## Freshness and scheduling
 
-`.github/workflows/deploy-testflight.yml` imports the catalog on pushes to `main`
-and manual runs through **Actions** → **Deploy TestFlight** → **Run workflow**.
-For a manual run, select a branch and optionally **Rebuild all historical
-regulations**, which rebuilds history and recrawls YouTube. A feature-branch push
-or pull request label does not trigger this workflow. Routine imports reuse valid
-complete discovery snapshots; a cold cache can still require a crawl. A failed
-import, tagging run, or build stops the upload, leaving existing TestFlight
-builds unchanged. A source fetch or structural failure throws before the atomic
+`.github/workflows/refresh-catalog.yml` imports and publishes the catalog daily
+at 06:17 UTC and by manual dispatch through **Actions** → **Refresh Catalog** →
+**Run workflow**. The app checks for newer validated bundles on launch,
+reconnection, and foreground.
+
+`.github/workflows/deploy-testflight.yml` imports the catalog for builds on pushes
+to `main` and manual dispatch. **Rebuild all historical regulations** rebuilds
+history. Both workflows set `YOUTUBE_REFRESH=1` and recrawl YouTube discovery.
+A failed import, tagging run, or build stops the upload or publication. A source
+fetch or structural failure throws before the atomic
 catalog write, preserving the previous catalog. Dev, build, and typecheck generate
 a missing catalog or rebuild one containing an ineligible team. Otherwise they
 reuse the catalog and restore assets; routine builds are not live data refreshes.

@@ -251,10 +251,6 @@ dropped legacy id. Old child documents remain unchanged and unlisted because the
 rules deny deletion. Without a connection, staging stops before any write and
 reports that cloud in-game sets need a connection.
 
-Deploy the updated rules for the current-set paths with the normal rules
-deployment. Until deployment, access to those paths fails visibly, while valid
-local saves remain available for retry.
-
 Reconciliation continues while a set editor is open, but its mounted form does
 not refresh underneath you. If another device changes or deletes that team,
 the next save is rejected against the latest local working copy and retains

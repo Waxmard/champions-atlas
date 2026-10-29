@@ -42,11 +42,7 @@ tag, bumps the version, updates `CHANGELOG.md`, and tags the release
 ([release-please](.github/workflows/release-please.yml)). This is why commit hygiene
 matters: every commit on `main` is read by the release tooling.
 
-The TestFlight workflow runs independently of CI on pushes to `main`, or through
-**Actions** → **Deploy TestFlight** → **Run workflow**. For a manual run, select
-a branch and optionally **Rebuild all historical regulations**. A feature-branch
-push or pull request label does not upload a build. Apple must process an uploaded
-build before you install it in TestFlight. A local iPhone install skips those steps
-but does not deploy Firestore rules; ensure compatible rules are deployed before
-using changes that need them. See [iOS installation and Firebase sync](docs/firebase.md)
-for delivery and configuration.
+The TestFlight workflow runs on pushes to `main` and by manual dispatch. See
+[iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration)
+for delivery and configuration. A local Xcode install does not deploy Firestore
+rules.
