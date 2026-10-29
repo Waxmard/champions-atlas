@@ -504,7 +504,6 @@
         <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto">
           <Button
             variant="quiet"
-            size="touch"
             onclick={backToOverview}
             aria-label="Back to overview"
           >
@@ -708,7 +707,6 @@
         {#if originalChanged && originalSlotMember}
           <Button
             variant="secondary"
-            size="touch"
             disabled={!!originalReason}
             data-set-choice
             onpointerdown={(event) => event.preventDefault()}
@@ -777,18 +775,14 @@
     <div class="flex justify-end gap-2">
       <Button
         variant="secondary"
-        size="touch"
         onpointerdown={keepFocus}
         onclick={() => {
           activeSuggestions = null;
           if (requestClose()) onclose();
         }}>Close</Button
       >
-      <Button
-        variant="primary"
-        size="touch"
-        onpointerdown={keepFocus}
-        onclick={done}>Done</Button
+      <Button variant="primary" onpointerdown={keepFocus} onclick={done}
+        >Done</Button
       >
     </div>
   </footer>

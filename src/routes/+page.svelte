@@ -327,61 +327,62 @@
       {savedError || actionError}
     </p>{/if}
 
-  <div class="mt-4">
+  <div class="mt-4 flex items-center gap-2">
+    <div class="min-w-0 flex-1">
+      <span class="sr-only" aria-live="polite"
+        >{filters.length} of 6 Pokémon selected</span
+      >
+      <PokemonPicker
+        options={availablePokemon}
+        onselect={addPokemon}
+        disabled={filters.length >= 6}
+      />
+    </div>
     <Button
       type="button"
-      variant="secondary"
+      variant="quiet"
+      class="shrink-0 max-sm:size-11 max-sm:px-0"
       aria-expanded={typeOpen}
       onclick={() => (typeOpen = !typeOpen)}
     >
-      <Filter class="size-4 text-base-content/60" aria-hidden="true" />
-      Filter by type
+      <Filter class="size-4" aria-hidden="true" />
+      <span class="max-sm:sr-only">Filter by type</span>
       {#if selectedTypes.length}<span class="badge badge-primary"
           >{selectedTypes.length}</span
         >{/if}
     </Button>
-    {#if typeOpen}
-      <div class="mt-2">
-        <TypeFilter
-          options={ALL_TYPES}
-          selected={selectedTypes}
-          onselect={setTypes}
-        />
-      </div>
-    {/if}
-    {#if selectedTypes.length}
-      <div class="mt-2 flex flex-wrap gap-1.5">
-        {#each selectedTypes as type (type)}
-          <span
-            class="inline-flex items-center gap-1.5 border border-s-[3px] border-base-300 bg-base-100 py-1 ps-2 pe-1 text-[0.8125rem]"
-            style="border-inline-start-color: {TYPE_COLORS[type]}"
-          >
-            <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
-              class="font-medium">{type}</span
-            >
-            <Button
-              variant="quiet"
-              size="icon-compact"
-              aria-label={`Remove ${type} type filter`}
-              onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
-              ><X class="size-3.5" aria-hidden="true" /></Button
-            >
-          </span>
-        {/each}
-      </div>
-    {/if}
   </div>
 
-  <div class="mt-4">
-    <span class="sr-only" aria-live="polite"
-      >{filters.length} of 6 Pokémon selected</span
-    >
-    <PokemonPicker
-      options={availablePokemon}
-      onselect={addPokemon}
-      disabled={filters.length >= 6}
-    />
-  </div>
+  {#if typeOpen}
+    <div class="mt-2">
+      <TypeFilter
+        options={ALL_TYPES}
+        selected={selectedTypes}
+        onselect={setTypes}
+      />
+    </div>
+  {/if}
+  {#if selectedTypes.length}
+    <div class="mt-2 flex flex-wrap gap-1.5">
+      {#each selectedTypes as type (type)}
+        <span
+          class="inline-flex items-center gap-1.5 border border-s-[3px] border-base-300 bg-base-100 py-1 ps-2 pe-1 text-[0.8125rem]"
+          style="border-inline-start-color: {TYPE_COLORS[type]}"
+        >
+          <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
+            class="font-medium">{type}</span
+          >
+          <Button
+            variant="quiet"
+            size="icon-compact"
+            aria-label={`Remove ${type} type filter`}
+            onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
+            ><X class="size-3.5" aria-hidden="true" /></Button
+          >
+        </span>
+      {/each}
+    </div>
+  {/if}
 
   {#if filters.length}
     <div class="mt-4 grid gap-3 md:grid-cols-2">

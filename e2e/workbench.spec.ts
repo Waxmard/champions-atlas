@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import catalog from '../src/lib/data/catalog.json' with { type: 'json' };
 import {
+  chooseTeamAction,
   expectDetailsSubView,
   expectMovesSubView,
   missing,
@@ -284,9 +285,7 @@ test('direct move slots and species swap on a saved team', async ({ page }) => {
   await expect(weavile).toContainText(replacementText);
   await expect(weavile).toContainText('Custom move');
 
-  await page
-    .getByRole('button', { name: 'Change a Pokémon', exact: true })
-    .click();
+  await chooseTeamAction(page, 'Change a Pokémon');
   const picker = page.getByRole('combobox', {
     name: 'Change a Pokémon',
     exact: true,
@@ -363,9 +362,7 @@ test('page swap reports no overlap and clears its selection', async ({
   page,
 }) => {
   await openWorkbench(page);
-  await page
-    .getByRole('button', { name: 'Change a Pokémon', exact: true })
-    .click();
+  await chooseTeamAction(page, 'Change a Pokémon');
   const swapPicker = page.getByRole('combobox', {
     name: 'Change a Pokémon',
     exact: true,

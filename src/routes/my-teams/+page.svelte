@@ -11,7 +11,6 @@
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
-  import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import Copy from '@lucide/svelte/icons/copy';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
@@ -591,7 +590,7 @@
           </div>
           <Button
             variant="quiet"
-            size="icon-touch"
+            size="icon-compact"
             class="shrink-0 text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content"
             aria-label="Delete team"
             title="Delete team"
@@ -650,17 +649,9 @@
               {nameError}
             </p>
           </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <MyTeamCollectionActions
-              teamId={draft.id}
-              {baseline}
-              {dirty}
-              members={draft.members}
-              disabled={editing || deleting || stale}
-            />
+          <div class="flex flex-wrap items-center gap-1.5">
             <Button
-              variant="secondary"
-              size="touch"
+              variant="quiet"
               data-team-action="copy"
               disabled={editing || deleting}
               onclick={copyPaste}
@@ -668,17 +659,15 @@
               <Copy class="size-4" aria-hidden="true" />
               <span>Copy team text</span>
             </Button>
-            {#if !pendingSpecies && !showSwapPicker}
-              <Button
-                variant="secondary"
-                size="touch"
-                disabled={editing}
-                onclick={() => (showSwapPicker = true)}
-              >
-                <ArrowLeftRight class="size-4" aria-hidden="true" />
-                <span>Change a Pokémon</span>
-              </Button>
-            {/if}
+            <MyTeamCollectionActions
+              teamId={draft.id}
+              {baseline}
+              {dirty}
+              members={draft.members}
+              disabled={editing || deleting || stale}
+              onswap={() => (showSwapPicker = true)}
+              swapDisabled={editing || !!pendingSpecies || showSwapPicker}
+            />
           </div>
         </div>
         <div class="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
@@ -700,7 +689,7 @@
             <span>{pendingSpecies}</span>
             <Button
               variant="quiet"
-              size="icon-touch"
+              size="icon-compact"
               aria-label="Clear selected Pokémon"
               onclick={cancelSpeciesSwap}><X class="size-4" /></Button
             >

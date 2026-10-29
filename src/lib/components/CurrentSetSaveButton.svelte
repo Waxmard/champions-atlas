@@ -300,7 +300,6 @@
   {#if memberIndex === undefined && canRecord()}
     <Button
       variant="secondary"
-      size="touch"
       {disabled}
       aria-describedby={`in-game-sets-description-${teamId}`}
       onpointerdown={keepFocus}
@@ -382,18 +381,12 @@
       <footer
         class="flex shrink-0 justify-end gap-3 border-t border-base-300 p-4 sm:p-5"
       >
-        <Button
-          type="button"
-          variant="quiet"
-          size="touch"
-          onclick={clearPending}
-        >
+        <Button type="button" variant="quiet" onclick={clearPending}>
           Cancel
         </Button>
         <Button
           type="button"
           variant="primary"
-          size="touch"
           disabled={!checkedIds.length && !hasNewIncoming(pendingPlan)}
           onclick={recordPending}
         >

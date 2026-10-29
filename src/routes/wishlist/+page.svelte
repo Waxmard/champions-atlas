@@ -553,7 +553,7 @@
               {#snippet actions()}
                 <Button
                   data-wishlist-use
-                  variant="primary"
+                  variant="secondary"
                   disabled={!ready || !!pendingId}
                   onclick={() => use(entry)}>Move to My teams</Button
                 >

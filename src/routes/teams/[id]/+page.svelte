@@ -196,13 +196,11 @@
     <div class="flex shrink-0 flex-wrap items-center gap-2">
       <Button
         variant="primary"
-        size="touch"
         disabled={!ready || savedError !== '' || pending}
         onclick={useTeam}>Use this team</Button
       >
       <Button
         variant="quiet"
-        size="touch"
         class="catalog-wishlist-button"
         aria-label="Wishlist"
         aria-pressed={wishlisted}

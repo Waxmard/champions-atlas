@@ -135,7 +135,7 @@ test(
 
 test('unknown and long card fields stay usable without phone overflow', async ({
   page,
-}) => {
+}, testInfo) => {
   await page.goto(`/teams/${peter.id}`);
   await page
     .getByRole('button', { name: 'Use this team', exact: true })
@@ -197,9 +197,10 @@ test('unknown and long card fields stay usable without phone overflow', async ({
   await expect(editor).toBeVisible();
   await expect(editor.getByLabel('Item', { exact: true })).toBeFocused();
   await expect(page.getByRole('dialog')).toHaveCount(1);
+  const minButtonHeight = testInfo.project.use.isMobile ? 44 : 36;
   for (const button of await editor.getByRole('button').all()) {
     const box = await button.boundingBox();
-    expect(box?.height).toBeGreaterThanOrEqual(44);
+    expect(box?.height).toBeGreaterThanOrEqual(minButtonHeight);
   }
   await editor.getByLabel('Item', { exact: true }).press('Escape');
   await editor.getByRole('button', { name: 'Close', exact: true }).click();

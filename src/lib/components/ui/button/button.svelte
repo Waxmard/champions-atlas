@@ -7,25 +7,22 @@
   } from 'svelte/elements';
 
   export type ButtonVariant = 'primary' | 'secondary' | 'quiet' | 'destructive';
-  export type ButtonSize =
-    'compact' | 'touch' | 'dense' | 'icon-compact' | 'icon-touch';
+  export type ButtonSize = 'compact' | 'dense' | 'icon-compact';
 
   const variants: Record<ButtonVariant, string> = {
     primary: 'btn-primary',
-    secondary: 'btn-outline',
+    secondary: 'btn-soft [--btn-border:transparent]',
     quiet:
       'btn-ghost text-base-content/70 hover:text-base-content disabled:text-base-content/40',
     destructive:
-      '[--btn-color:var(--color-destructive)] [--btn-fg:var(--color-destructive-content)]',
+      'btn-soft [--btn-color:var(--color-destructive)] [--btn-border:transparent]',
   };
 
   const sizes: Record<ButtonSize, string> = {
     compact: 'h-9 px-3 gap-1.5 max-md:h-auto max-md:min-h-11',
-    touch: 'min-h-11 px-3.5 gap-1.5',
     // the EV stat row wraps on ≤320px phones; a 36px stepper adds 8px per row
     dense: 'h-9 gap-1 px-2 max-md:h-7 max-md:min-h-7',
     'icon-compact': 'size-9 p-0 max-md:size-11',
-    'icon-touch': 'size-11 p-0',
   };
 
   function buttonVariants({

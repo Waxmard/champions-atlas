@@ -35,3 +35,8 @@ export async function expectDetailsSubView(editor: Locator) {
   await expect(editor.getByLabel('Ability', { exact: true })).toBeVisible();
   await expect(editor.getByLabel('Nature', { exact: true })).toBeVisible();
 }
+
+export async function chooseTeamAction(page: Page, name: string) {
+  await page.getByRole('button', { name: 'More team actions' }).click();
+  await page.getByRole('menuitem', { name, exact: true }).click();
+}

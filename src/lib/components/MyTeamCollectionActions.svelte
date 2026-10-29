@@ -1,10 +1,9 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import Bookmark from '@lucide/svelte/icons/bookmark';
   import type { Member } from '#lib/catalog.js';
   import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
-  import { Button } from '#lib/components/ui/button/index.js';
+  import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
   import { notify } from '#lib/notifications.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import {
@@ -20,9 +19,19 @@
     members: Member[];
     disabled: boolean;
     dirty: boolean;
+    onswap: () => void;
+    swapDisabled: boolean;
   }
 
-  let { teamId, baseline, members, disabled, dirty }: Props = $props();
+  let {
+    teamId,
+    baseline,
+    members,
+    disabled,
+    dirty,
+    onswap,
+    swapDisabled,
+  }: Props = $props();
   let pending = $state(false),
     movedId = $state<string | null>(null),
     errorMessage = $state('');
@@ -78,15 +87,13 @@
 </script>
 
 <CurrentSetSaveButton {teamId} {baseline} {members} {disabled} />
-<Button
-  variant="secondary"
-  size="touch"
-  disabled={disabled || dirty || pending || movedId === teamId}
-  onclick={move}
->
-  <Bookmark class="size-4" aria-hidden="true" />
-  Move to Wishlist
-</Button>
+<TeamActionsMenu
+  {onswap}
+  {swapDisabled}
+  onmove={move}
+  moveDisabled={disabled || dirty || movedId === teamId}
+  {pending}
+/>
 <p
   role="alert"
   class="order-last basis-full text-sm {errorMessage ? '' : 'sr-only'}"
