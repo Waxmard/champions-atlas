@@ -270,14 +270,12 @@
       Adjust EVs manually
     </summary>
 
-    <!-- Compact Stat Allocation Rows -->
     <div class="grid divide-y">
       {#each CHAMPIONS_STATS as stat (stat)}
         {@const currentVal = values[stat]}
         {@const target = balanceChampionsStat(values, stat)[stat]}
         {@const delta = target - currentVal}
         <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
-          <!-- Top Row: Stat Badge, Quick Buttons, Input & Suffix -->
           <div class="flex flex-wrap items-center justify-between gap-2">
             <div class="flex flex-wrap items-center gap-2">
               <span class="term inline-flex w-12 justify-center">{stat}</span>
@@ -353,7 +351,6 @@
             </div>
           </div>
 
-          <!-- Bottom Row: Range Slider -->
           <input
             aria-label={`${stat} EV slider`}
             type="range"
