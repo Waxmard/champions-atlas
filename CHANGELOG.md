@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.1.0](https://github.com/Waxmard/champions-atlas/compare/v3.0.0...v3.1.0) (2026-11-03)
+
+
+### Features
+
+* show temporary status banner across pages after actions ([#72](https://github.com/Waxmard/champions-atlas/issues/72)) ([36f7553](https://github.com/Waxmard/champions-atlas/commit/36f7553c2d1bcd524d105d15cc47af73eff1d704))
+
 ## [3.0.0](https://github.com/Waxmard/champions-atlas/compare/v2.1.0...v3.0.0) (2026-10-29)
 
 
