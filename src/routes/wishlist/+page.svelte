@@ -5,6 +5,7 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
@@ -639,7 +640,7 @@
               >
                 {#snippet actions()}
                   <Button
-                    variant="danger-quiet"
+                    variant="quiet"
                     size="icon-compact"
                     aria-label="Remove from Wishlist"
                     title="Remove from Wishlist"
@@ -650,10 +651,13 @@
                   </Button>
                   <Button
                     data-wishlist-use
-                    variant="primary"
+                    variant="quiet"
                     disabled={!ready || !!pendingId}
-                    onclick={() => use(entry)}>Move to My teams</Button
+                    onclick={() => use(entry)}
                   >
+                    <ArrowRight class="size-4" aria-hidden="true" />
+                    <span>Move to My teams</span>
+                  </Button>
                 {/snippet}
               </TeamCard>
             </li>

@@ -1,11 +1,8 @@
 <script lang="ts">
-  import FileText from '@lucide/svelte/icons/file-text';
   import type { Member } from '#lib/catalog.js';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
-  import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import TypeBadge from '#lib/components/TypeBadge.svelte';
-  import { Button } from '#lib/components/ui/button/index.js';
   import {
     CHAMPIONS_STATS,
     natureEffect,
@@ -14,13 +11,7 @@
   import { activeSpreadSource } from '#lib/spread-provenance.js';
   import { getMoveType, getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
 
-  let {
-    member,
-    onnavigate,
-  }: {
-    member: Member;
-    onnavigate?: (field: EditableSetField) => void;
-  } = $props();
+  let { member }: { member: Member } = $props();
 
   const types = $derived(getPokemonTypes(member.pokemon));
   const band = $derived(
@@ -48,30 +39,12 @@
           {member.pokemon || 'Unknown'}
         </p>
       </div>
-      {#if onnavigate}
-        <Button
-          variant="quiet"
-          class="h-auto min-h-11 shrink-0"
-          aria-label="Change Pokémon"
-          data-editor-section="pokemon"
-          onclick={() => onnavigate?.('pokemon')}>Change</Button
-        >
-      {/if}
     </div>
   </section>
 
   <section class="plate min-w-0 p-3.5 sm:p-4">
     <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
       <h3 class="term">Item, ability, and nature</h3>
-      {#if onnavigate}
-        <Button
-          variant="quiet"
-          class="h-auto min-h-11 shrink-0"
-          aria-label="Edit item, ability, and nature"
-          data-editor-section="item"
-          onclick={() => onnavigate?.('item')}>Edit</Button
-        >
-      {/if}
     </div>
     <dl class="grid gap-2 text-sm">
       <div class="min-w-0">
@@ -104,18 +77,9 @@
   <section class="plate min-w-0 p-3.5 sm:p-4">
     <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
       <h3 class="term">EV spread</h3>
-      {#if onnavigate}
-        <Button
-          variant="quiet"
-          class="h-auto min-h-11 shrink-0"
-          aria-label="Edit EV spread"
-          data-editor-section="spread"
-          onclick={() => onnavigate?.('spread')}>Edit</Button
-        >
-      {/if}
     </div>
     {#if !member.spread?.trim()}
-      <p class="unknown inline-block px-1 text-xs">Unknown EVs</p>
+      <p class="text-xs text-[color:var(--color-muted)]">Unknown EVs</p>
     {:else if spread === null}
       <p class="text-sm wrap-anywhere whitespace-pre-wrap tabular-nums">
         {member.spread}
@@ -202,15 +166,6 @@
   <section class="plate min-w-0 p-3.5 sm:p-4">
     <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
       <h3 class="term">Moves</h3>
-      {#if onnavigate}
-        <Button
-          variant="quiet"
-          class="h-auto min-h-11 shrink-0"
-          aria-label="Edit moves"
-          data-editor-section="moves"
-          onclick={() => onnavigate?.('moves')}>Edit</Button
-        >
-      {/if}
     </div>
     <ol role="list" class="grid min-w-0 gap-1 text-sm sm:grid-cols-2">
       {#each [0, 1, 2, 3] as index (index)}
@@ -238,19 +193,7 @@
     </ol>
   </section>
 
-  {#if onnavigate}
-    <div class="text-center">
-      <Button
-        variant="quiet"
-        class="h-auto min-h-11 max-w-full whitespace-normal"
-        data-editor-section="text"
-        onclick={() => onnavigate?.('text')}
-      >
-        <FileText class="me-1.5 size-3.5" aria-hidden="true" />
-        <span>Advanced: Showdown set text</span>
-      </Button>
-    </div>
-  {:else if member.set?.trim()}
+  {#if member.set?.trim()}
     <details class="plate min-w-0 px-3.5 py-2 sm:px-4">
       <summary class="min-h-11 cursor-pointer pt-3 text-sm font-semibold">
         Set text

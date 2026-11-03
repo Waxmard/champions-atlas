@@ -2,6 +2,7 @@
   import { tick } from 'svelte';
   import { Popover } from 'bits-ui';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
+  import FileText from '@lucide/svelte/icons/file-text';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import Save from '@lucide/svelte/icons/save';
   import type { Member } from '#lib/catalog.js';
@@ -30,7 +31,7 @@
     memberIndex: number;
     disabled?: boolean;
     editing?: boolean;
-    onedit: (field: EditableSetField) => void;
+    onedit: (field: EditableSetField, moveIndex?: number) => void;
     onrevert: () => void;
     revertDisabled?: boolean;
     revertReason?: string;
@@ -42,9 +43,6 @@
     canRecord: () => boolean;
   }>();
   const canRecord = $derived(record?.canRecord() ?? false);
-  const hasActions = $derived(
-    canRecord || !revertDisabled || !!revertReason || !!spreadSource
-  );
   let actionsOpen = $state(false);
   let setButton = $state<HTMLButtonElement | null>(null);
   let returnToSet = false;
@@ -82,25 +80,23 @@
 <MemberCard
   {member}
   disabled={disabled || editing}
-  onopen={() => onedit('set')}
+  onedit={(field, moveIndex) => onedit(field, moveIndex)}
   bind:openButton={setButton}
 >
   {#snippet actions()}
     <Popover.Root bind:open={actionsOpen}>
       <Popover.Trigger onclick={focusActionTrigger}>
         {#snippet child({ props })}
-          {#if hasActions}
-            <Button
-              {...props}
-              variant="quiet"
-              size="icon-compact"
-              class="size-11 shrink-0 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-100"
-              aria-label={`More actions for ${member.pokemon}`}
-              data-preserve-team-name
-            >
-              <Ellipsis class="size-4" aria-hidden="true" />
-            </Button>
-          {/if}
+          <Button
+            {...props}
+            variant="quiet"
+            size="icon-compact"
+            class="size-7 min-h-7 min-w-7 shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
+            aria-label={`More actions for ${member.pokemon}`}
+            data-preserve-team-name
+          >
+            <Ellipsis class="size-4" aria-hidden="true" />
+          </Button>
         {/snippet}
       </Popover.Trigger>
       <Popover.Portal>
@@ -114,6 +110,19 @@
           onCloseAutoFocus={restoreSetFocus}
           class="z-50 flex max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
         >
+          <Button
+            variant="quiet"
+            class="h-auto min-h-11 w-full justify-start text-start whitespace-normal"
+            disabled={disabled || editing}
+            aria-label={`Edit Showdown text for ${member.pokemon}`}
+            onclick={() => {
+              actionsOpen = false;
+              onedit('text');
+            }}
+          >
+            <FileText class="size-4" aria-hidden="true" />
+            <span>Edit Showdown text</span>
+          </Button>
           {#if canRecord}
             <Button
               variant="quiet"

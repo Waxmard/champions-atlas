@@ -3,6 +3,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Copy from '@lucide/svelte/icons/copy';
@@ -198,10 +199,13 @@
 
     <div class="flex shrink-0 flex-wrap items-center gap-2">
       <Button
-        variant="primary"
+        variant="quiet"
         disabled={!ready || savedError !== '' || pending}
-        onclick={useTeam}>Use this team</Button
+        onclick={useTeam}
       >
+        <ArrowRight class="size-4" aria-hidden="true" />
+        <span>Use this team</span>
+      </Button>
       <Button
         variant="quiet"
         class="catalog-wishlist-button"

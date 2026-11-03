@@ -1,5 +1,6 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -55,16 +56,13 @@
     {entry.name}
   </h1>
   <div class="flex flex-wrap items-center gap-2">
-    <Button variant="primary" class="min-h-11" {disabled} onclick={onuse}>
-      Move to My teams
+    <Button variant="quiet" class="min-h-11" {disabled} onclick={onuse}>
+      <ArrowRight class="size-4" aria-hidden="true" />
+      <span>Move to My teams</span>
     </Button>
-    <Button
-      variant="destructive"
-      class="min-h-11"
-      {disabled}
-      onclick={onremove}
-    >
-      <Trash2 aria-hidden="true" />Remove from Wishlist
+    <Button variant="quiet" class="min-h-11" {disabled} onclick={onremove}>
+      <Trash2 class="size-4" aria-hidden="true" />
+      <span>Remove from Wishlist</span>
     </Button>
   </div>
 </div>

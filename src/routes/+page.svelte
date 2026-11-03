@@ -4,6 +4,7 @@
   import { page } from '$app/state';
   import { SvelteSet } from 'svelte/reactivity';
   import { onMount } from 'svelte';
+  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
@@ -590,10 +591,13 @@
               </Button>
               <Button
                 type="button"
-                variant="primary"
+                variant="quiet"
                 disabled={busy}
-                onclick={() => use(team)}>Use this team</Button
+                onclick={() => use(team)}
               >
+                <ArrowRight class="size-4" aria-hidden="true" />
+                <span>Use this team</span>
+              </Button>
             {/snippet}
           </TeamCard>{/each}
       </div>

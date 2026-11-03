@@ -54,6 +54,7 @@
     teamControlsOpen = $state(false);
   let activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
+    activeEditMoveSlot = $state(0),
     editorPending = $state(false),
     editorMember = $state<Member | null>(null);
   let editorRef = $state<
@@ -351,20 +352,34 @@
       void tick().then(() => focusSetField(index, 'pokemon'));
     }
   }
-  const focusSetField = (index: number, field: EditableSetField) => {
+  const focusSetField = (
+    index: number,
+    field: EditableSetField,
+    moveSlot = 0
+  ) => {
     const slot = document.getElementById(`pokemon-slot-${index}`);
     const target =
+      (field === 'moves'
+        ? slot?.querySelector<HTMLButtonElement>(
+            `[data-move-slot="${moveSlot}"]`
+          )
+        : null) ??
       slot?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`) ??
-      slot?.querySelector<HTMLButtonElement>('[data-set-field="set"]');
+      slot?.querySelector<HTMLButtonElement>('[data-set-field="pokemon"]');
     target?.focus({ preventScroll: true });
   };
-  const openSetEditor = (index: number, field: EditableSetField) => {
+  const openSetEditor = (
+    index: number,
+    field: EditableSetField,
+    moveSlot = 0
+  ) => {
     if (editing) return;
     const member = draft?.members[index];
     if (!member) return;
     pendingSpecies = null;
     activeEditIndex = index;
     activeEditField = field;
+    activeEditMoveSlot = moveSlot;
     editorPending = false;
     editorMember = structuredClone($state.snapshot(member));
   };
@@ -386,12 +401,13 @@
   function closeSetEdit() {
     const targetSlot = activeEditIndex;
     const field = activeEditField;
+    const moveSlot = activeEditMoveSlot;
     activeEditIndex = null;
     editorPending = false;
     editorMember = null;
     if (targetSlot !== null) {
       void tick().then(() => {
-        focusSetField(targetSlot, field);
+        focusSetField(targetSlot, field, moveSlot);
       });
     }
   }
@@ -727,7 +743,8 @@
                 memberIndex={index}
                 disabled={editing || deleting || stale}
                 {editing}
-                onedit={(field) => openSetEditor(index, field)}
+                onedit={(field, moveSlot) =>
+                  openSetEditor(index, field, moveSlot)}
                 onrevert={() => revertSlot(index)}
                 revertDisabled={!canRevertSlot(index)}
                 revertReason={slotRevertReason(index)}
@@ -771,6 +788,7 @@
         {teams}
         currentRegulation={current}
         initialField={activeEditField}
+        initialMoveSlot={activeEditMoveSlot}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={catalogState.tags}
         onchange={(next) => saveMember(editIndex, next)}

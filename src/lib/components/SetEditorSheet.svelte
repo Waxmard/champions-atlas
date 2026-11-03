@@ -1,5 +1,4 @@
 <script lang="ts">
-  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import InGameSetSuggestion from '#lib/components/InGameSetSuggestion.svelte';
   import SetEditorPokemonSuggestions from '#lib/components/SetEditorPokemonSuggestions.svelte';
   import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
@@ -9,7 +8,6 @@
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
   import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
-  import SetDetails from '#lib/components/SetDetails.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
@@ -25,13 +23,13 @@
     originalMemberFor,
     setText,
   } from '#lib/workbench.js';
-  type EditorView =
-    'overview' | 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
+  type EditorView = 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
   interface Props {
     member: Member;
     teams: Team[];
     currentRegulation: string;
     initialField: EditableSetField;
+    initialMoveSlot?: number;
     teammates?: Member[];
     tagIndex?: TeamTagsIndex;
     originalMembers?: Member[];
@@ -45,6 +43,7 @@
     teams,
     currentRegulation,
     initialField,
+    initialMoveSlot = 0,
     teammates = [],
     tagIndex,
     originalMembers = [],
@@ -54,14 +53,23 @@
     onpendingchange,
   }: Props = $props();
   function getInitialView(field: EditableSetField): EditorView {
-    if (field === 'set') return 'overview';
+    if (field === 'set' || field === 'pokemon') return 'pokemon';
     if (field === 'item' || field === 'ability' || field === 'nature')
       return 'details';
     return field;
   }
+  const EDITOR_SECTIONS: { id: EditorView; label: string }[] = [
+    { id: 'pokemon', label: 'Pokémon' },
+    { id: 'details', label: 'Details' },
+    { id: 'spread', label: 'EVs' },
+    { id: 'moves', label: 'Moves' },
+    { id: 'text', label: 'Text' },
+  ];
   const MOVE_SLOTS = [0, 1, 2, 3];
   const initialMember = (() => member)();
-  const initialView = (() => getInitialView(initialField))();
+  const fieldOnOpen = (() => initialField)();
+  const initialView = (() => getInitialView(fieldOnOpen))();
+  const initialMoveIndex = (() => initialMoveSlot)();
   const currentSets = createCurrentSetRegistry();
   const fields = (next: Member) => ({
     pokemon: next.pokemon,
@@ -77,12 +85,18 @@
   let form = $state(fields(initialMember));
   let acceptedFields = $state(fields(initialMember));
   let currentView = $state<EditorView>(initialView);
-  let activeMoveSlot = $state(0);
+  let activeMoveSlot = $state(initialMoveIndex);
   let rawText = $state(setText(initialMember));
   let textBaseline = $state(setText(initialMember));
   let replacement = $state<Member | null>(null);
   let activeSuggestions = $state<string | null>(
-    initialView === 'pokemon' ? 'pokemon' : null
+    initialView === 'pokemon'
+      ? 'pokemon'
+      : initialView === 'moves'
+        ? `move-${initialMoveIndex}`
+        : fieldOnOpen === 'item' || fieldOnOpen === 'ability'
+          ? fieldOnOpen
+          : null
   );
   let pokemonQuery = $state(''),
     itemQuery = $state(''),
@@ -177,7 +191,6 @@
       moves: 'Moves',
       spread: 'EV spread',
       text: 'Showdown set text',
-      overview: 'Full set',
     }[currentView]
   );
   const originalReason = $derived(
@@ -386,16 +399,18 @@
       return false;
     }
   }
-  function backToOverview() {
-    const section = currentView === 'details' ? 'item' : currentView;
-    if (!flush() && currentView === 'text') return;
-    currentView = 'overview';
-    activeSuggestions = null;
+  function switchView(view: EditorView) {
+    if (view === currentView) return;
+    if (view === 'text' || currentView === 'text') {
+      if (!flush()) return;
+      rawText = setText(accepted);
+      textBaseline = rawText;
+    }
+    currentView = view;
+    activeSuggestions = view === 'pokemon' ? 'pokemon' : null;
     requestAnimationFrame(() => {
-      const target = editorElement?.querySelector<HTMLElement>(
-        `[data-editor-section="${section}"]`
-      );
-      (target || editorHeading)?.focus();
+      if (contentElement) contentElement.scrollTop = 0;
+      editorHeading?.focus({ preventScroll: true });
     });
   }
   function focusError() {
@@ -419,7 +434,7 @@
   }
   export function focusInitialSection() {
     requestAnimationFrame(() => {
-      const field = initialField === 'set' ? 'set' : initialField;
+      const field = initialField === 'set' ? 'pokemon' : initialField;
       const inputId =
         field === 'item' ||
         field === 'ability' ||
@@ -427,10 +442,12 @@
         field === 'pokemon'
           ? '#set-' + field + '-input'
           : field === 'moves'
-            ? '#set-move-1'
+            ? `#set-move-${activeMoveSlot + 1}`
             : field === 'spread'
               ? '[data-ev-toggle]'
-              : '';
+              : field === 'text'
+                ? '#set-raw-textarea'
+                : '';
       const target =
         (inputId ? editorElement?.querySelector<HTMLElement>(inputId) : null) ||
         editorElement?.querySelector<HTMLElement>(
@@ -459,53 +476,44 @@
   {/snippet}
 
   <header
-    class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 sm:pt-5"
+    class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:px-6 sm:pt-5"
   >
-    {#if currentView === 'overview'}
+    <div class="flex flex-wrap items-center justify-between gap-3">
       <h2
         bind:this={editorHeading}
-        class="min-w-0 text-[1.375rem] leading-tight font-extrabold wrap-anywhere whitespace-pre-wrap"
+        class="min-w-[min(6rem,100%)] flex-1 text-lg leading-tight font-semibold wrap-anywhere sm:text-[1.375rem]"
         tabindex="-1"
-        data-editor-section="set"
+        data-editor-section={currentView === 'details'
+          ? initialField === 'ability' || initialField === 'nature'
+            ? initialField
+            : 'item'
+          : currentView}
       >
-        {form.pokemon || initialMember.pokemon} set
+        {subViewTitle}
       </h2>
-    {:else}
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
-          <Button
-            variant="quiet"
-            onclick={backToOverview}
-            aria-label="Back to full set"
-          >
-            <ArrowLeft class="size-4" />
-            <span>Full set</span>
-          </Button>
-          <div class="hidden h-4 w-px bg-base-300 sm:block"></div>
-          <h2
-            bind:this={editorHeading}
-            class="min-w-[min(6rem,100%)] flex-1 text-lg leading-tight font-semibold wrap-anywhere sm:text-[1.375rem]"
-            tabindex="-1"
-            data-editor-section={currentView === 'details'
-              ? initialField === 'ability' || initialField === 'nature'
-                ? initialField
-                : 'item'
-              : currentView}
-          >
-            {subViewTitle}
-          </h2>
-        </div>
-        <div
-          class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
-        >
-          <SpeciesLabel
-            pokemon={form.pokemon || initialMember.pokemon}
-            spriteSize={20}
-            textClass="max-w-[120px] truncate text-xs font-medium"
-          />
-        </div>
+      <div
+        class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+      >
+        <SpeciesLabel
+          pokemon={form.pokemon || initialMember.pokemon}
+          spriteSize={20}
+          textClass="max-w-[120px] truncate text-xs font-medium"
+        />
       </div>
-    {/if}
+    </div>
+    <nav aria-label="Set sections" class="mt-2.5 flex flex-wrap gap-1">
+      {#each EDITOR_SECTIONS as section (section.id)}
+        <Button
+          variant={currentView === section.id ? 'primary' : 'quiet'}
+          size="dense"
+          aria-current={currentView === section.id ? 'page' : undefined}
+          onpointerdown={keepFocus}
+          onclick={() => switchView(section.id)}
+        >
+          {section.label}
+        </Button>
+      {/each}
+    </nav>
   </header>
   <div
     bind:this={contentElement}
@@ -520,56 +528,7 @@
         {currentSets.error}
       </p>
     {/if}
-    {#if currentView === 'overview'}
-      <SetDetails
-        member={draftMember}
-        onnavigate={(field) => {
-          const view = getInitialView(field);
-          if (view === 'text') {
-            if (!flush()) return;
-            rawText = setText(accepted);
-            textBaseline = rawText;
-          }
-          currentView = view;
-          if (view === 'pokemon') openSuggestions('pokemon');
-          requestAnimationFrame(() => {
-            if (contentElement) contentElement.scrollTop = 0;
-            editorHeading?.focus({ preventScroll: true });
-          });
-        }}
-      />
-      {#if originalChanged}
-        <Button
-          variant="quiet"
-          class="mt-3 h-auto min-h-11"
-          disabled={!!originalReason}
-          aria-describedby={originalReason ? 'original-set-reason' : undefined}
-          onclick={() => {
-            if (originalSlotMember) chooseSet(originalSlotMember, true);
-          }}>Use original set</Button
-        >
-        {#if originalReason}<p id="original-set-reason" class="provenance">
-            {originalReason}
-          </p>{/if}
-      {/if}
-      {#if inGameMember}
-        <section aria-label="Set suggestions" class="plate mt-3">
-          <ul role="list">
-            {@render savedSetSuggestion()}
-          </ul>
-        </section>
-      {/if}
-      {#if error}
-        <p
-          role="alert"
-          tabindex="-1"
-          class="mt-3 text-[0.9375rem] leading-relaxed"
-          style="color: var(--color-error-content)"
-        >
-          {error}
-        </p>
-      {/if}
-    {:else if currentView === 'moves'}
+    {#if currentView === 'moves'}
       <SetEditorMoves
         moves={form.moves}
         {activeMoveSlot}
@@ -755,7 +714,7 @@
   <footer
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4"
   >
-    {#if error && !(currentView === 'overview' || (currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability', 'nature'].includes(errorField || '')) || (currentView === 'spread' && errorField === 'spread') || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
+    {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability', 'nature'].includes(errorField || '')) || (currentView === 'spread' && errorField === 'spread') || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
         role="alert"
         tabindex="-1"
         class="mb-2 text-sm"
