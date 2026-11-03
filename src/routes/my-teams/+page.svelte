@@ -9,8 +9,7 @@
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import TeamSummary from '#lib/components/TeamSummary.svelte';
-  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
+  import Bookmark from '@lucide/svelte/icons/bookmark';
   import Copy from '@lucide/svelte/icons/copy';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -50,7 +49,8 @@
     storageError = $state(''),
     deleting = $state(false),
     showExport = $state(false),
-    stale = $state(false);
+    stale = $state(false),
+    teamControlsOpen = $state(false);
   let activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
     editorPending = $state(false),
@@ -115,6 +115,7 @@
           : activeOverride;
       const resolvedId = collections.resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
+      if (draft?.id !== entry?.id) teamControlsOpen = false;
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
       baseline = entry ? contentSnapshot(entry) : '';
       if (!entry) visitBaseline = null;
@@ -221,7 +222,8 @@
 
     if (
       pickerPress ||
-      (target instanceof Element && target.closest('[data-team-picker]'))
+      (target instanceof Element &&
+        target.closest('[data-team-picker], [data-preserve-team-name]'))
     )
       return;
 
@@ -348,11 +350,13 @@
       void tick().then(() => focusSetField(index, 'pokemon'));
     }
   }
-  const focusSetField = (index: number, field: EditableSetField) =>
-    document
-      .getElementById(`pokemon-slot-${index}`)
-      ?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`)
-      ?.focus({ preventScroll: true });
+  const focusSetField = (index: number, field: EditableSetField) => {
+    const slot = document.getElementById(`pokemon-slot-${index}`);
+    const target =
+      slot?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`) ??
+      slot?.querySelector<HTMLButtonElement>('[data-set-field="set"]');
+    target?.focus({ preventScroll: true });
+  };
   const openSetEditor = (index: number, field: EditableSetField) => {
     if (editing) return;
     const member = draft?.members[index];
@@ -499,221 +503,263 @@
 
 <svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
 
-<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <SavedCollectionHeader collection="my-teams" title="My teams" />
-  {#if storageError || errorMessage}<p
-      role="alert"
-      class="plate mt-5 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
-      style="color: var(--color-error-content)"
+<main
+  id="main"
+  class="mx-auto max-w-7xl pt-2 [padding-right:calc(0.5rem+env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] [padding-left:calc(0.5rem+env(safe-area-inset-left))]"
+>
+  <div
+    class="team-workspace grid min-w-0 items-start gap-2 {ready &&
+    !storageError &&
+    draft
+      ? 'landscape:md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] landscape:md:[direction:ltr]'
+      : ''}"
+  >
+    <div
+      class="team-controls min-w-0 space-y-2 wrap-anywhere {ready &&
+      !storageError &&
+      draft
+        ? 'landscape:md:col-start-2 landscape:md:row-start-1'
+        : ''}"
     >
-      {storageError || errorMessage}
-    </p>{/if}
-  {#if !ready}
-    <p class="mt-8 text-[0.9375rem] text-base-content/70">
-      Loading saved teams…
-    </p>
-  {:else if !storageError}
-    {#if saved.length}
-      <div
-        class="mt-6"
-        data-team-picker
-        onpointerdowncapture={() => {
-          pickerPress = true;
-          setTimeout(() => (pickerPress = false));
-        }}
-      >
-        <TeamPicker
-          bind:this={picker}
-          teams={saved}
-          value={draft?.id ?? ''}
-          onselect={selectTeam}
-          disabled={editing || deleting}
-        />
-      </div>
-    {:else}
-      <div class="plate mt-8 max-w-xl px-4 py-3">
-        <p class="text-[0.9375rem] leading-relaxed">
-          No saved teams yet. Open a catalog team and choose “Use this team”.
-        </p>
+      <header class="flex flex-wrap items-center justify-between gap-2">
+        <h1 class="text-lg font-extrabold">My teams</h1>
         <Button
-          href={resolve('my-teams/new')}
+          href={resolve('wishlist')}
           variant="quiet"
-          class="-ms-2 mt-1"
+          class="h-auto min-h-11 whitespace-normal"
         >
-          <Plus class="size-4" aria-hidden="true" />
-          <span>Add custom team</span>
+          <Bookmark class="size-4" aria-hidden="true" />
+          <span>Wishlist</span>
         </Button>
-      </div>
-    {/if}
-  {/if}
-  {#if ready && !storageError}
-    {#if message}<p
-        role="status"
-        class="mt-4 text-[0.9375rem] text-base-content/70"
-      >
-        {message}
-      </p>{/if}
-    {#if draft}
-      {@const match = collections.resolveCatalogTeam(draft.original, teams)}
-      <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
-        <TeamSummary
-          name={draft.name}
-          members={draft.members}
-          layout="workspace"
-          memberHref={(index) => '#pokemon-slot-' + index}
+      </header>
+      {#if storageError || errorMessage}<p
+          role="alert"
+          class="plate max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+          style="color: var(--color-error-content)"
         >
-          {#snippet headingActions()}
-            <Button
-              variant="danger-quiet"
-              size="icon-compact"
-              class="shrink-0"
-              aria-label="Delete team"
-              title="Delete team"
-              disabled={editing || deleting}
-              onclick={removeSelectedTeam}
-            >
-              <Trash2 class="size-4" aria-hidden="true" />
-            </Button>
-          {/snippet}
-        </TeamSummary>
-        {#if match}<a
-            class="mt-2 inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
-            href={resolve(`teams/${match.id}`)}>View catalog details</a
-          >{/if}
-        <div
-          class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
-        >
-          <div class="w-full max-w-xl flex-1">
-            <label class="term block"
-              >Team name
-              <input
-                class="input mt-1.5 min-h-11 w-full sm:text-sm"
-                maxlength="200"
-                aria-invalid={nameError ? 'true' : undefined}
-                aria-describedby="team-name-error"
-                bind:value={draft.name}
-                oninput={() => (nameError = '')}
-                onblur={blurName}
-                onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
-              />
-            </label>
-            <p id="team-name-error" class="mt-1 text-sm text-error-content">
-              {nameError}
-            </p>
-          </div>
-          <div class="flex flex-wrap items-center gap-1.5">
-            <Button
-              variant="quiet"
-              data-team-action="copy"
-              disabled={editing || deleting}
-              onclick={copyPaste}
-            >
-              <Copy class="size-4" aria-hidden="true" />
-              <span>Copy team text</span>
-            </Button>
-            <MyTeamCollectionActions
-              teamId={draft.id}
-              {baseline}
-              {dirty}
-              members={draft.members}
-              disabled={editing || deleting || stale}
-              onswap={() => (showSwapPicker = true)}
-              swapDisabled={editing || !!pendingSpecies || showSwapPicker}
-            />
-          </div>
-        </div>
-        <div class="mt-2.5 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-          <p class="provenance">
-            {dirty ? 'Unsaved input.' : 'Saved on this device.'}
-          </p>
-          {#if draft.name !== draft.original.name}
-            <p class="provenance max-w-full min-w-0 wrap-anywhere">
-              Original: {draft.original.name}
-            </p>
-          {/if}
-          <p class="provenance">
-            Editing does not create a working rental code.
-          </p>
-        </div>
-        {#if pendingSpecies}
+          {storageError || errorMessage}
+        </p>{/if}
+      {#if !ready}
+        <p class="text-[0.9375rem] text-base-content/70">
+          Loading saved teams…
+        </p>
+      {:else if !storageError}
+        {#if saved.length}
           <div
-            class="t-panel-slide input mt-4 flex h-12 items-center justify-between gap-2"
-            use:revealPanel
+            data-team-picker
+            onpointerdowncapture={() => {
+              pickerPress = true;
+              setTimeout(() => (pickerPress = false));
+            }}
           >
-            <span>{pendingSpecies}</span>
-            <Button
-              variant="quiet"
-              size="icon-compact"
-              aria-label="Clear selected Pokémon"
-              onclick={cancelSpeciesSwap}><X class="size-4" /></Button
-            >
-          </div>
-        {:else if showSwapPicker}
-          <div class="t-panel-slide mt-4" use:revealPanel>
-            <PokemonPicker
-              options={availableSpecies}
-              onselect={startSpeciesSwap}
-              disabled={editing}
-              label="Change a Pokémon"
-              placeholder="Choose a Pokémon to swap in…"
-              disabledPlaceholder="Finish editing first"
+            <TeamPicker
+              bind:this={picker}
+              teams={saved}
+              value={draft?.id ?? ''}
+              onselect={selectTeam}
+              disabled={editing || deleting}
             />
           </div>
-        {/if}
-        {#if swapUnavailable && pendingSpecies}
-          <p class="provenance mt-2" role="status">
-            No catalog team with {pendingSpecies} shares a remaining teammate.
-          </p>
-        {/if}
-        {#key draft.id}
-          <TeamHistoryPanel
-            team={draft}
-            currentRegulation={current}
-            disabled={editing || deleting}
-            onrestore={restoreOriginal}
-            onrestoreslot={restoreSlot}
-          />
-        {/key}
-        <div class="mt-5 grid items-start gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {#each draft.members as member, index (index)}
-            <section
-              id={`pokemon-slot-${index}`}
-              class="plate min-w-0 overflow-hidden transition-colors duration-300 ease-out motion-reduce:transition-none {activeEditIndex ===
-              index
-                ? 'border-primary'
-                : 'hover:border-primary/40'}"
-              aria-label={`${member.pokemon} set`}
+        {:else}
+          <div class="plate max-w-xl px-4 py-3">
+            <p class="text-[0.9375rem] leading-relaxed">
+              No saved teams yet. Open a catalog team and choose “Use this
+              team”.
+            </p>
+            <Button
+              href={resolve('my-teams/new')}
+              variant="quiet"
+              class="-ms-2 mt-1 h-auto min-h-11 max-w-full whitespace-normal"
             >
-              <MemberCurrentSetControls
-                teamId={draft.id}
-                {baseline}
-                members={draft.members}
-                memberIndex={index}
-                disabled={editing || deleting || stale}
-                {editing}
-                onedit={(field) => openSetEditor(index, field)}
-                onrevert={() => revertSlot(index)}
-                revertDisabled={!canRevertSlot(index)}
-                revertReason={slotRevertReason(index)}
-              />
-            </section>
-          {/each}
-        </div>
-        <p class="provenance mt-4 max-w-[68ch]">
+              <Plus class="size-4" aria-hidden="true" />
+              <span>Add custom team</span>
+            </Button>
+          </div>
+        {/if}
+        {#if message}<p
+            role="status"
+            class="text-[0.9375rem] text-base-content/70"
+          >
+            {message}
+          </p>{/if}
+        {#if draft}
+          {@const match = collections.resolveCatalogTeam(draft.original, teams)}
+          <Button
+            variant="quiet"
+            class="h-auto min-h-11 max-w-full text-start whitespace-normal"
+            data-team-action="copy"
+            disabled={editing || deleting}
+            onclick={copyPaste}
+          >
+            <Copy class="size-4" aria-hidden="true" />
+            <span>Copy team text</span>
+          </Button>
+          <details bind:open={teamControlsOpen} class="plate min-w-0 p-2">
+            <summary
+              class="min-h-11 cursor-pointer content-center px-2 text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Team controls
+            </summary>
+            <div class="min-w-0 space-y-3 pt-2">
+              <div class="min-w-0">
+                <label class="term block"
+                  >Team name
+                  <input
+                    class="input mt-1.5 min-h-11 w-full text-base"
+                    maxlength="200"
+                    aria-invalid={nameError ? 'true' : undefined}
+                    aria-describedby="team-name-error"
+                    bind:value={draft.name}
+                    oninput={() => (nameError = '')}
+                    onblur={blurName}
+                    onkeydown={(e) =>
+                      e.key === 'Enter' && e.currentTarget.blur()}
+                  />
+                </label>
+                <p id="team-name-error" class="mt-1 text-sm text-error-content">
+                  {nameError}
+                </p>
+              </div>
+              <div
+                class="flex min-w-0 flex-wrap items-center gap-1.5 [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:max-w-full [&>div>button]:text-start [&>div>button]:whitespace-normal"
+              >
+                <MyTeamCollectionActions
+                  teamId={draft.id}
+                  {baseline}
+                  {dirty}
+                  members={draft.members}
+                  disabled={editing || deleting || stale}
+                  onswap={() => (showSwapPicker = true)}
+                  swapDisabled={editing || !!pendingSpecies || showSwapPicker}
+                />
+              </div>
+              {#if match}<a
+                  class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
+                  href={resolve(`teams/${match.id}`)}>View catalog details</a
+                >{/if}
+              <div class="min-w-0 space-y-1">
+                <p class="provenance">
+                  {dirty ? 'Unsaved input.' : 'Saved on this device.'}
+                </p>
+                {#if draft.name !== draft.original.name}
+                  <p class="provenance max-w-full min-w-0 wrap-anywhere">
+                    Original: {draft.original.name}
+                  </p>
+                {/if}
+                <p class="provenance">
+                  Editing does not create a working rental code.
+                </p>
+              </div>
+              {#if pendingSpecies}
+                <div
+                  class="t-panel-slide input flex h-auto min-h-12 w-full items-center justify-between gap-2 py-1"
+                  use:revealPanel
+                >
+                  <span class="min-w-0 flex-1 wrap-anywhere"
+                    >{pendingSpecies}</span
+                  >
+                  <Button
+                    variant="quiet"
+                    size="icon-compact"
+                    aria-label="Clear selected Pokémon"
+                    onclick={cancelSpeciesSwap}
+                    ><X class="size-4" aria-hidden="true" /></Button
+                  >
+                </div>
+              {:else if showSwapPicker}
+                <div class="t-panel-slide min-w-0" use:revealPanel>
+                  <PokemonPicker
+                    options={availableSpecies}
+                    onselect={startSpeciesSwap}
+                    disabled={editing}
+                    label="Change a Pokémon"
+                    placeholder="Choose a Pokémon to swap in…"
+                    disabledPlaceholder="Finish editing first"
+                  />
+                </div>
+              {/if}
+              {#if swapUnavailable && pendingSpecies}
+                <p class="provenance" role="status">
+                  No catalog team with {pendingSpecies} shares a remaining teammate.
+                </p>
+              {/if}
+              <div
+                class="min-w-0 [&_button]:h-auto [&_button]:min-h-11 [&_button]:max-w-full [&_button]:text-start [&_button]:whitespace-normal landscape:md:[&_dl]:grid-cols-1"
+              >
+                {#key draft.id}
+                  <TeamHistoryPanel
+                    team={draft}
+                    currentRegulation={current}
+                    disabled={editing || deleting}
+                    onrestore={restoreOriginal}
+                    onrestoreslot={restoreSlot}
+                  />
+                {/key}
+              </div>
+              <Button
+                variant="destructive"
+                class="h-auto min-h-11 max-w-full text-start whitespace-normal"
+                disabled={editing || deleting}
+                onclick={removeSelectedTeam}
+              >
+                <Trash2 class="size-4" aria-hidden="true" />
+                <span>Delete team</span>
+              </Button>
+            </div>
+          </details>
+        {/if}
+      {/if}
+    </div>
+    {#if ready && !storageError && draft}
+      <section
+        aria-label="Your team"
+        class="team-sheet min-w-0 landscape:md:col-start-1 landscape:md:row-start-1"
+      >
+        {#key draft.id}
+          <div
+            class="team-sheet-grid grid min-w-0 items-start gap-3 min-[360px]:grid-cols-2 landscape:md:grid-cols-3"
+          >
+            {#each draft.members as member, index (index)}
+              <section
+                id={`pokemon-slot-${index}`}
+                class="min-w-0"
+                aria-label={`${member.pokemon} set`}
+              >
+                <MemberCurrentSetControls
+                  teamId={draft.id}
+                  {baseline}
+                  members={draft.members}
+                  memberIndex={index}
+                  disabled={editing || deleting || stale}
+                  {editing}
+                  onedit={(field) => openSetEditor(index, field)}
+                  onrevert={() => revertSlot(index)}
+                  revertDisabled={!canRevertSlot(index)}
+                  revertReason={slotRevertReason(index)}
+                />
+              </section>
+            {/each}
+          </div>
+        {/key}
+      </section>
+      <div
+        class="team-export min-w-0 landscape:md:col-start-1 landscape:md:row-start-2"
+      >
+        <p class="provenance max-w-[68ch]">
           Team text normalizes to Pokémon Champions format (EVs out of 32, no
           IVs); unknown details stay omitted.
         </p>
         {#if showExport}<label
-            class="t-panel-slide term mt-4 block"
+            class="t-panel-slide term mt-2 block"
             use:revealPanel
             >Export text<textarea
               readonly
               class="textarea mt-2 min-h-72 w-full p-3 font-mono text-xs"
               value={exportPaste(draft.members)}></textarea></label
           >{/if}
-      </section>
+      </div>
     {/if}
-  {/if}
+  </div>
 
   {#if activeEditIndex !== null && draft && editorMember}
     {@const editIndex = activeEditIndex}

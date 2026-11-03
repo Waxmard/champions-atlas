@@ -76,9 +76,10 @@ matches a catalog URL. Current details do not change the original evidence,
 saved edits, or independent team copies. Teams without a match remain usable
 without a catalog link or warning.
 
-Browse, Wishlist, and My teams share a team summary style. The My teams summary
-shows the editable copy, and selecting a roster member jumps to its set. When
-available, **View catalog details** opens the matching catalog team.
+Browse and Wishlist share a team summary style. My teams shows complete editable
+sets together on a scrolling sheet instead of a separate roster summary. When
+available, **View catalog details** in **Team controls** opens the matching
+catalog team.
 
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
@@ -116,11 +117,11 @@ duplicate both exist, the canonical slot is kept and the duplicate is dropped
 silently on startup, during sync, and when another device shares it. The removal
 is permanent and keeps no backup. A lone legacy slot keeps its member and only
 takes the canonical id. Malformed data remains unreadable and untouched.
-Record individual committed sets or **Record all in-game sets** from the selected
-team's **My teams** overview, never from
-the editor. These secondary actions use the Save icon and appear only when a
-snapshot would change. Recording is unavailable while editing and never flushes
-pending editor input or a pending team name. Individual replacements use native
+Record individual committed sets from each set's actions or **Record all
+in-game sets** from **Team controls**, never from the editor. These secondary
+actions use the Save icon and appear only when a snapshot would change.
+Recording is unavailable while editing and never flushes pending editor input or
+a pending team name. Individual replacements use native
 confirmation. Bulk recording offers one checklist of different existing
 snapshots, initially unchecked. Select one, several, all, or none to replace.
 Unchecked Pokémon keep their latest recorded sets; selecting none still records
@@ -287,11 +288,11 @@ After a successful sign-in, it can open saved data offline; sync resumes when
 connected. A first sign-in may require connectivity. Native setup and signing
 are described in [iOS installation and Firebase sync](firebase.md).
 
-The My teams picker shows only in-use teams. Its icon-first search covers the
-current team name and each member's species, with exact, prefix, substring, and
-character-subsequence tiers, requiring every whitespace-separated term to match.
-Arrow keys and Enter select a result; Escape restores the current team without
-renaming it.
+The My teams picker shows only in-use teams and displays the selected team's
+name. Its search covers the current team name and each member's species, with
+exact, prefix, substring, and character-subsequence tiers, requiring every
+whitespace-separated term to match. Arrow keys and Enter select a result;
+Escape restores the current team without renaming it.
 
 ## Future scope
 

@@ -87,9 +87,10 @@
 </script>
 
 <div class="max-w-xl">
-  <label class="term block" for={id}>
-    Saved team<span class="sr-only">
-      {selected ? `, currently ${selected.name}` : ''}
+  <label class="term block min-w-0 wrap-anywhere" for={id}>
+    <span aria-hidden="true">{selected?.name ?? 'Saved team'}</span>
+    <span class="sr-only">
+      {selected ? `Saved team, currently ${selected.name}` : 'Saved team'}
     </span>
   </label>
   <Combobox.Root
@@ -103,13 +104,8 @@
   >
     <div
       bind:this={fieldEl}
-      class="input relative mt-2 flex h-auto min-h-11 w-full flex-col items-stretch gap-1.5 py-2.5 pe-12"
+      class="input relative mt-2 flex h-auto min-h-11 w-full items-center pe-12"
     >
-      <div class="flex gap-1" aria-hidden="true">
-        {#each selected ? roster(selected) : [] as pokemon, slot (slot)}
-          <PokemonSprite {pokemon} size={32} />
-        {/each}
-      </div>
       <Combobox.Input
         {id}
         bind:ref={inputEl}
@@ -123,7 +119,7 @@
           if (!open) openMenu();
         }}
         onkeydown={closeOnEscape}
-        class="w-full min-w-0 bg-transparent text-base outline-none"
+        class="min-h-11 w-full min-w-0 bg-transparent text-base outline-none"
       >
         {#snippet child({ props })}
           <input {...props} value={field} />
@@ -132,7 +128,7 @@
       <Button
         variant="quiet"
         size="icon-compact"
-        class="absolute end-0.5 top-1/2 -translate-y-1/2"
+        class="absolute end-0.5 top-1/2 size-11 -translate-y-1/2"
         aria-label="Show saved teams"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -162,7 +158,7 @@
             >
               {#snippet children({ selected: isSelected })}
                 <span class="flex min-w-0 flex-1 flex-col gap-1">
-                  <span class="flex gap-1" aria-hidden="true">
+                  <span class="flex flex-wrap gap-1" aria-hidden="true">
                     {#each roster(team) as pokemon, slot (slot)}
                       <PokemonSprite {pokemon} size={32} />
                     {/each}
