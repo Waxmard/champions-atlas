@@ -1,5 +1,7 @@
 .PHONY: setup ci ios
 
+IOS_DEVICE ?= Gengar Phone
+
 setup:
 	npm ci
 
