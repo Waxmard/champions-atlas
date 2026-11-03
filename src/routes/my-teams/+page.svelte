@@ -7,6 +7,7 @@
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
+  import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
   import Bookmark from '@lucide/svelte/icons/bookmark';
@@ -711,35 +712,28 @@
       {/if}
     </div>
     {#if ready && !storageError && draft}
+      {@const activeTeam = draft}
       <section
         aria-label="Your team"
         class="team-sheet min-w-0 landscape:md:col-start-1 landscape:md:row-start-1"
       >
-        {#key draft.id}
-          <div
-            class="team-sheet-grid grid min-w-0 items-start gap-3 min-[360px]:grid-cols-2 landscape:md:grid-cols-3"
-          >
-            {#each draft.members as member, index (index)}
-              <section
-                id={`pokemon-slot-${index}`}
-                class="min-w-0"
-                aria-label={`${member.pokemon} set`}
-              >
-                <MemberCurrentSetControls
-                  teamId={draft.id}
-                  {baseline}
-                  members={draft.members}
-                  memberIndex={index}
-                  disabled={editing || deleting || stale}
-                  {editing}
-                  onedit={(field) => openSetEditor(index, field)}
-                  onrevert={() => revertSlot(index)}
-                  revertDisabled={!canRevertSlot(index)}
-                  revertReason={slotRevertReason(index)}
-                />
-              </section>
-            {/each}
-          </div>
+        {#key activeTeam.id}
+          <TeamSetGrid members={activeTeam.members}>
+            {#snippet renderMember(index)}
+              <MemberCurrentSetControls
+                teamId={activeTeam.id}
+                {baseline}
+                members={activeTeam.members}
+                memberIndex={index}
+                disabled={editing || deleting || stale}
+                {editing}
+                onedit={(field) => openSetEditor(index, field)}
+                onrevert={() => revertSlot(index)}
+                revertDisabled={!canRevertSlot(index)}
+                revertReason={slotRevertReason(index)}
+              />
+            {/snippet}
+          </TeamSetGrid>
         {/key}
       </section>
       <div

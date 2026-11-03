@@ -9,24 +9,16 @@
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
   import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
-  import SetEditorOverview from '#lib/components/SetEditorOverview.svelte';
+  import SetDetails from '#lib/components/SetDetails.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
-  import TypeBadge from '#lib/components/TypeBadge.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
-  import {
-    championsSpreadTotal,
-    NATURES,
-    parseChampionsSpread,
-    parseSetBlock,
-    updateSetText,
-  } from '#lib/paste.js';
+  import { NATURES, parseSetBlock, updateSetText } from '#lib/paste.js';
   import {
     memberRosterError,
     memberValidationError,
   } from '#lib/member-validation.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
-  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import {
     catalogSuggestions,
@@ -178,10 +170,6 @@
       ? form.nature
       : null
   );
-  const currentSpread = $derived(parseChampionsSpread(form.spread));
-  const currentSpreadTotal = $derived(
-    currentSpread ? championsSpreadTotal(currentSpread) : 0
-  );
   const subViewTitle = $derived(
     {
       pokemon: 'Pokémon',
@@ -189,7 +177,7 @@
       moves: 'Moves',
       spread: 'EV spread',
       text: 'Showdown set text',
-      overview: 'Overview',
+      overview: 'Full set',
     }[currentView]
   );
   const originalReason = $derived(
@@ -399,9 +387,16 @@
     }
   }
   function backToOverview() {
+    const section = currentView === 'details' ? 'item' : currentView;
     if (!flush() && currentView === 'text') return;
     currentView = 'overview';
     activeSuggestions = null;
+    requestAnimationFrame(() => {
+      const target = editorElement?.querySelector<HTMLElement>(
+        `[data-editor-section="${section}"]`
+      );
+      (target || editorHeading)?.focus();
+    });
   }
   function focusError() {
     requestAnimationFrame(() => {
@@ -464,56 +459,32 @@
   {/snippet}
 
   <header
-    class="shrink-0 border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 sm:pt-5"
+    class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 sm:pt-5"
   >
     {#if currentView === 'overview'}
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-3">
-          <div
-            class="roster-sprite shrink-0"
-            style="--type-color: {TYPE_COLORS[
-              getPokemonTypes(form.pokemon || initialMember.pokemon)[0]
-            ]}"
-          >
-            <PokemonSprite
-              pokemon={form.pokemon || initialMember.pokemon}
-              size={40}
-            />
-          </div>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h2
-                bind:this={editorHeading}
-                class="text-[1.375rem] leading-tight font-extrabold wrap-break-word"
-                tabindex="-1"
-                data-editor-section="set"
-              >
-                Edit {initialMember.pokemon} set
-              </h2>
-              <div class="flex items-center gap-1">
-                {#each getPokemonTypes(form.pokemon || initialMember.pokemon) as type (type)}
-                  <TypeBadge {type} size="md" />
-                {/each}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <h2
+        bind:this={editorHeading}
+        class="min-w-0 text-[1.375rem] leading-tight font-extrabold wrap-anywhere whitespace-pre-wrap"
+        tabindex="-1"
+        data-editor-section="set"
+      >
+        {form.pokemon || initialMember.pokemon} set
+      </h2>
     {:else}
       <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto">
+        <div class="flex w-full min-w-0 flex-wrap items-center gap-2 sm:w-auto">
           <Button
             variant="quiet"
             onclick={backToOverview}
-            aria-label="Back to overview"
+            aria-label="Back to full set"
           >
             <ArrowLeft class="size-4" />
-            <span>Overview</span>
+            <span>Full set</span>
           </Button>
-          <div class="h-4 w-px bg-base-300"></div>
+          <div class="hidden h-4 w-px bg-base-300 sm:block"></div>
           <h2
             bind:this={editorHeading}
-            class="min-w-0 text-lg leading-tight font-semibold sm:text-[1.375rem]"
+            class="min-w-[min(6rem,100%)] flex-1 text-lg leading-tight font-semibold wrap-anywhere sm:text-[1.375rem]"
             tabindex="-1"
             data-editor-section={currentView === 'details'
               ? initialField === 'ability' || initialField === 'nature'
@@ -525,7 +496,7 @@
           </h2>
         </div>
         <div
-          class="ms-auto flex shrink-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+          class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
         >
           <SpeciesLabel
             pokemon={form.pokemon || initialMember.pokemon}
@@ -550,22 +521,10 @@
       </p>
     {/if}
     {#if currentView === 'overview'}
-      <SetEditorOverview
-        pokemon={form.pokemon || initialMember.pokemon}
-        item={form.item}
-        ability={form.ability}
-        nature={form.nature}
-        spread={form.spread}
-        moves={form.moves}
-        {currentSpreadTotal}
-        {error}
-        inGameSuggestion={inGameMember ? savedSetSuggestion : undefined}
-        originalAvailable={originalChanged}
-        {originalReason}
-        onoriginal={() => {
-          if (originalSlotMember) chooseSet(originalSlotMember, true);
-        }}
-        onnavigate={(view) => {
+      <SetDetails
+        member={draftMember}
+        onnavigate={(field) => {
+          const view = getInitialView(field);
           if (view === 'text') {
             if (!flush()) return;
             rawText = setText(accepted);
@@ -573,8 +532,43 @@
           }
           currentView = view;
           if (view === 'pokemon') openSuggestions('pokemon');
+          requestAnimationFrame(() => {
+            if (contentElement) contentElement.scrollTop = 0;
+            editorHeading?.focus({ preventScroll: true });
+          });
         }}
       />
+      {#if originalChanged}
+        <Button
+          variant="quiet"
+          class="mt-3 h-auto min-h-11"
+          disabled={!!originalReason}
+          aria-describedby={originalReason ? 'original-set-reason' : undefined}
+          onclick={() => {
+            if (originalSlotMember) chooseSet(originalSlotMember, true);
+          }}>Use original set</Button
+        >
+        {#if originalReason}<p id="original-set-reason" class="provenance">
+            {originalReason}
+          </p>{/if}
+      {/if}
+      {#if inGameMember}
+        <section aria-label="Set suggestions" class="plate mt-3">
+          <ul role="list">
+            {@render savedSetSuggestion()}
+          </ul>
+        </section>
+      {/if}
+      {#if error}
+        <p
+          role="alert"
+          tabindex="-1"
+          class="mt-3 text-[0.9375rem] leading-relaxed"
+          style="color: var(--color-error-content)"
+        >
+          {error}
+        </p>
+      {/if}
     {:else if currentView === 'moves'}
       <SetEditorMoves
         moves={form.moves}
@@ -772,7 +766,7 @@
     <p role="status" aria-live="polite" class="provenance mb-3">
       {dirty ? 'Unsaved input.' : 'Saved on this device.'}
     </p>
-    <div class="flex justify-end gap-2">
+    <div class="flex flex-wrap justify-end gap-2">
       <Button
         variant="quiet"
         onpointerdown={keepFocus}

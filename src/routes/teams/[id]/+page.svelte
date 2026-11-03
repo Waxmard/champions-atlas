@@ -7,7 +7,8 @@
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
-  import MemberCard from '#lib/components/MemberCard.svelte';
+  import FullSetDialog from '#lib/components/FullSetDialog.svelte';
+  import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
@@ -21,6 +22,7 @@
     regulationLabel,
     sourceRows,
     youtubeChannelNames,
+    type Member,
     type Team,
   } from '#lib/catalog.js';
   import { activeSpreadSource } from '#lib/spread-provenance.js';
@@ -70,6 +72,7 @@
   let savedError = $state('');
   let actionError = $state('');
   let pending = $state(false);
+  let selectedMember = $state.raw<Member | null>(null);
   const wishlisted = $derived(wishlistedCatalogEntries(saved, team).length > 0);
   onMount(() => {
     ready = true;
@@ -318,13 +321,12 @@
           : 'Only the published roster is available; set details are unknown.'}
       </p>{/if}
 
-    <div class="grid items-start gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      {#each team.members as member, index (index)}
-        <div class="plate overflow-hidden">
-          <MemberCard {member} slot={index + 1} editable={false} />
-        </div>
-      {/each}
-    </div>
+    <TeamSetGrid
+      members={team.members}
+      onopen={ready
+        ? (index) => (selectedMember = team.members[index])
+        : undefined}
+    />
   </section>
 
   <section aria-labelledby="results-heading" class="mt-10">
@@ -412,5 +414,11 @@
       <pre
         class="mt-4 overflow-x-auto font-mono text-xs leading-6">{originalPaste}</pre>
     </details>
+  {/if}
+  {#if selectedMember}
+    <FullSetDialog
+      member={selectedMember}
+      onclose={() => (selectedMember = null)}
+    />
   {/if}
 </main>

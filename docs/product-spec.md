@@ -76,10 +76,11 @@ matches a catalog URL. Current details do not change the original evidence,
 saved edits, or independent team copies. Teams without a match remain usable
 without a catalog link or warning.
 
-Browse and Wishlist share a team summary style. My teams shows complete editable
-sets together on a scrolling sheet instead of a separate roster summary. When
-available, **View catalog details** in **Team controls** opens the matching
-catalog team.
+Browse and Wishlist share a compact team summary style. Opening a catalog team,
+a Wishlist bookmark, or My teams shows the six Pokémon sets in a shared card
+grid, where each card opens a full set view (read-only for catalog and Wishlist
+teams, editable in My teams). When available, **View catalog details** opens the
+matching catalog team from My teams or a selected Wishlist team.
 
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
@@ -279,9 +280,11 @@ If multiple Wishlist records match, remove them individually in Wishlist rather
 than deleting them together. Using a bookmarked catalog team promotes the same
 record; if multiple bookmarks match, choose one in Wishlist. Removal rejects a
 record that is no longer a bookmark so a stale control cannot delete a promoted
-team. A bookmark without a current catalog match stays usable with its saved
-roster and no catalog details link. Both collections share the same storage
-ceiling and sync path (see [storage and sync](firebase.md)).
+team. Selecting a bookmark in Wishlist opens its saved sets, copyable team text,
+and retained original source evidence; a bookmark without a current catalog
+match stays usable with its saved roster and no catalog details link. Both
+collections share the same storage ceiling and sync path (see
+[storage and sync](firebase.md)).
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when

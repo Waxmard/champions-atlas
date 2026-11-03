@@ -16,21 +16,29 @@
     showRegulation,
     query,
     actions,
-    detailId = team.id,
+    href,
+    fromCatalog = true,
+    showListedSource = true,
   }: {
     team: Team;
     currentRegulation: string;
     showRegulation: boolean;
     query: string;
     actions?: Snippet;
-    detailId?: string | null;
+    href?: `wishlist?${string}` | `teams/${string}`;
+    fromCatalog?: boolean;
+    showListedSource?: boolean;
   } = $props();
   const custom = $derived(isCustomRulesTeam(team));
   const source = $derived(sourceName(team, currentRegulation));
+  const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
+  const showEvidence = $derived(
+    showListedSource || source !== 'Listed in the catalog' || custom
+  );
 
   function open(event: MouseEvent) {
     if (
-      detailId === null ||
+      event.defaultPrevented ||
       event.button ||
       event.metaKey ||
       event.ctrlKey ||
@@ -39,9 +47,10 @@
     )
       return;
     event.preventDefault();
-    void goto(resolve(`teams/${detailId}${query}`), {
-      state: { fromCatalog: true },
-    });
+    void goto(
+      resolve(destination),
+      fromCatalog ? { state: { fromCatalog: true } } : {}
+    );
   }
 </script>
 
@@ -57,7 +66,7 @@
 
 {#snippet resultEvidence()}
   <div class="min-w-0">
-    {#if detailId !== null || source !== 'Listed in the catalog'}
+    {#if showListedSource || source !== 'Listed in the catalog'}
       <span class="stamp" data-grade="source">{source}</span>
     {/if}
     {#if custom}<p class="term mt-1">Custom rules</p>{/if}
@@ -67,32 +76,26 @@
 <article
   class="plate relative flex min-w-0 flex-col overflow-hidden transition-colors duration-200 hover:border-primary"
 >
-  {#if detailId !== null}
-    <a
-      href={resolve(`teams/${detailId}${query}`)}
-      onclick={open}
-      class="block flex-1 rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
-    >
-      {@render content()}
-    </a>
-  {:else}
-    <div class="flex-1 p-4">{@render content()}</div>
-  {/if}
+  <a
+    href={resolve(destination)}
+    onclick={open}
+    class="block flex-1 rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+  >
+    {@render content()}
+  </a>
   <div
     class="mx-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t py-2.5"
   >
-    {#if detailId !== null}
+    {#if showEvidence}
       <a
-        href={resolve(`teams/${detailId}${query}`)}
+        href={resolve(destination)}
         onclick={open}
         class="min-w-0 flex-auto rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         {@render resultEvidence()}
       </a>
     {:else}
-      <div class="min-w-0 flex-auto">
-        {@render resultEvidence()}
-      </div>
+      <div class="min-w-0 flex-auto"></div>
     {/if}
     {#if actions}
       <div class="ms-auto flex shrink-0 items-center gap-1.5">
