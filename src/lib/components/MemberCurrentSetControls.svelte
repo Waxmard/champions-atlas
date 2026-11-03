@@ -2,7 +2,6 @@
   import { tick } from 'svelte';
   import { Popover } from 'bits-ui';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
-  import FileText from '@lucide/svelte/icons/file-text';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import Save from '@lucide/svelte/icons/save';
   import type { Member } from '#lib/catalog.js';
@@ -43,6 +42,9 @@
     canRecord: () => boolean;
   }>();
   const canRecord = $derived(record?.canRecord() ?? false);
+  const hasActions = $derived(
+    canRecord || !revertDisabled || !!revertReason || !!spreadSource
+  );
   let actionsOpen = $state(false);
   let setButton = $state<HTMLButtonElement | null>(null);
   let returnToSet = false;
@@ -84,99 +86,88 @@
   bind:openButton={setButton}
 >
   {#snippet actions()}
-    <Popover.Root bind:open={actionsOpen}>
-      <Popover.Trigger onclick={focusActionTrigger}>
-        {#snippet child({ props })}
-          <Button
-            {...props}
-            variant="quiet"
-            size="icon-compact"
-            class="size-7 min-h-7 min-w-7 shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
+    {#if hasActions}
+      <Popover.Root bind:open={actionsOpen}>
+        <Popover.Trigger onclick={focusActionTrigger}>
+          {#snippet child({ props })}
+            <Button
+              {...props}
+              variant="quiet"
+              size="icon-compact"
+              class="size-7 min-h-7 min-w-7 shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
+              aria-label={`More actions for ${member.pokemon}`}
+              data-preserve-team-name
+            >
+              <Ellipsis class="size-4" aria-hidden="true" />
+            </Button>
+          {/snippet}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            role="dialog"
             aria-label={`More actions for ${member.pokemon}`}
             data-preserve-team-name
+            align="end"
+            sideOffset={8}
+            trapFocus={false}
+            onCloseAutoFocus={restoreSetFocus}
+            class="z-50 flex max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
           >
-            <Ellipsis class="size-4" aria-hidden="true" />
-          </Button>
-        {/snippet}
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          role="dialog"
-          aria-label={`More actions for ${member.pokemon}`}
-          data-preserve-team-name
-          align="end"
-          sideOffset={8}
-          trapFocus={false}
-          onCloseAutoFocus={restoreSetFocus}
-          class="z-50 flex max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
-        >
-          <Button
-            variant="quiet"
-            class="h-auto min-h-11 w-full justify-start text-start whitespace-normal"
-            disabled={disabled || editing}
-            aria-label={`Edit Showdown text for ${member.pokemon}`}
-            onclick={() => {
-              actionsOpen = false;
-              onedit('text');
-            }}
-          >
-            <FileText class="size-4" aria-hidden="true" />
-            <span>Edit Showdown text</span>
-          </Button>
-          {#if canRecord}
-            <Button
-              variant="quiet"
-              class="h-auto min-h-11 w-full justify-start text-start whitespace-normal"
-              disabled={disabled || editing}
-              aria-label={`Record in-game set for ${member.pokemon}`}
-              onpointerdown={keepFocus}
-              onclick={recordSet}
-            >
-              <Save class="size-4" aria-hidden="true" />
-              <span>Record in-game set</span>
-            </Button>
-          {/if}
-          {#if !revertDisabled}
-            <Button
-              variant="quiet"
-              class="h-auto min-h-11 w-full justify-start text-start whitespace-normal"
-              disabled={disabled || editing}
-              aria-label={`Revert changes for ${member.pokemon}`}
-              onclick={revertSet}
-            >
-              <RotateCcw class="size-4" aria-hidden="true" />
-              <span>Revert changes</span>
-            </Button>
-          {/if}
-          {#if revertReason}
-            <p class="provenance min-w-0 wrap-anywhere">{revertReason}</p>
-          {/if}
-          {#if spreadSource}
-            <a
-              class="inline-flex min-h-11 min-w-0 link items-center text-sm leading-[1.4] wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
-              href={spreadSource.pasteUrl}
-              target="_blank"
-              rel="external noreferrer"
-            >
-              {spreadSource.borrowedNature
-                ? 'EVs and Nature from linked creator paste'
-                : 'EVs from linked creator paste'}
-            </a>
-            {#each spreadSource.videoUrls as videoUrl, index (videoUrl)}
+            {#if canRecord}
+              <Button
+                variant="quiet"
+                class="h-auto min-h-11 w-full justify-start text-start whitespace-normal"
+                disabled={disabled || editing}
+                aria-label={`Record in-game set for ${member.pokemon}`}
+                onpointerdown={keepFocus}
+                onclick={recordSet}
+              >
+                <Save class="size-4" aria-hidden="true" />
+                <span>Record in-game set</span>
+              </Button>
+            {/if}
+            {#if !revertDisabled}
+              <Button
+                variant="quiet"
+                class="h-auto min-h-11 w-full justify-start text-start whitespace-normal"
+                disabled={disabled || editing}
+                aria-label={`Revert changes for ${member.pokemon}`}
+                onclick={revertSet}
+              >
+                <RotateCcw class="size-4" aria-hidden="true" />
+                <span>Revert changes</span>
+              </Button>
+            {/if}
+            {#if revertReason}
+              <p class="provenance min-w-0 wrap-anywhere">{revertReason}</p>
+            {/if}
+            {#if spreadSource}
               <a
                 class="inline-flex min-h-11 min-w-0 link items-center text-sm leading-[1.4] wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
-                href={videoUrl}
+                href={spreadSource.pasteUrl}
                 target="_blank"
                 rel="external noreferrer"
-                aria-label={`Video provenance ${index + 1} for ${member.pokemon}'s linked creator paste`}
               >
-                Video provenance {index + 1}
+                {spreadSource.borrowedNature
+                  ? 'EVs and Nature from linked creator paste'
+                  : 'EVs from linked creator paste'}
               </a>
-            {/each}
-          {/if}
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
+              {#each spreadSource.videoUrls as videoUrl, index (videoUrl)}
+                <a
+                  class="inline-flex min-h-11 min-w-0 link items-center text-sm leading-[1.4] wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
+                  href={videoUrl}
+                  target="_blank"
+                  rel="external noreferrer"
+                  aria-label={`Video provenance ${index + 1} for ${member.pokemon}'s linked creator paste`}
+                >
+                  Video provenance {index + 1}
+                </a>
+              {/each}
+            {/if}
+          </Popover.Content>
+        </Popover.Portal>
+      </Popover.Root>
+    {/if}
   {/snippet}
 </MemberCard>
 <div class="record-status">

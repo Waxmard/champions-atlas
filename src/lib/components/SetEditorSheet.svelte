@@ -18,12 +18,8 @@
   } from '#lib/member-validation.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
-  import {
-    catalogSuggestions,
-    originalMemberFor,
-    setText,
-  } from '#lib/workbench.js';
-  type EditorView = 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
+  import { catalogSuggestions, originalMemberFor } from '#lib/workbench.js';
+  type EditorView = 'pokemon' | 'details' | 'moves' | 'spread';
   interface Props {
     member: Member;
     teams: Team[];
@@ -63,7 +59,6 @@
     { id: 'details', label: 'Details' },
     { id: 'spread', label: 'EVs' },
     { id: 'moves', label: 'Moves' },
-    { id: 'text', label: 'Text' },
   ];
   const MOVE_SLOTS = [0, 1, 2, 3];
   const initialMember = (() => member)();
@@ -86,8 +81,6 @@
   let acceptedFields = $state(fields(initialMember));
   let currentView = $state<EditorView>(initialView);
   let activeMoveSlot = $state(initialMoveIndex);
-  let rawText = $state(setText(initialMember));
-  let textBaseline = $state(setText(initialMember));
   let replacement = $state<Member | null>(null);
   let activeSuggestions = $state<string | null>(
     initialView === 'pokemon'
@@ -119,8 +112,7 @@
   });
   const fieldText = $derived(updateSetText(accepted, draftMember));
   const dirty = $derived(
-    (currentView === 'text' && rawText !== textBaseline) ||
-      canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields) ||
+    canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields) ||
       replacement !== null
   );
   const originalMember = $derived(
@@ -190,7 +182,6 @@
       details: 'Item, ability, and nature',
       moves: 'Moves',
       spread: 'EV spread',
-      text: 'Showdown set text',
     }[currentView]
   );
   const originalReason = $derived(
@@ -224,7 +215,7 @@
   function accept(next: Member, preserveMoves = false) {
     if (!onchange(next)) {
       showError(
-        currentView === 'text' ? 'text' : 'set',
+        'set',
         'Could not save this input. Your edits are still here. ' +
           'Close and reopen the editor, then try again.'
       );
@@ -236,8 +227,6 @@
     applyPreFilled(next);
     if (preserveMoves) form.moves = moves;
     acceptedFields = structuredClone($state.snapshot(form));
-    rawText = setText(next);
-    textBaseline = rawText;
     clearError();
     onpendingchange(false);
     return true;
@@ -252,7 +241,7 @@
       showError('pokemon', reason);
       return;
     }
-    if (!trusted && !validateMember(candidate, 'structured')) return;
+    if (!trusted && !validateMember(candidate)) return;
     replacement = candidate;
     applyPreFilled(candidate);
     if (moveSlots) form.moves = [...moveSlots];
@@ -333,10 +322,18 @@
       )
     );
   }
-  function validateMember(next: Member, mode: 'structured' | 'text') {
-    const validation = memberValidationError(next, accepted, teammates, mode);
+  function validateMember(next: Member) {
+    const validation = memberValidationError(
+      next,
+      accepted,
+      teammates,
+      'structured'
+    );
     if (validation) {
-      showError(validation.field, validation.message);
+      showError(
+        validation.field === 'text' ? 'set' : validation.field,
+        validation.message
+      );
       return false;
     }
     return true;
@@ -364,7 +361,6 @@
         return accept(structuredClone($state.snapshot(replacement)));
       const moves = form.moves.map((move) => move.trim()).filter(Boolean);
       if (
-        currentView !== 'text' &&
         moves.some(
           (move, index) =>
             moves.findIndex(
@@ -375,25 +371,16 @@
         showError('moves', 'A set cannot include the same move twice.');
         return false;
       }
-      const candidate =
-        currentView === 'text'
-          ? parseSetBlock(rawText)
-          : {
-              ...accepted,
-              ...parseSetBlock(fieldText),
-              pokemon: draftMember.pokemon,
-            };
-      if (
-        !validateMember(
-          candidate,
-          currentView === 'text' ? 'text' : 'structured'
-        )
-      )
-        return false;
-      return accept(candidate, currentView !== 'text');
+      const candidate = {
+        ...accepted,
+        ...parseSetBlock(fieldText),
+        pokemon: draftMember.pokemon,
+      };
+      if (!validateMember(candidate)) return false;
+      return accept(candidate, true);
     } catch (caught) {
       showError(
-        currentView === 'text' ? 'text' : 'set',
+        'set',
         caught instanceof Error ? caught.message : 'Invalid set format.'
       );
       return false;
@@ -401,11 +388,6 @@
   }
   function switchView(view: EditorView) {
     if (view === currentView) return;
-    if (view === 'text' || currentView === 'text') {
-      if (!flush()) return;
-      rawText = setText(accepted);
-      textBaseline = rawText;
-    }
     currentView = view;
     activeSuggestions = view === 'pokemon' ? 'pokemon' : null;
     requestAnimationFrame(() => {
@@ -445,9 +427,7 @@
             ? `#set-move-${activeMoveSlot + 1}`
             : field === 'spread'
               ? '[data-ev-toggle]'
-              : field === 'text'
-                ? '#set-raw-textarea'
-                : '';
+              : '';
       const target =
         (inputId ? editorElement?.querySelector<HTMLElement>(inputId) : null) ||
         editorElement?.querySelector<HTMLElement>(
@@ -689,26 +669,6 @@
           </p>
         {/if}
       </section>
-    {:else if currentView === 'text'}
-      <div class="grid gap-3">
-        <textarea
-          id="set-raw-textarea"
-          aria-label="Showdown set text"
-          class="textarea min-h-72 w-full resize-y p-3 font-mono text-xs leading-5"
-          bind:value={rawText}
-          oninput={clearError}
-          onblur={flush}
-          onkeydown={(event) => {
-            if (
-              event.key === 'Enter' &&
-              !event.shiftKey &&
-              !event.isComposing
-            ) {
-              event.preventDefault();
-              flush();
-            }
-          }}></textarea>
-      </div>
     {/if}
   </div>
   <footer

@@ -9,7 +9,21 @@
     parseChampionsSpread,
   } from '#lib/paste.js';
   import { activeSpreadSource } from '#lib/spread-provenance.js';
-  import { getMoveType, getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
+  import {
+    getMoveType,
+    getPokemonTypes,
+    TYPE_COLORS,
+    type PokemonType,
+  } from '#lib/types.js';
+
+  const ZERO_SPREAD = {
+    HP: 0,
+    Atk: 0,
+    Def: 0,
+    SpA: 0,
+    SpD: 0,
+    Spe: 0,
+  } as const;
 
   let { member }: { member: Member } = $props();
 
@@ -19,9 +33,14 @@
   );
   const effect = $derived(natureEffect(member.nature));
   const spread = $derived(
-    member.spread?.trim() ? parseChampionsSpread(member.spread) : null
+    member.spread?.trim() ? parseChampionsSpread(member.spread) : ZERO_SPREAD
   );
   const spreadSource = $derived(activeSpreadSource(member));
+  function moveBarStyle(type: PokemonType | null): string {
+    return type
+      ? `background: linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 28%, var(--color-base-100)) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 16%, var(--color-base-100)) 100%); border: 1px solid color-mix(in oklab, ${TYPE_COLORS[type]} 38%, var(--color-base-300));`
+      : 'background: var(--color-base-200); border: 1px solid var(--color-base-300);';
+  }
 </script>
 
 <div class="grid min-w-0 gap-3.5">
@@ -78,9 +97,7 @@
     <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
       <h3 class="term">EV spread</h3>
     </div>
-    {#if !member.spread?.trim()}
-      <p class="text-xs text-[color:var(--color-muted)]">Unknown EVs</p>
-    {:else if spread === null}
+    {#if spread === null}
       <p class="text-sm wrap-anywhere whitespace-pre-wrap tabular-nums">
         {member.spread}
       </p>
@@ -108,10 +125,10 @@
                 >{/if}
             </dt>
             <dd class="text-sm tabular-nums">
-              {#if spread[stat]}{spread[stat]}{:else}<span
-                  aria-hidden="true"
-                  class="text-[color:var(--color-muted)]">·</span
-                ><span class="sr-only">0</span>{/if}{#if tone}<span
+              <span
+                class={spread[stat] ? '' : 'text-[color:var(--color-muted)]'}
+                >{spread[stat]}</span
+              >{#if tone}<span
                   aria-hidden="true"
                   class="text-[0.6875rem] font-bold {tone === 'raised'
                     ? 'text-[color:var(--color-error-content)]'
@@ -172,19 +189,13 @@
         {@const move = member.moves[index]?.trim() ?? ''}
         {@const type = move ? getMoveType(move) : null}
         <li
-          class="flex min-h-9 min-w-0 rounded-[var(--radius-field)] bg-base-200"
+          class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
+          style={moveBarStyle(type)}
         >
+          {#if type}<TypeBadge {type} size="md" />{/if}
           <span
-            class="flex w-7 shrink-0 items-center justify-center rounded-s-[var(--radius-field)]"
-            title={type ?? undefined}
-            style:background-color={type
-              ? TYPE_COLORS[type]
-              : 'var(--color-base-300)'}
-          >
-            {#if type}<TypeBadge {type} size="md" />{/if}
-          </span>
-          <span
-            class="min-w-0 flex-1 px-1.5 py-1 wrap-anywhere whitespace-pre-wrap"
+            class="line-clamp-2 min-w-0 flex-1 font-medium wrap-anywhere"
+            title={move || undefined}
           >
             {move || (member.moves.length ? 'Empty' : 'Unknown')}
           </span>

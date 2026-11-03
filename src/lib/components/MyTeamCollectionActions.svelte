@@ -1,9 +1,11 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import Bookmark from '@lucide/svelte/icons/bookmark';
   import type { Member } from '#lib/catalog.js';
   import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
   import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
   import { notify } from '#lib/notifications.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import {
@@ -87,13 +89,16 @@
 </script>
 
 <CurrentSetSaveButton {teamId} {baseline} {members} {disabled} />
-<TeamActionsMenu
-  {onswap}
-  {swapDisabled}
-  onmove={move}
-  moveDisabled={disabled || dirty || movedId === teamId}
-  {pending}
-/>
+<Button
+  variant="quiet"
+  class="h-auto min-h-11"
+  disabled={disabled || dirty || pending || movedId === teamId}
+  onclick={move}
+>
+  <Bookmark class="size-4" aria-hidden="true" />
+  <span>Move to Wishlist</span>
+</Button>
+<TeamActionsMenu {onswap} {swapDisabled} />
 <p
   role="alert"
   class="order-last basis-full text-sm {errorMessage ? '' : 'sr-only'}"

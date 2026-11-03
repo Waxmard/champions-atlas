@@ -18,15 +18,16 @@
   } from '#lib/types.js';
 
   export type EditableSetField =
-    | 'set'
-    | 'pokemon'
-    | 'item'
-    | 'ability'
-    | 'nature'
-    | 'spread'
-    | 'moves'
-    | 'text';
+    'set' | 'pokemon' | 'item' | 'ability' | 'nature' | 'spread' | 'moves';
 
+  const ZERO_SPREAD = {
+    HP: 0,
+    Atk: 0,
+    Def: 0,
+    SpA: 0,
+    SpD: 0,
+    Spe: 0,
+  } as const;
   interface Props {
     member: Member;
     onopen?: () => void;
@@ -47,7 +48,7 @@
   const types = $derived(getPokemonTypes(member.pokemon));
   const effect = $derived(natureEffect(member.nature));
   const spread = $derived(
-    member.spread?.trim() ? parseChampionsSpread(member.spread) : null
+    member.spread?.trim() ? parseChampionsSpread(member.spread) : ZERO_SPREAD
   );
   const itemSrc = $derived(
     member.item?.trim() ? localImageSrc('items', member.item) : ''
@@ -55,6 +56,11 @@
   const band = $derived(
     `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[types[0]]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[types[types.length - 1]]} 24%, var(--color-base-100)))`
   );
+  function moveBarStyle(type: PokemonType | null): string {
+    return type
+      ? `background: linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 28%, var(--color-base-100)) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 16%, var(--color-base-100)) 100%); border: 1px solid color-mix(in oklab, ${TYPE_COLORS[type]} 38%, var(--color-base-300));`
+      : 'background: var(--color-base-200); border: 1px solid var(--color-base-300);';
+  }
   function clickablePlate(node: HTMLElement) {
     const handleClick = () => {
       if (!onedit && onopen && !disabled) {
@@ -100,14 +106,7 @@
 {/snippet}
 
 {#snippet spreadContent()}
-  {#if !member.spread?.trim()}
-    <span class="text-xs text-[color:var(--color-muted)]"
-      >Unknown EVs{!member.nature?.trim() ? ' · Unknown nature' : ''}</span
-    >
-    {#if member.nature?.trim()}
-      <span class="sr-only">Nature: {member.nature}</span>
-    {/if}
-  {:else if spread === null}
+  {#if spread === null}
     <span
       class="line-clamp-2 text-[0.8125rem] wrap-anywhere tabular-nums"
       title={member.spread}
@@ -138,10 +137,9 @@
             {stat}{#if tone}<span class="sr-only">, {tone} by nature</span>{/if}
           </span>
           <span class="block text-[0.8125rem] tabular-nums">
-            {#if spread[stat]}{spread[stat]}{:else}<span
-                aria-hidden="true"
-                class="text-[color:var(--color-muted)]">·</span
-              ><span class="sr-only">0</span>{/if}{#if tone}<span
+            <span class={spread[stat] ? '' : 'text-[color:var(--color-muted)]'}
+              >{spread[stat]}</span
+            >{#if tone}<span
                 aria-hidden="true"
                 class="text-[0.625rem] font-bold {tone === 'raised'
                   ? 'text-[color:var(--color-error-content)]'
@@ -166,29 +164,20 @@
       {/each}
     </span>
   {/if}
-  {#if member.spread?.trim()}
-    {#if !member.nature?.trim()}
-      <span class="text-[0.6875rem] text-[color:var(--color-muted)]"
-        >Unknown nature</span
-      >
-    {:else}
-      <span class="sr-only">Nature: {member.nature}</span>
-    {/if}
-  {/if}
+  <span class="sr-only"
+    >{member.nature?.trim()
+      ? `Nature: ${member.nature}`
+      : 'Unknown nature'}</span
+  >
 {/snippet}
 
 {#snippet moveContent(move: string, type: PokemonType | null)}
+  {#if type}<TypeBadge {type} size="md" />{/if}
   <span
-    class="flex w-7 shrink-0 items-center justify-center rounded-s-[var(--radius-field)]"
-    title={type ?? undefined}
-    style:background-color={type ? TYPE_COLORS[type] : 'var(--color-base-300)'}
+    class="line-clamp-2 min-w-0 flex-1 font-medium wrap-anywhere"
+    title={move || undefined}
   >
-    {#if type}<TypeBadge {type} size="md" />{/if}
-  </span>
-  <span class="flex min-w-0 flex-1 items-center px-1.5">
-    <span class="line-clamp-2 min-w-0 wrap-anywhere" title={move || undefined}>
-      {move || (member.moves.length ? 'Empty' : 'Unknown')}
-    </span>
+    {move || (member.moves.length ? 'Empty' : 'Unknown')}
   </span>
 {/snippet}
 
@@ -323,7 +312,8 @@
                 type="button"
                 data-set-field={index === 0 ? 'moves' : undefined}
                 data-move-slot={index}
-                class="flex min-h-9 w-full min-w-0 rounded-[var(--radius-field)] bg-base-200 text-start text-base-content hover:bg-base-300/60 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+                style={moveBarStyle(type)}
                 aria-label={`Edit ${member.pokemon} move ${index + 1}: ${move || (member.moves.length ? 'Empty' : 'Unknown')}`}
                 {disabled}
                 onclick={() => onedit('moves', index)}
@@ -332,7 +322,8 @@
               </button>
             {:else}
               <div
-                class="flex min-h-9 min-w-0 rounded-[var(--radius-field)] bg-base-200 text-base-content"
+                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
+                style={moveBarStyle(type)}
               >
                 {@render moveContent(move, type)}
               </div>

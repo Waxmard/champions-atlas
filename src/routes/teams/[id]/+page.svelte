@@ -204,7 +204,7 @@
         onclick={useTeam}
       >
         <ArrowRight class="size-4" aria-hidden="true" />
-        <span>Use this team</span>
+        <span>My Teams</span>
       </Button>
       <Button
         variant="quiet"

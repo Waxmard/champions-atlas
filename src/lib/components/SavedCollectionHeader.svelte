@@ -13,32 +13,17 @@
   } = $props();
 </script>
 
-<header
-  class="flex flex-col gap-3 border-b border-base-300 pb-4 sm:flex-row sm:items-end sm:justify-between"
->
-  <div class="min-w-0">
-    <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
-    >
-      {title}
-    </h1>
-    {#if description}
-      <p
-        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-      >
-        {description}
-      </p>
-    {/if}
-  </div>
+<header class="min-w-0">
+  <h1 class="sr-only">{title}</h1>
   <nav
     aria-label="Team collections"
-    class="inline-flex w-fit max-w-full flex-none items-center self-start rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 sm:self-end"
+    class="inline-flex w-fit max-w-full flex-none items-center rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1"
   >
     <a
       href={resolve('my-teams')}
       aria-label="My teams collection"
       aria-current={collection === 'my-teams' ? 'page' : undefined}
-      class="inline-flex min-h-11 items-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary {collection ===
+      class="inline-flex min-h-9 items-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary max-md:min-h-11 {collection ===
       'my-teams'
         ? 'bg-info text-info-content'
         : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
@@ -48,7 +33,7 @@
     <a
       href={resolve('wishlist')}
       aria-current={collection === 'wishlist' ? 'page' : undefined}
-      class="inline-flex min-h-11 items-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary {collection ===
+      class="inline-flex min-h-9 items-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary max-md:min-h-11 {collection ===
       'wishlist'
         ? 'bg-info text-info-content'
         : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
@@ -57,4 +42,11 @@
       <span>Wishlist</span>
     </a>
   </nav>
+  {#if description}
+    <p
+      class="mt-2 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+    >
+      {description}
+    </p>
+  {/if}
 </header>

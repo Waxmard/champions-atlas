@@ -561,7 +561,6 @@
         {#each visible as team (team.id)}
           <TeamCard
             {team}
-            currentRegulation={current}
             showRegulation={regulation === 'all'}
             query={page.url.search}
           >
@@ -570,6 +569,15 @@
                 !ready || savedError !== '' || pending.has(team.id)}
               {@const isWishlisted =
                 wishlistedCatalogEntries(saved, team).length > 0}
+              <Button
+                type="button"
+                variant="quiet"
+                disabled={busy}
+                onclick={() => use(team)}
+              >
+                <ArrowRight class="size-4" aria-hidden="true" />
+                <span>My Teams</span>
+              </Button>
               <Button
                 type="button"
                 variant="quiet"
@@ -588,15 +596,6 @@
                 {:else}
                   <Bookmark class="size-4" aria-hidden="true" />
                 {/if}
-              </Button>
-              <Button
-                type="button"
-                variant="quiet"
-                disabled={busy}
-                onclick={() => use(team)}
-              >
-                <ArrowRight class="size-4" aria-hidden="true" />
-                <span>Use this team</span>
               </Button>
             {/snippet}
           </TeamCard>{/each}

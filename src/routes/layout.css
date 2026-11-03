@@ -186,20 +186,6 @@
     font-style: normal;
   }
 
-  .roster-sprite {
-    display: grid;
-    width: 3.5rem;
-    height: 3.5rem;
-    place-items: center;
-    border: 2px solid var(--type-color, var(--color-base-300));
-    border-radius: 9999rem;
-    background: color-mix(
-      in oklab,
-      var(--type-color, var(--color-base-300)) 18%,
-      var(--color-base-100)
-    );
-  }
-
   .stamp {
     display: inline-flex;
     align-items: center;

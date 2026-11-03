@@ -10,7 +10,7 @@
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import Bookmark from '@lucide/svelte/icons/bookmark';
+  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import Copy from '@lucide/svelte/icons/copy';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -22,6 +22,8 @@
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
   import { normalize, type Member } from '#lib/catalog.js';
+  import { parsePaste } from '#lib/paste.js';
+  import { memberValidationError } from '#lib/member-validation.js';
   import {
     activeTeamKey,
     deleteTeam,
@@ -41,31 +43,30 @@
 
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
-    baseline = $state('');
-  let visitBaseline = $state<{ id: string; members: Member[] } | null>(null);
-  let ready = $state(false),
+    baseline = $state(''),
+    visitBaseline = $state<{ id: string; members: Member[] } | null>(null),
+    ready = $state(false),
     message = $state(''),
     errorMessage = $state(''),
     nameError = $state(''),
     storageError = $state(''),
     deleting = $state(false),
     showExport = $state(false),
+    teamPasteText = $state(''),
+    pasteError = $state(''),
     stale = $state(false),
-    teamControlsOpen = $state(false);
-  let activeEditIndex = $state<number | null>(null),
+    teamControlsOpen = $state(false),
+    activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
     activeEditMoveSlot = $state(0),
     editorPending = $state(false),
-    editorMember = $state<Member | null>(null);
-  let editorRef = $state<
-    | {
-        focusInitialSection: () => void;
-        flush: () => boolean;
-        requestClose: () => boolean;
-      }
-    | undefined
-  >();
-  let pendingSpecies = $state<string | null>(null),
+    editorMember = $state<Member | null>(null),
+    editorRef = $state<{
+      focusInitialSection: () => void;
+      flush: () => boolean;
+      requestClose: () => boolean;
+    }>(),
+    pendingSpecies = $state<string | null>(null),
     showSwapPicker = $state(false),
     swapUnavailable = $state(false),
     appliedRevision = 0;
@@ -90,12 +91,20 @@
   );
   const current = $derived(catalogState.catalog.currentRegulation);
   const editing = $derived(activeEditIndex !== null);
+  const pasteDirty = $derived(
+    !!draft && teamPasteText !== exportPaste(draft.members)
+  );
   const dirty = $derived(
     (!!draft && draft.name !== (baseline ? JSON.parse(baseline).name : '')) ||
-      editorPending
+      editorPending ||
+      pasteDirty
   );
   const contentSnapshot = (team: Pick<SavedTeam, 'name' | 'members'>) =>
     canonicalSnapshot({ name: team.name, members: team.members });
+  const teamRoute = (id?: string | null) =>
+    (id
+      ? resolve('my-teams') + '?team=' + encodeURIComponent(id)
+      : resolve('my-teams')) as ResolvedPathname;
   function revealPanel(node: HTMLElement) {
     if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     node.dataset.motionReady = 'true';
@@ -119,6 +128,8 @@
       const entry = saved.find((team) => team.id === resolvedId);
       if (draft?.id !== entry?.id) teamControlsOpen = false;
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
+      teamPasteText = draft ? exportPaste(draft.members) : '';
+      pasteError = '';
       baseline = entry ? contentSnapshot(entry) : '';
       if (!entry) visitBaseline = null;
       else if (visitBaseline?.id !== entry.id)
@@ -131,55 +142,37 @@
       if (!entry && activeOverride === undefined && !saved.length)
         localStorage.removeItem(activeTeamKey);
       if (navigate && (entry || !id)) {
-        const destination = entry
-          ? resolve('my-teams') + '?team=' + encodeURIComponent(entry.id)
-          : resolve('my-teams');
-
-        if (page.url.pathname + page.url.search !== destination)
-          void goto(destination as ResolvedPathname, { replace: true });
+        const dest = teamRoute(entry?.id);
+        if (page.url.pathname + page.url.search !== dest)
+          void goto(dest, { replace: true });
       }
-      showExport = false;
-      activeEditIndex = null;
-      editorPending = false;
-      editorMember = null;
-      stale = false;
-      pendingSpecies = null;
-      showSwapPicker = false;
-      swapUnavailable = false;
+      const f = false;
+      showExport = editorPending = stale = showSwapPicker = swapUnavailable = f;
+      activeEditIndex = editorMember = pendingSpecies = null;
       message =
         id && !entry && !collections.resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
           : '';
-      errorMessage = '';
-      nameError = '';
+      errorMessage = nameError = '';
     } catch {
       storageError =
         'Saved teams could not be read. Check app storage access. Existing data has been left untouched.';
     }
   }
-  function persistIfDirty() {
-    editorRef?.flush();
-    saveTeamName();
-  }
+  const persistIfDirty = () => (editorRef?.flush(), saveTeamName());
   onMount(() => {
     ready = true;
-    const warn = (e: BeforeUnloadEvent) => {
-      if (dirty) {
-        e.preventDefault();
-        e.returnValue = '';
-      }
-    };
-    const onHide = () => persistIfDirty();
-    const onVisibility = () => {
-      if (document.visibilityState === 'hidden') persistIfDirty();
-    };
+    const warn = (e: BeforeUnloadEvent) =>
+      dirty && (e.preventDefault(), (e.returnValue = ''));
+    const onVis = () =>
+      document.visibilityState === 'hidden' && persistIfDirty();
     window.addEventListener('beforeunload', warn);
-    window.addEventListener('pagehide', onHide);
-    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pagehide', persistIfDirty);
+    document.addEventListener('visibilitychange', onVis);
     return () => {
       window.removeEventListener('beforeunload', warn);
-      window.removeEventListener('pagehide', onHide);
-      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pagehide', persistIfDirty);
+      document.removeEventListener('visibilitychange', onVis);
     };
   });
   $effect(() => {
@@ -196,14 +189,12 @@
       (sync.revision === appliedRevision && !stale)
     )
       return;
-
     appliedRevision = sync.revision;
     untrack(() => openSaved(draft?.id ?? page.url.searchParams.get('team')));
   });
   beforeNavigate(({ cancel, willUnload, shallow, type }) => {
-    if (shallow && type === 'goto') return;
-    if (willUnload) return;
-    if (dirty && !confirm('Discard unsaved input?')) cancel();
+    if (!(shallow && type === 'goto') && !willUnload && dirty)
+      if (!confirm('Discard unsaved input?')) cancel();
   });
   let picker = $state<{ focus: () => void } | undefined>();
   let pickerPress = false;
@@ -219,16 +210,15 @@
     await tick();
     return draft?.id === id;
   }
-  function blurName(event: FocusEvent) {
-    const target = event.relatedTarget;
-
+  function blurName(e: FocusEvent) {
     if (
       pickerPress ||
-      (target instanceof Element &&
-        target.closest('[data-team-picker], [data-preserve-team-name]'))
+      (e.relatedTarget instanceof Element &&
+        e.relatedTarget.closest(
+          '[data-team-picker], [data-preserve-team-name]'
+        ))
     )
       return;
-
     saveTeamName();
   }
   function persistChange(
@@ -253,10 +243,9 @@
       baseline = contentSnapshot(persisted);
       draft = structuredClone($state.snapshot(persisted));
       if (!saveName) draft.name = pendingName;
-      storageError = '';
-      nameError = '';
-      errorMessage = '';
-      message = '';
+      teamPasteText = exportPaste(draft.members);
+      pasteError = '';
+      storageError = nameError = errorMessage = message = '';
       void pushNow();
       return true;
     } catch {
@@ -275,24 +264,57 @@
       return;
     }
     nameError = '';
-    if (baseline && name === JSON.parse(baseline).name) {
-      draft.name = name;
-      return;
-    }
+    if (baseline && name === JSON.parse(baseline).name)
+      return void (draft.name = name);
     persistChange((team) => ({ ...team, name }), true);
   }
+  const replaceSlot = (members: Member[], index: number, next: Member) =>
+    members.map((m, slot) => (slot === index ? structuredClone(next) : m));
   function saveMember(index: number, member: Member): boolean {
-    if (!draft) return false;
-    return persistChange((team) => ({
-      ...team,
-      members: team.members.map((existing, slot) =>
-        slot === index ? structuredClone($state.snapshot(member)) : existing
-      ),
-    }));
+    return (
+      !!draft &&
+      persistChange((t) => ({
+        ...t,
+        members: replaceSlot(t.members, index, $state.snapshot(member)),
+      }))
+    );
+  }
+  function saveTeamPaste() {
+    if (!draft || !pasteDirty || editing || deleting || stale) return;
+    const cur = draft.members;
+    let parsed: Member[];
+    try {
+      parsed = parsePaste(teamPasteText);
+    } catch (e) {
+      pasteError =
+        e instanceof Error ? e.message : 'Invalid Showdown team text.';
+      return;
+    }
+    if (parsed.filter((m) => isMegaSpecies(m.pokemon)).length > MAX_TEAM_MEGAS)
+      return void (pasteError = 'A team can include at most two Mega Pokémon.');
+    for (let i = 0; i < parsed.length; i++) {
+      const err = memberValidationError(
+        parsed[i],
+        cur[i],
+        parsed.filter((_, j) => j !== i),
+        'text'
+      );
+      if (err)
+        return void (pasteError = `${parsed[i].pokemon || `Slot ${i + 1}`}: ${err.message}`);
+    }
+    const nextMembers = parsed.map((m, i) =>
+      normalize(m.pokemon) === normalize(cur[i].pokemon)
+        ? { ...cur[i], ...m }
+        : m
+    );
+    if (persistChange((team) => ({ ...team, members: nextMembers })))
+      notify('Team text saved.');
   }
   function restoreOriginal() {
-    if (!draft || editing || deleting) return;
     if (
+      !draft ||
+      editing ||
+      deleting ||
       !confirm('Restore the original team? Your current sets will be replaced.')
     )
       return;
@@ -309,12 +331,7 @@
         throw new Error('This Pokémon is already in another slot.');
       if (conflict === 'mega')
         throw new Error('This team already has two Mega Pokémon.');
-      return {
-        ...team,
-        members: team.members.map((existing, slot) =>
-          slot === index ? structuredClone(member) : existing
-        ),
-      };
+      return { ...team, members: replaceSlot(team.members, index, member) };
     });
     if (restored) notify('Original set restored.');
   }
@@ -324,15 +341,14 @@
     const conflict = rosterConflict(target, draft.members, index);
     if (conflict === 'duplicate')
       return `${target.pokemon} is already in another slot. Change that Pokémon first, then revert.`;
-    if (conflict === 'mega')
-      return 'Reverting this set would keep more than two Mega Pokémon. Change one of them first, then revert.';
-    return '';
+    return conflict === 'mega'
+      ? 'Reverting this set would keep more than two Mega Pokémon. Change one of them first, then revert.'
+      : '';
   }
   function canRevertSlot(index: number): boolean {
     const target = visitBaseline?.members[index];
-    if (!draft || editing || deleting || !target) return false;
-
     return (
+      !!(draft && !editing && !deleting && target) &&
       canonicalSnapshot(target) !== canonicalSnapshot(draft.members[index]) &&
       !slotRevertReason(index)
     );
@@ -341,11 +357,9 @@
     const target = visitBaseline?.members[index];
     if (!target || !canRevertSlot(index)) return;
     if (
-      persistChange((team) => ({
-        ...team,
-        members: team.members.map((existing, slot) =>
-          slot === index ? structuredClone($state.snapshot(target)) : existing
-        ),
+      persistChange((t) => ({
+        ...t,
+        members: replaceSlot(t.members, index, $state.snapshot(target)),
       }))
     ) {
       notify('Set changes reverted.');
@@ -358,58 +372,42 @@
     moveSlot = 0
   ) => {
     const slot = document.getElementById(`pokemon-slot-${index}`);
-    const target =
-      (field === 'moves'
-        ? slot?.querySelector<HTMLButtonElement>(
-            `[data-move-slot="${moveSlot}"]`
-          )
-        : null) ??
-      slot?.querySelector<HTMLButtonElement>(`[data-set-field="${field}"]`) ??
-      slot?.querySelector<HTMLButtonElement>('[data-set-field="pokemon"]');
-    target?.focus({ preventScroll: true });
+    const sel =
+      field === 'moves'
+        ? `[data-move-slot="${moveSlot}"]`
+        : `[data-set-field="${field}"]`;
+    (
+      slot?.querySelector<HTMLElement>(sel) ??
+      slot?.querySelector<HTMLElement>('[data-set-field="pokemon"]')
+    )?.focus({ preventScroll: true });
   };
-  const openSetEditor = (
-    index: number,
-    field: EditableSetField,
-    moveSlot = 0
-  ) => {
-    if (editing) return;
-    const member = draft?.members[index];
+  const openSetEditor = (i: number, field: EditableSetField, move = 0) => {
+    const member = !editing ? draft?.members[i] : null;
     if (!member) return;
     pendingSpecies = null;
-    activeEditIndex = index;
-    activeEditField = field;
-    activeEditMoveSlot = moveSlot;
     editorPending = false;
+    [activeEditIndex, activeEditField, activeEditMoveSlot] = [i, field, move];
     editorMember = structuredClone($state.snapshot(member));
   };
   function openSetDialog(node: HTMLDialogElement) {
     const restoreScroll = lockBodyScroll();
     node.showModal();
     void tick().then(() => editorRef?.focusInitialSection());
-    return {
-      destroy() {
-        if (node.open) node.close();
-        restoreScroll();
-      },
-    };
+    return { destroy: () => (node.open && node.close(), restoreScroll()) };
   }
-  function handleDialogCancel(event: Event) {
-    event.preventDefault();
-    if (editorRef?.requestClose() ?? true) closeSetEdit();
-  }
+  const handleDialogCancel = (e: Event) => (
+    e.preventDefault(),
+    (editorRef?.requestClose() ?? true) && closeSetEdit()
+  );
   function closeSetEdit() {
-    const targetSlot = activeEditIndex;
-    const field = activeEditField;
-    const moveSlot = activeEditMoveSlot;
-    activeEditIndex = null;
+    const [slot, field, move] = [
+      activeEditIndex,
+      activeEditField,
+      activeEditMoveSlot,
+    ];
+    activeEditIndex = editorMember = null;
     editorPending = false;
-    editorMember = null;
-    if (targetSlot !== null) {
-      void tick().then(() => {
-        focusSetField(targetSlot, field, moveSlot);
-      });
-    }
+    if (slot !== null) void tick().then(() => focusSetField(slot, field, move));
   }
   function startSpeciesSwap(pokemon: string) {
     if (!draft || editing) return;
@@ -424,19 +422,15 @@
     )[0];
     swapUnavailable = !best;
     if (!best) return;
-    persistChange((team) => ({
-      ...team,
-      members: team.members.map((member, index) =>
-        index === best.slot
-          ? structuredClone($state.snapshot(best.member))
-          : member
-      ),
+    persistChange((t) => ({
+      ...t,
+      members: replaceSlot(t.members, best.slot, $state.snapshot(best.member)),
     }));
   }
-  function cancelSpeciesSwap() {
-    pendingSpecies = null;
-    swapUnavailable = false;
-  }
+  const cancelSpeciesSwap = () => (
+    (pendingSpecies = null),
+    (swapUnavailable = false)
+  );
   async function copyPaste() {
     if (!draft || editing) return;
     showExport = true;
@@ -449,20 +443,18 @@
   async function removeSelectedTeam() {
     if (!draft || editing || deleting) return;
     const id = draft.id;
-    const warning = dirty
+    const warn = dirty
       ? ' Unsaved changes to this team will also be discarded.'
       : '';
-    if (
-      !confirm(`Delete “` + draft.name + `”? This cannot be undone.` + warning)
-    )
+    if (!confirm(`Delete “` + draft.name + `”? This cannot be undone.` + warn))
       return;
     deleting = true;
     message = errorMessage = '';
-    let previousActiveId: string | null;
+    let prevActive: string | null;
     try {
-      previousActiveId = localStorage.getItem(activeTeamKey);
+      prevActive = localStorage.getItem(activeTeamKey);
     } catch {
-      previousActiveId = null;
+      prevActive = null;
     }
     let remaining: SavedTeam[];
     try {
@@ -480,31 +472,20 @@
       return;
     }
     draft = activeEditIndex = editorMember = pendingSpecies = null;
-    baseline = '';
+    baseline = teamPasteText = pasteError = '';
     editorPending = showSwapPicker = swapUnavailable = showExport = false;
-    const replacement = collections.resolveSavedTeamId(
-      remaining,
-      null,
-      previousActiveId
-    );
+    const nextId = collections.resolveSavedTeamId(remaining, null, prevActive);
     let activeFailed = false;
     try {
-      if (replacement) localStorage.setItem(activeTeamKey, replacement);
+      if (nextId) localStorage.setItem(activeTeamKey, nextId);
       else localStorage.removeItem(activeTeamKey);
     } catch {
       activeFailed = true;
     }
-    openSaved(replacement, null, false);
-    try {
-      await goto(
-        (replacement
-          ? resolve('my-teams') + '?team=' + encodeURIComponent(replacement)
-          : resolve('my-teams')) as ResolvedPathname,
-        { replace: true }
-      );
-    } catch {
-      activeFailed = true;
-    }
+    openSaved(nextId, null, false);
+    await goto(teamRoute(nextId), { replace: true }).catch(
+      () => (activeFailed = true)
+    );
     notify('Team deleted.');
     errorMessage = activeFailed
       ? 'Team deleted, but the active team could not be remembered.'
@@ -512,9 +493,10 @@
     void pushNow();
     deleting = false;
     await tick();
-    if (replacement) picker?.focus();
-    else
-      document.querySelector<HTMLElement>('a[href$="/my-teams/new"]')?.focus();
+    (nextId
+      ? picker
+      : document.querySelector<HTMLElement>('a[href$="/my-teams/new"]')
+    )?.focus();
   }
 </script>
 
@@ -538,17 +520,7 @@
         ? 'landscape:md:col-start-2 landscape:md:row-start-1'
         : ''}"
     >
-      <header class="flex flex-wrap items-center justify-between gap-2">
-        <h1 class="text-lg font-extrabold">My teams</h1>
-        <Button
-          href={resolve('wishlist')}
-          variant="quiet"
-          class="h-auto min-h-11 whitespace-normal"
-        >
-          <Bookmark class="size-4" aria-hidden="true" />
-          <span>Wishlist</span>
-        </Button>
-      </header>
+      <SavedCollectionHeader collection="my-teams" title="My teams" />
       {#if storageError || errorMessage}<p
           role="alert"
           class="plate max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
@@ -760,14 +732,40 @@
           Team text normalizes to Pokémon Champions format (EVs out of 32, no
           IVs); unknown details stay omitted.
         </p>
-        {#if showExport}<label
-            class="t-panel-slide term mt-2 block"
-            use:revealPanel
-            >Export text<textarea
-              readonly
-              class="textarea mt-2 min-h-72 w-full p-3 font-mono text-xs"
-              value={exportPaste(draft.members)}></textarea></label
-          >{/if}
+        <details bind:open={showExport} class="plate mt-2 min-w-0 p-3">
+          <summary
+            class="min-h-11 cursor-pointer content-center px-1 text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary"
+          >
+            Showdown team text
+          </summary>
+          <textarea
+            aria-label="Showdown team text"
+            class="textarea mt-2 min-h-72 w-full p-3 font-mono text-xs leading-5"
+            bind:value={teamPasteText}
+            oninput={() => (pasteError = '')}
+            disabled={editing || deleting || stale}></textarea>
+          {#if pasteError}<p
+              role="alert"
+              class="mt-2 text-sm text-error-content"
+            >
+              {pasteError}
+            </p>{/if}
+          <div class="mt-2 flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              disabled={!pasteDirty || editing || deleting || stale}
+              onclick={saveTeamPaste}>Save team text</Button
+            >
+            <Button
+              variant="quiet"
+              disabled={!pasteDirty || editing || deleting || stale}
+              onclick={() => {
+                if (draft) teamPasteText = exportPaste(draft.members);
+                pasteError = '';
+              }}>Reset text</Button
+            >
+          </div>
+        </details>
       </div>
     {/if}
   </div>

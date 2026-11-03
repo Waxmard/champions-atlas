@@ -5,18 +5,14 @@
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import Plus from '@lucide/svelte/icons/plus';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
-  import Bookmark from '@lucide/svelte/icons/bookmark';
   import { Button } from '#lib/components/ui/button/index.js';
 
   interface Props {
     onswap: () => void;
     swapDisabled: boolean;
-    moveDisabled: boolean;
-    onmove: () => void;
-    pending: boolean;
   }
 
-  let { onswap, swapDisabled, moveDisabled, onmove, pending }: Props = $props();
+  let { onswap, swapDisabled }: Props = $props();
 </script>
 
 <DropdownMenu.Root>
@@ -45,14 +41,6 @@
       >
         <Plus class="size-4" aria-hidden="true" />
         Add custom team
-      </DropdownMenu.Item>
-      <DropdownMenu.Item
-        class="option-row cursor-pointer outline-none data-disabled:opacity-50 data-highlighted:bg-info data-highlighted:text-info-content"
-        disabled={moveDisabled || pending}
-        onSelect={onmove}
-      >
-        <Bookmark class="size-4" aria-hidden="true" />
-        Move to Wishlist
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row cursor-pointer outline-none data-disabled:opacity-50 data-highlighted:bg-info data-highlighted:text-info-content"

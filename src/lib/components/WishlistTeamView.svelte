@@ -58,11 +58,18 @@
   <div class="flex flex-wrap items-center gap-2">
     <Button variant="quiet" class="min-h-11" {disabled} onclick={onuse}>
       <ArrowRight class="size-4" aria-hidden="true" />
-      <span>Move to My teams</span>
+      <span>My Teams</span>
     </Button>
-    <Button variant="quiet" class="min-h-11" {disabled} onclick={onremove}>
+    <Button
+      variant="quiet"
+      size="icon-compact"
+      class="min-h-11 min-w-11"
+      aria-label="Remove from Wishlist"
+      title="Remove from Wishlist"
+      {disabled}
+      onclick={onremove}
+    >
       <Trash2 class="size-4" aria-hidden="true" />
-      <span>Remove from Wishlist</span>
     </Button>
   </div>
 </div>

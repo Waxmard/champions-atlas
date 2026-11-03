@@ -624,21 +624,24 @@
       {#if entries.length}
         <ul class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {#each entries as entry (entry.id)}
-            {@const match = resolveCatalogTeam(
-              entry.original,
-              catalogState.catalog.teams
-            )}
             <li class="min-w-0">
               <TeamCard
                 team={displayTeam(entry)}
-                currentRegulation={catalogState.catalog.currentRegulation}
                 showRegulation
                 query=""
                 href={`wishlist?team=${encodeURIComponent(entry.id)}`}
                 fromCatalog={false}
-                showListedSource={!!match}
               >
                 {#snippet actions()}
+                  <Button
+                    data-wishlist-use
+                    variant="quiet"
+                    disabled={!ready || !!pendingId}
+                    onclick={() => use(entry)}
+                  >
+                    <ArrowRight class="size-4" aria-hidden="true" />
+                    <span>My Teams</span>
+                  </Button>
                   <Button
                     variant="quiet"
                     size="icon-compact"
@@ -648,15 +651,6 @@
                     onclick={() => remove(entry)}
                   >
                     <Trash2 class="size-4" aria-hidden="true" />
-                  </Button>
-                  <Button
-                    data-wishlist-use
-                    variant="quiet"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => use(entry)}
-                  >
-                    <ArrowRight class="size-4" aria-hidden="true" />
-                    <span>Move to My teams</span>
                   </Button>
                 {/snippet}
               </TeamCard>

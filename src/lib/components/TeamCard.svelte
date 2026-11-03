@@ -5,37 +5,27 @@
   import {
     isCustomRulesTeam,
     regulationLabel,
-    sourceName,
     type Team,
   } from '#lib/catalog.js';
   import TeamSummary from './TeamSummary.svelte';
 
   let {
     team,
-    currentRegulation,
     showRegulation,
     query,
     actions,
     href,
     fromCatalog = true,
-    showListedSource = true,
   }: {
     team: Team;
-    currentRegulation: string;
     showRegulation: boolean;
     query: string;
     actions?: Snippet;
     href?: `wishlist?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
-    showListedSource?: boolean;
   } = $props();
   const custom = $derived(isCustomRulesTeam(team));
-  const source = $derived(sourceName(team, currentRegulation));
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
-  const showEvidence = $derived(
-    showListedSource || source !== 'Listed in the catalog' || custom
-  );
-
   function open(event: MouseEvent) {
     if (
       event.defaultPrevented ||
@@ -55,24 +45,15 @@
 </script>
 
 {#snippet content()}
-  <div class="flex items-baseline justify-between gap-3">
+  <div class="flex flex-wrap items-baseline justify-between gap-2">
     {#if showRegulation}<span class="term"
         >{regulationLabel(team.regulation)}</span
       >{/if}
+    {#if custom}<span class="term">Custom rules</span>{/if}
     <span class="provenance ms-auto shrink-0">{team.publishedAt}</span>
   </div>
   <TeamSummary name={team.name} members={team.members} />
 {/snippet}
-
-{#snippet resultEvidence()}
-  <div class="min-w-0">
-    {#if showListedSource || source !== 'Listed in the catalog'}
-      <span class="stamp" data-grade="source">{source}</span>
-    {/if}
-    {#if custom}<p class="term mt-1">Custom rules</p>{/if}
-  </div>
-{/snippet}
-
 <article
   class="plate relative flex min-w-0 flex-col overflow-hidden transition-colors duration-200 hover:border-primary"
 >
@@ -83,24 +64,11 @@
   >
     {@render content()}
   </a>
-  <div
-    class="mx-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t py-2.5"
-  >
-    {#if showEvidence}
-      <a
-        href={resolve(destination)}
-        onclick={open}
-        class="min-w-0 flex-auto rounded-[var(--radius-field)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
-      >
-        {@render resultEvidence()}
-      </a>
-    {:else}
-      <div class="min-w-0 flex-auto"></div>
-    {/if}
-    {#if actions}
-      <div class="ms-auto flex shrink-0 items-center gap-1.5">
-        {@render actions()}
-      </div>
-    {/if}
-  </div>
+  {#if actions}
+    <div
+      class="mx-4 flex flex-wrap items-center justify-between gap-2 border-t py-2"
+    >
+      {@render actions()}
+    </div>
+  {/if}
 </article>
