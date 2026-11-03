@@ -127,7 +127,7 @@
               {@const slot = group.slot}
               {@const reason = slotReason(slot)}
               <Button
-                variant="secondary"
+                variant="quiet"
                 class="mt-2"
                 disabled={disabled || !!reason}
                 aria-describedby={reason

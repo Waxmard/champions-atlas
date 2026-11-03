@@ -31,8 +31,7 @@
 
       {#if sync.configured}
         <Button
-          variant="secondary"
-          size="touch"
+          variant="primary"
           class="w-full gap-3"
           onclick={signIn}
           disabled={signingIn}

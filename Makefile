@@ -9,6 +9,7 @@ ci:
 	npm run ci
 
 ios:
+	@test -n "$(IOS_DEVICE)" || { echo 'Set IOS_DEVICE to the target device.' >&2; exit 1; }
 	npm run build
 	npx cap sync ios
 	xcrun xcodebuild -project ios/App/App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -derivedDataPath ios/DerivedData build

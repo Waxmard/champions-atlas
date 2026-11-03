@@ -39,7 +39,7 @@ jobs:
           key: catalog-${{ runner.os }}-${{ github.run_id }}
           restore-keys: |
             catalog-${{ runner.os }}-
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
       - run: npm ci
       - name: Import catalog
         run: |
@@ -86,9 +86,9 @@ jobs:
     environment: preview
     steps:
       - uses: actions/checkout@v7
-      - uses: jdx/mise-action@v4
+      - uses: jdx/mise-action@v5
       - run: npm ci --ignore-scripts
-      - uses: actions/download-artifact@v7
+      - uses: actions/download-artifact@v8
         with:
           name: web-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: build

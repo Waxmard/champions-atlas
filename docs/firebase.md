@@ -111,21 +111,20 @@ Use the matching Firebase project configuration and the existing paid signing te
 2. Build, install, and launch the app over Wi-Fi:
 
    ```sh
-   make ios
+   make ios IOS_DEVICE="Gengar Phone"
    ```
 
    This builds the shared UI, syncs Capacitor assets, builds the native app
    in Release configuration, then installs and launches it using Apple's CLI.
    It does not open Xcode or attach a debugger. Rebuild and reinstall to package
-   UI updates; Firebase Hosting cannot update an installed native bundle. The
-   default device is `Gengar Phone`; to select another device, run
-   `make ios IOS_DEVICE="Another Phone"` or use its device identifier. If the
-   name is missing or ambiguous, use the identifier from the device list.
+   UI updates; Firebase Hosting cannot update an installed native bundle. Replace
+   `Gengar Phone` with your device name or identifier. If the name is missing
+   or ambiguous, use the identifier from the device list.
 
    The normal build reuses a valid catalog; UI changes do not require a full
-   catalog or enrichment refresh. Do not use `build:e2e`, blank Firebase
-   variables, a fixture catalog, the development server as the device asset
-   source, or the TestFlight archive/upload script for this install.
+   catalog or enrichment refresh. Do not use blank Firebase variables, the
+   development server as the device asset source, or the TestFlight
+   archive/upload script for this install.
 
 3. With the iPhone online, sign in if needed, then confirm your existing teams and
    current sets are available or restored through the same account. A first launch

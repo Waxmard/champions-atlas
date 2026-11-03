@@ -19,6 +19,7 @@
     type PokemonType,
   } from '#lib/types.js';
   import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
+  import { notify } from '#lib/notifications.js';
   import {
     openCatalogTeam,
     readSavedTeamsState,
@@ -48,7 +49,6 @@
   let saved = $state.raw<SavedTeam[]>([]);
   let savedError = $state('');
   let actionError = $state('');
-  let status = $state('');
   const pending = new SvelteSet<string>();
   const catalog = $derived(catalogState.catalog);
   const teams: Team[] = $derived(catalog.teams);
@@ -87,6 +87,9 @@
       .filter((value): value is PokemonType =>
         (ALL_TYPES as string[]).includes(value)
       )
+  );
+  const filterCount = $derived(
+    selectedTypes.length + (includeCustomRules ? 1 : 0)
   );
   const allPokemon = $derived(
     [
@@ -228,17 +231,17 @@
   function wishlist(team: Team) {
     if (pending.has(team.id)) return;
     pending.add(team.id);
-    status = actionError = '';
+    actionError = '';
     const result = toggleCatalogWishlist(team);
     refreshSaved();
     actionError = result.error;
-    status = result.status;
+    if (result.status) notify(result.status);
     pending.delete(team.id);
   }
   async function use(team: Team) {
     if (pending.has(team.id)) return;
     pending.add(team.id);
-    status = actionError = '';
+    actionError = '';
     const error = await openCatalogTeam(team);
     if (error) actionError = error;
     else refreshSaved();
@@ -326,63 +329,81 @@
     >
       {savedError || actionError}
     </p>{/if}
-  <p role="status" aria-live="polite" class="sr-only">{status}</p>
 
-  <div class="mt-4">
+  <div class="mt-4 flex items-center gap-2">
+    <div class="min-w-0 flex-1">
+      <span class="sr-only" aria-live="polite"
+        >{filters.length} of 6 Pokémon selected</span
+      >
+      <PokemonPicker
+        options={availablePokemon}
+        onselect={addPokemon}
+        disabled={filters.length >= 6}
+      />
+    </div>
     <Button
       type="button"
-      variant="secondary"
+      variant="quiet"
+      class="shrink-0 max-sm:size-11 max-sm:px-0"
       aria-expanded={typeOpen}
+      aria-controls="browse-filters"
       onclick={() => (typeOpen = !typeOpen)}
     >
-      <Filter class="size-4 text-base-content/60" aria-hidden="true" />
-      Filter by type
-      {#if selectedTypes.length}<span class="badge badge-primary"
-          >{selectedTypes.length}</span
+      <Filter class="size-4" aria-hidden="true" />
+      <span class="max-sm:sr-only">Filters</span>
+      {#if filterCount}<span class="badge badge-primary">{filterCount}</span
         >{/if}
     </Button>
-    {#if typeOpen}
-      <div class="mt-2">
-        <TypeFilter
-          options={ALL_TYPES}
-          selected={selectedTypes}
-          onselect={setTypes}
-        />
-      </div>
-    {/if}
-    {#if selectedTypes.length}
-      <div class="mt-2 flex flex-wrap gap-1.5">
-        {#each selectedTypes as type (type)}
-          <span
-            class="inline-flex items-center gap-1.5 border border-s-[3px] border-base-300 bg-base-100 py-1 ps-2 pe-1 text-[0.8125rem]"
-            style="border-inline-start-color: {TYPE_COLORS[type]}"
-          >
-            <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
-              class="font-medium">{type}</span
-            >
-            <Button
-              variant="quiet"
-              size="icon-compact"
-              aria-label={`Remove ${type} type filter`}
-              onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
-              ><X class="size-3.5" aria-hidden="true" /></Button
-            >
-          </span>
-        {/each}
-      </div>
-    {/if}
   </div>
 
-  <div class="mt-4">
-    <span class="sr-only" aria-live="polite"
-      >{filters.length} of 6 Pokémon selected</span
-    >
-    <PokemonPicker
-      options={availablePokemon}
-      onselect={addPokemon}
-      disabled={filters.length >= 6}
-    />
-  </div>
+  {#if typeOpen}
+    <div id="browse-filters" class="mt-2 space-y-2">
+      <TypeFilter
+        options={ALL_TYPES}
+        selected={selectedTypes}
+        onselect={setTypes}
+      />
+      <label
+        for="include-custom-rules"
+        class="term inline-flex min-h-11 cursor-pointer items-center gap-2.5"
+      >
+        <input
+          id="include-custom-rules"
+          type="checkbox"
+          name="custom"
+          value="1"
+          autocomplete="off"
+          class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
+          checked={includeCustomRules}
+          disabled={!ready}
+          onchange={(event) =>
+            changeOption('custom', event.currentTarget.checked ? '1' : '')}
+        />
+        Include custom-rule teams
+      </label>
+    </div>
+  {/if}
+  {#if selectedTypes.length}
+    <div class="mt-2 flex flex-wrap gap-1.5">
+      {#each selectedTypes as type (type)}
+        <span
+          class="inline-flex items-center gap-1.5 border border-s-[3px] border-base-300 bg-base-100 py-1 ps-2 pe-1 text-[0.8125rem]"
+          style="border-inline-start-color: {TYPE_COLORS[type]}"
+        >
+          <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
+            class="font-medium">{type}</span
+          >
+          <Button
+            variant="quiet"
+            size="icon-compact"
+            aria-label={`Remove ${type} type filter`}
+            onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
+            ><X class="size-3.5" aria-hidden="true" /></Button
+          >
+        </span>
+      {/each}
+    </div>
+  {/if}
 
   {#if filters.length}
     <div class="mt-4 grid gap-3 md:grid-cols-2">
@@ -518,27 +539,6 @@
     </label>
   </div>
 
-  <div class="mt-4">
-    <label
-      for="include-custom-rules"
-      class="term inline-flex min-h-11 cursor-pointer items-center gap-2.5"
-    >
-      <input
-        id="include-custom-rules"
-        type="checkbox"
-        name="custom"
-        value="1"
-        autocomplete="off"
-        class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
-        checked={includeCustomRules}
-        disabled={!ready}
-        onchange={(event) =>
-          changeOption('custom', event.currentTarget.checked ? '1' : '')}
-      />
-      Include custom-rule teams
-    </label>
-  </div>
-
   <section aria-label="Matching teams" class="mt-5 min-w-0">
     <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
       <p
@@ -603,7 +603,7 @@
           class="mt-8 flex items-center justify-center gap-4"
         >
           <Button
-            variant="secondary"
+            variant="quiet"
             disabled={pageNumber === 1}
             onclick={() => changeOption('page', String(pageNumber - 1))}
             >Previous</Button
@@ -612,7 +612,7 @@
             >Page {pageNumber} of {pageCount}</span
           >
           <Button
-            variant="secondary"
+            variant="quiet"
             disabled={pageNumber === pageCount}
             onclick={() => changeOption('page', String(pageNumber + 1))}
             >Next</Button
@@ -630,7 +630,7 @@
         </p>
         <Button
           type="button"
-          variant="secondary"
+          variant="quiet"
           class="mt-5"
           disabled={!ready}
           onclick={clearFilters}>Clear filters</Button

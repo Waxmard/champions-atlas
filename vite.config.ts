@@ -2,9 +2,7 @@ import adapter from '@sveltejs/adapter-static';
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { fileURLToPath } from 'node:url';
 import { readdirSync } from 'node:fs';
-import { withE2eCatalog } from './e2e/catalog-fixture.ts';
 
 function readLocalImages(directory: 'sprites' | 'items'): [string, true][] {
   try {
@@ -30,19 +28,6 @@ export default defineConfig({
     ),
   },
   plugins: [
-    process.env.E2E_CATALOG_FIXTURE === '1' && {
-      name: 'e2e-catalog-fixture',
-      apply: 'build',
-      enforce: 'pre',
-      transform(code, id) {
-        if (
-          id.split('?')[0] !==
-          fileURLToPath(new URL('./src/lib/data/catalog.json', import.meta.url))
-        )
-          return;
-        return JSON.stringify(withE2eCatalog(JSON.parse(code)));
-      },
-    },
     tailwindcss(),
     sveltekit({
       adapter: adapter({ fallback: 'index.html' }),

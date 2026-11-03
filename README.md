@@ -7,9 +7,9 @@ primitives, and locally bundled Nunito Variable.
 
 ## Development
 
-Use the Node 24 LTS environment selected by mise. The development server,
-preview, and Playwright suites are local tools for the shared UI, not a supported
-website or PWA. Install dependencies and start the loopback server with:
+Use the Node 24 LTS environment selected by mise. The development and preview
+servers are local tools for the shared UI, not a supported website or PWA.
+Install dependencies and start the loopback server with:
 
 ```sh
 mise install      # Install the project's Node runtime.
@@ -17,26 +17,20 @@ npm ci            # Install locked dependencies and Lefthook Git hooks.
 npm run dev       # Start the local development server.
 ```
 
-Run the local CI checks and browser suites with:
+Run the local CI checks with:
 
 ```sh
-make ci                           # Run lint, formatting, line-limit, types, build, and Node tests.
-npx playwright install chromium webkit # Install browser test prerequisites.
-npm run test:e2e:smoke             # Run critical desktop and mobile browser checks.
-npm run test:e2e                   # Run the full browser suite.
+make ci # Run lint, formatting, line-limit, types, build, and Node tests.
 ```
 
-`npm test` requires a build first. Both browser commands build their own
-Firebase-disabled bundle with a deterministic catalog fixture; they do not change
-the generated catalog or normal production builds. CI runs smoke coverage on pull
-requests and pushes to `main`. Select **Actions → CI → Run workflow** for the full
-browser suite. The TestFlight workflow runs independently of CI on pushes to
+`npm test` requires a build first. CI runs `make ci` on pull requests and
+pushes to `main`. The TestFlight workflow runs independently of CI on pushes to
 `main` or by manual dispatch. See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration) for delivery and configuration.
 
 For daily iPhone updates, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
 
 ```sh
-make ios          # Build, install, and launch on an iPhone.
+make ios IOS_DEVICE="Gengar Phone" # Build, install, and launch on an iPhone.
 ```
 
 Format files or serve a built app with:
@@ -54,7 +48,6 @@ npm run preview   # Serve the built shared UI locally.
 | `src/lib/`    | Components, team logic, and generated catalog         |
 | `scripts/`    | Catalog import, enrichment, and maintenance commands  |
 | `test/`       | Node tests and built-app smoke checks                 |
-| `e2e/`        | Desktop and mobile browser tests                      |
 | `static/`     | Cached Pokémon assets and type badges                 |
 | `docs/`       | Product behavior, data sources, and deployment guides |
 
@@ -116,8 +109,8 @@ scan failures.
 
 Browse by Pokémon and set filters; filters, sorting, and position survive opening
 a team and returning. Use the **Wishlist** button on a catalog team to add or
-remove its bookmark; removal confirms before deleting that saved copy and its
-edits. From a Poképaste page, share the link to **Champion’s Atlas**, select
+remove its bookmark; removal immediately deletes that saved copy and its edits.
+From a Poképaste page, share the link to **Champion’s Atlas**, select
 **Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
 open **Add a Poképaste manually** in Wishlist and enter a `pokepast.es` link or
 16-character paste ID. Existing bookmarks and catalog matches do not require a

@@ -29,10 +29,20 @@ if ((${#missing[@]} > 0)); then
   exit 1
 fi
 
+umask 077
 WORK_DIR="$(mktemp -d "${RUNNER_TEMP:-/tmp}/atlas-ios.XXXXXX")"
 KEYCHAIN_PATH="$WORK_DIR/build.keychain-db"
 KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-trap 'security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true; rm -rf "$WORK_DIR"' EXIT
+existing_keychains=()
+restore_keychains=0
+cleanup() {
+  if [[ "$restore_keychains" == 1 ]]; then
+    security list-keychains -d user -s ${existing_keychains[@]+"${existing_keychains[@]}"} >/dev/null 2>&1 || echo 'Could not restore the keychain search list.' >&2
+  fi
+  security delete-keychain "$KEYCHAIN_PATH" >/dev/null 2>&1 || true
+  rm -rf "$WORK_DIR"
+}
+trap cleanup EXIT
 
 printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode >"$WORK_DIR/dist.p12"
 
@@ -40,16 +50,17 @@ security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
 security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-existing_keychains=()
+keychain_list="$(security list-keychains -d user)"
 while IFS= read -r line; do
   trimmed="${line#"${line%%[![:space:]]*}"}"
   trimmed="${trimmed%\"}"
   trimmed="${trimmed#\"}"
   [[ -n "$trimmed" ]] && existing_keychains+=("$trimmed")
-done < <(security list-keychains -d user)
+done <<< "$keychain_list"
+restore_keychains=1
 security list-keychains -d user -s "$KEYCHAIN_PATH" ${existing_keychains[@]+"${existing_keychains[@]}"}
 
-security import "$WORK_DIR/dist.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -A -t cert -f pkcs12
+security import "$WORK_DIR/dist.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
 AUTH_KEY_PATH="$WORK_DIR/AuthKey_${ASC_KEY_ID}.p8"
@@ -95,6 +106,12 @@ xcodebuild \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
   archive
 
+archive_bundle_id="$(/usr/libexec/PlistBuddy -c 'Print :ApplicationProperties:CFBundleIdentifier' "$ARCHIVE_PATH/Info.plist")"
+if [[ "$archive_bundle_id" != "$IOS_BUNDLE_ID" ]]; then
+  printf 'Archive bundle ID %s does not match IOS_BUNDLE_ID %s\n' "$archive_bundle_id" "$IOS_BUNDLE_ID" >&2
+  exit 1
+fi
+
 xcodebuild \
   -exportArchive \
   -archivePath "$ARCHIVE_PATH" \
@@ -104,6 +121,11 @@ xcodebuild \
   -authenticationKeyPath "$AUTH_KEY_PATH" \
   -authenticationKeyID "$ASC_KEY_ID" \
   -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+if [[ ! -f "$EXPORT_PATH/App.ipa" ]]; then
+  printf 'Exported IPA not found: %s\n' "$EXPORT_PATH/App.ipa" >&2
+  exit 1
+fi
 
 API_PRIVATE_KEYS_DIR="$WORK_DIR" xcrun altool \
   --upload-app \

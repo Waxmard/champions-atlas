@@ -51,7 +51,7 @@
   {#snippet actions()}
     {#if record?.canRecord()}
       <Button
-        variant="secondary"
+        variant="quiet"
         size="compact"
         {disabled}
         aria-label={`Record in-game set for ${member.pokemon}`}

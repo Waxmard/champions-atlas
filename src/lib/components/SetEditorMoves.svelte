@@ -79,7 +79,7 @@
         />
         <Button
           variant="quiet"
-          size="icon-touch"
+          size="icon-compact"
           class="-mr-2"
           aria-label={`Clear move ${index + 1}`}
           tabindex={0}

@@ -35,6 +35,8 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Default Browse to the current regulation; make older regulations available
   through All regulations.
 - Prioritize relevant results with the ordering in [data sources](data-sources.md).
+- Saving or moving a team does not hide its catalog entry; Browse filters still
+  apply.
 - Show available team sets and original sources. Browse and Wishlist cards show
   one source chip: the ladder platform or tournament name for a reported result,
   or the featured channel or listing source otherwise. Keep placements on team
@@ -73,6 +75,10 @@ or otherwise when their canonical Poképaste or VRPastes URL exactly and uniquel
 matches a catalog URL. Current details do not change the original evidence,
 saved edits, or independent team copies. Teams without a match remain usable
 without a catalog link or warning.
+
+Browse, Wishlist, and My teams share a team summary style. The My teams summary
+shows the editable copy, and selecting a roster member jumps to its set. When
+available, **View catalog details** opens the matching catalog team.
 
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
@@ -146,8 +152,13 @@ changes before selection. Selecting the suggestion applies the complete saved
 snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
 
-Suggestions are keyboard-operable. Operation errors use alerts, and successful
-actions use status messages.
+Suggestions are keyboard-operable. Operation errors use alerts. Deliberate
+actions, including Wishlist changes, imports, collection moves, deletions,
+restorations, copying, and in-game recording, use one temporary status message
+below navigation for three seconds. The message survives navigation but is not
+stored or replayed. Autosaved fields and background sync do not produce these
+messages. Validation errors and failed shared imports remain available until
+corrected or dismissed.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a

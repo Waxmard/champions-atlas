@@ -10,6 +10,7 @@
   import MemberCard from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { copyText } from '#lib/clipboard.js';
+  import { notify } from '#lib/notifications.js';
   import {
     bestEvidence,
     evidence,
@@ -63,12 +64,11 @@
       : `${strongest.event} (${strongest.entrants} players)`
   );
   let ready = $state(false);
-  let copyStatus = $state('');
+  let copyError = $state('');
   let saved = $state.raw<SavedTeam[]>([]);
   let failedCopyText = $state('');
   let savedError = $state('');
   let actionError = $state('');
-  let status = $state('');
   let pending = $state(false);
   const wishlisted = $derived(wishlistedCatalogEntries(saved, team).length > 0);
   onMount(() => {
@@ -86,17 +86,17 @@
   function wishlist() {
     if (pending) return;
     pending = true;
-    status = actionError = '';
+    actionError = '';
     const result = toggleCatalogWishlist(team);
     refreshSaved();
     actionError = result.error;
-    status = result.status;
+    if (result.status) notify(result.status);
     pending = false;
   }
   async function useTeam() {
     if (pending) return;
     pending = true;
-    status = actionError = '';
+    actionError = '';
     const error = await openCatalogTeam(team);
     if (error) actionError = error;
     else refreshSaved();
@@ -118,10 +118,11 @@
   }
   async function copy(text: string, label: string) {
     const ok = await copyText(text);
-    copyStatus = ok
-      ? `${label} copied.`
+    copyError = ok
+      ? ''
       : 'Copy unavailable. Select and copy the text in the field below.';
     failedCopyText = ok ? '' : text;
+    if (ok) notify(`${label} copied.`);
   }
 </script>
 
@@ -179,7 +180,7 @@
       </div>
 
       <h1
-        class="mt-4 max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-break-word sm:text-4xl"
+        class="mt-4 max-w-3xl text-[1.75rem] leading-[1.4] font-extrabold tracking-tight wrap-anywhere sm:text-4xl"
       >
         {team.name}
       </h1>
@@ -195,13 +196,11 @@
     <div class="flex shrink-0 flex-wrap items-center gap-2">
       <Button
         variant="primary"
-        size="touch"
         disabled={!ready || savedError !== '' || pending}
         onclick={useTeam}>Use this team</Button
       >
       <Button
         variant="quiet"
-        size="touch"
         class="catalog-wishlist-button"
         aria-label="Wishlist"
         aria-pressed={wishlisted}
@@ -219,7 +218,6 @@
     </div>
   </div>
 
-  <p role="status" aria-live="polite" class="sr-only">{status}</p>
   {#if custom}<p class="term mt-3">
       Custom-rule event: this team was shared for a tournament with additional
       Pokémon restrictions. Hidden from normal recommendations.
@@ -250,7 +248,7 @@
       </div>
       {#if team.replicaStatus === '✔'}
         <Button
-          variant="secondary"
+          variant="quiet"
           size="compact"
           onclick={() => copy(team.replicaCode || '', 'Replica code')}
           ><Copy aria-hidden="true" />Copy replica code</Button
@@ -268,7 +266,7 @@
         <div class="flex flex-wrap items-center gap-2">
           {#if paste}
             <Button
-              variant="secondary"
+              variant="quiet"
               size="compact"
               onclick={() =>
                 copy(
@@ -296,12 +294,8 @@
       {/if}
     </div>
 
-    <p
-      role="status"
-      aria-live="polite"
-      class="mb-3 text-sm text-base-content/70 empty:hidden"
-    >
-      {copyStatus}
+    <p role="alert" class="mb-3 text-sm text-base-content/70 empty:hidden">
+      {copyError}
     </p>
     {#if failedCopyText}
       <label class="mb-3 block text-sm text-base-content/70">

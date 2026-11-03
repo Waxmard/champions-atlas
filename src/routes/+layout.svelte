@@ -7,6 +7,7 @@
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
+  import ActionNotification from '#lib/components/ActionNotification.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
@@ -15,6 +16,7 @@
   import { teamsInUse } from '#lib/team-collections.js';
   import { normalizeInitialUrl } from '#lib/initial-url.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
+  import { clearNotification } from '#lib/notifications.js';
 
   let { children } = $props();
   const isHome = $derived(page.route.id === '/');
@@ -59,6 +61,7 @@
   let scrollTimer: ReturnType<typeof setTimeout> | undefined;
   let shareReadError = $state(false);
   let checkingShares = false;
+  let notificationAccount: string | undefined;
 
   function validDestination(value: string | null): string | null {
     if (
@@ -446,6 +449,14 @@
     };
   });
 
+  $effect.pre(() => {
+    const nextAccount = sync.user?.uid;
+    if (nextAccount !== notificationAccount) {
+      notificationAccount = nextAccount;
+      clearNotification();
+    }
+  });
+
   $effect(() => {
     if (initialUrl && (!sync.configured || sync.authResolved)) void resume();
   });
@@ -501,7 +512,7 @@
 {#if shareReadError && page.url.pathname !== resolve('wishlist')}
   <div role="alert" class="plate mx-4 mt-4 px-4 py-3">
     Shared links could not be read. Try again.
-    <Button variant="secondary" size="touch" onclick={() => checkSharedLinks()}>
+    <Button variant="quiet" onclick={() => checkSharedLinks()}>
       Try again
     </Button>
   </div>
@@ -641,6 +652,7 @@
       </div>
     </div>
   </header>
+  <ActionNotification />
   {#key sync.user?.uid}
     {@render children()}
   {/key}

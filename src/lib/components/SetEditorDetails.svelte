@@ -97,7 +97,7 @@
     {#if value}
       <Button
         variant="quiet"
-        size="icon-touch"
+        size="icon-compact"
         class="-me-2"
         aria-label={`Clear ${field}`}
         data-detail-choice
