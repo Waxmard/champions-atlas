@@ -30,7 +30,7 @@ pushes to `main`. The TestFlight workflow runs independently of CI on pushes to
 For daily iPhone updates, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
 
 ```sh
-make ios          # Build, install, and launch on an iPhone.
+make ios IOS_DEVICE="Gengar Phone" # Build, install, and launch on an iPhone.
 ```
 
 Format files or serve a built app with:
