@@ -9,7 +9,7 @@
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import TeamSummary from '#lib/components/TeamSummary.svelte';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import Copy from '@lucide/svelte/icons/copy';
   import Plus from '@lucide/svelte/icons/plus';
@@ -22,7 +22,6 @@
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
   import { normalize, type Member } from '#lib/catalog.js';
-  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import {
     activeTeamKey,
     deleteTeam,
@@ -557,58 +556,30 @@
     {#if draft}
       {@const match = collections.resolveCatalogTeam(draft.original, teams)}
       <section aria-label="Your team" class="plate mt-4 p-5 sm:p-6">
-        <header class="flex items-start justify-between gap-3 border-b pb-4">
-          <div class="min-w-0 flex-1">
-            <h2
-              class="text-xl leading-[1.4] font-extrabold wrap-anywhere text-base-content sm:text-[1.375rem]"
-            >
-              {draft.name}
-            </h2>
-            {#if match}<a
-                class="mt-2 inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
-                href={resolve(`teams/${match.id}`)}>View catalog details</a
-              >{/if}
-          </div>
-          <Button
-            variant="danger-quiet"
-            size="icon-compact"
-            class="shrink-0"
-            aria-label="Delete team"
-            title="Delete team"
-            disabled={editing || deleting}
-            onclick={removeSelectedTeam}
-          >
-            <Trash2 class="size-4" aria-hidden="true" />
-          </Button>
-        </header>
-        <ul
-          class="mt-4 grid grid-cols-3 gap-x-2 gap-y-3 sm:grid-cols-6"
-          aria-label="Team roster"
+        <TeamSummary
+          name={draft.name}
+          members={draft.members}
+          layout="workspace"
+          memberHref={(index) => '#pokemon-slot-' + index}
         >
-          {#each draft.members as member, index (index)}
-            <li class="flex min-w-0 flex-col items-center text-center">
-              <a
-                href={`#pokemon-slot-${index}`}
-                class="rounded-[var(--radius-selector)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                aria-label={`Go to ${member.pokemon}`}
-              >
-                <span
-                  class="roster-sprite"
-                  style="--type-color: {TYPE_COLORS[
-                    getPokemonTypes(member.pokemon)[0]
-                  ]}"
-                >
-                  <PokemonSprite pokemon={member.pokemon} size={40} />
-                </span>
-              </a>
-              <p
-                class="mt-1 w-full text-[0.8125rem] leading-tight wrap-break-word"
-              >
-                {member.pokemon}
-              </p>
-            </li>
-          {/each}
-        </ul>
+          {#snippet headingActions()}
+            <Button
+              variant="danger-quiet"
+              size="icon-compact"
+              class="shrink-0"
+              aria-label="Delete team"
+              title="Delete team"
+              disabled={editing || deleting}
+              onclick={removeSelectedTeam}
+            >
+              <Trash2 class="size-4" aria-hidden="true" />
+            </Button>
+          {/snippet}
+        </TeamSummary>
+        {#if match}<a
+            class="mt-2 inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
+            href={resolve(`teams/${match.id}`)}>View catalog details</a
+          >{/if}
         <div
           class="mt-5 flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between"
         >

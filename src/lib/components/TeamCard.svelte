@@ -8,8 +8,7 @@
     sourceName,
     type Team,
   } from '#lib/catalog.js';
-  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
-  import PokemonSprite from './PokemonSprite.svelte';
+  import TeamSummary from './TeamSummary.svelte';
 
   let {
     team,
@@ -53,24 +52,7 @@
       >{/if}
     <span class="provenance ms-auto shrink-0">{team.publishedAt}</span>
   </div>
-  <h2 class="mt-1.5 text-lg leading-[1.4] font-extrabold wrap-anywhere">
-    {team.name}
-  </h2>
-  <ul class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3" aria-label="Team members">
-    {#each team.members as member, index (index)}
-      <li
-        class="flex min-w-0 flex-col items-center px-0.5 text-center"
-        style="--type-color: {TYPE_COLORS[getPokemonTypes(member.pokemon)[0]]}"
-      >
-        <div class="roster-sprite">
-          <PokemonSprite pokemon={member.pokemon} size={40} />
-        </div>
-        <p class="mt-1 text-[0.8125rem] leading-tight wrap-break-word">
-          {member.pokemon}
-        </p>
-      </li>
-    {/each}
-  </ul>
+  <TeamSummary name={team.name} members={team.members} />
 {/snippet}
 
 {#snippet resultEvidence()}

@@ -550,7 +550,7 @@
     </p>
   {:else if !storageError}
     {#if entries.length}
-      <ul class="mt-2 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         {#each entries as entry (entry.id)}
           {@const match = resolveCatalogTeam(
             entry.original,
@@ -566,12 +566,6 @@
             >
               {#snippet actions()}
                 <Button
-                  data-wishlist-use
-                  variant="quiet"
-                  disabled={!ready || !!pendingId}
-                  onclick={() => use(entry)}>Move to My teams</Button
-                >
-                <Button
                   variant="danger-quiet"
                   size="icon-compact"
                   aria-label="Remove from Wishlist"
@@ -581,6 +575,12 @@
                 >
                   <Trash2 class="size-4" aria-hidden="true" />
                 </Button>
+                <Button
+                  data-wishlist-use
+                  variant="primary"
+                  disabled={!ready || !!pendingId}
+                  onclick={() => use(entry)}>Move to My teams</Button
+                >
               {/snippet}
             </TeamCard>
           </li>

@@ -217,6 +217,51 @@ test('catalog Use promotes bookmarks and preserves independent repeated copies',
   assert.equal(removeWishlistedTeam(s, 'absent').length, result.length);
 });
 
+test('collection changes preserve the catalog team and its saved original', () => {
+  const s = storage();
+  const source = {
+    ...catalogTeam('catalog', 'Original name'),
+    creator: 'Original creator',
+    pasteUrl,
+  };
+  const baseline = structuredClone(source);
+  const assertOriginal = () => {
+    assert.deepEqual(source, baseline);
+    assert.deepEqual(readSavedTeams(s)[0].original, baseline);
+  };
+
+  const bookmark = addCatalogToWishlist(s, source);
+  assertOriginal();
+  const promoted = useCatalogTeam(s, source);
+  assert.equal(promoted.id, bookmark.id);
+  assertOriginal();
+
+  saveTeam(s, {
+    ...promoted,
+    name: 'Edited name',
+    members: promoted.members.map((member, index) =>
+      index ? member : { ...member, item: 'Edited item' }
+    ),
+  });
+  const edited = readSavedTeams(s)[0];
+  assert.equal(edited.name, 'Edited name');
+  assert.equal(edited.members[0].item, 'Edited item');
+  assertOriginal();
+
+  const moved = moveInUseTeamToWishlist(
+    s,
+    edited.id,
+    canonicalSnapshot({ name: edited.name, members: edited.members })
+  );
+  assert.equal(moved.name, 'Edited name');
+  assert.equal(moved.members[0].item, 'Edited item');
+  assertOriginal();
+  removeWishlistedTeam(s, moved.id);
+  assert.deepEqual(readSavedTeams(s), []);
+  assert.deepEqual(source, baseline);
+  assert.deepEqual(moved.original, baseline);
+});
+
 test('invalid collection, corrupt storage, quota, and capacity preserve existing data', () => {
   const invalid = storage([{ ...snapshot('bad'), collection: 'lost' }]);
   const raw = invalid.data;
