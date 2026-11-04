@@ -52,7 +52,7 @@
       align="end"
       sideOffset={8}
       onCloseAutoFocus={focusAfterClose}
-      class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
+      class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
     >
       <DropdownMenu.Item
         class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"

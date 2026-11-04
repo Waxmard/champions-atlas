@@ -730,19 +730,19 @@
       <div
         class="team-export min-w-0 landscape:md:col-start-1 landscape:md:row-start-2"
       >
-        <p class="provenance max-w-[68ch]">
-          Team text normalizes to Pokémon Champions format (EVs out of 32, no
-          IVs); unknown details stay omitted.
-        </p>
-        <details bind:open={showExport} class="plate mt-2 min-w-0 p-3">
+        <details bind:open={showExport} class="mt-2 min-w-0">
           <summary
-            class="min-h-11 cursor-pointer content-center px-1 text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary"
+            class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Showdown team text
           </summary>
+          <p class="provenance mt-1 max-w-[68ch]">
+            Team text normalizes to Pokémon Champions format (EVs out of 32, no
+            IVs); unknown details stay omitted.
+          </p>
           <textarea
             aria-label="Showdown team text"
-            class="textarea mt-2 min-h-72 w-full p-3 font-mono text-xs leading-5"
+            class="textarea mt-2 min-h-72 w-full p-2 font-mono text-xs leading-5"
             bind:value={teamPasteText}
             oninput={() => (pasteError = '')}
             disabled={editing || deleting || stale}></textarea>

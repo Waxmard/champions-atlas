@@ -6,7 +6,6 @@
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
-  import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
@@ -161,6 +160,20 @@
       untrack(() => void processShares(false));
     }
   });
+
+  $effect(() => {
+    if (ready && page.url.hash === '#import-pokepaste') {
+      untrack(() => {
+        void tick().then(() => importInput?.focus());
+      });
+    }
+  });
+
+  async function closeImport() {
+    await goto(resolve('wishlist'), { replace: true, reset: false });
+    await tick();
+    document.getElementById('wishlist-actions')?.focus();
+  }
 
   function submitPokepaste(event: SubmitEvent) {
     event.preventDefault();
@@ -480,79 +493,89 @@
 <main id="main" class="mx-auto max-w-7xl px-4 pt-2 pb-8 sm:px-8 sm:pb-12">
   <div bind:this={listRegion} hidden={selectedId !== null}>
     <h1 class="sr-only">Wishlist</h1>
-    <details class="max-w-3xl">
-      <summary
-        class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-[var(--radius-field)] bg-base-100 px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden"
+    {#if page.url.hash === '#import-pokepaste'}
+      <section
+        id="import-pokepaste"
+        aria-label="Add a Poképaste"
+        class="max-w-3xl"
       >
-        <Plus size={16} aria-hidden="true" />
-        <span id="wishlist-manual-label">Add a Poképaste</span>
-      </summary>
-      <p id="wishlist-share-hint" class="provenance mt-2">
-        From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
-        finish importing.
-      </p>
-      <form
-        aria-label="Import Poképaste"
-        class="mt-2"
-        novalidate
-        onsubmit={submitPokepaste}
-      >
-        <label for="pokepaste-link" class="term block"
-          >Poképaste link or ID</label
-        >
-        <input
-          id="pokepaste-link"
-          name="pokepaste"
-          type="text"
-          inputmode="url"
-          class="input mt-2 min-h-11 w-full"
-          required
-          autocomplete="off"
-          autocapitalize="none"
-          autocorrect="off"
-          spellcheck="false"
-          aria-invalid={invalidLink || undefined}
-          aria-describedby={invalidLink
-            ? 'wishlist-help wishlist-error'
-            : 'wishlist-help'}
-          disabled={!ready}
-          readonly={importPending || queuePending}
-          bind:this={importInput}
-          bind:value={pasteLink}
-          oninput={() => {
-            if (invalidLink) {
-              invalidLink = false;
-              errorMessage = '';
-            }
-          }}
-        />
-        <p id="wishlist-help" class="provenance mt-2">
-          Paste a pokepast.es link or its 16-character ID.
-        </p>
-        {#if invalidLink && errorMessage}
-          <p
-            id="wishlist-error"
-            role="alert"
-            class="mt-2 text-sm text-error-content"
-          >
-            {errorMessage}
-          </p>
-        {/if}
-        <div class="mt-4 flex flex-wrap items-center gap-3">
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-sm font-semibold">Add a Poképaste</h2>
           <Button
-            type="submit"
-            variant="primary"
-            aria-busy={importPending}
-            disabled={!ready || !!storageError || importPending || queuePending}
-            >Import to Wishlist</Button
+            variant="quiet"
+            disabled={importPending || queuePending}
+            onclick={closeImport}>Close import</Button
           >
-          {#if importPending}
-            <p role="status" class="provenance">Loading Poképaste…</p>
-          {/if}
-          <p class="provenance">Legality remains unverified.</p>
         </div>
-      </form>
-    </details>
+        <p id="wishlist-share-hint" class="provenance mt-2">
+          From a Poképaste page, use Share → Champion’s Atlas, then open Atlas
+          to finish importing.
+        </p>
+        <form
+          aria-label="Import Poképaste"
+          class="mt-2"
+          novalidate
+          onsubmit={submitPokepaste}
+        >
+          <label for="pokepaste-link" class="term block"
+            >Poképaste link or ID</label
+          >
+          <input
+            id="pokepaste-link"
+            name="pokepaste"
+            type="text"
+            inputmode="url"
+            class="input mt-2 min-h-11 w-full"
+            required
+            autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            aria-invalid={invalidLink || undefined}
+            aria-describedby={invalidLink
+              ? 'wishlist-help wishlist-error'
+              : 'wishlist-help'}
+            disabled={!ready}
+            readonly={importPending || queuePending}
+            bind:this={importInput}
+            bind:value={pasteLink}
+            oninput={() => {
+              if (invalidLink) {
+                invalidLink = false;
+                errorMessage = '';
+              }
+            }}
+          />
+          <p id="wishlist-help" class="provenance mt-2">
+            Paste a pokepast.es link or its 16-character ID.
+          </p>
+          {#if invalidLink && errorMessage}
+            <p
+              id="wishlist-error"
+              role="alert"
+              class="mt-2 text-sm text-error-content"
+            >
+              {errorMessage}
+            </p>
+          {/if}
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              type="submit"
+              variant="primary"
+              aria-busy={importPending}
+              disabled={!ready ||
+                !!storageError ||
+                importPending ||
+                queuePending}>Import to Wishlist</Button
+            >
+            {#if importPending}
+              <p role="status" class="provenance">Loading Poképaste…</p>
+            {/if}
+            <p class="provenance">Legality remains unverified.</p>
+          </div>
+        </form>
+      </section>
+    {/if}
     {#if !invalidLink && errorMessage}
       <p
         role="alert"

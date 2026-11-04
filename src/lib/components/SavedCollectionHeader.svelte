@@ -1,14 +1,33 @@
 <script lang="ts">
+  import { tick } from 'svelte';
+  import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import { DropdownMenu } from 'bits-ui';
   import Bookmark from '@lucide/svelte/icons/bookmark';
+  import Ellipsis from '@lucide/svelte/icons/ellipsis';
+  import Plus from '@lucide/svelte/icons/plus';
+  import { Button } from '#lib/components/ui/button/index.js';
 
   let { collection }: { collection: 'my-teams' | 'wishlist' } = $props();
+  let openImportAfterClose = false;
+
+  function focusAfterClose(event: Event) {
+    if (!openImportAfterClose) return;
+    event.preventDefault();
+    openImportAfterClose = false;
+    void goto(resolve('wishlist#import-pokepaste'), {
+      reset: false,
+    }).then(async () => {
+      await tick();
+      document.getElementById('pokepaste-link')?.focus();
+    });
+  }
 </script>
 
-<header class="min-w-0">
+<header class="flex min-w-0 items-center gap-2">
   <nav
     aria-label="Team collections"
-    class="grid w-full min-w-0 grid-cols-2 items-center rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1"
+    class="grid w-full min-w-0 flex-1 grid-cols-2 items-center rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1"
   >
     <a
       href={resolve('my-teams')}
@@ -52,4 +71,39 @@
       <span>Wishlist</span>
     </a>
   </nav>
+  {#if collection === 'wishlist'}
+    <DropdownMenu.Root>
+      <DropdownMenu.Trigger>
+        {#snippet child({ props })}
+          <Button
+            {...props}
+            variant="quiet"
+            size="icon-compact"
+            class="min-h-11 min-w-11 shrink-0"
+            id="wishlist-actions"
+            aria-label="Wishlist actions"
+          >
+            <Ellipsis class="size-4" aria-hidden="true" />
+          </Button>
+        {/snippet}
+      </DropdownMenu.Trigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.Content
+          side="bottom"
+          align="end"
+          sideOffset={8}
+          onCloseAutoFocus={focusAfterClose}
+          class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
+        >
+          <DropdownMenu.Item
+            class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+            onSelect={() => (openImportAfterClose = true)}
+          >
+            <Plus class="size-4" aria-hidden="true" />
+            Add a Poképaste
+          </DropdownMenu.Item>
+        </DropdownMenu.Content>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Root>
+  {/if}
 </header>
