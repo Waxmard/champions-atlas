@@ -94,7 +94,7 @@
               {...props}
               variant="quiet"
               size="icon-compact"
-              class="size-7 min-h-7 min-w-7 shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
+              class="size-11 min-h-11 min-w-11 shrink-0 focus-visible:ring-2 focus-visible:ring-primary"
               aria-label={`More actions for ${member.pokemon}`}
               data-preserve-team-name
             >
