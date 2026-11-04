@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.2.0](https://github.com/Waxmard/champions-atlas/compare/v3.1.0...v3.2.0) (2026-11-04)
+
+
+### Features
+
+* view and edit complete team sets across collections ([#76](https://github.com/Waxmard/champions-atlas/issues/76)) ([f75b304](https://github.com/Waxmard/champions-atlas/commit/f75b30488cbe5bc2854729749a923a9a055ec4e5))
+
 ## [3.1.0](https://github.com/Waxmard/champions-atlas/compare/v3.0.0...v3.1.0) (2026-11-03)
 
 
