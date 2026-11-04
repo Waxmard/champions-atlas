@@ -24,8 +24,10 @@ make ci # Run lint, formatting, line-limit, types, build, and Node tests.
 ```
 
 `npm test` requires a build first. CI runs `make ci` on pull requests and
-pushes to `main`. The TestFlight workflow runs independently of CI on pushes to
-`main` or by manual dispatch. See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration) for delivery and configuration.
+pushes to `main`. Release Please publishes releases that trigger the independent
+TestFlight workflow to import, build, and deploy that release; ordinary pushes
+to `main` do not deploy. Manual dispatch accepts a selected ref and an optional
+historical refresh. See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration) for delivery and configuration.
 
 For daily iPhone updates, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
 

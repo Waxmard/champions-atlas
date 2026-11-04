@@ -288,16 +288,16 @@ instead, because its job declares no environment.
 Create `RELEASE_PLEASE_TOKEN` as a fine-grained personal access token for this
 repository with **Contents: Read and write** and **Pull requests: Read and
 write**, then store it as a repository secret. The workflow needs a token other
-than `GITHUB_TOKEN` so that merging the release pull request triggers the
-`push`-triggered workflows.
+than `GITHUB_TOKEN` so release and merge events can trigger downstream workflows.
 
-- A push to `main` runs `deploy-testflight.yml`. To run it manually, select
-  **Actions** → **Deploy TestFlight** → **Run workflow**, choose a branch, and
-  optionally select **Rebuild all historical regulations**. A feature-branch
-  push or pull request label does not trigger the workflow.
-- The workflow builds the app, deploys Firestore rules to
-  `champions-atlas-test`, and uploads the signed iOS build to TestFlight. It runs
-  independently of CI and does not wait for CI checks.
+- Release Please publishes a release, triggering `deploy-testflight.yml` to
+  import, build, and deploy that release's tag. Ordinary pushes to `main` do not
+  deploy. To run it manually, select **Actions** → **Deploy TestFlight** →
+  **Run workflow**, choose a branch or tag, and optionally select
+  **Rebuild all historical regulations**.
+- The workflow publishes the catalog, builds the app, deploys Firebase Hosting
+  and Firestore rules to `champions-atlas-test`, and uploads the signed iOS build
+  to TestFlight. It runs independently of CI and does not wait for CI checks.
 - After upload, wait for Apple to process the build. Accept the TestFlight
   invitation if needed, open TestFlight on your iPhone, and install or update
   Champion's Atlas when the build becomes available. An upload does not install

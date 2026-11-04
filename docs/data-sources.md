@@ -146,9 +146,11 @@ at 06:17 UTC and by manual dispatch through **Actions** → **Refresh Catalog** 
 **Run workflow**. The app checks for newer validated bundles on launch,
 reconnection, and foreground.
 
-`.github/workflows/deploy-testflight.yml` imports the catalog for builds on pushes
-to `main` and manual dispatch. **Rebuild all historical regulations** rebuilds
-history. Both workflows set `YOUTUBE_REFRESH=1` and recrawl YouTube discovery.
+When Release Please publishes a release, `.github/workflows/deploy-testflight.yml`
+imports the catalog, builds, and deploys that release independently of CI.
+Ordinary pushes to `main` do not deploy. Manual dispatch uses the selected ref;
+**Rebuild all historical regulations** rebuilds history. Both workflows set
+`YOUTUBE_REFRESH=1` and recrawl YouTube discovery.
 A failed import, tagging run, or build stops the upload or publication. A source
 fetch or structural failure throws before the atomic
 catalog write, preserving the previous catalog. Dev, build, and typecheck generate
