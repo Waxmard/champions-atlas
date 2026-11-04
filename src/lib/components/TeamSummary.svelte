@@ -1,67 +1,44 @@
 <script lang="ts">
-  import type { Snippet } from 'svelte';
+  import { localImageSrc } from '#lib/assets.js';
   import type { Member } from '#lib/catalog.js';
+  import ItemIcon from '#lib/components/ItemIcon.svelte';
   import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
     name,
     members,
-    layout = 'card',
-    memberHref,
-    headingActions,
   }: {
     name: string;
-    members: readonly Pick<Member, 'pokemon'>[];
-    layout?: 'card' | 'workspace';
-    memberHref?: (index: number) => string;
-    headingActions?: Snippet;
+    members: readonly Pick<Member, 'pokemon' | 'item'>[];
   } = $props();
 </script>
 
-{#snippet memberContent(pokemon: string)}
-  <div class="roster-sprite">
-    <PokemonSprite {pokemon} size={40} />
-  </div>
-  <p class="mt-1 w-full text-[0.8125rem] leading-tight wrap-break-word">
-    {pokemon}
-  </p>
-{/snippet}
-
-<div
-  class="flex items-start justify-between gap-3 {layout === 'card'
-    ? 'mt-1.5'
-    : ''}"
->
+<div class="mt-1.5 flex items-start justify-between gap-3">
   <h2 class="min-w-0 flex-1 text-lg leading-[1.4] font-extrabold wrap-anywhere">
     {name}
   </h2>
-  {@render headingActions?.()}
 </div>
-<ul
-  class="mt-3.5 grid grid-cols-3 gap-x-2 gap-y-3 {layout === 'workspace'
-    ? 'sm:grid-cols-6'
-    : ''}"
-  aria-label="Team members"
->
+<ul class="mt-3 grid grid-cols-3 gap-2" aria-label="Team members">
   {#each members as member, index (index)}
-    <li
-      class="flex min-w-0 flex-col items-center px-0.5 text-center"
-      style="--type-color: {TYPE_COLORS[getPokemonTypes(member.pokemon)[0]]}"
-    >
-      {#if memberHref}
-        <!-- eslint-disable svelte/no-navigation-without-resolve -- Fragment links stay on the current page. -->
-        <a
-          href={memberHref(index)}
-          class="flex w-full min-w-0 flex-col items-center rounded-[var(--radius-selector)] outline-none focus-visible:ring-2 focus-visible:ring-primary"
-          aria-label={`Go to ${member.pokemon}`}
-        >
-          {@render memberContent(member.pokemon)}
-        </a>
-        <!-- eslint-enable svelte/no-navigation-without-resolve -->
-      {:else}
-        {@render memberContent(member.pokemon)}
-      {/if}
+    {@const types = getPokemonTypes(member.pokemon)}
+    {@const band = `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[types[0]]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[types[types.length - 1]]} 24%, var(--color-base-100)))`}
+    <li class="flex min-w-0 flex-col gap-0.5">
+      <p
+        class="truncate px-0.5 text-[0.75rem] leading-tight font-bold text-[color:var(--color-muted)]"
+        title={member.pokemon}
+      >
+        {member.pokemon}
+      </p>
+      <div
+        class="plate flex items-center justify-between gap-1 px-2 py-1.5"
+        style:background={band}
+      >
+        <PokemonSprite pokemon={member.pokemon} size={40} />
+        {#if member.item?.trim() && localImageSrc('items', member.item)}
+          <ItemIcon item={member.item} size={22} />
+        {/if}
+      </div>
     </li>
   {/each}
 </ul>

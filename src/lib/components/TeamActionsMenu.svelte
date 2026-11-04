@@ -3,30 +3,44 @@
   import { resolve } from '$app/paths';
   import { DropdownMenu } from 'bits-ui';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
+  import Copy from '@lucide/svelte/icons/copy';
+  import Settings2 from '@lucide/svelte/icons/settings-2';
   import Plus from '@lucide/svelte/icons/plus';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
-  import Bookmark from '@lucide/svelte/icons/bookmark';
   import { Button } from '#lib/components/ui/button/index.js';
 
   interface Props {
+    oncopy: () => void;
+    onmanage: () => void;
     onswap: () => void;
     swapDisabled: boolean;
-    moveDisabled: boolean;
-    onmove: () => void;
-    pending: boolean;
+    disabled: boolean;
   }
 
-  let { onswap, swapDisabled, moveDisabled, onmove, pending }: Props = $props();
+  let { oncopy, onmanage, onswap, swapDisabled, disabled }: Props = $props();
+  let actionAfterClose: (() => void) | undefined;
+
+  function focusAfterClose(event: Event) {
+    if (!actionAfterClose) return;
+    event.preventDefault();
+    const action = actionAfterClose;
+    actionAfterClose = undefined;
+    action();
+  }
 </script>
 
 <DropdownMenu.Root>
-  <DropdownMenu.Trigger>
+  <DropdownMenu.Trigger {disabled}>
     {#snippet child({ props })}
       <Button
         {...props}
         variant="quiet"
         size="icon-compact"
-        aria-label="More team actions"
+        class="min-h-11 min-w-11"
+        id="team-actions"
+        aria-label="Team actions"
+        data-team-action="menu"
+        {disabled}
       >
         <Ellipsis class="size-4" aria-hidden="true" />
       </Button>
@@ -34,11 +48,26 @@
   </DropdownMenu.Trigger>
   <DropdownMenu.Portal>
     <DropdownMenu.Content
-      side="right"
-      align="start"
+      side="bottom"
+      align="end"
       sideOffset={8}
-      class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
+      onCloseAutoFocus={focusAfterClose}
+      class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
     >
+      <DropdownMenu.Item
+        class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+        onSelect={oncopy}
+      >
+        <Copy class="size-4" aria-hidden="true" />
+        Copy team text
+      </DropdownMenu.Item>
+      <DropdownMenu.Item
+        class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+        onSelect={() => (actionAfterClose = onmanage)}
+      >
+        <Settings2 class="size-4" aria-hidden="true" />
+        Manage team
+      </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
         onSelect={() => void goto(resolve('my-teams/new'))}
@@ -48,16 +77,8 @@
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row cursor-pointer outline-none data-disabled:opacity-50 data-highlighted:bg-info data-highlighted:text-info-content"
-        disabled={moveDisabled || pending}
-        onSelect={onmove}
-      >
-        <Bookmark class="size-4" aria-hidden="true" />
-        Move to Wishlist
-      </DropdownMenu.Item>
-      <DropdownMenu.Item
-        class="option-row cursor-pointer outline-none data-disabled:opacity-50 data-highlighted:bg-info data-highlighted:text-info-content"
         disabled={swapDisabled}
-        onSelect={onswap}
+        onSelect={() => (actionAfterClose = onswap)}
       >
         <ArrowLeftRight class="size-4" aria-hidden="true" />
         Change a Pokémon

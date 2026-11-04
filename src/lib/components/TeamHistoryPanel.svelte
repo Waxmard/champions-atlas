@@ -1,5 +1,8 @@
 <script lang="ts">
+  import Copy from '@lucide/svelte/icons/copy';
   import { Button } from '#lib/components/ui/button/index.js';
+  import { copyText } from '#lib/clipboard.js';
+  import { notify } from '#lib/notifications.js';
   import {
     evidence,
     evidenceGrade,
@@ -33,6 +36,12 @@
 
   let { team, currentRegulation, disabled, onrestore, onrestoreslot }: Props =
     $props();
+  let replicaCopyFailed = $state(false);
+  async function copyReplica() {
+    const ok = await copyText(team.original.replicaCode ?? '');
+    replicaCopyFailed = !ok;
+    if (ok) notify('Replica code copied.');
+  }
   const identical = $derived(
     canonicalSnapshot({
       name: team.original.name,
@@ -98,6 +107,30 @@
     >Original & history</summary
   >
   <div class="mt-3 space-y-5">
+    {#if team.original.replicaCode || team.original.replicaStatus}
+      <div>
+        <h3 class="font-bold">Original replica code</h3>
+        {#if team.original.replicaCode}<code
+            class="font-mono text-sm wrap-anywhere select-all"
+            >{team.original.replicaCode}</code
+          >{/if}
+        {#if team.original.replicaCode && team.original.replicaStatus === '✔'}
+          <Button variant="quiet" size="compact" onclick={copyReplica}
+            ><Copy aria-hidden="true" />Copy replica code</Button
+          >
+          {#if replicaCopyFailed}<p role="alert" class="provenance">
+              Copy unavailable. Select the code above and copy it.
+            </p>{/if}
+        {/if}
+        {#if team.original.replicaStatus}<p class="provenance">
+            Source status: {team.original.replicaStatus}
+          </p>{/if}
+        <p class="provenance">
+          This code belongs to the original team, not your edited team.
+          Availability may change.
+        </p>
+      </div>
+    {/if}
     <div class="flex flex-wrap items-end gap-3">
       <Button
         variant="destructive"
@@ -205,21 +238,6 @@
       {#if team.original.sheetIds?.length}<p class="provenance wrap-anywhere">
           Source sheet IDs: {team.original.sheetIds.join(', ')}
         </p>{/if}
-      {#if team.original.replicaCode || team.original.replicaStatus}
-        <div>
-          <h3 class="font-bold">Original replica code</h3>
-          {#if team.original.replicaCode}<code
-              class="font-mono text-sm wrap-anywhere select-all"
-              >{team.original.replicaCode}</code
-            >{/if}{#if team.original.replicaStatus}<p class="provenance">
-              Source status: {team.original.replicaStatus}
-            </p>{/if}
-          <p class="provenance">
-            This code belongs to the original team, not your edited team.
-            Availability may change.
-          </p>
-        </div>
-      {/if}
       {#if team.original.reports?.length}
         <ul class="divide-y divide-base-300">
           {#each team.original.reports as report, index (index)}

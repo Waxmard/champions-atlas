@@ -3,7 +3,9 @@ import test from 'node:test';
 import {
   memberRosterError,
   memberValidationError,
+  parseTeamPaste,
 } from '../src/lib/member-validation.ts';
+import { exportPaste } from '../src/lib/workbench.ts';
 
 const member = (
   pokemon,
@@ -198,5 +200,101 @@ test('blank species and structured blank spreads retain field-specific errors', 
       field: 'spread',
       message: 'Changed EV spreads must total 66 points (currently 0).',
     }
+  );
+});
+
+test('team text matches reordered sets by normalized Pokémon identity', () => {
+  const source = {
+    pasteUrl: 'https://pokepast.es/0000000000000000',
+    videoUrls: ['https://www.youtube.com/watch?v=aaaaaaaaaaa'],
+    sourceSet: 'source',
+    originalSet: 'original',
+    appliedSignature: 'signature',
+    borrowedNature: false,
+  };
+  const current = [
+    { ...member('Mr. Mime', 'Old Nature', '32 HP'), marker: 'mime' },
+    {
+      ...member('Pikachu', 'Serious', '20 Def'),
+      marker: 'pikachu',
+      spreadSource: source,
+    },
+    member('Absol-Mega'),
+    member('Charizard-Mega'),
+    member('Blastoise'),
+    member('Venusaur'),
+  ];
+  const before = snapshot(...current);
+  const text = exportPaste([
+    current[1],
+    current[0],
+    ...current.slice(2),
+  ]).replace('Mr. Mime', 'mr-mime');
+  const result = parseTeamPaste(text, current);
+
+  assert.equal(result[0].pokemon, 'Pikachu');
+  assert.equal(result[0].marker, 'pikachu');
+  assert.deepEqual(result[0].spreadSource, source);
+  assert.equal(result[1].pokemon, 'mr-mime');
+  assert.equal(result[1].marker, 'mime');
+  assert.equal(result[1].nature, 'Old Nature');
+  assert.equal(result[1].spread, '32 HP');
+  assert.deepEqual(current, before);
+
+  const replacement = parseTeamPaste(
+    text.replace('Pikachu', 'Mew').replace('20 Def', '32 Atk / 32 Spe / 2 HP'),
+    current
+  );
+  assert.equal(replacement[0].pokemon, 'Mew');
+  assert.equal(replacement[0].marker, undefined);
+  assert.equal(replacement[0].spreadSource, undefined);
+
+  const forms = [
+    { ...member('Charizard'), marker: 'base' },
+    { ...member('Charizard-Mega'), marker: 'mega' },
+    ...current.slice(2).filter((entry) => entry.pokemon !== 'Charizard-Mega'),
+    member('Raichu'),
+  ];
+  const reorderedForms = parseTeamPaste(
+    exportPaste([forms[1], forms[0], ...forms.slice(2)]),
+    forms
+  );
+  assert.equal(reorderedForms[0].marker, 'mega');
+  assert.equal(reorderedForms[1].marker, 'base');
+
+  assert.throws(
+    () => parseTeamPaste(text.replace('32 HP', '31 HP'), current),
+    /Changed EV spreads must total 66 points \(currently 31\)/
+  );
+  assert.throws(
+    () => parseTeamPaste(text.replace('mr-mime', 'Mew'), current),
+    /Choose a standard nature/
+  );
+  assert.throws(
+    () => parseTeamPaste(text.replace('Pikachu', 'Mew'), current),
+    /Changed EV spreads must total 66 points \(currently 20\)/
+  );
+  assert.throws(
+    () =>
+      parseTeamPaste(
+        exportPaste([current[0], current[0], ...current.slice(2)]),
+        current
+      ),
+    /duplicate Pokémon forms/
+  );
+  assert.throws(
+    () =>
+      parseTeamPaste(
+        exportPaste([
+          member('Absol-Mega'),
+          member('Charizard-Mega'),
+          member('Venusaur-Mega'),
+          member('Blastoise'),
+          member('Pikachu'),
+          member('Raichu'),
+        ]),
+        current
+      ),
+    /at most two Mega Pokémon/
   );
 });

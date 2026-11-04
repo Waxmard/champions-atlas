@@ -31,7 +31,7 @@
 </script>
 
 <svelte:head><title>Add custom team — Champion's Atlas</title></svelte:head>
-<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+<main id="main" class="app-container py-8 sm:py-12">
   <header class="border-b pb-4">
     <div>
       <h1

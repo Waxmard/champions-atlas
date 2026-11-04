@@ -63,12 +63,13 @@ adds no paid API, scraper, or subscription.
 
 ## Saved teams, similarity, and editing
 
-Choose **Use this team** for a catalog team. **My teams** keeps an immutable
-original and an editable copy. Catalog originals retain the full published sets
-and source metadata available when saved; show that metadata as evidence for the
-original, not the edited version. Older saved teams show only metadata they
-retained. Custom originals are starting teams without public source claims;
-never backfill legacy originals from a refreshed catalog.
+Open a catalog team and choose **My Teams**, or choose **My Teams** on a Wishlist
+card. **My teams** keeps an immutable original and an editable copy. Catalog
+originals retain the full published sets and source metadata available when
+saved; show that metadata as evidence for the original, not the edited version.
+Older saved teams show only metadata they retained. Custom originals are
+starting teams without public source claims; never backfill legacy originals from
+a refreshed catalog.
 
 Saved originals link to current catalog details when the original ID matches,
 or otherwise when their canonical Poképaste or VRPastes URL exactly and uniquely
@@ -76,9 +77,11 @@ matches a catalog URL. Current details do not change the original evidence,
 saved edits, or independent team copies. Teams without a match remain usable
 without a catalog link or warning.
 
-Browse, Wishlist, and My teams share a team summary style. The My teams summary
-shows the editable copy, and selecting a roster member jumps to its set. When
-available, **View catalog details** opens the matching catalog team.
+Browse and Wishlist share a compact team summary style. Opening a catalog team,
+a Wishlist bookmark, or My teams shows the six Pokémon sets in a shared card
+grid. Catalog and Wishlist cards open a read-only full-set view; My teams cards
+open editors for individual fields. When available, **View catalog details**
+opens the matching catalog team from My teams or a selected Wishlist team.
 
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
@@ -92,6 +95,12 @@ separate Apply step.
 failed-write input without undoing earlier autosaves. **Advanced set text**
 explicitly replaces a set. Structured edits preserve nicknames and untouched
 supported lines; they never guess unknown values.
+
+**Save team text** replaces the current sets with the edited Showdown text;
+**Reset text** discards its unsaved changes. While team text is unsaved, team
+selection and competing edits are unavailable. Reordered sets keep their
+Pokémon's metadata and unchanged legacy details. Deleting the team still confirms
+before discarding unsaved input.
 
 The EV slider keeps its native keyboard controls and vertical page scrolling,
 with a 44-pixel touch target across its full height. **Fill** adds or removes
@@ -116,11 +125,11 @@ duplicate both exist, the canonical slot is kept and the duplicate is dropped
 silently on startup, during sync, and when another device shares it. The removal
 is permanent and keeps no backup. A lone legacy slot keeps its member and only
 takes the canonical id. Malformed data remains unreadable and untouched.
-Record individual committed sets or **Record all in-game sets** from the selected
-team's **My teams** overview, never from
-the editor. These secondary actions use the Save icon and appear only when a
-snapshot would change. Recording is unavailable while editing and never flushes
-pending editor input or a pending team name. Individual replacements use native
+Record individual committed sets from each set's actions or **Record all
+in-game sets** from **Manage team**, never from the editor. These secondary
+actions use the Save icon and appear only when a snapshot would change.
+Recording is unavailable while editing and never flushes pending editor input or
+a pending team name. Individual replacements use native
 confirmation. Bulk recording offers one checklist of different existing
 snapshots, initially unchecked. Select one, several, all, or none to replace.
 Unchecked Pokémon keep their latest recorded sets; selecting none still records
@@ -254,9 +263,9 @@ catalog match is bookmarked with its source metadata without a network request.
 When multiple catalog teams share a link without an existing bookmark, import is
 rejected without fetching or saving. Otherwise the app fetches the paste
 directly from Poképaste and applies the same six-set requirements as custom text
-import. A failed shared import remains queued for retry or dismissal without
-deleting a saved team. File, screenshot, rental-code, and social-post imports
-are out of scope.
+import. A failed shared import remains queued for retry or dismissal from the
+Wishlist list or team detail, without deleting a saved team. File, screenshot,
+rental-code, and social-post imports are out of scope.
 
 Export current sets with Champions EV normalization, using 0–32 per stat. Omit
 IVs, level, Tera Type, and unknown values. Never assign edited teams new rental
@@ -278,20 +287,22 @@ If multiple Wishlist records match, remove them individually in Wishlist rather
 than deleting them together. Using a bookmarked catalog team promotes the same
 record; if multiple bookmarks match, choose one in Wishlist. Removal rejects a
 record that is no longer a bookmark so a stale control cannot delete a promoted
-team. A bookmark without a current catalog match stays usable with its saved
-roster and no catalog details link. Both collections share the same storage
-ceiling and sync path (see [storage and sync](firebase.md)).
+team. Selecting a bookmark in Wishlist opens its saved sets, copyable team text,
+and retained original source evidence; a bookmark without a current catalog
+match stays usable with its saved roster and no catalog details link. Both
+collections share the same storage ceiling and sync path (see
+[storage and sync](firebase.md)).
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when
 connected. A first sign-in may require connectivity. Native setup and signing
 are described in [iOS installation and Firebase sync](firebase.md).
 
-The My teams picker shows only in-use teams. Its icon-first search covers the
-current team name and each member's species, with exact, prefix, substring, and
-character-subsequence tiers, requiring every whitespace-separated term to match.
-Arrow keys and Enter select a result; Escape restores the current team without
-renaming it.
+The My teams picker shows only in-use teams and displays the selected team's
+name. Its search covers the current team name and each member's species, with
+exact, prefix, substring, and character-subsequence tiers, requiring every
+whitespace-separated term to match. Arrow keys and Enter select a result;
+Escape restores the current team without renaming it.
 
 ## Future scope
 

@@ -21,7 +21,6 @@
   import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import { notify } from '#lib/notifications.js';
   import {
-    openCatalogTeam,
     readSavedTeamsState,
     toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
@@ -238,15 +237,6 @@
     if (result.status) notify(result.status);
     pending.delete(team.id);
   }
-  async function use(team: Team) {
-    if (pending.has(team.id)) return;
-    pending.add(team.id);
-    actionError = '';
-    const error = await openCatalogTeam(team);
-    if (error) actionError = error;
-    else refreshSaved();
-    pending.delete(team.id);
-  }
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(new URL(page.url.href).searchParams, next));
   }
@@ -305,7 +295,7 @@
   <title>Champion's Atlas — Find your next team</title>
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
+<main id="main" class="app-container py-6 sm:py-8">
   <header>
     <h1
       class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
@@ -560,11 +550,10 @@
         {#each visible as team (team.id)}
           <TeamCard
             {team}
-            currentRegulation={current}
             showRegulation={regulation === 'all'}
             query={page.url.search}
           >
-            {#snippet actions()}
+            {#snippet trailingActions()}
               {@const busy =
                 !ready || savedError !== '' || pending.has(team.id)}
               {@const isWishlisted =
@@ -573,7 +562,7 @@
                 type="button"
                 variant="quiet"
                 size="icon-compact"
-                class="catalog-wishlist-button"
+                class="catalog-wishlist-button size-11"
                 aria-label="Wishlist"
                 aria-pressed={isWishlisted}
                 title={isWishlisted
@@ -588,12 +577,6 @@
                   <Bookmark class="size-4" aria-hidden="true" />
                 {/if}
               </Button>
-              <Button
-                type="button"
-                variant="primary"
-                disabled={busy}
-                onclick={() => use(team)}>Use this team</Button
-              >
             {/snippet}
           </TeamCard>{/each}
       </div>

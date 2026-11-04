@@ -7,7 +7,7 @@ import {
 import { sync } from './sync.svelte';
 
 const ownerKey = 'champions-atlas:sync-owner:v2';
-const ownershipError = 'Sync account changed. Reopen My teams to continue.';
+const ownershipError = 'Sync account changed. Reopen My Teams to continue.';
 
 export function currentSetOwnerMatches(): boolean {
   if (!sync.configured) return true;

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import InGameSetSuggestion from '#lib/components/InGameSetSuggestion.svelte';
   import SetEditorPokemonSuggestions from '#lib/components/SetEditorPokemonSuggestions.svelte';
   import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
@@ -9,37 +8,24 @@
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
   import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
-  import SetEditorOverview from '#lib/components/SetEditorOverview.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
-  import TypeBadge from '#lib/components/TypeBadge.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
-  import {
-    championsSpreadTotal,
-    NATURES,
-    parseChampionsSpread,
-    parseSetBlock,
-    updateSetText,
-  } from '#lib/paste.js';
+  import { NATURES, parseSetBlock, updateSetText } from '#lib/paste.js';
   import {
     memberRosterError,
     memberValidationError,
   } from '#lib/member-validation.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
-  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
-  import {
-    catalogSuggestions,
-    originalMemberFor,
-    setText,
-  } from '#lib/workbench.js';
-  type EditorView =
-    'overview' | 'pokemon' | 'details' | 'moves' | 'spread' | 'text';
+  import { catalogSuggestions, originalMemberFor } from '#lib/workbench.js';
+  type EditorView = 'pokemon' | 'details' | 'moves' | 'spread';
   interface Props {
     member: Member;
     teams: Team[];
     currentRegulation: string;
     initialField: EditableSetField;
+    initialMoveSlot?: number;
     teammates?: Member[];
     tagIndex?: TeamTagsIndex;
     originalMembers?: Member[];
@@ -53,6 +39,7 @@
     teams,
     currentRegulation,
     initialField,
+    initialMoveSlot = 0,
     teammates = [],
     tagIndex,
     originalMembers = [],
@@ -62,14 +49,22 @@
     onpendingchange,
   }: Props = $props();
   function getInitialView(field: EditableSetField): EditorView {
-    if (field === 'set') return 'overview';
+    if (field === 'set' || field === 'pokemon') return 'pokemon';
     if (field === 'item' || field === 'ability' || field === 'nature')
       return 'details';
     return field;
   }
+  const EDITOR_SECTIONS: { id: EditorView; label: string }[] = [
+    { id: 'pokemon', label: 'Pokémon' },
+    { id: 'details', label: 'Details' },
+    { id: 'spread', label: 'EVs' },
+    { id: 'moves', label: 'Moves' },
+  ];
   const MOVE_SLOTS = [0, 1, 2, 3];
   const initialMember = (() => member)();
-  const initialView = (() => getInitialView(initialField))();
+  const fieldOnOpen = (() => initialField)();
+  const initialView = (() => getInitialView(fieldOnOpen))();
+  const initialMoveIndex = (() => initialMoveSlot)();
   const currentSets = createCurrentSetRegistry();
   const fields = (next: Member) => ({
     pokemon: next.pokemon,
@@ -85,12 +80,16 @@
   let form = $state(fields(initialMember));
   let acceptedFields = $state(fields(initialMember));
   let currentView = $state<EditorView>(initialView);
-  let activeMoveSlot = $state(0);
-  let rawText = $state(setText(initialMember));
-  let textBaseline = $state(setText(initialMember));
+  let activeMoveSlot = $state(initialMoveIndex);
   let replacement = $state<Member | null>(null);
   let activeSuggestions = $state<string | null>(
-    initialView === 'pokemon' ? 'pokemon' : null
+    initialView === 'pokemon'
+      ? 'pokemon'
+      : initialView === 'moves'
+        ? `move-${initialMoveIndex}`
+        : fieldOnOpen === 'item' || fieldOnOpen === 'ability'
+          ? fieldOnOpen
+          : null
   );
   let pokemonQuery = $state(''),
     itemQuery = $state(''),
@@ -113,8 +112,7 @@
   });
   const fieldText = $derived(updateSetText(accepted, draftMember));
   const dirty = $derived(
-    (currentView === 'text' && rawText !== textBaseline) ||
-      canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields) ||
+    canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields) ||
       replacement !== null
   );
   const originalMember = $derived(
@@ -178,18 +176,12 @@
       ? form.nature
       : null
   );
-  const currentSpread = $derived(parseChampionsSpread(form.spread));
-  const currentSpreadTotal = $derived(
-    currentSpread ? championsSpreadTotal(currentSpread) : 0
-  );
   const subViewTitle = $derived(
     {
       pokemon: 'Pokémon',
       details: 'Item, ability, and nature',
       moves: 'Moves',
       spread: 'EV spread',
-      text: 'Showdown set text',
-      overview: 'Overview',
     }[currentView]
   );
   const originalReason = $derived(
@@ -223,7 +215,7 @@
   function accept(next: Member, preserveMoves = false) {
     if (!onchange(next)) {
       showError(
-        currentView === 'text' ? 'text' : 'set',
+        'set',
         'Could not save this input. Your edits are still here. ' +
           'Close and reopen the editor, then try again.'
       );
@@ -235,8 +227,6 @@
     applyPreFilled(next);
     if (preserveMoves) form.moves = moves;
     acceptedFields = structuredClone($state.snapshot(form));
-    rawText = setText(next);
-    textBaseline = rawText;
     clearError();
     onpendingchange(false);
     return true;
@@ -251,7 +241,7 @@
       showError('pokemon', reason);
       return;
     }
-    if (!trusted && !validateMember(candidate, 'structured')) return;
+    if (!trusted && !validateMember(candidate)) return;
     replacement = candidate;
     applyPreFilled(candidate);
     if (moveSlots) form.moves = [...moveSlots];
@@ -332,10 +322,18 @@
       )
     );
   }
-  function validateMember(next: Member, mode: 'structured' | 'text') {
-    const validation = memberValidationError(next, accepted, teammates, mode);
+  function validateMember(next: Member) {
+    const validation = memberValidationError(
+      next,
+      accepted,
+      teammates,
+      'structured'
+    );
     if (validation) {
-      showError(validation.field, validation.message);
+      showError(
+        validation.field === 'text' ? 'set' : validation.field,
+        validation.message
+      );
       return false;
     }
     return true;
@@ -363,7 +361,6 @@
         return accept(structuredClone($state.snapshot(replacement)));
       const moves = form.moves.map((move) => move.trim()).filter(Boolean);
       if (
-        currentView !== 'text' &&
         moves.some(
           (move, index) =>
             moves.findIndex(
@@ -374,34 +371,29 @@
         showError('moves', 'A set cannot include the same move twice.');
         return false;
       }
-      const candidate =
-        currentView === 'text'
-          ? parseSetBlock(rawText)
-          : {
-              ...accepted,
-              ...parseSetBlock(fieldText),
-              pokemon: draftMember.pokemon,
-            };
-      if (
-        !validateMember(
-          candidate,
-          currentView === 'text' ? 'text' : 'structured'
-        )
-      )
-        return false;
-      return accept(candidate, currentView !== 'text');
+      const candidate = {
+        ...accepted,
+        ...parseSetBlock(fieldText),
+        pokemon: draftMember.pokemon,
+      };
+      if (!validateMember(candidate)) return false;
+      return accept(candidate, true);
     } catch (caught) {
       showError(
-        currentView === 'text' ? 'text' : 'set',
+        'set',
         caught instanceof Error ? caught.message : 'Invalid set format.'
       );
       return false;
     }
   }
-  function backToOverview() {
-    if (!flush() && currentView === 'text') return;
-    currentView = 'overview';
-    activeSuggestions = null;
+  function switchView(view: EditorView) {
+    if (view === currentView) return;
+    currentView = view;
+    activeSuggestions = view === 'pokemon' ? 'pokemon' : null;
+    requestAnimationFrame(() => {
+      if (contentElement) contentElement.scrollTop = 0;
+      editorHeading?.focus({ preventScroll: true });
+    });
   }
   function focusError() {
     requestAnimationFrame(() => {
@@ -424,7 +416,7 @@
   }
   export function focusInitialSection() {
     requestAnimationFrame(() => {
-      const field = initialField === 'set' ? 'set' : initialField;
+      const field = initialField === 'set' ? 'pokemon' : initialField;
       const inputId =
         field === 'item' ||
         field === 'ability' ||
@@ -432,7 +424,7 @@
         field === 'pokemon'
           ? '#set-' + field + '-input'
           : field === 'moves'
-            ? '#set-move-1'
+            ? `#set-move-${activeMoveSlot + 1}`
             : field === 'spread'
               ? '[data-ev-toggle]'
               : '';
@@ -464,77 +456,44 @@
   {/snippet}
 
   <header
-    class="shrink-0 border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-4 sm:px-6 sm:pt-5"
+    class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:px-6 sm:pt-5"
   >
-    {#if currentView === 'overview'}
-      <div class="flex items-center justify-between gap-3">
-        <div class="flex min-w-0 items-center gap-3">
-          <div
-            class="roster-sprite shrink-0"
-            style="--type-color: {TYPE_COLORS[
-              getPokemonTypes(form.pokemon || initialMember.pokemon)[0]
-            ]}"
-          >
-            <PokemonSprite
-              pokemon={form.pokemon || initialMember.pokemon}
-              size={40}
-            />
-          </div>
-          <div class="min-w-0">
-            <div class="flex flex-wrap items-center gap-2">
-              <h2
-                bind:this={editorHeading}
-                class="text-[1.375rem] leading-tight font-extrabold wrap-break-word"
-                tabindex="-1"
-                data-editor-section="set"
-              >
-                Edit {initialMember.pokemon} set
-              </h2>
-              <div class="flex items-center gap-1">
-                {#each getPokemonTypes(form.pokemon || initialMember.pokemon) as type (type)}
-                  <TypeBadge {type} size="md" />
-                {/each}
-              </div>
-            </div>
-          </div>
-        </div>
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <h2
+        bind:this={editorHeading}
+        class="min-w-[min(6rem,100%)] flex-1 text-lg leading-tight font-semibold wrap-anywhere sm:text-[1.375rem]"
+        tabindex="-1"
+        data-editor-section={currentView === 'details'
+          ? initialField === 'ability' || initialField === 'nature'
+            ? initialField
+            : 'item'
+          : currentView}
+      >
+        {subViewTitle}
+      </h2>
+      <div
+        class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+      >
+        <SpeciesLabel
+          pokemon={form.pokemon || initialMember.pokemon}
+          spriteSize={20}
+          textClass="max-w-[120px] truncate text-xs font-medium"
+        />
       </div>
-    {:else}
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <div class="flex w-full min-w-0 items-center gap-2 sm:w-auto">
-          <Button
-            variant="quiet"
-            onclick={backToOverview}
-            aria-label="Back to overview"
-          >
-            <ArrowLeft class="size-4" />
-            <span>Overview</span>
-          </Button>
-          <div class="h-4 w-px bg-base-300"></div>
-          <h2
-            bind:this={editorHeading}
-            class="min-w-0 text-lg leading-tight font-semibold sm:text-[1.375rem]"
-            tabindex="-1"
-            data-editor-section={currentView === 'details'
-              ? initialField === 'ability' || initialField === 'nature'
-                ? initialField
-                : 'item'
-              : currentView}
-          >
-            {subViewTitle}
-          </h2>
-        </div>
-        <div
-          class="ms-auto flex shrink-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+    </div>
+    <nav aria-label="Set sections" class="mt-2.5 flex flex-wrap gap-1">
+      {#each EDITOR_SECTIONS as section (section.id)}
+        <Button
+          variant={currentView === section.id ? 'primary' : 'quiet'}
+          size="dense"
+          aria-current={currentView === section.id ? 'page' : undefined}
+          onpointerdown={keepFocus}
+          onclick={() => switchView(section.id)}
         >
-          <SpeciesLabel
-            pokemon={form.pokemon || initialMember.pokemon}
-            spriteSize={20}
-            textClass="max-w-[120px] truncate text-xs font-medium"
-          />
-        </div>
-      </div>
-    {/if}
+          {section.label}
+        </Button>
+      {/each}
+    </nav>
   </header>
   <div
     bind:this={contentElement}
@@ -549,33 +508,7 @@
         {currentSets.error}
       </p>
     {/if}
-    {#if currentView === 'overview'}
-      <SetEditorOverview
-        pokemon={form.pokemon || initialMember.pokemon}
-        item={form.item}
-        ability={form.ability}
-        nature={form.nature}
-        spread={form.spread}
-        moves={form.moves}
-        {currentSpreadTotal}
-        {error}
-        inGameSuggestion={inGameMember ? savedSetSuggestion : undefined}
-        originalAvailable={originalChanged}
-        {originalReason}
-        onoriginal={() => {
-          if (originalSlotMember) chooseSet(originalSlotMember, true);
-        }}
-        onnavigate={(view) => {
-          if (view === 'text') {
-            if (!flush()) return;
-            rawText = setText(accepted);
-            textBaseline = rawText;
-          }
-          currentView = view;
-          if (view === 'pokemon') openSuggestions('pokemon');
-        }}
-      />
-    {:else if currentView === 'moves'}
+    {#if currentView === 'moves'}
       <SetEditorMoves
         moves={form.moves}
         {activeMoveSlot}
@@ -736,32 +669,12 @@
           </p>
         {/if}
       </section>
-    {:else if currentView === 'text'}
-      <div class="grid gap-3">
-        <textarea
-          id="set-raw-textarea"
-          aria-label="Showdown set text"
-          class="textarea min-h-72 w-full resize-y p-3 font-mono text-xs leading-5"
-          bind:value={rawText}
-          oninput={clearError}
-          onblur={flush}
-          onkeydown={(event) => {
-            if (
-              event.key === 'Enter' &&
-              !event.shiftKey &&
-              !event.isComposing
-            ) {
-              event.preventDefault();
-              flush();
-            }
-          }}></textarea>
-      </div>
     {/if}
   </div>
   <footer
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4"
   >
-    {#if error && !(currentView === 'overview' || (currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability', 'nature'].includes(errorField || '')) || (currentView === 'spread' && errorField === 'spread') || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
+    {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability', 'nature'].includes(errorField || '')) || (currentView === 'spread' && errorField === 'spread') || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
         role="alert"
         tabindex="-1"
         class="mb-2 text-sm"
@@ -772,7 +685,7 @@
     <p role="status" aria-live="polite" class="provenance mb-3">
       {dirty ? 'Unsaved input.' : 'Saved on this device.'}
     </p>
-    <div class="flex justify-end gap-2">
+    <div class="flex flex-wrap justify-end gap-2">
       <Button
         variant="quiet"
         onpointerdown={keepFocus}

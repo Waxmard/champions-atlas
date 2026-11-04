@@ -112,14 +112,15 @@ a team and returning. Use the **Wishlist** button on a catalog team to add or
 remove its bookmark; removal immediately deletes that saved copy and its edits.
 From a Poképaste page, share the link to **Champion’s Atlas**, select
 **Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
-open **Add a Poképaste manually** in Wishlist and enter a `pokepast.es` link or
-16-character paste ID. Existing bookmarks and catalog matches do not require a
-fetch; other links require a connection. Importing the same link again keeps the
-existing bookmark and its edits.
+open **Wishlist actions** and choose **Add a Poképaste**, then enter a
+`pokepast.es` link or 16-character paste ID. Existing bookmarks and catalog
+matches do not require a fetch; other links require a connection. Importing the
+same link again keeps the existing bookmark and its edits.
 
 Move a saved team between **Wishlist** and **My teams** without losing its edits
-or source history. Separate copies are not merged. Choose **Use this team** for
-a catalog team, or import a complete six-member
+or source history. Separate copies are not merged. To use a catalog team, open
+its details and choose **My Teams**. To use a bookmark, choose **My Teams** on
+its Wishlist card. Import a complete six-member
 [Showdown team](https://play.pokemonshowdown.com/teambuilder) through
 **Add custom team** in **My teams**.
 

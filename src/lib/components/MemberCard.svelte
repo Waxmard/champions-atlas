@@ -1,252 +1,336 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import { localImageSrc } from '#lib/assets.js';
+  import type { Member } from '#lib/catalog.js';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
-  import MovePill from '#lib/components/MovePill.svelte';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import TypeBadge from '#lib/components/TypeBadge.svelte';
-  import UnknownValue from '#lib/components/UnknownValue.svelte';
-  import { Button } from '#lib/components/ui/button/index.js';
-  import type { Member } from '#lib/catalog.js';
-  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
-  import { activeSpreadSource } from '#lib/spread-provenance.js';
-  import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
-  import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import {
+    CHAMPIONS_STATS,
+    natureEffect,
+    parseChampionsSpread,
+  } from '#lib/paste.js';
+  import {
+    getMoveType,
+    getPokemonTypes,
+    TYPE_COLORS,
+    type PokemonType,
+  } from '#lib/types.js';
 
   export type EditableSetField =
-    | 'set'
-    | 'pokemon'
-    | 'item'
-    | 'ability'
-    | 'nature'
-    | 'spread'
-    | 'moves'
-    | 'text';
+    'set' | 'pokemon' | 'item' | 'ability' | 'nature' | 'spread' | 'moves';
 
+  const ZERO_SPREAD = {
+    HP: 0,
+    Atk: 0,
+    Def: 0,
+    SpA: 0,
+    SpD: 0,
+    Spe: 0,
+  } as const;
   interface Props {
     member: Member;
-    slot?: number;
-    editable?: boolean;
-    editing?: boolean;
-    class?: string;
-    onedit?: (field: EditableSetField) => void;
-    onrevert?: () => void;
-    revertDisabled?: boolean;
-    revertReason?: string;
+    onopen?: () => void;
+    onedit?: (field: EditableSetField, moveIndex?: number) => void;
     actions?: Snippet;
+    disabled?: boolean;
+    openButton?: HTMLButtonElement | null;
   }
 
   let {
     member,
-    slot,
-    editable = false,
-    editing = false,
-    class: className = '',
+    onopen,
     onedit,
-    onrevert,
-    revertDisabled = false,
-    revertReason = '',
     actions,
+    disabled = false,
+    openButton = $bindable(null),
   }: Props = $props();
-
   const types = $derived(getPokemonTypes(member.pokemon));
-  const spreadSource = $derived(activeSpreadSource(member));
-  const rowClass =
-    'flex min-h-11 w-full items-baseline justify-between gap-3 rounded-[var(--radius-field)] px-1.5 py-1 text-start';
+  const effect = $derived(natureEffect(member.nature));
+  const spread = $derived(
+    member.spread?.trim() ? parseChampionsSpread(member.spread) : ZERO_SPREAD
+  );
+  const itemSrc = $derived(
+    member.item?.trim() ? localImageSrc('items', member.item) : ''
+  );
+  const band = $derived(
+    `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[types[0]]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[types[types.length - 1]]} 24%, var(--color-base-100)))`
+  );
+  function moveBarStyle(type: PokemonType | null): string {
+    return type
+      ? `background: linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 28%, var(--color-base-100)) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 16%, var(--color-base-100)) 100%); border: 1px solid color-mix(in oklab, ${TYPE_COLORS[type]} 38%, var(--color-base-300));`
+      : 'background: var(--color-base-200); border: 1px solid var(--color-base-300);';
+  }
+  function clickablePlate(node: HTMLElement) {
+    const handleClick = () => {
+      if (!onedit && onopen && !disabled) {
+        openButton?.focus({ preventScroll: true });
+        onopen();
+      }
+    };
+    node.addEventListener('click', handleClick);
+    return {
+      destroy() {
+        node.removeEventListener('click', handleClick);
+      },
+    };
+  }
 </script>
 
-<div
-  class="relative flex min-w-0 flex-col {editable
-    ? 'px-2.5 pt-2 pb-1.5'
-    : 'px-4 pt-3 pb-4'} {className}"
-  style="--type-color: {TYPE_COLORS[types[0]]}"
->
-  <div class="flex items-start justify-between gap-2">
-    <div class="flex min-w-0 items-start gap-2.5">
-      <div class="roster-sprite shrink-0">
-        <PokemonSprite pokemon={member.pokemon} size={editable ? 44 : 52} />
-      </div>
-      <div class="min-w-0 pt-0.5">
-        {#if slot !== undefined}
-          <p class="term leading-none">Slot {slot}</p>
-        {/if}
-        <p class="mt-1 text-lg leading-tight font-extrabold wrap-break-word">
-          {member.pokemon}
-        </p>
-        <div class="mt-1 flex items-center gap-1.5">
-          {#each types as type (type)}
-            <span aria-hidden="true"><TypeBadge {type} size="sm" /></span>
-            <span class="term leading-none">{type}</span>
-          {/each}
-        </div>
-      </div>
-    </div>
+{#snippet abilityContent()}
+  {#if member.ability?.trim()}
+    <span
+      class="line-clamp-2 min-w-0 text-sm wrap-break-word"
+      title={member.ability}
+    >
+      <span class="sr-only">Ability: </span>{member.ability}
+    </span>
+  {:else}
+    <span class="text-xs text-[color:var(--color-muted)]">Unknown ability</span>
+  {/if}
+{/snippet}
 
-    {#if editable}
-      <Button
-        variant="quiet"
-        class="shrink-0"
+{#snippet itemContent()}
+  {#if itemSrc}
+    <ItemIcon item={member.item ?? ''} size={28} />
+  {:else}
+    <span
+      aria-hidden="true"
+      class="grid size-7 place-items-center rounded-[var(--radius-field)] bg-base-200 text-sm font-bold text-[color:var(--color-muted)]"
+      >?</span
+    >
+  {/if}
+  <span class="sr-only"
+    >{member.item?.trim() ? `Item: ${member.item}` : 'Unknown item'}</span
+  >
+{/snippet}
+
+{#snippet spreadContent()}
+  {#if spread === null}
+    <span
+      class="line-clamp-2 text-[0.8125rem] wrap-anywhere tabular-nums"
+      title={member.spread}
+    >
+      {member.spread}
+    </span>
+  {:else}
+    <span
+      class="grid w-full grid-cols-6 text-center"
+      title={member.nature ? `${member.nature} nature` : undefined}
+    >
+      {#each CHAMPIONS_STATS as stat (stat)}
+        {@const tone =
+          effect?.raised === stat
+            ? 'raised'
+            : effect?.lowered === stat
+              ? 'lowered'
+              : ''}
+        <span class="min-w-0">
+          <span
+            class="block text-[0.6875rem] leading-[1.4] font-bold {tone ===
+            'raised'
+              ? 'text-[color:var(--color-error-content)]'
+              : tone === 'lowered'
+                ? 'text-[color:var(--color-info-content)]'
+                : 'text-[color:var(--color-muted)]'}"
+          >
+            {stat}{#if tone}<span class="sr-only">, {tone} by nature</span>{/if}
+          </span>
+          <span class="block text-[0.8125rem] tabular-nums">
+            <span class={spread[stat] ? '' : 'text-[color:var(--color-muted)]'}
+              >{spread[stat]}</span
+            >{#if tone}<span
+                aria-hidden="true"
+                class="text-[0.625rem] font-bold {tone === 'raised'
+                  ? 'text-[color:var(--color-error-content)]'
+                  : 'text-[color:var(--color-info-content)]'}"
+                >{tone === 'raised' ? '↑' : '↓'}</span
+              >{/if}
+          </span>
+          <span
+            aria-hidden="true"
+            class="mx-auto mt-0.5 block h-1 w-full rounded-full bg-base-200"
+          >
+            <span
+              class="block h-full rounded-full {tone === 'raised'
+                ? 'bg-[var(--color-error-content)]'
+                : tone === 'lowered'
+                  ? 'bg-[var(--color-info-content)]'
+                  : 'bg-[var(--color-muted)]'}"
+              style:width="{(spread[stat] / 32) * 100}%"
+            ></span>
+          </span>
+        </span>
+      {/each}
+    </span>
+  {/if}
+  <span class="sr-only"
+    >{member.nature?.trim()
+      ? `Nature: ${member.nature}`
+      : 'Unknown nature'}</span
+  >
+{/snippet}
+
+{#snippet moveContent(move: string, type: PokemonType | null)}
+  {#if type}<TypeBadge {type} size="md" />{/if}
+  <span
+    class="line-clamp-2 min-w-0 flex-1 font-medium wrap-anywhere"
+    title={move || undefined}
+  >
+    {move || (member.moves.length ? 'Empty' : 'Unknown')}
+  </span>
+{/snippet}
+
+<div class="flex min-w-0 flex-col gap-1 leading-[1.4] text-base-content">
+  <div class="flex min-h-7 min-w-0 items-center justify-between gap-1.5 px-1">
+    {#if onedit}
+      <button
+        bind:this={openButton}
+        type="button"
+        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Change ${member.pokemon}`}
         data-set-field="pokemon"
-        disabled={editing}
-        onclick={() => onedit?.('pokemon')}
+        title={member.pokemon}
+        {disabled}
+        onclick={() => onedit('pokemon')}
       >
-        <ArrowLeftRight class="size-3.5" />
-        <span>Change</span>
-      </Button>
+        {member.pokemon}
+      </button>
+    {:else if onopen}
+      <button
+        bind:this={openButton}
+        type="button"
+        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+        aria-label={`View full set for ${member.pokemon}`}
+        data-set-field="set"
+        title={member.pokemon}
+        {disabled}
+        onclick={(event) => {
+          event.currentTarget.focus({ preventScroll: true });
+          onopen();
+        }}
+      >
+        {member.pokemon}
+      </button>
+    {:else}
+      <p
+        class="min-w-0 flex-1 truncate text-xs font-bold text-[color:var(--color-muted)]"
+        title={member.pokemon}
+      >
+        {member.pokemon}
+      </p>
+    {/if}
+    {#if actions}
+      <div class="shrink-0">
+        {@render actions()}
+      </div>
     {/if}
   </div>
 
-  {@render row(
-    'Held item',
-    member.item,
-    'item',
-    `Edit ${member.pokemon} item`,
-    member.item ?? undefined
-  )}
-  {@render row(
-    'Ability',
-    member.ability,
-    'ability',
-    `Edit ${member.pokemon} ability`
-  )}
-  {@render row(
-    'Nature',
-    member.nature,
-    'nature',
-    `Edit ${member.pokemon} nature`
-  )}
-  {@render row('Spread', member.spread, 'spread', `Edit ${member.pokemon} EVs`)}
-  {#if spreadSource}
-    <div class="mt-1 flex flex-col">
-      <a
-        class="inline-flex min-h-11 link items-center focus-visible:ring-2 focus-visible:ring-primary"
-        href={spreadSource.pasteUrl}
-        target="_blank"
-        rel="external noreferrer"
-      >
-        {spreadSource.borrowedNature
-          ? 'EVs and Nature from linked creator paste'
-          : 'EVs from linked creator paste'}
-      </a>
-      {#each spreadSource.videoUrls as videoUrl, index (videoUrl)}
-        <a
-          class="inline-flex min-h-11 link items-center text-sm focus-visible:ring-2 focus-visible:ring-primary"
-          href={videoUrl}
-          target="_blank"
-          rel="external noreferrer"
-          aria-label={`Video provenance ${index + 1} for ${member.pokemon}'s linked creator paste`}
-          >Video provenance {index + 1}</a
-        >
-      {/each}
-    </div>
-  {/if}
-
-  <!-- Moves -->
-  <div class="mt-2 border-t pt-2">
-    <div class="flex items-baseline justify-between gap-3 px-1.5">
-      <span class="term">Moves</span>
-    </div>
-    <div class="mt-1">
-      {#if editable}
+  <div
+    use:clickablePlate
+    class="plate flex h-[19.5rem] min-h-max min-w-0 flex-col leading-[1.4] text-base-content {!onedit &&
+    onopen &&
+    !disabled
+      ? 'cursor-pointer'
+      : ''}"
+  >
+    <div
+      class="grid min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_1.75rem] items-center gap-2 rounded-t-[var(--radius-box)] px-2.5 py-2"
+      style:background={band}
+    >
+      {#if onedit}
         <button
           type="button"
-          class="w-full rounded-sm p-0.5 text-start focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
-          aria-label={`Edit ${member.pokemon} moves`}
-          data-set-field="moves"
-          disabled={editing}
-          onclick={() => onedit?.('moves')}
+          class="grid size-14 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Change ${member.pokemon}`}
+          {disabled}
+          onclick={() => onedit('pokemon')}
         >
-          {@render moves()}
+          <PokemonSprite pokemon={member.pokemon} size={56} />
+        </button>
+        <button
+          type="button"
+          data-set-field="ability"
+          class="flex min-h-11 min-w-0 items-center rounded-[var(--radius-field)] px-1 text-start hover:bg-base-100/60 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Edit ${member.pokemon} ability`}
+          {disabled}
+          onclick={() => onedit('ability')}
+        >
+          {@render abilityContent()}
+        </button>
+        <button
+          type="button"
+          data-set-field="item"
+          class="grid size-9 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Edit ${member.pokemon} item`}
+          title={member.item?.trim() || 'Unknown item'}
+          {disabled}
+          onclick={() => onedit('item')}
+        >
+          {@render itemContent()}
         </button>
       {:else}
-        {@render moves()}
+        <span aria-hidden="true" class="grid size-14 place-items-center">
+          <PokemonSprite pokemon={member.pokemon} size={56} />
+        </span>
+        {@render abilityContent()}
+        <span
+          class="grid size-7 place-items-center"
+          title={member.item?.trim() || 'Unknown item'}
+        >
+          {@render itemContent()}
+        </span>
       {/if}
     </div>
-  </div>
 
-  {#if editable}
-    <div
-      data-slot="card-actions"
-      class="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-2 border-t pt-1"
-    >
-      {@render actions?.()}
-      {#if onrevert && !revertDisabled}<Button
-          variant="quiet"
-          aria-label={`Revert changes for ${member.pokemon}`}
-          onclick={() => onrevert?.()}
+    <div class="flex min-w-0 flex-1 flex-col gap-1.5 px-2.5 py-2">
+      {#if onedit}
+        <button
+          type="button"
+          data-set-field="spread"
+          class="flex min-h-9 w-full min-w-0 flex-col justify-center gap-0.5 rounded-[var(--radius-field)] px-1 py-1 text-start hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Edit ${member.pokemon} EV spread and nature`}
+          {disabled}
+          onclick={() => onedit('spread')}
         >
-          <RotateCcw class="size-3" />
-          <span>Revert changes</span>
-        </Button>{/if}
-      <Button
-        variant="quiet"
-        aria-label={`Edit set for ${member.pokemon}`}
-        data-set-field="set"
-        disabled={editing}
-        onclick={() => onedit?.('set')}
-      >
-        <span>Edit set</span>
-      </Button>
+          {@render spreadContent()}
+        </button>
+      {:else}
+        <div class="flex min-h-9 min-w-0 flex-col justify-center gap-0.5 py-1">
+          {@render spreadContent()}
+        </div>
+      {/if}
+
+      <ol role="list" class="mt-auto grid min-w-0 gap-1 text-sm leading-[1.2]">
+        {#each [0, 1, 2, 3] as index (index)}
+          {@const move = member.moves[index]?.trim() ?? ''}
+          {@const type = move ? getMoveType(move) : null}
+          <li class="min-w-0">
+            {#if onedit}
+              <button
+                type="button"
+                data-set-field={index === 0 ? 'moves' : undefined}
+                data-move-slot={index}
+                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+                style={moveBarStyle(type)}
+                aria-label={`Edit ${member.pokemon} move ${index + 1}: ${move || (member.moves.length ? 'Empty' : 'Unknown')}`}
+                {disabled}
+                onclick={() => onedit('moves', index)}
+              >
+                {@render moveContent(move, type)}
+              </button>
+            {:else}
+              <div
+                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
+                style={moveBarStyle(type)}
+              >
+                {@render moveContent(move, type)}
+              </div>
+            {/if}
+          </li>
+        {/each}
+      </ol>
     </div>
-    {#if revertReason}<p class="provenance mt-1">
-        {revertReason}
-      </p>{/if}
-  {/if}
+  </div>
 </div>
-
-{#snippet row(
-  term: string,
-  value: string | null,
-  field: EditableSetField,
-  label: string,
-  item?: string
-)}
-  {#snippet valueView()}
-    {#if value === null}
-      <UnknownValue />
-    {:else if item !== undefined}
-      <span class="value inline-flex min-w-0 items-center gap-1.5">
-        <ItemIcon {item} size={16} />
-        <span class="min-w-0 wrap-anywhere">{value}</span>
-      </span>
-    {:else}
-      <span
-        class="value min-w-0 {field === 'spread'
-          ? 'text-end wrap-break-word'
-          : field === 'ability' || field === 'nature'
-            ? 'text-end wrap-anywhere'
-            : 'truncate'}">{value}</span
-      >
-    {/if}
-  {/snippet}
-  {#if editable}
-    <button
-      type="button"
-      class="{rowClass} hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
-      aria-label={label}
-      data-set-field={field}
-      disabled={editing}
-      onclick={() => onedit?.(field)}
-    >
-      <span class="term shrink-0">{term}</span>
-      {@render valueView()}
-    </button>
-  {:else}
-    <div class={rowClass}>
-      <span class="term shrink-0">{term}</span>
-      {@render valueView()}
-    </div>
-  {/if}
-{/snippet}
-
-{#snippet moves()}
-  {#if member.moves.length}
-    <div class="grid grid-cols-2 gap-x-2 gap-y-1">
-      {#each [0, 1, 2, 3] as i (i)}
-        <MovePill move={member.moves[i] || ''} />
-      {/each}
-    </div>
-  {:else}
-    <p class="unknown py-3 text-center text-[0.8125rem]">Unknown</p>
-  {/if}
-{/snippet}

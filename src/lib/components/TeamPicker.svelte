@@ -86,15 +86,16 @@
   }
 </script>
 
-<div class="max-w-xl">
-  <label class="term block" for={id}>
-    Saved team<span class="sr-only">
-      {selected ? `, currently ${selected.name}` : ''}
-    </span>
+<div class="w-full min-w-0">
+  <label class="sr-only" for={id}>
+    {selected ? `Saved team, currently ${selected.name}` : 'Saved team'}
   </label>
   <Combobox.Root
     type="single"
     bind:open
+    onOpenChange={(isOpen) => {
+      if (!isOpen) field = '';
+    }}
     bind:value={selectedId}
     inputValue={field}
     onValueChange={choose}
@@ -103,27 +104,26 @@
   >
     <div
       bind:this={fieldEl}
-      class="input relative mt-2 flex h-auto min-h-11 w-full flex-col items-stretch gap-1.5 py-2.5 pe-12"
+      class="input relative flex h-auto min-h-11 w-full items-center pe-12"
     >
-      <div class="flex gap-1" aria-hidden="true">
-        {#each selected ? roster(selected) : [] as pokemon, slot (slot)}
-          <PokemonSprite {pokemon} size={32} />
-        {/each}
-      </div>
       <Combobox.Input
         {id}
         bind:ref={inputEl}
-        placeholder="Search or scroll saved teams"
+        placeholder={open
+          ? 'Search saved teams'
+          : (selected?.name ?? 'Choose saved team')}
         autocomplete="off"
         onclick={() => {
           if (!open) openMenu();
         }}
         oninput={(event) => {
           field = event.currentTarget.value;
-          if (!open) openMenu();
+          if (!open) open = true;
         }}
         onkeydown={closeOnEscape}
-        class="w-full min-w-0 bg-transparent text-base outline-none"
+        class="min-h-11 w-full min-w-0 bg-transparent text-base outline-none {open
+          ? ''
+          : 'placeholder:font-semibold placeholder:text-base-content placeholder:opacity-100'}"
       >
         {#snippet child({ props })}
           <input {...props} value={field} />
@@ -132,7 +132,7 @@
       <Button
         variant="quiet"
         size="icon-compact"
-        class="absolute end-0.5 top-1/2 -translate-y-1/2"
+        class="absolute end-0.5 top-1/2 size-11 -translate-y-1/2"
         aria-label="Show saved teams"
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -162,7 +162,7 @@
             >
               {#snippet children({ selected: isSelected })}
                 <span class="flex min-w-0 flex-1 flex-col gap-1">
-                  <span class="flex gap-1" aria-hidden="true">
+                  <span class="flex flex-wrap gap-1" aria-hidden="true">
                     {#each roster(team) as pokemon, slot (slot)}
                       <PokemonSprite {pokemon} size={32} />
                     {/each}

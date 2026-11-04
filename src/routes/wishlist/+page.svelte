@@ -1,11 +1,14 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
-  import { goto } from '$app/navigation';
+  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
+  import { page } from '$app/state';
+  import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
+  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
+  import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import type { Team } from '#lib/catalog.js';
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
@@ -44,6 +47,58 @@
   let queuePending = $state(false);
   let queueError = $state('');
   let blockedShare = $state<{ id: string; url: string } | null>(null);
+  let listRegion = $state<HTMLDivElement>();
+  let listScroll: { x: number; y: number } | null = null;
+  let listOpener: HTMLElement | null = null;
+  const selectedId = $derived(page.url.searchParams.get('team'));
+  const selectedEntry = $derived(
+    entries.find((entry) => entry.id === selectedId)
+  );
+
+  beforeNavigate(({ from, to }) => {
+    if (
+      from?.route.id !== '/wishlist' ||
+      to?.route.id !== '/wishlist' ||
+      from.url.searchParams.has('team') ||
+      !to.url.searchParams.has('team')
+    )
+      return;
+    listScroll = { x: window.scrollX, y: window.scrollY };
+    const active = document.activeElement;
+    listOpener =
+      active instanceof HTMLElement && listRegion?.contains(active)
+        ? active
+        : null;
+  });
+
+  afterNavigate(({ from, to }) => {
+    if (
+      from?.route.id !== '/wishlist' ||
+      to?.route.id !== '/wishlist' ||
+      !from.url.searchParams.has('team') ||
+      to.url.searchParams.has('team') ||
+      !listScroll
+    )
+      return;
+    const position = listScroll;
+    void tick().then(() => {
+      if (page.route.id !== '/wishlist' || page.url.searchParams.has('team'))
+        return;
+      if (listOpener?.isConnected) listOpener.focus({ preventScroll: true });
+      window.scrollTo({
+        left: position.x,
+        top: position.y,
+        behavior: 'instant',
+      });
+      requestAnimationFrame(() => {
+        window.scrollTo({
+          left: position.x,
+          top: position.y,
+          behavior: 'instant',
+        });
+      });
+    });
+  });
 
   function displayTeam(entry: SavedTeam): Team {
     return {
@@ -105,6 +160,20 @@
       untrack(() => void processShares(false));
     }
   });
+
+  $effect(() => {
+    if (ready && page.url.hash === '#import-pokepaste') {
+      untrack(() => {
+        void tick().then(() => importInput?.focus());
+      });
+    }
+  });
+
+  async function closeImport() {
+    await goto(resolve('wishlist'), { replace: true, reset: false });
+    await tick();
+    document.getElementById('wishlist-actions')?.focus();
+  }
 
   function submitPokepaste(event: SubmitEvent) {
     event.preventDefault();
@@ -339,7 +408,7 @@
       errorMessage =
         error instanceof SavedTeamError
           ? error.message
-          : 'Could not move this team to My teams. Check app storage access and available space. Your Wishlist was not changed.';
+          : 'Could not move this team to My Teams. Check app storage access and available space. Your Wishlist was not changed.';
       pendingId = '';
       refresh();
       return;
@@ -351,7 +420,7 @@
       errorMessage =
         'Your team was saved, but the active team could not be remembered.';
       refresh();
-      notify('Team moved to My teams.');
+      notify('Team moved to My Teams.');
       pendingId = '';
       return;
     }
@@ -363,11 +432,11 @@
       );
     } catch {
       errorMessage = errorMessage
-        ? `${errorMessage} Could not open My teams.`
-        : 'Could not open My teams. Your team was saved.';
+        ? `${errorMessage} Could not open My Teams.`
+        : 'Could not open My Teams. Your team was saved.';
       refresh();
     }
-    notify('Team moved to My teams.');
+    notify('Team moved to My Teams.');
     pendingId = '';
   }
 
@@ -378,6 +447,7 @@
     errorMessage = '';
     invalidLink = false;
     const index = entries.findIndex(({ id }) => id === entry.id);
+    const wasSelected = selectedId === entry.id;
     try {
       removeWishlistedTeam(localStorage, entry.id);
     } catch (error) {
@@ -393,6 +463,14 @@
     notify('Removed from Wishlist.');
     refresh();
     pendingId = '';
+    if (wasSelected) {
+      try {
+        await goto(resolve('wishlist'));
+      } catch {
+        errorMessage = 'Team removed, but Wishlist could not be opened.';
+        return;
+      }
+    }
     await tick();
     const next = document.querySelectorAll<HTMLElement>('[data-wishlist-use]')[
       Math.min(index, entries.length - 1)
@@ -406,109 +484,13 @@
   }
 </script>
 
-<svelte:head><title>Wishlist — Champion's Atlas</title></svelte:head>
-<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
-  <SavedCollectionHeader
-    collection="wishlist"
-    title="Wishlist"
-    description="Teams to try later. Move a team to My teams when you're ready."
-  />
-  <p
-    id="wishlist-share-hint"
-    class="mt-3 max-w-3xl text-[0.9375rem] leading-relaxed text-base-content/70"
+<svelte:head>
+  <title
+    >{selectedEntry ? `${selectedEntry.name} — Wishlist` : 'Wishlist'} — Champion's
+    Atlas</title
   >
-    From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
-    finish importing.
-  </p>
-  <details class="mt-1 max-w-3xl">
-    <summary
-      aria-describedby="wishlist-share-hint"
-      class="block min-h-11 cursor-pointer list-none rounded-[var(--radius-field)] py-2 text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden"
-    >
-      <span
-        id="wishlist-manual-label"
-        class="text-sm underline underline-offset-2"
-      >
-        Add a Poképaste manually
-      </span>
-    </summary>
-    <form
-      aria-label="Import Poképaste"
-      class="mt-2"
-      novalidate
-      onsubmit={submitPokepaste}
-    >
-      <label for="pokepaste-link" class="term block">Poképaste link or ID</label
-      >
-      <input
-        id="pokepaste-link"
-        name="pokepaste"
-        type="text"
-        inputmode="url"
-        class="input mt-2 min-h-11 w-full"
-        required
-        autocomplete="off"
-        autocapitalize="none"
-        autocorrect="off"
-        spellcheck="false"
-        aria-invalid={invalidLink || undefined}
-        aria-describedby={invalidLink
-          ? 'wishlist-help wishlist-error'
-          : 'wishlist-help'}
-        disabled={!ready}
-        readonly={importPending || queuePending}
-        bind:this={importInput}
-        bind:value={pasteLink}
-        oninput={() => {
-          if (invalidLink) {
-            invalidLink = false;
-            errorMessage = '';
-          }
-        }}
-      />
-      <p id="wishlist-help" class="provenance mt-2">
-        Paste a pokepast.es link or its 16-character ID.
-      </p>
-      {#if invalidLink && errorMessage}
-        <p
-          id="wishlist-error"
-          role="alert"
-          class="mt-2 text-sm text-error-content"
-        >
-          {errorMessage}
-        </p>
-      {/if}
-      <div class="mt-4 flex flex-wrap items-center gap-3">
-        <Button
-          type="submit"
-          variant="primary"
-          aria-busy={importPending}
-          disabled={!ready || !!storageError || importPending || queuePending}
-          >Import to Wishlist</Button
-        >
-        {#if importPending}
-          <p role="status" class="provenance">Loading Poképaste…</p>
-        {/if}
-        <p class="provenance">Legality remains unverified.</p>
-      </div>
-    </form>
-  </details>
-  {#if !invalidLink && errorMessage}
-    <p
-      role="alert"
-      class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
-      style="color: var(--color-error-content)"
-    >
-      {errorMessage}
-    </p>
-  {/if}
-  {#if storageError}<p
-      role="alert"
-      class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
-      style="color: var(--color-error-content)"
-    >
-      {storageError}
-    </p>{/if}
+</svelte:head>
+{#snippet shareRecovery()}
   {#if queueError}
     <div role="alert" class="plate mt-2 max-w-[68ch] px-4 py-3">
       {queueError}
@@ -545,52 +527,225 @@
       </div>
     </div>
   {/if}
-  {#if !loaded}<p class="mt-6 text-[0.9375rem] text-base-content/70">
-      Loading Wishlist…
-    </p>
-  {:else if !storageError}
-    {#if entries.length}
-      <ul class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {#each entries as entry (entry.id)}
-          {@const match = resolveCatalogTeam(
-            entry.original,
+{/snippet}
+<main id="main" class="app-container pt-2 pb-8 sm:pb-12">
+  <div bind:this={listRegion} hidden={selectedId !== null}>
+    <h1 class="sr-only">Wishlist</h1>
+    {#if page.url.hash === '#import-pokepaste'}
+      <section
+        id="import-pokepaste"
+        aria-label="Add a Poképaste"
+        class="max-w-3xl"
+      >
+        <div class="flex items-center justify-between gap-2">
+          <h2 class="text-sm font-semibold">Add a Poképaste</h2>
+          <Button
+            variant="quiet"
+            disabled={importPending || queuePending}
+            onclick={closeImport}>Close import</Button
+          >
+        </div>
+        <p id="wishlist-share-hint" class="provenance mt-2">
+          From a Poképaste page, use Share → Champion’s Atlas, then open Atlas
+          to finish importing.
+        </p>
+        <form
+          aria-label="Import Poképaste"
+          class="mt-2"
+          novalidate
+          onsubmit={submitPokepaste}
+        >
+          <label for="pokepaste-link" class="term block"
+            >Poképaste link or ID</label
+          >
+          <input
+            id="pokepaste-link"
+            name="pokepaste"
+            type="text"
+            inputmode="url"
+            class="input mt-2 min-h-11 w-full"
+            required
+            autocomplete="off"
+            autocapitalize="none"
+            autocorrect="off"
+            spellcheck="false"
+            aria-invalid={invalidLink || undefined}
+            aria-describedby={invalidLink
+              ? 'wishlist-help wishlist-error'
+              : 'wishlist-help'}
+            disabled={!ready}
+            readonly={importPending || queuePending}
+            bind:this={importInput}
+            bind:value={pasteLink}
+            oninput={() => {
+              if (invalidLink) {
+                invalidLink = false;
+                errorMessage = '';
+              }
+            }}
+          />
+          <p id="wishlist-help" class="provenance mt-2">
+            Paste a pokepast.es link or its 16-character ID.
+          </p>
+          {#if invalidLink && errorMessage}
+            <p
+              id="wishlist-error"
+              role="alert"
+              class="mt-2 text-sm text-error-content"
+            >
+              {errorMessage}
+            </p>
+          {/if}
+          <div class="mt-4 flex flex-wrap items-center gap-3">
+            <Button
+              type="submit"
+              variant="primary"
+              aria-busy={importPending}
+              disabled={!ready ||
+                !!storageError ||
+                importPending ||
+                queuePending}>Import to Wishlist</Button
+            >
+            {#if importPending}
+              <p role="status" class="provenance">Loading Poképaste…</p>
+            {/if}
+            <p class="provenance">Legality remains unverified.</p>
+          </div>
+        </form>
+      </section>
+    {/if}
+    {#if !invalidLink && errorMessage}
+      <p
+        role="alert"
+        class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+        style="color: var(--color-error-content)"
+      >
+        {errorMessage}
+      </p>
+    {/if}
+    {#if storageError}<p
+        role="alert"
+        class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+        style="color: var(--color-error-content)"
+      >
+        {storageError}
+      </p>{/if}
+    {@render shareRecovery()}
+    {#if !loaded}<p class="mt-6 text-[0.9375rem] text-base-content/70">
+        Loading Wishlist…
+      </p>
+    {:else if !storageError}
+      {#if entries.length}
+        <ul class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {#each entries as entry (entry.id)}
+            <li class="min-w-0">
+              <TeamCard
+                team={displayTeam(entry)}
+                showRegulation
+                query=""
+                href={`wishlist?team=${encodeURIComponent(entry.id)}`}
+                fromCatalog={false}
+              >
+                {#snippet leadingActions()}
+                  <Button
+                    data-wishlist-use
+                    variant="quiet"
+                    class="min-h-11 ps-0 pe-1.5"
+                    disabled={!ready || !!pendingId}
+                    onclick={() => use(entry)}
+                  >
+                    <AtlasIcon />
+                    <span>My Teams</span>
+                  </Button>
+                {/snippet}
+                {#snippet trailingActions()}
+                  <Button
+                    variant="quiet"
+                    size="icon-compact"
+                    class="size-11"
+                    aria-label="Remove from Wishlist"
+                    title="Remove from Wishlist"
+                    disabled={!ready || !!pendingId}
+                    onclick={() => remove(entry)}
+                  >
+                    <Trash2 class="size-4" aria-hidden="true" />
+                  </Button>
+                {/snippet}
+              </TeamCard>
+            </li>
+          {/each}
+        </ul>
+      {:else}
+        <p
+          class="plate mt-2 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed"
+        >
+          No teams in Wishlist yet. Share a Poképaste or choose Wishlist on a
+          team in Browse.
+        </p>
+      {/if}
+    {/if}
+  </div>
+  {#if selectedId !== null}
+    {#if !loaded || storageError || !selectedEntry}
+      <h1 class="sr-only">Wishlist</h1>
+    {/if}
+    <div
+      class="sticky top-[var(--app-header-height,0px)] z-30 [margin-inline-start:calc(-1*(1rem+env(safe-area-inset-left)))] [margin-inline-end:calc(-1*(1rem+env(safe-area-inset-right)))] border-b border-base-300 bg-base-200 py-1 [padding-inline-start:calc(1rem+env(safe-area-inset-left))] [padding-inline-end:calc(1rem+env(safe-area-inset-right))] sm:[margin-inline-start:calc(-1*(2rem+env(safe-area-inset-left)))] sm:[margin-inline-end:calc(-1*(2rem+env(safe-area-inset-right)))] sm:[padding-inline-start:calc(2rem+env(safe-area-inset-left))] sm:[padding-inline-end:calc(2rem+env(safe-area-inset-right))]"
+    >
+      <a
+        href={resolve('wishlist')}
+        class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
+      >
+        <ArrowLeft class="size-4" aria-hidden="true" />
+        Back to Wishlist
+      </a>
+    </div>
+    {#if !invalidLink && errorMessage}
+      <p
+        role="alert"
+        class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+        style="color: var(--color-error-content)"
+      >
+        {errorMessage}
+      </p>
+    {/if}
+    {@render shareRecovery()}
+    {#if !loaded}
+      <p class="mt-6 text-[0.9375rem] text-base-content/70">
+        Loading Wishlist…
+      </p>
+    {:else if storageError}
+      <p
+        role="alert"
+        class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+        style="color: var(--color-error-content)"
+      >
+        {storageError}
+      </p>
+    {:else if selectedEntry}
+      {#key selectedEntry.id}
+        <WishlistTeamView
+          entry={selectedEntry}
+          match={resolveCatalogTeam(
+            selectedEntry.original,
             catalogState.catalog.teams
           )}
-          <li class="min-w-0">
-            <TeamCard
-              team={displayTeam(entry)}
-              currentRegulation={catalogState.catalog.currentRegulation}
-              showRegulation
-              query=""
-              detailId={match?.id ?? null}
-            >
-              {#snippet actions()}
-                <Button
-                  variant="danger-quiet"
-                  size="icon-compact"
-                  aria-label="Remove from Wishlist"
-                  title="Remove from Wishlist"
-                  disabled={!ready || !!pendingId}
-                  onclick={() => remove(entry)}
-                >
-                  <Trash2 class="size-4" aria-hidden="true" />
-                </Button>
-                <Button
-                  data-wishlist-use
-                  variant="primary"
-                  disabled={!ready || !!pendingId}
-                  onclick={() => use(entry)}>Move to My teams</Button
-                >
-              {/snippet}
-            </TeamCard>
-          </li>
-        {/each}
-      </ul>
+          disabled={!ready || !!pendingId}
+          onuse={() => use(selectedEntry)}
+          onremove={() => remove(selectedEntry)}
+        />
+      {/key}
     {:else}
-      <p class="plate mt-2 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed">
-        No teams in Wishlist yet. Share a Poképaste or choose Wishlist on a team
-        in Browse.
-      </p>
+      <div class="plate mt-6 max-w-xl px-4 py-3">
+        <p role="status" class="text-[0.9375rem] leading-relaxed">
+          This team is no longer in Wishlist.
+        </p>
+        <div class="mt-3">
+          <Button href={resolve('wishlist')} variant="quiet" class="min-h-11">
+            Back to Wishlist
+          </Button>
+        </div>
+      </div>
     {/if}
   {/if}
 </main>

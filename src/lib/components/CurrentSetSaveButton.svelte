@@ -94,7 +94,7 @@
           .getElementById(`pokemon-slot-${memberIndex}`)
           ?.querySelector<HTMLElement>('[data-set-field="set"]') ?? null
       );
-    return document.querySelector<HTMLElement>('[data-team-action="copy"]');
+    return document.querySelector<HTMLElement>('[data-team-action="menu"]');
   }
 
   function restoreFocus(trigger: HTMLButtonElement, wasFocused: boolean) {
