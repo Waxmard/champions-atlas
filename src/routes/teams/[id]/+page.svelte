@@ -2,10 +2,12 @@
   import { onMount } from 'svelte';
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
+  import { DropdownMenu } from 'bits-ui';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Copy from '@lucide/svelte/icons/copy';
+  import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
@@ -172,8 +174,7 @@
           data-grade={evidenceGrade(custom ? 3 : strongest.level)}
           >{reason?.label ?? strongest.label}</span
         >
-        {#if reason}<span class="provenance">{reason.detail}</span
-          >{:else if strongest.event}<span class="provenance"
+        {#if !reason && strongest.event}<span class="provenance"
             >{summaryContext}</span
           >{/if}
         {#if team.regulationInference}
@@ -194,7 +195,7 @@
       </div>
     </div>
 
-    <div class="mt-2 flex flex-wrap items-center gap-2">
+    <div class="mt-2 flex items-center gap-2">
       <Button
         variant="quiet"
         class="min-h-11"
@@ -204,218 +205,232 @@
         <AtlasIcon />
         <span>My Teams</span>
       </Button>
-      <Button
-        variant="quiet"
-        class="catalog-wishlist-button min-h-11"
-        aria-label="Wishlist"
-        aria-pressed={wishlisted}
-        title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-        disabled={!ready || savedError !== '' || pending}
-        onclick={wishlist}
-      >
-        {#if wishlisted}
-          <BookmarkCheck class="size-4" aria-hidden="true" />
-        {:else}
-          <Bookmark class="size-4" aria-hidden="true" />
-        {/if}
-        <span>Wishlist</span>
-      </Button>
-      {#if paste}
+      <div class="ms-auto flex items-center gap-2">
         <Button
           variant="quiet"
-          size="compact"
-          class="min-h-11"
-          onclick={() =>
-            copy(
-              paste,
-              isPasteUrl(team.pasteUrl) ? 'Team paste' : 'Published sets'
-            )}
+          class="catalog-wishlist-button min-h-11"
+          aria-label="Wishlist"
+          aria-pressed={wishlisted}
+          title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+          disabled={!ready || savedError !== '' || pending}
+          onclick={wishlist}
         >
-          <Copy aria-hidden="true" />
-          {isPasteUrl(team.pasteUrl) ? 'Copy team' : 'Copy published sets'}
+          {#if wishlisted}
+            <BookmarkCheck class="size-4" aria-hidden="true" />
+          {:else}
+            <Bookmark class="size-4" aria-hidden="true" />
+          {/if}
+          <span>Wishlist</span>
         </Button>
-      {/if}
-      {#if isPasteUrl(team.pasteUrl)}
-        <Button
-          href={team.pasteUrl}
-          variant="quiet"
-          size="compact"
-          class="min-h-11"
-          target="_blank"
-          rel="external noreferrer"
-        >
-          <ExternalLink aria-hidden="true" />
-          Open original paste
-        </Button>
-      {/if}
-    </div>
-  </div>
-
-  {#if custom}<p class="term mt-2">
-      Custom-rule event: this team was shared for a tournament with additional
-      Pokémon restrictions. Hidden from normal recommendations.
-    </p>{/if}
-  {#if savedError || actionError}<p
-      role="alert"
-      class="mt-2 text-[0.9375rem] leading-relaxed"
-      style="color: var(--color-error-content)"
-    >
-      {savedError || actionError}
-    </p>{/if}
-
-  <p role="alert" class="mt-2 text-sm text-base-content/70 empty:hidden">
-    {copyError}
-  </p>
-  {#if failedCopyText}
-    <label class="mt-2 block text-sm text-base-content/70">
-      Team text to copy
-      <textarea
-        class="textarea mt-1.5 min-h-28 w-full font-mono text-xs"
-        readonly
-        onclick={(event) => event.currentTarget.select()}
-        value={failedCopyText}></textarea>
-    </label>
-  {/if}
-
-  {#if team.replicaCode}
-    <div class="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
-      <span class="term">Replica code</span>
-      <code
-        class="rounded bg-base-200 px-2 py-0.5 font-mono text-sm font-bold text-base-content select-all"
-        >{team.replicaCode}</code
-      >
-      <span class="provenance">
-        {team.replicaStatus === '✔'
-          ? 'Listed as available by the source; availability may change.'
-          : 'The source does not list this code as available.'}
-      </span>
-      {#if team.replicaStatus === '✔'}
-        <Button
-          variant="quiet"
-          size="compact"
-          class="min-h-11"
-          onclick={() => copy(team.replicaCode || '', 'Replica code')}
-          ><Copy aria-hidden="true" />Copy replica code</Button
-        >
-      {/if}
-    </div>
-  {/if}
-
-  <section aria-label="Pokémon sets" class="mt-4">
-    <h2
-      class="mb-2 border-b border-base-300 pb-2 text-[1.375rem] leading-tight font-extrabold"
-    >
-      Pokémon sets
-    </h2>
-
-    {#if team.pasteError}<p class="provenance mb-3">
-        Some published details could not be loaded. {team.pasteError}
-      </p>{/if}
-
-    {#if !isPasteUrl(team.pasteUrl)}<p class="provenance mb-3">
-        {team.paste
-          ? 'Only published details are included; missing set fields remain unknown.'
-          : 'Only the published roster is available; set details are unknown.'}
-      </p>{/if}
-
-    <TeamSetGrid
-      members={team.members}
-      onopen={ready
-        ? (index) => (selectedMember = team.members[index])
-        : undefined}
-    />
-  </section>
-
-  <section aria-labelledby="results-heading" class="mt-10">
-    <h2
-      id="results-heading"
-      class="border-b border-base-300 pb-2 text-[1.375rem] font-extrabold wrap-break-word"
-    >
-      Results & sources
-    </h2>
-    <ul class="plate mt-4 divide-y">
-      {#each sourceRows(team.reports) as row, index (index)}
-        {#if row.kind === 'youtube'}
-          <li
-            class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-          >
-            <p class="value">
-              {row.watch ? 'Video' : 'Channel'} · {row.channel}
-            </p>
-            <Button
-              href={row.url}
-              variant="quiet"
-              target="_blank"
-              rel="external noreferrer"
-              ><ExternalLink aria-hidden="true" />{row.watch
-                ? 'Watch on YouTube'
-                : 'View channel'}</Button
-            >
-          </li>
-        {:else}
-          {@const report = row.report}
-          {@const result = evidence(report, team.regulation, currentRegulation)}
-          <li
-            class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-          >
-            <div class="min-w-0">
-              {#if team.reports.length > 1 && !result.none}<span
-                  class="stamp"
-                  data-grade={evidenceGrade(custom ? 3 : result.level)}
-                  >{result.label}</span
-                >{/if}
-              <div
-                class="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5"
+        {#if paste || isPasteUrl(team.pasteUrl)}
+          <DropdownMenu.Root>
+            <DropdownMenu.Trigger>
+              {#snippet child({ props })}
+                <Button
+                  {...props}
+                  variant="quiet"
+                  size="icon-compact"
+                  class="min-h-11 min-w-11"
+                  aria-label="More actions"
+                >
+                  <Ellipsis class="size-4" aria-hidden="true" />
+                </Button>
+              {/snippet}
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content
+                side="bottom"
+                align="end"
+                sideOffset={8}
+                class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
               >
-                <p class="value">
-                  {report.event || 'Event not listed'}
-                </p>
-                {#if result.platform !== 'Unknown'}<p class="term">
-                    {result.platform}
-                  </p>{/if}
-                {#if report.entrants !== undefined}<p class="provenance">
-                    {report.entrants} players
-                  </p>{/if}
-              </div>
-            </div>
-            {#if report.sourceUrl}<Button
-                href={report.sourceUrl}
+                {#if paste}
+                  <DropdownMenu.Item
+                    class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+                    onSelect={() =>
+                      copy(
+                        paste,
+                        isPasteUrl(team.pasteUrl)
+                          ? 'Team paste'
+                          : 'Published sets'
+                      )}
+                  >
+                    <Copy class="size-4" aria-hidden="true" />
+                    {isPasteUrl(team.pasteUrl)
+                      ? 'Copy team'
+                      : 'Copy published sets'}
+                  </DropdownMenu.Item>
+                {/if}
+                {#if isPasteUrl(team.pasteUrl)}
+                  <DropdownMenu.Item
+                    class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+                  >
+                    {#snippet child({ props })}
+                      <a
+                        {...props}
+                        href={team.pasteUrl}
+                        target="_blank"
+                        rel="external noreferrer"
+                      >
+                        <ExternalLink class="size-4" aria-hidden="true" />
+                        Open original paste
+                      </a>
+                    {/snippet}
+                  </DropdownMenu.Item>
+                {/if}
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu.Root>
+        {/if}
+      </div>
+    </div>
+
+    {#if custom}<p class="term mt-2">
+        Custom-rule event: this team was shared for a tournament with additional
+        Pokémon restrictions. Hidden from normal recommendations.
+      </p>{/if}
+    {#if savedError || actionError}<p
+        role="alert"
+        class="mt-2 text-[0.9375rem] leading-relaxed"
+        style="color: var(--color-error-content)"
+      >
+        {savedError || actionError}
+      </p>{/if}
+
+    <p role="alert" class="mt-2 text-sm text-base-content/70 empty:hidden">
+      {copyError}
+    </p>
+    {#if failedCopyText}
+      <label class="mt-2 block text-sm text-base-content/70">
+        Team text to copy
+        <textarea
+          class="textarea mt-1.5 min-h-28 w-full font-mono text-xs"
+          readonly
+          onclick={(event) => event.currentTarget.select()}
+          value={failedCopyText}></textarea>
+      </label>
+    {/if}
+
+    <section aria-label="Pokémon sets" class="mt-4">
+      <h2
+        class="mb-2 border-b border-base-300 pb-2 text-[1.375rem] leading-tight font-extrabold"
+      >
+        Pokémon sets
+      </h2>
+
+      {#if team.pasteError}<p class="provenance mb-3">
+          Some published details could not be loaded. {team.pasteError}
+        </p>{/if}
+
+      {#if !isPasteUrl(team.pasteUrl)}<p class="provenance mb-3">
+          {team.paste
+            ? 'Only published details are included; missing set fields remain unknown.'
+            : 'Only the published roster is available; set details are unknown.'}
+        </p>{/if}
+
+      <TeamSetGrid
+        members={team.members}
+        onopen={ready
+          ? (index) => (selectedMember = team.members[index])
+          : undefined}
+      />
+    </section>
+
+    <section aria-labelledby="results-heading" class="mt-10">
+      <h2
+        id="results-heading"
+        class="border-b border-base-300 pb-2 text-[1.375rem] font-extrabold wrap-break-word"
+      >
+        Results & sources
+      </h2>
+      <ul class="plate mt-4 divide-y">
+        {#each sourceRows(team.reports) as row, index (index)}
+          {#if row.kind === 'youtube'}
+            <li
+              class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+            >
+              <p class="value">
+                {row.watch ? 'Video' : 'Channel'} · {row.channel}
+              </p>
+              <Button
+                href={row.url}
                 variant="quiet"
                 target="_blank"
                 rel="external noreferrer"
-                ><ExternalLink aria-hidden="true" />Original source</Button
-              >{/if}
-          </li>
-        {/if}
-      {/each}
-    </ul>
-    {#if team.sheetIds.length > 0}
-      <p class="provenance mt-3">
-        Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
-        names while the sheet lists Mega forms.
-      </p>
+                ><ExternalLink aria-hidden="true" />{row.watch
+                  ? 'Watch on YouTube'
+                  : 'View channel'}</Button
+              >
+            </li>
+          {:else}
+            {@const report = row.report}
+            {@const result = evidence(
+              report,
+              team.regulation,
+              currentRegulation
+            )}
+            <li
+              class="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
+            >
+              <div class="min-w-0">
+                {#if team.reports.length > 1 && !result.none}<span
+                    class="stamp"
+                    data-grade={evidenceGrade(custom ? 3 : result.level)}
+                    >{result.label}</span
+                  >{/if}
+                <div
+                  class="mt-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5"
+                >
+                  <p class="value">
+                    {report.event || 'Event not listed'}
+                  </p>
+                  {#if result.platform !== 'Unknown'}<p class="term">
+                      {result.platform}
+                    </p>{/if}
+                  {#if report.entrants !== undefined}<p class="provenance">
+                      {report.entrants} players
+                    </p>{/if}
+                </div>
+              </div>
+              {#if report.sourceUrl}<Button
+                  href={report.sourceUrl}
+                  variant="quiet"
+                  target="_blank"
+                  rel="external noreferrer"
+                  ><ExternalLink aria-hidden="true" />Original source</Button
+                >{/if}
+            </li>
+          {/if}
+        {/each}
+      </ul>
+      {#if team.sheetIds.length > 0}
+        <p class="provenance mt-3">
+          Sheet entries: {team.sheetIds.join(', ')}. Pastes can use base species
+          names while the sheet lists Mega forms.
+        </p>
+      {/if}
+    </section>
+    {#if paste}
+      <details class="plate mt-8 px-5 py-4">
+        <summary class="cursor-pointer text-[0.9375rem] font-semibold"
+          >Published paste text</summary
+        >
+        {#if team.pasteNotes}<p class="term mt-3">
+            Paste notes (may differ from the listed regulation): {team.pasteNotes}
+          </p>{/if}
+        {#if hasActiveEnrichment}<p class="provenance mt-3">
+            Copy and Save include linked creator additions; the original paste
+            text below does not.
+          </p>{/if}
+        <pre
+          class="mt-4 overflow-x-auto font-mono text-xs leading-6">{originalPaste}</pre>
+      </details>
     {/if}
-  </section>
-  {#if paste}
-    <details class="plate mt-8 px-5 py-4">
-      <summary class="cursor-pointer text-[0.9375rem] font-semibold"
-        >Published paste text</summary
-      >
-      {#if team.pasteNotes}<p class="term mt-3">
-          Paste notes (may differ from the listed regulation): {team.pasteNotes}
-        </p>{/if}
-      {#if hasActiveEnrichment}<p class="provenance mt-3">
-          Copy and Save include linked creator additions; the original paste
-          text below does not.
-        </p>{/if}
-      <pre
-        class="mt-4 overflow-x-auto font-mono text-xs leading-6">{originalPaste}</pre>
-    </details>
-  {/if}
-  {#if selectedMember}
-    <FullSetDialog
-      member={selectedMember}
-      onclose={() => (selectedMember = null)}
-    />
-  {/if}
+    {#if selectedMember}
+      <FullSetDialog
+        member={selectedMember}
+        onclose={() => (selectedMember = null)}
+      />
+    {/if}
+  </div>
 </main>

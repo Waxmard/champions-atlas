@@ -71,7 +71,7 @@
       {#if showRegulation || custom || team.publishedAt}
         <div
           class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
-            ? 'col-start-2'
+            ? 'col-start-2 justify-center text-center'
             : 'col-span-2 col-start-1'}"
         >
           {#if showRegulation}<span class="term"

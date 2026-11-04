@@ -1,5 +1,8 @@
 <script lang="ts">
+  import Copy from '@lucide/svelte/icons/copy';
   import { Button } from '#lib/components/ui/button/index.js';
+  import { copyText } from '#lib/clipboard.js';
+  import { notify } from '#lib/notifications.js';
   import {
     evidence,
     evidenceGrade,
@@ -33,6 +36,12 @@
 
   let { team, currentRegulation, disabled, onrestore, onrestoreslot }: Props =
     $props();
+  let replicaCopyFailed = $state(false);
+  async function copyReplica() {
+    const ok = await copyText(team.original.replicaCode ?? '');
+    replicaCopyFailed = !ok;
+    if (ok) notify('Replica code copied.');
+  }
   const identical = $derived(
     canonicalSnapshot({
       name: team.original.name,
@@ -211,7 +220,16 @@
           {#if team.original.replicaCode}<code
               class="font-mono text-sm wrap-anywhere select-all"
               >{team.original.replicaCode}</code
-            >{/if}{#if team.original.replicaStatus}<p class="provenance">
+            >{/if}
+          {#if team.original.replicaCode && team.original.replicaStatus === '✔'}
+            <Button variant="quiet" size="compact" onclick={copyReplica}
+              ><Copy aria-hidden="true" />Copy replica code</Button
+            >
+            {#if replicaCopyFailed}<p role="alert" class="provenance">
+                Copy unavailable. Select the code above and copy it.
+              </p>{/if}
+          {/if}
+          {#if team.original.replicaStatus}<p class="provenance">
               Source status: {team.original.replicaStatus}
             </p>{/if}
           <p class="provenance">
