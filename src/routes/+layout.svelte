@@ -8,6 +8,7 @@
   import { onMount, tick } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
+  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
@@ -566,7 +567,7 @@
           aria-current={isMyTeams ? 'page' : undefined}
           class="nav-pill {isMyTeams
             ? 'bg-info text-info-content'
-            : 'text-primary hover:bg-info'}">My teams</a
+            : 'text-primary hover:bg-info'}">My Teams</a
         >
       </nav>
       <div
@@ -652,6 +653,17 @@
       </div>
     </div>
   </header>
+  {#if isMyTeams}
+    <div class="w-full">
+      <div
+        class="mx-auto max-w-7xl py-2 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
+      >
+        <SavedCollectionHeader
+          collection={page.route.id === '/wishlist' ? 'wishlist' : 'my-teams'}
+        />
+      </div>
+    </div>
+  {/if}
   <ActionNotification />
   {#key sync.user?.uid}
     {@render children()}

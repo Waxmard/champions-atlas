@@ -78,7 +78,7 @@ export async function openCatalogTeam(team: Team): Promise<string> {
   try {
     await goto(resolve(`my-teams?team=${encodeURIComponent(entry.id)}`));
   } catch {
-    return 'Could not open My teams. Your team was saved.';
+    return 'Could not open My Teams. Your team was saved.';
   }
   return '';
 }

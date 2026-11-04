@@ -136,7 +136,7 @@ export function moveInUseTeamToWishlist(
       baseline
   )
     throw new SavedTeamError(
-      'This team changed elsewhere. Reopen My teams before moving it.'
+      'This team changed elsewhere. Reopen My Teams before moving it.'
     );
   if (
     saved.some(

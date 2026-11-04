@@ -10,7 +10,6 @@
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import Copy from '@lucide/svelte/icons/copy';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -460,7 +459,7 @@
     try {
       if (!collections.liveInUseTeam(localStorage, id)) {
         errorMessage =
-          'This team changed elsewhere. Reopen My teams before deleting.';
+          'This team changed elsewhere. Reopen My Teams before deleting.';
         deleting = false;
         return;
       }
@@ -500,12 +499,13 @@
   }
 </script>
 
-<svelte:head><title>My teams — Champion's Atlas</title></svelte:head>
+<svelte:head><title>My Teams — Champion's Atlas</title></svelte:head>
 
 <main
   id="main"
   class="mx-auto max-w-7xl pt-2 [padding-right:calc(0.5rem+env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] [padding-left:calc(0.5rem+env(safe-area-inset-left))]"
 >
+  <h1 class="sr-only">My Teams</h1>
   <div
     class="team-workspace grid min-w-0 items-start gap-2 {ready &&
     !storageError &&
@@ -520,7 +520,6 @@
         ? 'landscape:md:col-start-2 landscape:md:row-start-1'
         : ''}"
     >
-      <SavedCollectionHeader collection="my-teams" title="My teams" />
       {#if storageError || errorMessage}<p
           role="alert"
           class="plate max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"

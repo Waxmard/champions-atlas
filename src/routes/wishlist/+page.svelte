@@ -7,7 +7,6 @@
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -395,7 +394,7 @@
       errorMessage =
         error instanceof SavedTeamError
           ? error.message
-          : 'Could not move this team to My teams. Check app storage access and available space. Your Wishlist was not changed.';
+          : 'Could not move this team to My Teams. Check app storage access and available space. Your Wishlist was not changed.';
       pendingId = '';
       refresh();
       return;
@@ -407,7 +406,7 @@
       errorMessage =
         'Your team was saved, but the active team could not be remembered.';
       refresh();
-      notify('Team moved to My teams.');
+      notify('Team moved to My Teams.');
       pendingId = '';
       return;
     }
@@ -419,11 +418,11 @@
       );
     } catch {
       errorMessage = errorMessage
-        ? `${errorMessage} Could not open My teams.`
-        : 'Could not open My teams. Your team was saved.';
+        ? `${errorMessage} Could not open My Teams.`
+        : 'Could not open My Teams. Your team was saved.';
       refresh();
     }
-    notify('Team moved to My teams.');
+    notify('Team moved to My Teams.');
     pendingId = '';
   }
 
@@ -479,11 +478,12 @@
 </svelte:head>
 <main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
   <div bind:this={listRegion} hidden={selectedId !== null}>
-    <SavedCollectionHeader
-      collection="wishlist"
-      title="Wishlist"
-      description="Teams to try later. Move a team to My teams when you're ready."
-    />
+    <h1 class="sr-only">Wishlist</h1>
+    <p
+      class="max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+    >
+      Teams to try later. Move a team to My Teams when you're ready.
+    </p>
     <p
       id="wishlist-share-hint"
       class="mt-3 max-w-3xl text-[0.9375rem] leading-relaxed text-base-content/70"
@@ -668,6 +668,9 @@
     {/if}
   </div>
   {#if selectedId !== null}
+    {#if !loaded || storageError || !selectedEntry}
+      <h1 class="sr-only">Wishlist</h1>
+    {/if}
     <div
       class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
     >
