@@ -148,11 +148,21 @@
     </a>
   </div>
 
-  <div
-    class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
-  >
-    <div class="min-w-0 flex-1">
-      <div class="flex flex-wrap items-center gap-x-4 gap-y-2">
+  <div class="mt-4">
+    <div class="min-w-0">
+      <h1
+        class="max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-anywhere sm:text-3xl"
+      >
+        {team.name}
+      </h1>
+      <p class="provenance mt-1">
+        {team.creator
+          ? `By ${team.creator}`
+          : channels.length
+            ? `Shared by ${channels.join(', ')}`
+            : 'By an unlisted creator'}
+      </p>
+      <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span
           class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
           >{regulationLabel(team.regulation)}</span
@@ -182,24 +192,12 @@
           >Shared {team.publishedAt || 'date unknown'}</span
         >
       </div>
-
-      <h1
-        class="mt-4 max-w-3xl text-[1.75rem] leading-[1.4] font-extrabold tracking-tight wrap-anywhere sm:text-4xl"
-      >
-        {team.name}
-      </h1>
-      <p class="provenance mt-2">
-        {team.creator
-          ? `By ${team.creator}`
-          : channels.length
-            ? `Shared by ${channels.join(', ')}`
-            : 'By an unlisted creator'}
-      </p>
     </div>
 
-    <div class="flex shrink-0 flex-wrap items-center gap-2">
+    <div class="mt-2 flex flex-wrap items-center gap-2">
       <Button
         variant="quiet"
+        class="min-h-11"
         disabled={!ready || savedError !== '' || pending}
         onclick={useTeam}
       >
@@ -208,7 +206,7 @@
       </Button>
       <Button
         variant="quiet"
-        class="catalog-wishlist-button"
+        class="catalog-wishlist-button min-h-11"
         aria-label="Wishlist"
         aria-pressed={wishlisted}
         title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
@@ -222,41 +220,80 @@
         {/if}
         <span>Wishlist</span>
       </Button>
+      {#if paste}
+        <Button
+          variant="quiet"
+          size="compact"
+          class="min-h-11"
+          onclick={() =>
+            copy(
+              paste,
+              isPasteUrl(team.pasteUrl) ? 'Team paste' : 'Published sets'
+            )}
+        >
+          <Copy aria-hidden="true" />
+          {isPasteUrl(team.pasteUrl) ? 'Copy team' : 'Copy published sets'}
+        </Button>
+      {/if}
+      {#if isPasteUrl(team.pasteUrl)}
+        <Button
+          href={team.pasteUrl}
+          variant="quiet"
+          size="compact"
+          class="min-h-11"
+          target="_blank"
+          rel="external noreferrer"
+        >
+          <ExternalLink aria-hidden="true" />
+          Open original paste
+        </Button>
+      {/if}
     </div>
   </div>
 
-  {#if custom}<p class="term mt-3">
+  {#if custom}<p class="term mt-2">
       Custom-rule event: this team was shared for a tournament with additional
       Pokémon restrictions. Hidden from normal recommendations.
     </p>{/if}
   {#if savedError || actionError}<p
       role="alert"
-      class="mt-3 text-[0.9375rem] leading-relaxed"
+      class="mt-2 text-[0.9375rem] leading-relaxed"
       style="color: var(--color-error-content)"
     >
       {savedError || actionError}
     </p>{/if}
 
+  <p role="alert" class="mt-2 text-sm text-base-content/70 empty:hidden">
+    {copyError}
+  </p>
+  {#if failedCopyText}
+    <label class="mt-2 block text-sm text-base-content/70">
+      Team text to copy
+      <textarea
+        class="textarea mt-1.5 min-h-28 w-full font-mono text-xs"
+        readonly
+        onclick={(event) => event.currentTarget.select()}
+        value={failedCopyText}></textarea>
+    </label>
+  {/if}
+
   {#if team.replicaCode}
-    <div
-      class="plate mt-5 flex flex-wrap items-center justify-between gap-3 px-4 py-3"
-    >
-      <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-        <span class="term">Replica code</span>
-        <code
-          class="rounded bg-base-200 px-2 py-0.5 font-mono text-sm font-bold text-base-content select-all"
-          >{team.replicaCode}</code
-        >
-        <span class="provenance">
-          {team.replicaStatus === '✔'
-            ? 'Listed as available by the source; availability may change.'
-            : 'The source does not list this code as available.'}
-        </span>
-      </div>
+    <div class="mt-2 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+      <span class="term">Replica code</span>
+      <code
+        class="rounded bg-base-200 px-2 py-0.5 font-mono text-sm font-bold text-base-content select-all"
+        >{team.replicaCode}</code
+      >
+      <span class="provenance">
+        {team.replicaStatus === '✔'
+          ? 'Listed as available by the source; availability may change.'
+          : 'The source does not list this code as available.'}
+      </span>
       {#if team.replicaStatus === '✔'}
         <Button
           variant="quiet"
           size="compact"
+          class="min-h-11"
           onclick={() => copy(team.replicaCode || '', 'Replica code')}
           ><Copy aria-hidden="true" />Copy replica code</Button
         >
@@ -264,56 +301,12 @@
     </div>
   {/if}
 
-  <section aria-label="Pokémon sets" class="mt-8">
-    <div
-      class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-2.5"
+  <section aria-label="Pokémon sets" class="mt-4">
+    <h2
+      class="mb-2 border-b border-base-300 pb-2 text-[1.375rem] leading-tight font-extrabold"
     >
-      <h2 class="text-[1.375rem] leading-tight font-extrabold">Pokémon sets</h2>
-      {#if paste || isPasteUrl(team.pasteUrl)}
-        <div class="flex flex-wrap items-center gap-2">
-          {#if paste}
-            <Button
-              variant="quiet"
-              size="compact"
-              onclick={() =>
-                copy(
-                  paste,
-                  isPasteUrl(team.pasteUrl) ? 'Team paste' : 'Published sets'
-                )}
-            >
-              <Copy aria-hidden="true" />
-              {isPasteUrl(team.pasteUrl) ? 'Copy team' : 'Copy published sets'}
-            </Button>
-          {/if}
-          {#if isPasteUrl(team.pasteUrl)}
-            <Button
-              href={team.pasteUrl}
-              variant="quiet"
-              size="compact"
-              target="_blank"
-              rel="external noreferrer"
-            >
-              <ExternalLink aria-hidden="true" />
-              Open original paste
-            </Button>
-          {/if}
-        </div>
-      {/if}
-    </div>
-
-    <p role="alert" class="mb-3 text-sm text-base-content/70 empty:hidden">
-      {copyError}
-    </p>
-    {#if failedCopyText}
-      <label class="mb-3 block text-sm text-base-content/70">
-        Team text to copy
-        <textarea
-          class="textarea mt-1.5 min-h-28 w-full font-mono text-xs"
-          readonly
-          onclick={(event) => event.currentTarget.select()}
-          value={failedCopyText}></textarea>
-      </label>
-    {/if}
+      Pokémon sets
+    </h2>
 
     {#if team.pasteError}<p class="provenance mb-3">
         Some published details could not be loaded. {team.pasteError}

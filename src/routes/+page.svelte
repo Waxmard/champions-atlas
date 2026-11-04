@@ -8,7 +8,6 @@
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
-  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
@@ -22,7 +21,6 @@
   import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import { notify } from '#lib/notifications.js';
   import {
-    openCatalogTeam,
     readSavedTeamsState,
     toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
@@ -237,15 +235,6 @@
     refreshSaved();
     actionError = result.error;
     if (result.status) notify(result.status);
-    pending.delete(team.id);
-  }
-  async function use(team: Team) {
-    if (pending.has(team.id)) return;
-    pending.add(team.id);
-    actionError = '';
-    const error = await openCatalogTeam(team);
-    if (error) actionError = error;
-    else refreshSaved();
     pending.delete(team.id);
   }
   function changeFilters(next: MemberFilter[]) {
@@ -564,7 +553,7 @@
             showRegulation={regulation === 'all'}
             query={page.url.search}
           >
-            {#snippet actions()}
+            {#snippet trailingActions()}
               {@const busy =
                 !ready || savedError !== '' || pending.has(team.id)}
               {@const isWishlisted =
@@ -572,17 +561,8 @@
               <Button
                 type="button"
                 variant="quiet"
-                disabled={busy}
-                onclick={() => use(team)}
-              >
-                <AtlasIcon />
-                <span>My Teams</span>
-              </Button>
-              <Button
-                type="button"
-                variant="quiet"
                 size="icon-compact"
-                class="catalog-wishlist-button"
+                class="catalog-wishlist-button size-11"
                 aria-label="Wishlist"
                 aria-pressed={isWishlisted}
                 title={isWishlisted

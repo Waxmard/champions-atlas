@@ -63,12 +63,13 @@ adds no paid API, scraper, or subscription.
 
 ## Saved teams, similarity, and editing
 
-Choose **Use this team** for a catalog team. **My teams** keeps an immutable
-original and an editable copy. Catalog originals retain the full published sets
-and source metadata available when saved; show that metadata as evidence for the
-original, not the edited version. Older saved teams show only metadata they
-retained. Custom originals are starting teams without public source claims;
-never backfill legacy originals from a refreshed catalog.
+Open a catalog team and choose **My Teams**, or choose **My Teams** on a Wishlist
+card. **My teams** keeps an immutable original and an editable copy. Catalog
+originals retain the full published sets and source metadata available when
+saved; show that metadata as evidence for the original, not the edited version.
+Older saved teams show only metadata they retained. Custom originals are
+starting teams without public source claims; never backfill legacy originals from
+a refreshed catalog.
 
 Saved originals link to current catalog details when the original ID matches,
 or otherwise when their canonical Poképaste or VRPastes URL exactly and uniquely

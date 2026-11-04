@@ -643,19 +643,23 @@
                 href={`wishlist?team=${encodeURIComponent(entry.id)}`}
                 fromCatalog={false}
               >
-                {#snippet actions()}
+                {#snippet leadingActions()}
                   <Button
                     data-wishlist-use
                     variant="quiet"
+                    class="min-h-11 ps-0 pe-1.5"
                     disabled={!ready || !!pendingId}
                     onclick={() => use(entry)}
                   >
                     <AtlasIcon />
                     <span>My Teams</span>
                   </Button>
+                {/snippet}
+                {#snippet trailingActions()}
                   <Button
                     variant="quiet"
                     size="icon-compact"
+                    class="size-11"
                     aria-label="Remove from Wishlist"
                     title="Remove from Wishlist"
                     disabled={!ready || !!pendingId}

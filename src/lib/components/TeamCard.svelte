@@ -13,14 +13,16 @@
     team,
     showRegulation,
     query,
-    actions,
+    leadingActions,
+    trailingActions,
     href,
     fromCatalog = true,
   }: {
     team: Team;
     showRegulation: boolean;
     query: string;
-    actions?: Snippet;
+    leadingActions?: Snippet;
+    trailingActions?: Snippet;
     href?: `wishlist?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
   } = $props();
@@ -57,14 +59,20 @@
   >
     {@render content()}
   </a>
-  {#if actions || showRegulation || custom || team.publishedAt}
+  {#if leadingActions || trailingActions || showRegulation || custom || team.publishedAt}
     <div
-      class="mx-4 flex flex-wrap items-center justify-start gap-2 border-t py-2"
+      class="mx-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-t py-2"
     >
-      {#if actions}{@render actions()}{/if}
+      {#if leadingActions}
+        <div class="col-start-1">
+          {@render leadingActions()}
+        </div>
+      {/if}
       {#if showRegulation || custom || team.publishedAt}
         <div
-          class="ms-auto flex min-w-0 flex-wrap items-baseline gap-2 break-words"
+          class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
+            ? 'col-start-2'
+            : 'col-span-2 col-start-1'}"
         >
           {#if showRegulation}<span class="term"
               >{regulationLabel(team.regulation)}</span
@@ -73,6 +81,11 @@
           {#if team.publishedAt}<span class="provenance"
               >{team.publishedAt}</span
             >{/if}
+        </div>
+      {/if}
+      {#if trailingActions}
+        <div class="col-start-3 justify-self-end">
+          {@render trailingActions()}
         </div>
       {/if}
     </div>

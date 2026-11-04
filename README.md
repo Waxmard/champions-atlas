@@ -118,8 +118,9 @@ matches do not require a fetch; other links require a connection. Importing the
 same link again keeps the existing bookmark and its edits.
 
 Move a saved team between **Wishlist** and **My teams** without losing its edits
-or source history. Separate copies are not merged. Choose **Use this team** for
-a catalog team, or import a complete six-member
+or source history. Separate copies are not merged. To use a catalog team, open
+its details and choose **My Teams**. To use a bookmark, choose **My Teams** on
+its Wishlist card. Import a complete six-member
 [Showdown team](https://play.pokemonshowdown.com/teambuilder) through
 **Add custom team** in **My teams**.
 
