@@ -27,8 +27,7 @@
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
   import { normalize, type Member } from '#lib/catalog.js';
-  import { parsePaste } from '#lib/paste.js';
-  import { memberValidationError } from '#lib/member-validation.js';
+  import { parseTeamPaste } from '#lib/member-validation.js';
   import {
     activeTeamKey,
     deleteTeam,
@@ -184,8 +183,9 @@
           oncopy: copyPaste,
           onmanage: openTeamControls,
           onswap: () => openTeamControls(true),
-          swapDisabled: editing || !!pendingSpecies || showSwapPicker,
-          disabled: editing || deleting,
+          swapDisabled:
+            changed || editing || !!pendingSpecies || showSwapPicker,
+          disabled: changed || editing || deleting,
         }
       : null;
     return () => {
@@ -216,6 +216,7 @@
   let picker = $state<{ focus: () => void } | undefined>();
   let pickerPress = false;
   async function selectTeam(id: string): Promise<boolean> {
+    if (changed) return false;
     persistDraft();
     try {
       await goto(resolve(`my-teams?team=${encodeURIComponent(id)}`));
@@ -228,6 +229,7 @@
     return draft?.id === id;
   }
   function openTeamControls(swap = false) {
+    if (changed) return;
     teamControlsOpen = true;
     if (swap) showSwapPicker = true;
     const sel = swap ? '[aria-label="Change a Pokémon"]' : '#team-name';
@@ -246,9 +248,10 @@
   }
   function persistChange(
     patch: (team: SavedTeam) => SavedTeam,
-    saveName = false
+    saveName = false,
+    savePaste = false
   ): boolean {
-    if (!draft) return false;
+    if (!draft || (changed && !savePaste)) return false;
     try {
       const latest = collections.liveInUseTeam(localStorage, draft.id);
       if (!latest || contentSnapshot(latest) !== baseline) {
@@ -279,7 +282,7 @@
     }
   }
   function saveTeamName() {
-    if (!draft) return;
+    if (!draft || changed) return;
     const name = draft.name.trim();
     if (!name) {
       message = errorMessage = '';
@@ -304,38 +307,19 @@
   }
   function saveTeamPaste() {
     if (!draft || !changed || editing || deleting || stale) return;
-    const cur = draft.members;
-    let parsed: Member[];
     try {
-      parsed = parsePaste(pasteText);
+      const members = parseTeamPaste(pasteText, draft.members);
+      if (persistChange((team) => ({ ...team, members }), false, true))
+        notify('Team text saved.');
     } catch (e) {
       pasteError =
         e instanceof Error ? e.message : 'Invalid Showdown team text.';
-      return;
     }
-    if (parsed.filter((m) => isMegaSpecies(m.pokemon)).length > MAX_TEAM_MEGAS)
-      return void (pasteError = 'A team can include at most two Mega Pokémon.');
-    for (let i = 0; i < parsed.length; i++) {
-      const err = memberValidationError(
-        parsed[i],
-        cur[i],
-        parsed.filter((_, j) => j !== i),
-        'text'
-      );
-      if (err)
-        return void (pasteError = `${parsed[i].pokemon || `Slot ${i + 1}`}: ${err.message}`);
-    }
-    const nextMembers = parsed.map((m, i) =>
-      normalize(m.pokemon) === normalize(cur[i].pokemon)
-        ? { ...cur[i], ...m }
-        : m
-    );
-    if (persistChange((team) => ({ ...team, members: nextMembers })))
-      notify('Team text saved.');
   }
   function restoreOriginal() {
     if (
       !draft ||
+      changed ||
       editing ||
       deleting ||
       !confirm('Restore the original team? Your current sets will be replaced.')
@@ -345,7 +329,7 @@
       notify('Original team restored.');
   }
   function restoreSlot(index: number) {
-    if (!draft || editing || deleting) return;
+    if (!draft || changed || editing || deleting) return;
     const member = $state.snapshot(draft.original.members[index]);
     if (!member) return;
     const restored = persistChange((team) => {
@@ -371,7 +355,7 @@
   function canRevertSlot(index: number): boolean {
     const target = visitBaseline?.members[index];
     return (
-      !!(draft && !editing && !deleting && target) &&
+      !!(draft && !changed && !editing && !deleting && target) &&
       canonicalSnapshot(target) !== canonicalSnapshot(draft.members[index]) &&
       !slotRevertReason(index)
     );
@@ -401,7 +385,7 @@
     )?.focus({ preventScroll: true });
   };
   const openSetEditor = (i: number, field: EditableSetField, move = 0) => {
-    const member = !editing ? draft?.members[i] : null;
+    const member = !changed && !editing ? draft?.members[i] : null;
     if (!member) return;
     pendingSpecies = null;
     editorPending = false;
@@ -429,7 +413,7 @@
     if (slot !== null) void tick().then(() => focusSetField(slot, field, move));
   }
   function startSpeciesSwap(pokemon: string) {
-    if (!draft || editing) return;
+    if (!draft || changed || editing) return;
     pendingSpecies = pokemon;
     showSwapPicker = false;
     const best = swapSuggestions(
@@ -451,7 +435,7 @@
     (swapUnavailable = false)
   );
   async function copyPaste() {
-    if (!draft || editing) return;
+    if (!draft || changed || editing) return;
     showExport = true;
     const ok = await copyText(exportPaste(draft.members));
     errorMessage = ok
@@ -560,7 +544,7 @@
               teams={saved}
               value={draft?.id ?? ''}
               onselect={selectTeam}
-              disabled={editing || deleting}
+              disabled={changed || editing || deleting}
             />
           </div>
         {:else}
@@ -586,7 +570,7 @@
               <TeamHistoryPanel
                 team={draft}
                 currentRegulation={current}
-                disabled={editing || deleting}
+                disabled={changed || editing || deleting}
                 onrestore={restoreOriginal}
                 onrestoreslot={restoreSlot}
               />
@@ -609,7 +593,11 @@
                 aria-label="Close team controls"
                 onclick={() => {
                   teamControlsOpen = false;
-                  document.getElementById('team-actions')?.focus();
+                  document
+                    .getElementById(
+                      changed ? 'team-text-toggle' : 'team-actions'
+                    )
+                    ?.focus();
                 }}>Close</Button
               >
             </div>
@@ -621,6 +609,7 @@
                     id="team-name"
                     class="input mt-1.5 min-h-11 w-full text-base"
                     maxlength="200"
+                    disabled={changed}
                     aria-invalid={nameError ? 'true' : undefined}
                     aria-describedby="team-name-error"
                     bind:value={draft.name}
@@ -639,7 +628,7 @@
                 {baseline}
                 {dirty}
                 members={draft.members}
-                disabled={editing || deleting || stale}
+                disabled={changed || editing || deleting || stale}
               />
               {#if match}<a
                   class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
@@ -679,7 +668,7 @@
                   <PokemonPicker
                     options={availableSpecies}
                     onselect={startSpeciesSwap}
-                    disabled={editing}
+                    disabled={changed || editing}
                     label="Change a Pokémon"
                     placeholder="Choose a Pokémon to swap in…"
                     disabledPlaceholder="Finish editing first"
@@ -719,7 +708,7 @@
                 {baseline}
                 members={activeTeam.members}
                 memberIndex={index}
-                disabled={editing || deleting || stale}
+                disabled={changed || editing || deleting || stale}
                 {editing}
                 onedit={(field, moveSlot) =>
                   openSetEditor(index, field, moveSlot)}
@@ -730,8 +719,14 @@
             {/snippet}
           </TeamSetGrid>
         {/key}
+        {#if changed}
+          <p role="status" class="provenance mt-1">
+            Save or reset team text before changing the team.
+          </p>
+        {/if}
         <details bind:open={showExport} class="min-w-0">
           <summary
+            id="team-text-toggle"
             class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             Showdown team text
@@ -760,7 +755,7 @@
             >
             <Button
               variant="quiet"
-              disabled={!changed || editing || deleting || stale}
+              disabled={!changed || editing || deleting}
               onclick={() => {
                 if (draft) pasteText = exportPaste(draft.members);
                 pasteError = '';

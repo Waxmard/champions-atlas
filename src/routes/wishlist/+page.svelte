@@ -490,6 +490,44 @@
     Atlas</title
   >
 </svelte:head>
+{#snippet shareRecovery()}
+  {#if queueError}
+    <div role="alert" class="plate mt-2 max-w-[68ch] px-4 py-3">
+      {queueError}
+      {#if !blockedShare}
+        <Button
+          variant="quiet"
+          disabled={queuePending || importPending}
+          onclick={() => processShares(true)}
+        >
+          Try again
+        </Button>
+      {/if}
+    </div>
+  {/if}
+  {#if blockedShare}
+    <div class="plate mt-2 max-w-[68ch] px-4 py-3">
+      <p>Shared link: {blockedShare.url}</p>
+      <p>Dismissing removes the pending link, not a saved team.</p>
+      <div class="mt-2 flex flex-wrap gap-2">
+        <Button
+          variant="quiet"
+          disabled={queuePending || importPending || !canProcessShares()}
+          onclick={() => processShares(true)}
+        >
+          Retry
+        </Button>
+        <Button
+          variant="quiet"
+          disabled={queuePending || importPending || !canProcessShares()}
+          onclick={dismissShare}
+        >
+          Dismiss shared link
+        </Button>
+      </div>
+    </div>
+  {/if}
+{/snippet}
 <main id="main" class="app-container pt-2 pb-8 sm:pb-12">
   <div bind:this={listRegion} hidden={selectedId !== null}>
     <h1 class="sr-only">Wishlist</h1>
@@ -592,42 +630,7 @@
       >
         {storageError}
       </p>{/if}
-    {#if queueError}
-      <div role="alert" class="plate mt-2 max-w-[68ch] px-4 py-3">
-        {queueError}
-        {#if !blockedShare}
-          <Button
-            variant="quiet"
-            disabled={queuePending || importPending}
-            onclick={() => processShares(true)}
-          >
-            Try again
-          </Button>
-        {/if}
-      </div>
-    {/if}
-    {#if blockedShare}
-      <div class="plate mt-2 max-w-[68ch] px-4 py-3">
-        <p>Shared link: {blockedShare.url}</p>
-        <p>Dismissing removes the pending link, not a saved team.</p>
-        <div class="mt-2 flex flex-wrap gap-2">
-          <Button
-            variant="quiet"
-            disabled={queuePending || importPending || !canProcessShares()}
-            onclick={() => processShares(true)}
-          >
-            Retry
-          </Button>
-          <Button
-            variant="quiet"
-            disabled={queuePending || importPending || !canProcessShares()}
-            onclick={dismissShare}
-          >
-            Dismiss shared link
-          </Button>
-        </div>
-      </div>
-    {/if}
+    {@render shareRecovery()}
     {#if !loaded}<p class="mt-6 text-[0.9375rem] text-base-content/70">
         Loading Wishlist…
       </p>
@@ -706,6 +709,7 @@
         {errorMessage}
       </p>
     {/if}
+    {@render shareRecovery()}
     {#if !loaded}
       <p class="mt-6 text-[0.9375rem] text-base-content/70">
         Loading Wishlist…

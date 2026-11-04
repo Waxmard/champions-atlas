@@ -3,6 +3,7 @@ import {
   championsSpreadTotal,
   NATURES,
   parseChampionsSpread,
+  parsePaste,
 } from './paste.ts';
 import { isMegaSpecies, MAX_TEAM_MEGAS } from './workbench.ts';
 
@@ -74,4 +75,30 @@ export function memberValidationError(
       message: `Changed EV spreads must total 66 points (currently ${total}).`,
     };
   return null;
+}
+
+export function parseTeamPaste(text: string, current: Member[]): Member[] {
+  const parsed = parsePaste(text);
+  if (
+    parsed.filter((member) => isMegaSpecies(member.pokemon)).length >
+    MAX_TEAM_MEGAS
+  )
+    throw new Error('A team can include at most two Mega Pokémon.');
+  return parsed.map((member, index) => {
+    const previous = current.find(
+      (candidate) => normalize(candidate.pokemon) === normalize(member.pokemon)
+    );
+    const accepted = previous ?? { ...member, nature: null, spread: null };
+    const error = memberValidationError(
+      member,
+      accepted,
+      parsed.filter((_, other) => other !== index),
+      'text'
+    );
+    if (error)
+      throw new Error(
+        `${member.pokemon || `Slot ${index + 1}`}: ${error.message}`
+      );
+    return previous ? { ...previous, ...member } : member;
+  });
 }

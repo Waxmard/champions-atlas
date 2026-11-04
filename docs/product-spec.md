@@ -96,6 +96,12 @@ failed-write input without undoing earlier autosaves. **Advanced set text**
 explicitly replaces a set. Structured edits preserve nicknames and untouched
 supported lines; they never guess unknown values.
 
+**Save team text** replaces the current sets with the edited Showdown text;
+**Reset text** discards its unsaved changes. While team text is unsaved, team
+selection and competing edits are unavailable. Reordered sets keep their
+Pokémon's metadata and unchanged legacy details. Deleting the team still confirms
+before discarding unsaved input.
+
 The EV slider keeps its native keyboard controls and vertical page scrolling,
 with a 44-pixel touch target across its full height. **Fill** adds or removes
 points from the selected stat to reach 66 total, within that stat's 0–32 bounds.
@@ -257,9 +263,9 @@ catalog match is bookmarked with its source metadata without a network request.
 When multiple catalog teams share a link without an existing bookmark, import is
 rejected without fetching or saving. Otherwise the app fetches the paste
 directly from Poképaste and applies the same six-set requirements as custom text
-import. A failed shared import remains queued for retry or dismissal without
-deleting a saved team. File, screenshot, rental-code, and social-post imports
-are out of scope.
+import. A failed shared import remains queued for retry or dismissal from the
+Wishlist list or team detail, without deleting a saved team. File, screenshot,
+rental-code, and social-post imports are out of scope.
 
 Export current sets with Champions EV normalization, using 0–32 per stat. Omit
 IVs, level, Tera Type, and unknown values. Never assign edited teams new rental
