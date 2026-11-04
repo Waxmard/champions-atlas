@@ -5,10 +5,11 @@
   import { resolve } from '$app/paths';
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount, tick } from 'svelte';
+  import { onMount, setContext, tick, type ComponentProps } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
+  import type TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
@@ -20,6 +21,10 @@
   import { clearNotification } from '#lib/notifications.js';
 
   let { children } = $props();
+  const teamActions = $state<{
+    current: ComponentProps<typeof TeamActionsMenu> | null;
+  }>({ current: null });
+  setContext('team-actions', teamActions);
   const isHome = $derived(page.route.id === '/');
   const isMyTeams = $derived(
     page.route.id === '/my-teams' ||
@@ -539,7 +544,7 @@
     class="sticky top-0 z-40 border-b border-base-300 bg-base-100"
   >
     <div
-      class="mx-auto grid max-w-7xl grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4 sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
+      class="app-container grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4"
     >
       <a
         href={brandHref}
@@ -655,11 +660,12 @@
   </header>
   {#if isMyTeams}
     <div class="w-full">
-      <div
-        class="mx-auto max-w-7xl py-2 ps-[calc(1rem+env(safe-area-inset-left))] pe-[calc(1rem+env(safe-area-inset-right))] sm:ps-[calc(2rem+env(safe-area-inset-left))] sm:pe-[calc(2rem+env(safe-area-inset-right))]"
-      >
+      <div class="app-container py-2">
         <SavedCollectionHeader
           collection={page.route.id === '/wishlist' ? 'wishlist' : 'my-teams'}
+          teamActions={page.route.id === '/my-teams'
+            ? teamActions.current
+            : null}
         />
       </div>
     </div>

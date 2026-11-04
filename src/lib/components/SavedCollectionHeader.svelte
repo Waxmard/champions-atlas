@@ -1,14 +1,22 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, type ComponentProps } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { DropdownMenu } from 'bits-ui';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import Plus from '@lucide/svelte/icons/plus';
+  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
+  import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
 
-  let { collection }: { collection: 'my-teams' | 'wishlist' } = $props();
+  let {
+    collection,
+    teamActions,
+  }: {
+    collection: 'my-teams' | 'wishlist';
+    teamActions: ComponentProps<typeof TeamActionsMenu> | null;
+  } = $props();
   let openImportAfterClose = false;
 
   function focusAfterClose(event: Event) {
@@ -38,25 +46,7 @@
         ? 'bg-info text-info-content'
         : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
     >
-      <svg
-        viewBox="0 0 96 104"
-        class="size-4 shrink-0"
-        aria-hidden="true"
-        focusable="false"
-      >
-        <path
-          fill="none"
-          stroke="currentColor"
-          stroke-width="6"
-          stroke-linecap="round"
-          d="M22 37a34 34 0 1 0 52 0"
-        />
-        <path
-          fill="currentColor"
-          d="M22 37 18 15 35 24 48 7 61 24 78 15 74 37Z"
-        />
-        <path fill="currentColor" d="m61 46-9 24-23 10 10-24Z" />
-      </svg>
+      <AtlasIcon />
       <span>My Teams</span>
     </a>
     <a
@@ -105,5 +95,9 @@
         </DropdownMenu.Content>
       </DropdownMenu.Portal>
     </DropdownMenu.Root>
+  {:else if teamActions}
+    <TeamActionsMenu {...teamActions} />
+  {:else}
+    <div class="size-11 shrink-0" aria-hidden="true"></div>
   {/if}
 </header>

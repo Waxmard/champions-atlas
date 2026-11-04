@@ -45,13 +45,6 @@
 </script>
 
 {#snippet content()}
-  <div class="flex flex-wrap items-baseline justify-between gap-2">
-    {#if showRegulation}<span class="term"
-        >{regulationLabel(team.regulation)}</span
-      >{/if}
-    {#if custom}<span class="term">Custom rules</span>{/if}
-    <span class="provenance ms-auto shrink-0">{team.publishedAt}</span>
-  </div>
   <TeamSummary name={team.name} members={team.members} />
 {/snippet}
 <article
@@ -64,11 +57,24 @@
   >
     {@render content()}
   </a>
-  {#if actions}
+  {#if actions || showRegulation || custom || team.publishedAt}
     <div
-      class="mx-4 flex flex-wrap items-center justify-between gap-2 border-t py-2"
+      class="mx-4 flex flex-wrap items-center justify-start gap-2 border-t py-2"
     >
-      {@render actions()}
+      {#if actions}{@render actions()}{/if}
+      {#if showRegulation || custom || team.publishedAt}
+        <div
+          class="ms-auto flex min-w-0 flex-wrap items-baseline gap-2 break-words"
+        >
+          {#if showRegulation}<span class="term"
+              >{regulationLabel(team.regulation)}</span
+            >{/if}
+          {#if custom}<span class="term">Custom rules</span>{/if}
+          {#if team.publishedAt}<span class="provenance"
+              >{team.publishedAt}</span
+            >{/if}
+        </div>
+      {/if}
     </div>
   {/if}
 </article>

@@ -1,9 +1,9 @@
 <script lang="ts">
   import { resolve } from '$app/paths';
-  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -57,7 +57,7 @@
   </h1>
   <div class="flex flex-wrap items-center gap-2">
     <Button variant="quiet" class="min-h-11" {disabled} onclick={onuse}>
-      <ArrowRight class="size-4" aria-hidden="true" />
+      <AtlasIcon />
       <span>My Teams</span>
     </Button>
     <Button

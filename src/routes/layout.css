@@ -157,6 +157,21 @@
 }
 
 @layer components {
+  .app-container {
+    width: 100%;
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline-start: calc(1rem + env(safe-area-inset-left));
+    padding-inline-end: calc(1rem + env(safe-area-inset-right));
+  }
+
+  @media (min-width: 640px) {
+    .app-container {
+      padding-inline-start: calc(2rem + env(safe-area-inset-left));
+      padding-inline-end: calc(2rem + env(safe-area-inset-right));
+    }
+  }
+
   .plate {
     background: var(--color-base-100);
     border: 1px solid var(--color-base-300);

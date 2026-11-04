@@ -1,12 +1,18 @@
 <script lang="ts">
-  import { onMount, tick, untrack } from 'svelte';
+  import {
+    getContext,
+    onMount,
+    tick,
+    untrack,
+    type ComponentProps,
+  } from 'svelte';
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
-  import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
+  import type TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
@@ -39,7 +45,9 @@
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
   import * as collections from '#lib/team-collections.js';
-
+  const teamActions = getContext<{
+    current: ComponentProps<typeof TeamActionsMenu> | null;
+  }>('team-actions');
   let saved = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
     baseline = $state(''),
@@ -51,7 +59,7 @@
     storageError = $state(''),
     deleting = $state(false),
     showExport = $state(false),
-    teamPasteText = $state(''),
+    pasteText = $state(''),
     pasteError = $state(''),
     stale = $state(false),
     teamControlsOpen = $state(false),
@@ -88,13 +96,12 @@
   );
   const current = $derived(catalogState.catalog.currentRegulation);
   const editing = $derived(activeEditIndex !== null);
-  const pasteDirty = $derived(
-    !!draft && teamPasteText !== exportPaste(draft.members)
-  );
+  const hasTeam = $derived(ready && !storageError && !!draft);
+  const changed = $derived(!!draft && pasteText !== exportPaste(draft.members));
   const dirty = $derived(
     (!!draft && draft.name !== (baseline ? JSON.parse(baseline).name : '')) ||
       editorPending ||
-      pasteDirty
+      changed
   );
   const contentSnapshot = (team: Pick<SavedTeam, 'name' | 'members'>) =>
     canonicalSnapshot({ name: team.name, members: team.members });
@@ -125,7 +132,7 @@
       const entry = saved.find((team) => team.id === resolvedId);
       if (draft?.id !== entry?.id) teamControlsOpen = false;
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
-      teamPasteText = draft ? exportPaste(draft.members) : '';
+      pasteText = draft ? exportPaste(draft.members) : '';
       pasteError = '';
       baseline = entry ? contentSnapshot(entry) : '';
       if (!entry) visitBaseline = null;
@@ -156,20 +163,33 @@
         'Saved teams could not be read. Check app storage access. Existing data has been left untouched.';
     }
   }
-  const persistIfDirty = () => (editorRef?.flush(), saveTeamName());
+  const persistDraft = () => (editorRef?.flush(), saveTeamName());
   onMount(() => {
     ready = true;
     const warn = (e: BeforeUnloadEvent) =>
       dirty && (e.preventDefault(), (e.returnValue = ''));
-    const onVis = () =>
-      document.visibilityState === 'hidden' && persistIfDirty();
+    const onVis = () => document.visibilityState === 'hidden' && persistDraft();
     window.addEventListener('beforeunload', warn);
-    window.addEventListener('pagehide', persistIfDirty);
+    window.addEventListener('pagehide', persistDraft);
     document.addEventListener('visibilitychange', onVis);
     return () => {
       window.removeEventListener('beforeunload', warn);
-      window.removeEventListener('pagehide', persistIfDirty);
+      window.removeEventListener('pagehide', persistDraft);
       document.removeEventListener('visibilitychange', onVis);
+    };
+  });
+  $effect(() => {
+    teamActions.current = hasTeam
+      ? {
+          oncopy: copyPaste,
+          onmanage: openTeamControls,
+          onswap: () => openTeamControls(true),
+          swapDisabled: editing || !!pendingSpecies || showSwapPicker,
+          disabled: editing || deleting,
+        }
+      : null;
+    return () => {
+      teamActions.current = null;
     };
   });
   $effect(() => {
@@ -196,7 +216,7 @@
   let picker = $state<{ focus: () => void } | undefined>();
   let pickerPress = false;
   async function selectTeam(id: string): Promise<boolean> {
-    persistIfDirty();
+    persistDraft();
     try {
       await goto(resolve(`my-teams?team=${encodeURIComponent(id)}`));
     } catch {
@@ -246,7 +266,7 @@
       baseline = contentSnapshot(persisted);
       draft = structuredClone($state.snapshot(persisted));
       if (!saveName) draft.name = pendingName;
-      teamPasteText = exportPaste(draft.members);
+      pasteText = exportPaste(draft.members);
       pasteError = '';
       storageError = nameError = errorMessage = message = '';
       void pushNow();
@@ -283,11 +303,11 @@
     );
   }
   function saveTeamPaste() {
-    if (!draft || !pasteDirty || editing || deleting || stale) return;
+    if (!draft || !changed || editing || deleting || stale) return;
     const cur = draft.members;
     let parsed: Member[];
     try {
-      parsed = parsePaste(teamPasteText);
+      parsed = parsePaste(pasteText);
     } catch (e) {
       pasteError =
         e instanceof Error ? e.message : 'Invalid Showdown team text.';
@@ -471,7 +491,7 @@
       return;
     }
     draft = activeEditIndex = editorMember = pendingSpecies = null;
-    baseline = teamPasteText = pasteError = '';
+    baseline = pasteText = pasteError = '';
     editorPending = showSwapPicker = swapUnavailable = showExport = false;
     const nextId = collections.resolveSavedTeamId(remaining, null, prevActive);
     let activeFailed = false;
@@ -500,23 +520,18 @@
 </script>
 
 <svelte:head><title>My Teams — Champion's Atlas</title></svelte:head>
-
 <main
   id="main"
-  class="mx-auto max-w-7xl pt-2 [padding-right:calc(0.5rem+env(safe-area-inset-right))] pb-[calc(0.5rem+env(safe-area-inset-bottom))] [padding-left:calc(0.5rem+env(safe-area-inset-left))]"
+  class="app-container pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
 >
   <h1 class="sr-only">My Teams</h1>
   <div
-    class="team-workspace grid min-w-0 items-start gap-2 {ready &&
-    !storageError &&
-    draft
+    class="team-workspace grid min-w-0 items-start gap-2 {hasTeam
       ? 'landscape:md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] landscape:md:[direction:ltr]'
       : ''}"
   >
     <div
-      class="team-controls min-w-0 space-y-2 wrap-anywhere {ready &&
-      !storageError &&
-      draft
+      class="team-controls min-w-0 space-y-2 wrap-anywhere {hasTeam
         ? 'landscape:md:col-start-2 landscape:md:row-start-1'
         : ''}"
     >
@@ -534,30 +549,19 @@
       {:else if !storageError}
         {#if saved.length}
           <div
-            class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2"
+            data-team-picker
+            onpointerdowncapture={() => {
+              pickerPress = true;
+              setTimeout(() => (pickerPress = false));
+            }}
           >
-            <div
-              data-team-picker
-              onpointerdowncapture={() => {
-                pickerPress = true;
-                setTimeout(() => (pickerPress = false));
-              }}
-            >
-              <TeamPicker
-                bind:this={picker}
-                teams={saved}
-                value={draft?.id ?? ''}
-                onselect={selectTeam}
-                disabled={editing || deleting}
-              />
-            </div>
-            {#if draft}<TeamActionsMenu
-                oncopy={copyPaste}
-                onmanage={openTeamControls}
-                onswap={() => openTeamControls(true)}
-                swapDisabled={editing || !!pendingSpecies || showSwapPicker}
-                disabled={editing || deleting}
-              />{/if}
+            <TeamPicker
+              bind:this={picker}
+              teams={saved}
+              value={draft?.id ?? ''}
+              onselect={selectTeam}
+              disabled={editing || deleting}
+            />
           </div>
         {:else}
           <div class="plate max-w-xl px-4 py-3">
@@ -707,8 +711,8 @@
         aria-label="Your team"
         class="team-sheet min-w-0 landscape:md:col-start-1 landscape:md:row-start-1"
       >
-        {#key activeTeam.id}
-          <TeamSetGrid members={activeTeam.members}>
+        {#key draft.id}
+          <TeamSetGrid members={draft.members}>
             {#snippet renderMember(index)}
               <MemberCurrentSetControls
                 teamId={activeTeam.id}
@@ -726,11 +730,7 @@
             {/snippet}
           </TeamSetGrid>
         {/key}
-      </section>
-      <div
-        class="team-export min-w-0 landscape:md:col-start-1 landscape:md:row-start-2"
-      >
-        <details bind:open={showExport} class="mt-2 min-w-0">
+        <details bind:open={showExport} class="min-w-0">
           <summary
             class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
@@ -742,36 +742,35 @@
           </p>
           <textarea
             aria-label="Showdown team text"
-            class="textarea mt-2 min-h-72 w-full p-2 font-mono text-xs leading-5"
-            bind:value={teamPasteText}
+            class="textarea mt-1 min-h-72 w-full p-2 font-mono text-xs leading-5"
+            bind:value={pasteText}
             oninput={() => (pasteError = '')}
             disabled={editing || deleting || stale}></textarea>
           {#if pasteError}<p
               role="alert"
-              class="mt-2 text-sm text-error-content"
+              class="mt-1 text-sm text-error-content"
             >
               {pasteError}
             </p>{/if}
-          <div class="mt-2 flex flex-wrap gap-2">
+          <div class="mt-1 flex flex-wrap gap-2">
             <Button
               variant="primary"
-              disabled={!pasteDirty || editing || deleting || stale}
+              disabled={!changed || editing || deleting || stale}
               onclick={saveTeamPaste}>Save team text</Button
             >
             <Button
               variant="quiet"
-              disabled={!pasteDirty || editing || deleting || stale}
+              disabled={!changed || editing || deleting || stale}
               onclick={() => {
-                if (draft) teamPasteText = exportPaste(draft.members);
+                if (draft) pasteText = exportPaste(draft.members);
                 pasteError = '';
               }}>Reset text</Button
             >
           </div>
         </details>
-      </div>
+      </section>
     {/if}
   </div>
-
   {#if activeEditIndex !== null && draft && editorMember}
     {@const editIndex = activeEditIndex}
     <dialog

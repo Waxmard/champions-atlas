@@ -4,11 +4,11 @@
   import { page } from '$app/state';
   import { SvelteSet } from 'svelte/reactivity';
   import { onMount } from 'svelte';
-  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
+  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
@@ -306,7 +306,7 @@
   <title>Champion's Atlas — Find your next team</title>
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-7xl px-4 py-6 sm:px-8 sm:py-8">
+<main id="main" class="app-container py-6 sm:py-8">
   <header>
     <h1
       class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
@@ -575,7 +575,7 @@
                 disabled={busy}
                 onclick={() => use(team)}
               >
-                <ArrowRight class="size-4" aria-hidden="true" />
+                <AtlasIcon />
                 <span>My Teams</span>
               </Button>
               <Button

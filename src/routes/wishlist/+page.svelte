@@ -5,8 +5,8 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-  import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Trash2 from '@lucide/svelte/icons/trash-2';
+  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -490,7 +490,7 @@
     Atlas</title
   >
 </svelte:head>
-<main id="main" class="mx-auto max-w-7xl px-4 pt-2 pb-8 sm:px-8 sm:pb-12">
+<main id="main" class="app-container pt-2 pb-8 sm:pb-12">
   <div bind:this={listRegion} hidden={selectedId !== null}>
     <h1 class="sr-only">Wishlist</h1>
     {#if page.url.hash === '#import-pokepaste'}
@@ -650,7 +650,7 @@
                     disabled={!ready || !!pendingId}
                     onclick={() => use(entry)}
                   >
-                    <ArrowRight class="size-4" aria-hidden="true" />
+                    <AtlasIcon />
                     <span>My Teams</span>
                   </Button>
                   <Button
@@ -683,7 +683,7 @@
       <h1 class="sr-only">Wishlist</h1>
     {/if}
     <div
-      class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
+      class="sticky top-[var(--app-header-height,0px)] z-30 [margin-inline-start:calc(-1*(1rem+env(safe-area-inset-left)))] [margin-inline-end:calc(-1*(1rem+env(safe-area-inset-right)))] border-b border-base-300 bg-base-200 py-1 [padding-inline-start:calc(1rem+env(safe-area-inset-left))] [padding-inline-end:calc(1rem+env(safe-area-inset-right))] sm:[margin-inline-start:calc(-1*(2rem+env(safe-area-inset-left)))] sm:[margin-inline-end:calc(-1*(2rem+env(safe-area-inset-right)))] sm:[padding-inline-start:calc(2rem+env(safe-area-inset-left))] sm:[padding-inline-end:calc(2rem+env(safe-area-inset-right))]"
     >
       <a
         href={resolve('wishlist')}
