@@ -79,9 +79,9 @@ without a catalog link or warning.
 
 Browse and Wishlist share a compact team summary style. Opening a catalog team,
 a Wishlist bookmark, or My teams shows the six Pokémon sets in a shared card
-grid, where each card opens a full set view (read-only for catalog and Wishlist
-teams, editable in My teams). When available, **View catalog details** opens the
-matching catalog team from My teams or a selected Wishlist team.
+grid. Catalog and Wishlist cards open a read-only full-set view; My teams cards
+open editors for individual fields. When available, **View catalog details**
+opens the matching catalog team from My teams or a selected Wishlist team.
 
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
