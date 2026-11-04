@@ -165,12 +165,9 @@
             : 'By an unlisted creator'}
       </p>
       <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span class="detail-badge">{regulationLabel(team.regulation)}</span>
         <span
-          class="rounded-[var(--radius-selector)] border border-base-300 bg-base-100 px-2.5 py-0.5 text-[0.8125rem] leading-tight font-bold"
-          >{regulationLabel(team.regulation)}</span
-        >
-        <span
-          class="stamp"
+          class="detail-badge"
           data-grade={evidenceGrade(custom ? 3 : strongest.level)}
           >{reason?.label ?? strongest.label}</span
         >
@@ -195,94 +192,96 @@
       </div>
     </div>
 
-    <div class="mt-2 flex items-center gap-2">
+    <div
+      class="mt-2 grid gap-2 {paste || isPasteUrl(team.pasteUrl)
+        ? 'grid-cols-[minmax(0,1fr)_minmax(0,1fr)_2.75rem]'
+        : 'grid-cols-2'}"
+    >
       <Button
         variant="quiet"
-        class="min-h-11"
+        class="min-h-11 w-full min-w-0 justify-center"
         disabled={!ready || savedError !== '' || pending}
         onclick={useTeam}
       >
         <AtlasIcon />
         <span>My Teams</span>
       </Button>
-      <div class="ms-auto flex items-center gap-2">
-        <Button
-          variant="quiet"
-          class="catalog-wishlist-button min-h-11"
-          aria-label="Wishlist"
-          aria-pressed={wishlisted}
-          title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
-          disabled={!ready || savedError !== '' || pending}
-          onclick={wishlist}
-        >
-          {#if wishlisted}
-            <BookmarkCheck class="size-4" aria-hidden="true" />
-          {:else}
-            <Bookmark class="size-4" aria-hidden="true" />
-          {/if}
-          <span>Wishlist</span>
-        </Button>
-        {#if paste || isPasteUrl(team.pasteUrl)}
-          <DropdownMenu.Root>
-            <DropdownMenu.Trigger>
-              {#snippet child({ props })}
-                <Button
-                  {...props}
-                  variant="quiet"
-                  size="icon-compact"
-                  class="min-h-11 min-w-11"
-                  aria-label="More actions"
-                >
-                  <Ellipsis class="size-4" aria-hidden="true" />
-                </Button>
-              {/snippet}
-            </DropdownMenu.Trigger>
-            <DropdownMenu.Portal>
-              <DropdownMenu.Content
-                side="bottom"
-                align="end"
-                sideOffset={8}
-                class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
-              >
-                {#if paste}
-                  <DropdownMenu.Item
-                    class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
-                    onSelect={() =>
-                      copy(
-                        paste,
-                        isPasteUrl(team.pasteUrl)
-                          ? 'Team paste'
-                          : 'Published sets'
-                      )}
-                  >
-                    <Copy class="size-4" aria-hidden="true" />
-                    {isPasteUrl(team.pasteUrl)
-                      ? 'Copy team'
-                      : 'Copy published sets'}
-                  </DropdownMenu.Item>
-                {/if}
-                {#if isPasteUrl(team.pasteUrl)}
-                  <DropdownMenu.Item
-                    class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
-                  >
-                    {#snippet child({ props })}
-                      <a
-                        {...props}
-                        href={team.pasteUrl}
-                        target="_blank"
-                        rel="external noreferrer"
-                      >
-                        <ExternalLink class="size-4" aria-hidden="true" />
-                        Open original paste
-                      </a>
-                    {/snippet}
-                  </DropdownMenu.Item>
-                {/if}
-              </DropdownMenu.Content>
-            </DropdownMenu.Portal>
-          </DropdownMenu.Root>
+      <Button
+        variant="quiet"
+        class="catalog-wishlist-button min-h-11 w-full min-w-0 justify-center"
+        aria-label="Wishlist"
+        aria-pressed={wishlisted}
+        title={wishlisted ? 'Remove from Wishlist' : 'Add to Wishlist'}
+        disabled={!ready || savedError !== '' || pending}
+        onclick={wishlist}
+      >
+        {#if wishlisted}
+          <BookmarkCheck class="size-4" aria-hidden="true" />
+        {:else}
+          <Bookmark class="size-4" aria-hidden="true" />
         {/if}
-      </div>
+        <span>Wishlist</span>
+      </Button>
+      {#if paste || isPasteUrl(team.pasteUrl)}
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger>
+            {#snippet child({ props })}
+              <Button
+                {...props}
+                variant="quiet"
+                size="icon-compact"
+                class="h-11 min-h-11 w-11 min-w-11"
+                aria-label="More actions"
+              >
+                <Ellipsis class="size-4" aria-hidden="true" />
+              </Button>
+            {/snippet}
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Portal>
+            <DropdownMenu.Content
+              side="bottom"
+              align="end"
+              sideOffset={8}
+              class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
+            >
+              {#if paste}
+                <DropdownMenu.Item
+                  class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+                  onSelect={() =>
+                    copy(
+                      paste,
+                      isPasteUrl(team.pasteUrl)
+                        ? 'Team paste'
+                        : 'Published sets'
+                    )}
+                >
+                  <Copy class="size-4" aria-hidden="true" />
+                  {isPasteUrl(team.pasteUrl)
+                    ? 'Copy team'
+                    : 'Copy published sets'}
+                </DropdownMenu.Item>
+              {/if}
+              {#if isPasteUrl(team.pasteUrl)}
+                <DropdownMenu.Item
+                  class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+                >
+                  {#snippet child({ props })}
+                    <a
+                      {...props}
+                      href={team.pasteUrl}
+                      target="_blank"
+                      rel="external noreferrer"
+                    >
+                      <ExternalLink class="size-4" aria-hidden="true" />
+                      Open original paste
+                    </a>
+                  {/snippet}
+                </DropdownMenu.Item>
+              {/if}
+            </DropdownMenu.Content>
+          </DropdownMenu.Portal>
+        </DropdownMenu.Root>
+      {/if}
     </div>
 
     {#if custom}<p class="term mt-2">
@@ -434,3 +433,37 @@
     {/if}
   </div>
 </main>
+
+<style>
+  .detail-badge {
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    padding: 0.25rem 0.5rem;
+    color: var(--color-muted);
+    background: var(--color-base-200);
+    border: none;
+    border-radius: var(--radius-field);
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    font-variant-numeric: tabular-nums;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .detail-badge[data-grade='qualified'],
+  .detail-badge[data-grade='source'] {
+    color: var(--color-primary);
+    background: color-mix(
+      in oklab,
+      var(--color-primary) 10%,
+      var(--color-base-100)
+    );
+  }
+
+  .detail-badge[data-grade='strong'] {
+    color: var(--color-accent-content);
+    background: var(--color-accent);
+  }
+</style>

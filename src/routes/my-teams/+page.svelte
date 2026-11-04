@@ -579,6 +579,19 @@
             </Button>
           </div>
         {/if}
+        {#if draft}<div
+            class="min-w-0 [&_button]:h-auto [&_button]:min-h-11 [&_button]:max-w-full [&_button]:text-start [&_button]:whitespace-normal landscape:md:[&_dl]:grid-cols-1"
+          >
+            {#key draft.id}
+              <TeamHistoryPanel
+                team={draft}
+                currentRegulation={current}
+                disabled={editing || deleting}
+                onrestore={restoreOriginal}
+                onrestoreslot={restoreSlot}
+              />
+            {/key}
+          </div>{/if}
         {#if message}<p
             role="status"
             class="text-[0.9375rem] text-base-content/70"
@@ -678,19 +691,6 @@
                   No catalog team with {pendingSpecies} shares a remaining teammate.
                 </p>
               {/if}
-              <div
-                class="min-w-0 [&_button]:h-auto [&_button]:min-h-11 [&_button]:max-w-full [&_button]:text-start [&_button]:whitespace-normal landscape:md:[&_dl]:grid-cols-1"
-              >
-                {#key draft.id}
-                  <TeamHistoryPanel
-                    team={draft}
-                    currentRegulation={current}
-                    disabled={editing || deleting}
-                    onrestore={restoreOriginal}
-                    onrestoreslot={restoreSlot}
-                  />
-                {/key}
-              </div>
               <Button
                 variant="destructive"
                 class="h-auto min-h-11 max-w-full text-start whitespace-normal"
