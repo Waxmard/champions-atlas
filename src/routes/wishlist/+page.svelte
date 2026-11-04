@@ -6,6 +6,7 @@
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
+  import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
@@ -476,33 +477,20 @@
     Atlas</title
   >
 </svelte:head>
-<main id="main" class="mx-auto max-w-7xl px-4 py-8 sm:px-8 sm:py-12">
+<main id="main" class="mx-auto max-w-7xl px-4 pt-2 pb-8 sm:px-8 sm:pb-12">
   <div bind:this={listRegion} hidden={selectedId !== null}>
     <h1 class="sr-only">Wishlist</h1>
-    <p
-      class="max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      Teams to try later. Move a team to My Teams when you're ready.
-    </p>
-    <p
-      id="wishlist-share-hint"
-      class="mt-3 max-w-3xl text-[0.9375rem] leading-relaxed text-base-content/70"
-    >
-      From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
-      finish importing.
-    </p>
-    <details class="mt-1 max-w-3xl">
+    <details class="max-w-3xl">
       <summary
-        aria-describedby="wishlist-share-hint"
-        class="block min-h-11 cursor-pointer list-none rounded-[var(--radius-field)] py-2 text-sm underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden"
+        class="inline-flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-[var(--radius-field)] bg-base-100 px-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary [&::-webkit-details-marker]:hidden"
       >
-        <span
-          id="wishlist-manual-label"
-          class="text-sm underline underline-offset-2"
-        >
-          Add a Poképaste manually
-        </span>
+        <Plus size={16} aria-hidden="true" />
+        <span id="wishlist-manual-label">Add a Poképaste</span>
       </summary>
+      <p id="wishlist-share-hint" class="provenance mt-2">
+        From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
+        finish importing.
+      </p>
       <form
         aria-label="Import Poképaste"
         class="mt-2"

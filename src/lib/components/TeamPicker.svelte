@@ -86,16 +86,16 @@
   }
 </script>
 
-<div class="max-w-xl">
-  <label class="term block min-w-0 wrap-anywhere" for={id}>
-    <span aria-hidden="true">{selected?.name ?? 'Saved team'}</span>
-    <span class="sr-only">
-      {selected ? `Saved team, currently ${selected.name}` : 'Saved team'}
-    </span>
+<div class="w-full min-w-0">
+  <label class="sr-only" for={id}>
+    {selected ? `Saved team, currently ${selected.name}` : 'Saved team'}
   </label>
   <Combobox.Root
     type="single"
     bind:open
+    onOpenChange={(isOpen) => {
+      if (!isOpen) field = '';
+    }}
     bind:value={selectedId}
     inputValue={field}
     onValueChange={choose}
@@ -104,22 +104,26 @@
   >
     <div
       bind:this={fieldEl}
-      class="input relative mt-2 flex h-auto min-h-11 w-full items-center pe-12"
+      class="input relative flex h-auto min-h-11 w-full items-center pe-12"
     >
       <Combobox.Input
         {id}
         bind:ref={inputEl}
-        placeholder="Search or scroll saved teams"
+        placeholder={open
+          ? 'Search saved teams'
+          : (selected?.name ?? 'Choose saved team')}
         autocomplete="off"
         onclick={() => {
           if (!open) openMenu();
         }}
         oninput={(event) => {
           field = event.currentTarget.value;
-          if (!open) openMenu();
+          if (!open) open = true;
         }}
         onkeydown={closeOnEscape}
-        class="min-h-11 w-full min-w-0 bg-transparent text-base outline-none"
+        class="min-h-11 w-full min-w-0 bg-transparent text-base outline-none {open
+          ? ''
+          : 'placeholder:font-semibold placeholder:text-base-content placeholder:opacity-100'}"
       >
         {#snippet child({ props })}
           <input {...props} value={field} />

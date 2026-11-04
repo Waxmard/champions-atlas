@@ -6,11 +6,11 @@
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
+  import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import Copy from '@lucide/svelte/icons/copy';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import X from '@lucide/svelte/icons/x';
@@ -71,9 +71,7 @@
     appliedRevision = 0;
   const teams = $derived(catalogState.catalog.teams);
   const allSpecies = $derived(
-    [
-      ...new Set(teams.flatMap((team) => team.members.map((m) => m.pokemon))),
-    ].sort()
+    [...new Set(teams.flatMap((t) => t.members.map((m) => m.pokemon)))].sort()
   );
   const availableSpecies = $derived(
     allSpecies.filter(
@@ -208,6 +206,12 @@
     }
     await tick();
     return draft?.id === id;
+  }
+  function openTeamControls(swap = false) {
+    teamControlsOpen = true;
+    if (swap) showSwapPicker = true;
+    const sel = swap ? '[aria-label="Change a Pokémon"]' : '#team-name';
+    void tick().then(() => document.querySelector<HTMLElement>(sel)?.focus());
   }
   function blurName(e: FocusEvent) {
     if (
@@ -365,15 +369,11 @@
       void tick().then(() => focusSetField(index, 'pokemon'));
     }
   }
-  const focusSetField = (
-    index: number,
-    field: EditableSetField,
-    moveSlot = 0
-  ) => {
-    const slot = document.getElementById(`pokemon-slot-${index}`);
+  const focusSetField = (i: number, field: EditableSetField, move = 0) => {
+    const slot = document.getElementById(`pokemon-slot-${i}`);
     const sel =
       field === 'moves'
-        ? `[data-move-slot="${moveSlot}"]`
+        ? `[data-move-slot="${move}"]`
         : `[data-set-field="${field}"]`;
     (
       slot?.querySelector<HTMLElement>(sel) ??
@@ -534,19 +534,30 @@
       {:else if !storageError}
         {#if saved.length}
           <div
-            data-team-picker
-            onpointerdowncapture={() => {
-              pickerPress = true;
-              setTimeout(() => (pickerPress = false));
-            }}
+            class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-2"
           >
-            <TeamPicker
-              bind:this={picker}
-              teams={saved}
-              value={draft?.id ?? ''}
-              onselect={selectTeam}
-              disabled={editing || deleting}
-            />
+            <div
+              data-team-picker
+              onpointerdowncapture={() => {
+                pickerPress = true;
+                setTimeout(() => (pickerPress = false));
+              }}
+            >
+              <TeamPicker
+                bind:this={picker}
+                teams={saved}
+                value={draft?.id ?? ''}
+                onselect={selectTeam}
+                disabled={editing || deleting}
+              />
+            </div>
+            {#if draft}<TeamActionsMenu
+                oncopy={copyPaste}
+                onmanage={openTeamControls}
+                onswap={() => openTeamControls(true)}
+                swapDisabled={editing || !!pendingSpecies || showSwapPicker}
+                disabled={editing || deleting}
+              />{/if}
           </div>
         {:else}
           <div class="plate max-w-xl px-4 py-3">
@@ -570,29 +581,27 @@
           >
             {message}
           </p>{/if}
-        {#if draft}
+        {#if draft && teamControlsOpen}
           {@const match = collections.resolveCatalogTeam(draft.original, teams)}
-          <Button
-            variant="quiet"
-            class="h-auto min-h-11 max-w-full text-start whitespace-normal"
-            data-team-action="copy"
-            disabled={editing || deleting}
-            onclick={copyPaste}
-          >
-            <Copy class="size-4" aria-hidden="true" />
-            <span>Copy team text</span>
-          </Button>
-          <details bind:open={teamControlsOpen} class="plate min-w-0 p-2">
-            <summary
-              class="min-h-11 cursor-pointer content-center px-2 text-sm font-bold focus-visible:ring-2 focus-visible:ring-primary"
-            >
-              Team controls
-            </summary>
+          <section aria-label="Manage team" class="plate min-w-0 p-3">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-sm font-bold">Manage team</h2>
+              <Button
+                variant="quiet"
+                class="min-h-11"
+                aria-label="Close team controls"
+                onclick={() => {
+                  teamControlsOpen = false;
+                  document.getElementById('team-actions')?.focus();
+                }}>Close</Button
+              >
+            </div>
             <div class="min-w-0 space-y-3 pt-2">
               <div class="min-w-0">
                 <label class="term block"
                   >Team name
                   <input
+                    id="team-name"
                     class="input mt-1.5 min-h-11 w-full text-base"
                     maxlength="200"
                     aria-invalid={nameError ? 'true' : undefined}
@@ -608,19 +617,13 @@
                   {nameError}
                 </p>
               </div>
-              <div
-                class="flex min-w-0 flex-wrap items-center gap-1.5 [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:max-w-full [&>div>button]:text-start [&>div>button]:whitespace-normal"
-              >
-                <MyTeamCollectionActions
-                  teamId={draft.id}
-                  {baseline}
-                  {dirty}
-                  members={draft.members}
-                  disabled={editing || deleting || stale}
-                  onswap={() => (showSwapPicker = true)}
-                  swapDisabled={editing || !!pendingSpecies || showSwapPicker}
-                />
-              </div>
+              <MyTeamCollectionActions
+                teamId={draft.id}
+                {baseline}
+                {dirty}
+                members={draft.members}
+                disabled={editing || deleting || stale}
+              />
               {#if match}<a
                   class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
                   href={resolve(`teams/${match.id}`)}>View catalog details</a
@@ -694,7 +697,7 @@
                 <span>Delete team</span>
               </Button>
             </div>
-          </details>
+          </section>
         {/if}
       {/if}
     </div>
