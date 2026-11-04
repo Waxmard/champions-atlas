@@ -280,7 +280,39 @@ The TestFlight workflow uses the GitHub `preview` environment and
 to the test project. The build inlines the four Firebase configuration values.
 The same environment supplies `YOUTUBE_API_KEY`, `TYPESAFE_API_KEY`,
 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`,
-`APPLE_CERTIFICATE_P12_BASE64`, and `APPLE_CERTIFICATE_PASSWORD`.
+`APPLE_CERTIFICATE_P12_BASE64`, `APPLE_CERTIFICATE_PASSWORD`,
+`APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64`, and
+`APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD`. The archive uses the development
+identity; the App Store Connect export uses the existing distribution identity.
+
+To provide the development identity:
+
+1. In Keychain Access, select `Apple Development: MAXWELL TANG WARD
+(T566LH9G3M)` with its private key and export only that identity as a
+   password-protected P12 outside the repository. Its team ID is `48TY2FP59S`.
+   Do not create another certificate.
+2. Store the export password in macOS Keychain. Add `-U` to replace an existing
+   item. The command prompts for the password.
+
+   ```sh
+   security add-generic-password -s champions-atlas:apple-development-certificate-password -a "$USER" -T "" -w
+   ```
+
+3. In repository **Settings** → **Environments** → **preview** → **Environment
+   secrets**, supply `APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64` and
+   `APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD`. Do not paste either into chat or
+   logs. Alternatively, from the repository, set `P12_PATH` to the exported
+   file's path and stream both secrets to GitHub:
+
+   ```sh
+   base64 -i "$P12_PATH" | gh secret set APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64 --env preview
+   export APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD="$(security find-generic-password -s champions-atlas:apple-development-certificate-password -a "$USER" -w)"
+   printf '%s' "$APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD" | gh secret set APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD --env preview
+   unset APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD
+   ```
+
+4. Delete the temporary P12 after storing the secrets. Keep the original
+   identity in Keychain and leave the distribution secrets unchanged.
 
 The release-please workflow reads the repository secret `RELEASE_PLEASE_TOKEN`
 instead, because its job declares no environment.
