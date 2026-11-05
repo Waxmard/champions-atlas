@@ -16,10 +16,8 @@ if [[ ! "$MARKETING_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-npx cap sync ios
-
 missing=()
-for var in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD; do
+for var in ASC_KEY_ID ASC_ISSUER_ID ASC_PRIVATE_KEY APPLE_CERTIFICATE_P12_BASE64 APPLE_CERTIFICATE_PASSWORD APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64 APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD; do
   if [[ -z "${!var:-}" ]]; then
     missing+=("$var")
   fi
@@ -45,6 +43,7 @@ cleanup() {
 trap cleanup EXIT
 
 printf '%s' "$APPLE_CERTIFICATE_P12_BASE64" | base64 --decode >"$WORK_DIR/dist.p12"
+printf '%s' "$APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64" | base64 --decode >"$WORK_DIR/development.p12"
 
 security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
@@ -61,7 +60,16 @@ restore_keychains=1
 security list-keychains -d user -s "$KEYCHAIN_PATH" ${existing_keychains[@]+"${existing_keychains[@]}"}
 
 security import "$WORK_DIR/dist.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12
+security import "$WORK_DIR/development.p12" -k "$KEYCHAIN_PATH" -P "$APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -t cert -f pkcs12
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+identities="$(security find-identity -v -p codesigning "$KEYCHAIN_PATH")"
+if [[ ! "$identities" =~ \"(Apple\ Development|iPhone\ Developer):\  ]]; then
+  echo 'No valid Apple Development signing identity in the build keychain; supply an existing development certificate with its private key.' >&2
+  exit 1
+fi
+
+npx cap sync ios
 
 AUTH_KEY_PATH="$WORK_DIR/AuthKey_${ASC_KEY_ID}.p8"
 printf '%s\n' "$ASC_PRIVATE_KEY" >"$AUTH_KEY_PATH"

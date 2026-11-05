@@ -146,14 +146,14 @@ at 06:17 UTC and by manual dispatch through **Actions** → **Refresh Catalog** 
 **Run workflow**. The app checks for newer validated bundles on launch,
 reconnection, and foreground.
 
-`.github/workflows/deploy-testflight.yml` imports the catalog for builds on pushes
-to `main` and manual dispatch. **Rebuild all historical regulations** rebuilds
-history. Both workflows set `YOUTUBE_REFRESH=1` and recrawl YouTube discovery.
-A failed import, tagging run, or build stops the upload or publication. A source
-fetch or structural failure throws before the atomic
-catalog write, preserving the previous catalog. Dev, build, and typecheck generate
-a missing catalog or rebuild one containing an ineligible team. Otherwise they
-reuse the catalog and restore assets; routine builds are not live data refreshes.
+The TestFlight workflow also imports the catalog. Both workflows set
+`YOUTUBE_REFRESH=1` and recrawl YouTube discovery.
+A failed import, tagging run, or build stops the upload or publication. Structural
+failures and source fetch failures without an eligible cache fallback throw before
+the atomic catalog write, preserving the previous catalog. See [Assets and source
+cache](#assets-and-source-cache) for fallback conditions. Dev, build, and typecheck
+generate a missing catalog or rebuild one containing an ineligible team. Otherwise
+they reuse the catalog and restore assets; routine builds are not live data refreshes.
 
 With `YOUTUBE_API_KEY` loaded, run `REFRESH=1 npm run import:catalog` locally for
 a full-history rebuild and YouTube recrawl. To recrawl YouTube while retaining
@@ -197,16 +197,15 @@ item names remain visible, and absent assets trigger no requests. Restart the
 development server or rebuild after adding assets. `OFFLINE=1` controls source
 discovery, not asset downloads.
 
-For a local import, explicitly set `ALLOW_STALE_SOURCE_CACHE=1` to reuse validated
-raw source cache, including CSVs, after an eligible transient HTTP or network
-failure. The importer warns when it uses the cache. The existing retry policy
-remains unchanged.
+Deploy TestFlight enables `ALLOW_STALE_SOURCE_CACHE=1` for raw sources, including
+CSVs. Local imports can opt in with the same setting; daily catalog publication
+remains strict. After an eligible transient HTTP or network failure, the importer
+warns and reuses validated cached data. The retry policy remains unchanged.
 
 Fallbacks fail when cache is missing, unreadable, invalid, or oversized. Fresh
-validation and cache-write errors, and mandatory-source failures, remain fatal.
-Automated and local imports remain strict unless you explicitly set the
-stale-cache option. It does not change offline behavior or impose a cache age
-limit.
+validation and cache-write errors, mandatory-source failures, and YouTube crawl
+failures remain fatal. The option does not change offline behavior or impose a
+cache age limit.
 
 ## Reuse conditions
 

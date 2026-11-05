@@ -1,8 +1,8 @@
 name: Deploy TestFlight
 
 on:
-  push:
-    branches: [main]
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       refresh_history:
@@ -28,6 +28,8 @@ jobs:
       - id: meta
         run: echo "build_number=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
       - uses: actions/cache@v6
         with:
           path: |
@@ -51,6 +53,7 @@ jobs:
         env:
           CHECK_SHEET: '1'
           YOUTUBE_REFRESH: '1'
+          ALLOW_STALE_SOURCE_CACHE: '1'
           REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
       - name: Enrich team tags
@@ -86,6 +89,8 @@ jobs:
     environment: preview
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
       - uses: jdx/mise-action@v5
       - run: npm ci --ignore-scripts
       - uses: actions/download-artifact@v8
@@ -94,8 +99,8 @@ jobs:
           path: build
       - name: Upload to TestFlight
         run: |
-          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_PRIVATE_KEY" ] || [ -z "$APPLE_CERTIFICATE_P12_BASE64" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ]; then
-            echo '::error::TestFlight upload requires ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY, APPLE_CERTIFICATE_P12_BASE64, and APPLE_CERTIFICATE_PASSWORD in the preview environment.'
+          if [ -z "$ASC_KEY_ID" ] || [ -z "$ASC_ISSUER_ID" ] || [ -z "$ASC_PRIVATE_KEY" ] || [ -z "$APPLE_CERTIFICATE_P12_BASE64" ] || [ -z "$APPLE_CERTIFICATE_PASSWORD" ] || [ -z "$APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64" ] || [ -z "$APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD" ]; then
+            echo '::error::TestFlight upload requires ASC_KEY_ID, ASC_ISSUER_ID, ASC_PRIVATE_KEY, APPLE_CERTIFICATE_P12_BASE64, APPLE_CERTIFICATE_PASSWORD, APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64, and APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD in the preview environment.'
             exit 1
           fi
           bash scripts/build-ios-testflight.sh
@@ -106,3 +111,5 @@ jobs:
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
           APPLE_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64 }}
+          APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPMENT_CERTIFICATE_PASSWORD }}
