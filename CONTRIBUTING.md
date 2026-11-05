@@ -42,9 +42,6 @@ tag, bumps the version, updates `CHANGELOG.md`, and tags the release
 ([release-please](.github/workflows/release-please.yml)). This is why commit hygiene
 matters: every commit on `main` is read by the release tooling.
 
-When Release Please publishes a release, the TestFlight workflow imports, builds,
-and deploys that release independently of CI. Ordinary pushes to `main` do not
-deploy. Manual dispatch accepts a selected ref and an optional historical refresh.
 See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration)
-for delivery and configuration. A local Xcode install does not deploy Firestore
+for release delivery and configuration. A local Xcode install does not deploy Firestore
 rules.

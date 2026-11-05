@@ -146,16 +146,14 @@ at 06:17 UTC and by manual dispatch through **Actions** → **Refresh Catalog** 
 **Run workflow**. The app checks for newer validated bundles on launch,
 reconnection, and foreground.
 
-When Release Please publishes a release, `.github/workflows/deploy-testflight.yml`
-imports the catalog, builds, and deploys that release independently of CI.
-Ordinary pushes to `main` do not deploy. Manual dispatch uses the selected ref;
-**Rebuild all historical regulations** rebuilds history. Both workflows set
+The TestFlight workflow also imports the catalog. Both workflows set
 `YOUTUBE_REFRESH=1` and recrawl YouTube discovery.
-A failed import, tagging run, or build stops the upload or publication. A source
-fetch or structural failure throws before the atomic
-catalog write, preserving the previous catalog. Dev, build, and typecheck generate
-a missing catalog or rebuild one containing an ineligible team. Otherwise they
-reuse the catalog and restore assets; routine builds are not live data refreshes.
+A failed import, tagging run, or build stops the upload or publication. Structural
+failures and source fetch failures without an eligible cache fallback throw before
+the atomic catalog write, preserving the previous catalog. See [Assets and source
+cache](#assets-and-source-cache) for fallback conditions. Dev, build, and typecheck
+generate a missing catalog or rebuild one containing an ineligible team. Otherwise
+they reuse the catalog and restore assets; routine builds are not live data refreshes.
 
 With `YOUTUBE_API_KEY` loaded, run `REFRESH=1 npm run import:catalog` locally for
 a full-history rebuild and YouTube recrawl. To recrawl YouTube while retaining
