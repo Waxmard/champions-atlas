@@ -1,5 +1,13 @@
 # Changelog
 
+## [3.2.1](https://github.com/Waxmard/champions-atlas/compare/v3.2.0...v3.2.1) (2026-11-05)
+
+
+### CI
+
+* deploy TestFlight builds only on published releases ([#79](https://github.com/Waxmard/champions-atlas/issues/79)) ([d06c0d4](https://github.com/Waxmard/champions-atlas/commit/d06c0d4926a9022b6c5c3c5e52911e542c23523c))
+* enable releases for CI changes ([88d168e](https://github.com/Waxmard/champions-atlas/commit/88d168e590d01a23a69fe993c6ae345bcdf6edd9))
+
 ## [3.2.0](https://github.com/Waxmard/champions-atlas/compare/v3.1.0...v3.2.0) (2026-11-04)
 
 
