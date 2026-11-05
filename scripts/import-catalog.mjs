@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parsePaste } from '../src/lib/paste.ts';
 import { restoreCatalogAssets } from './sync-assets.mjs';
 import { resolveBattleForm } from '../src/lib/battle-forms.ts';
-import { normalize } from '../src/lib/catalog.ts';
+import { isExcludedMasterBallTeam, normalize } from '../src/lib/catalog.ts';
 import {
   eligibilitySourceTexts,
   rejectIneligibleTeam,
@@ -741,9 +741,9 @@ async function main() {
     linkedSpreadPairs(admittedYoutubeCandidates),
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
-  const catalogTeams = fullHistory
-    ? linked.teams
-    : [...linked.teams, ...frozenTeams];
+  const catalogTeams = [...linked.teams, ...frozenTeams].filter(
+    (team) => !isExcludedMasterBallTeam(team, currentRegulation)
+  );
   if (linked.spread_conflict)
     reasons.set('spread_conflict', linked.spread_conflict);
   const sources = mergeSources(
@@ -781,7 +781,7 @@ async function main() {
     );
   if (!fullHistory)
     console.log(
-      `Frozen history: ${frozenTeams.length} teams retained; refreshing ${currentRegulation}.`
+      `Frozen history: ${frozenTeams.length} teams considered; refreshing ${currentRegulation}.`
     );
   console.log(`Linked creator spreads: ${linked.enriched} members enriched.`);
   console.log(

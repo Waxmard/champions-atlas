@@ -5,6 +5,7 @@ import bundledCatalog, {
   type CatalogBundle,
   type CatalogData,
 } from './catalog-data.ts';
+import { isExcludedMasterBallTeam } from './catalog.ts';
 import type { TeamTagsIndex } from './tags.ts';
 
 const DB_NAME = 'champions-atlas-catalog';
@@ -12,8 +13,17 @@ const STORE_NAME = 'bundles';
 const ACTIVE_KEY = 'active';
 const VISIBILITY_THROTTLE_MS = 5 * 60 * 1000;
 
+function admittedCatalog(catalog: CatalogData): CatalogData {
+  return {
+    ...catalog,
+    teams: catalog.teams.filter(
+      (team) => !isExcludedMasterBallTeam(team, catalog.currentRegulation)
+    ),
+  };
+}
+
 class CatalogRuntimeState {
-  catalog = $state.raw<CatalogData>(bundledCatalog);
+  catalog = $state.raw<CatalogData>(admittedCatalog(bundledCatalog));
   tags = $state.raw<TeamTagsIndex>(bundledTags);
   ready = $state(false);
 }
@@ -102,7 +112,7 @@ function applyValidatedBundle(
   bundle: CatalogBundle,
   bundleHash?: string
 ): void {
-  catalogState.catalog = bundle;
+  catalogState.catalog = admittedCatalog(bundle);
   catalogState.tags = bundle.tags;
   activeBundleHash = bundleHash ?? bundle.bundleHash;
 }
