@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   eligibilitySourceTexts,
+  rejectIneligibleTeam,
   teamEligibilityError,
 } from '../scripts/champions-eligibility.mjs';
 import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
@@ -24,6 +25,47 @@ const team = (regulation, pokemon = baseline) => ({
 });
 const withFirst = (regulation, member) =>
   team(regulation, [member, ...baseline.slice(1)]);
+
+test('catalog admission excludes only the identified event and counts its reason', () => {
+  const valid = team('M-C');
+  const eventId = 'poch-tournament-6ab431f2e905c1db68748c9c-';
+  const excluded = [
+    { id: `${eventId}1` },
+    { id: `${eventId}27` },
+    { reports: [{ event: "Mudkip's Marsh Pit #6" }] },
+    { reports: [{ event: 'Mudkip’s Marsh Pit #6' }] },
+  ];
+  for (const fields of excluded)
+    assert.equal(
+      teamEligibilityError({ ...valid, ...fields }),
+      'Excluded catalog event.'
+    );
+
+  for (const fields of [
+    { id: `${eventId}0` },
+    { id: `${eventId}01` },
+    { id: `${eventId}1-extra` },
+    { id: 'poch-tournament-normal-1', reports: [{ event: 'Spring Cup' }] },
+    { reports: [{ event: 'Mudkip’s Marsh Pit #5' }] },
+    { reports: [{ event: 'Mudkip’s Marsh Pit #60' }] },
+  ])
+    assert.equal(teamEligibilityError({ ...valid, ...fields }), null);
+
+  assert.equal(
+    teamEligibilityError(null),
+    'Regulation missing: team is malformed.'
+  );
+  const reasons = [];
+  const noteReason = (reason) => reasons.push(reason);
+  assert.equal(
+    rejectIneligibleTeam('Fixture', { ...valid, ...excluded[0] }, noteReason),
+    true
+  );
+  const ineligible = withFirst('M-C', 'Brute Bonnet');
+  assert.equal(rejectIneligibleTeam('Fixture', ineligible, noteReason), true);
+  assert.equal(rejectIneligibleTeam('Fixture', valid, noteReason), false);
+  assert.deepEqual(reasons, ['excluded_event', 'ineligible_species']);
+});
 
 test('checked-in snapshots retain every official roster row and Mega entry', () => {
   const snapshots = eligibilitySourceTexts.map((source) => JSON.parse(source));

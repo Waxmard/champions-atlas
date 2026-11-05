@@ -342,15 +342,14 @@ including previously stored bundles, without changing saved teams or bundle data
 
 ## Ranking and discovery
 
-Automatic team and set suggestions order non-custom teams ahead of known
-custom-rule records, known regulations ahead of Unknown, then achievement band,
-current-regulation status, and credential merit. A supplied recommendation
-tiebreak follows merit; publication time and team ID settle remaining ties.
-**Newest shared** is a deliberate date-only sort.
+Automatic team and set suggestions order known regulations ahead of Unknown, then
+achievement band, current-regulation status, and credential merit. A supplied
+recommendation tiebreak follows merit; publication time and team ID settle
+remaining ties.
 
-Browse's **Recommended** order keeps the same custom-rule and unknown-regulation
-guards, then ranks resource groups: complete EVs with a video, complete EVs
-without a video, a video without complete EVs, and neither. Complete EVs require
+Browse orders known regulations ahead of Unknown, then ranks resource groups:
+complete EVs with a video, complete EVs without a video, a video without complete
+EVs, and neither. Complete EVs require
 exactly six Pokémon with valid 66-point allocations, with each stat from 0 to 32;
 Nature is not required. Attributed imported EV additions count as working sets.
 A video is a direct HTTPS YouTube watch, live, Shorts, or youtu.be link with a
@@ -400,14 +399,11 @@ then larger field and finish. Other reported results and no-result teams have no
 inferred credential merit. Publication time cannot promote a lower achievement
 band above a higher one.
 
-Known custom-rule records match Mudkip's Marsh Pit #6 by normalized event name or
-its published Poch record IDs. They are hidden from Browse by default; the Include
-custom-rule teams option reveals them there. Automatic recommendations always
-exclude these records, regardless of the Browse option. They remain available by
-direct link, keep their source attribution, and can be saved or used as teams.
-Their displayed evidence receives reported-grade treatment. This policy does not
-classify other similarly named events or infer standard-format legality; unknown
-restrictions are not evidence of standard rules.
+The catalog excludes Mudkip's Marsh Pit #6 by normalized event name or its
+published Poch record IDs. This applies to imports and catalog views, including
+previously stored bundles. Other Poch tournaments and similarly named events
+remain eligible. Saved copies remain usable, as do user-created teams and
+Poképaste imports. This exclusion does not establish standard-format legality.
 
 Cached catalogs without entrant metadata remain readable and use unknown field
 size conservatively. Event aliases and result labels describe source claims; they

@@ -69,7 +69,7 @@ test('member constraints apply together to the same member; every member is requ
   assert.notEqual(normalize('Nidoran♀'), normalize('Nidoran♂'));
 });
 
-test('filter URLs round-trip with sort/regulation and reject malformed constraints', () => {
+test('filter URLs preserve unrelated parameters and reject malformed constraints', () => {
   const filters = [
     {
       pokemon: 'Incineroar',
@@ -79,11 +79,11 @@ test('filter URLs round-trip with sort/regulation and reject malformed constrain
     },
   ];
   const params = writeFilters(
-    new URLSearchParams('sort=recent&regulation=M-B&page=4'),
+    new URLSearchParams('ref=shared&regulation=M-B&page=4'),
     filters
   );
   assert.deepEqual(readFilters(params), filters);
-  assert.equal(params.get('sort'), 'recent');
+  assert.equal(params.get('ref'), 'shared');
   assert.equal(params.get('regulation'), 'M-B');
   assert.equal(params.has('page'), false);
   assert.throws(() => readFilters(new URLSearchParams('member=broken')));
@@ -288,7 +288,7 @@ test('legacy Mega URLs restore and write canonical labels without changing const
         move: tuple[3],
       };
       assert.deepEqual(readFilters(params), [expected]);
-      const written = writeFilters(new URLSearchParams('page=4&sort=recent'), [
+      const written = writeFilters(new URLSearchParams('page=4&ref=shared'), [
         { ...expected, pokemon: legacy },
       ]);
       assert.deepEqual(JSON.parse(written.get('member')), [
@@ -296,7 +296,7 @@ test('legacy Mega URLs restore and write canonical labels without changing const
         ...tuple.slice(1),
       ]);
       assert.equal(written.has('page'), false);
-      assert.equal(written.get('sort'), 'recent');
+      assert.equal(written.get('ref'), 'shared');
     }
   }
   for (const names of [

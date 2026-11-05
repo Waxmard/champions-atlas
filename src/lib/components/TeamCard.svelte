@@ -2,11 +2,7 @@
   import type { Snippet } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import {
-    isCustomRulesTeam,
-    regulationLabel,
-    type Team,
-  } from '#lib/catalog.js';
+  import { regulationLabel, type Team } from '#lib/catalog.js';
   import TeamSummary from './TeamSummary.svelte';
 
   let {
@@ -26,7 +22,6 @@
     href?: `wishlist?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
   } = $props();
-  const custom = $derived(isCustomRulesTeam(team));
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
   function open(event: MouseEvent) {
     if (
@@ -59,7 +54,7 @@
   >
     {@render content()}
   </a>
-  {#if leadingActions || trailingActions || showRegulation || custom || team.publishedAt}
+  {#if leadingActions || trailingActions || showRegulation || team.publishedAt}
     <div
       class="mx-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-t py-2"
     >
@@ -68,7 +63,7 @@
           {@render leadingActions()}
         </div>
       {/if}
-      {#if showRegulation || custom || team.publishedAt}
+      {#if showRegulation || team.publishedAt}
         <div
           class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
             ? 'col-start-2 justify-center text-center'
@@ -77,7 +72,6 @@
           {#if showRegulation}<span class="term"
               >{regulationLabel(team.regulation)}</span
             >{/if}
-          {#if custom}<span class="term">Custom rules</span>{/if}
           {#if team.publishedAt}<span class="provenance"
               >{team.publishedAt}</span
             >{/if}

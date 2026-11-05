@@ -385,19 +385,15 @@ test('Master Ball removal uses recognized ladder labels and explicit trimmed div
     );
 });
 
-test('custom and unknown guards precede Global Challenge results and Browse resources', () => {
+test('unknown regulation follows known teams despite Global Challenge results and Browse resources', () => {
   const ordinary = team('ordinary', [report('Local event', 'result')], {
     members: pokemon.map((species) => ({ pokemon: species, spread: null })),
   });
   const unknown = team('unknown', [gc('1st')], { regulation: 'Unknown' });
-  const custom = team('poch-tournament-6ab431f2e905c1db68748c9c-1', [
-    gc('1st'),
-  ]);
   for (const compare of comparators)
-    assert.deepEqual(order([custom, unknown, ordinary], compare), [
+    assert.deepEqual(order([unknown, ordinary], compare), [
       'ordinary',
       'unknown',
-      custom.id,
     ]);
 });
 

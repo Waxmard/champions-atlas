@@ -7,10 +7,11 @@
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
+  import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import type { Team } from '#lib/catalog.js';
+  import { matchesTeam, type MemberFilter, type Team } from '#lib/catalog.js';
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
@@ -33,6 +34,11 @@
     type SavedTeam,
   } from '#lib/workbench.js';
   let entries = $state<SavedTeam[]>([]);
+  let filters = $state<MemberFilter[]>([]);
+  const pickerTeams = $derived(entries.map(displayTeam));
+  const visibleEntries = $derived(
+    entries.filter((entry) => matchesTeam(entry, filters))
+  );
   let ready = $state(false),
     loaded = $state(false),
     storageError = $state(''),
@@ -113,6 +119,15 @@
       name: entry.name,
       members: entry.members,
     } as Team;
+  }
+
+  function changeFilters(next: MemberFilter[]) {
+    filters = next.map(({ pokemon }) => ({
+      pokemon,
+      item: '',
+      ability: '',
+      move: '',
+    }));
   }
 
   function refresh() {
@@ -446,7 +461,7 @@
     pendingId = entry.id;
     errorMessage = '';
     invalidLink = false;
-    const index = entries.findIndex(({ id }) => id === entry.id);
+    const index = visibleEntries.findIndex(({ id }) => id === entry.id);
     const wasSelected = selectedId === entry.id;
     try {
       removeWishlistedTeam(localStorage, entry.id);
@@ -473,7 +488,7 @@
     }
     await tick();
     const next = document.querySelectorAll<HTMLElement>('[data-wishlist-use]')[
-      Math.min(index, entries.length - 1)
+      Math.min(index, visibleEntries.length - 1)
     ];
     if (next) {
       next.focus({ preventScroll: true });
@@ -635,9 +650,28 @@
         Loading Wishlist…
       </p>
     {:else if !storageError}
-      {#if entries.length}
+      <PokemonFilters teams={pickerTeams} {filters} onchange={changeFilters} />
+      <div
+        class="mt-5 flex items-baseline justify-between gap-3 border-b pb-1.5"
+      >
+        <p
+          aria-live="polite"
+          aria-atomic="true"
+          class="value font-semibold tracking-wide"
+        >
+          {visibleEntries.length} matching {visibleEntries.length === 1
+            ? 'team'
+            : 'teams'}
+        </p>
+        {#if filters.length}
+          <Button type="button" variant="quiet" onclick={() => (filters = [])}
+            >Clear filters</Button
+          >
+        {/if}
+      </div>
+      {#if visibleEntries.length}
         <ul class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {#each entries as entry (entry.id)}
+          {#each visibleEntries as entry (entry.id)}
             <li class="min-w-0">
               <TeamCard
                 team={displayTeam(entry)}
@@ -675,6 +709,15 @@
             </li>
           {/each}
         </ul>
+      {:else if entries.length}
+        <div class="plate mt-2 max-w-xl px-4 py-3">
+          <h2 class="text-lg leading-tight font-extrabold">
+            No matching teams
+          </h2>
+          <p class="mt-2 text-[0.9375rem] leading-relaxed">
+            Remove a Pokémon or clear filters to see more teams.
+          </p>
+        </div>
       {:else}
         <p
           class="plate mt-2 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed"

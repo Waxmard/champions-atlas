@@ -106,9 +106,11 @@ scan failures.
 
 ## Using the app
 
-Browse by Pokémon and set filters; filters, sorting, and position survive opening
-a team and returning. Use the **Wishlist** button on a catalog team to add or
-remove its bookmark; removal immediately deletes that saved copy and its edits.
+Browse by Pokémon, regulation, and set filters; filters and position survive
+opening a team and returning. Wishlist has its own Pokémon search over saved
+rosters, which resets on reload. Use the **Wishlist** button on a catalog team to
+add or remove its bookmark; removal immediately deletes that saved copy and its
+edits.
 From a Poképaste page, share the link to **Champion’s Atlas**, select
 **Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
 open **Wishlist actions** and choose **Add a Poképaste**, then enter a

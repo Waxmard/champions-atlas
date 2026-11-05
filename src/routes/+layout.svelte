@@ -224,8 +224,8 @@
   function canonicalizing(from: URL, to: URL): boolean {
     if (from.pathname !== to.pathname) return false;
     if (from.pathname === resolve('/'))
-      return !['member', 'regulation', 'sort', 'page', 'type', 'custom'].some(
-        (key) => from.searchParams.has(key)
+      return !['member', 'regulation', 'page'].some((key) =>
+        from.searchParams.has(key)
       );
     if (from.pathname !== resolve('my-teams')) return false;
     const selected = from.searchParams.get('team');

@@ -185,7 +185,7 @@ const priorityCompare = (a: Priority, b: Priority) => {
   return 0;
 };
 
-export function isCustomRulesTeam(team: {
+export function isExcludedCatalogEvent(team: {
   id?: string;
   reports?: readonly Report[];
 }): boolean {
@@ -411,7 +411,7 @@ export interface TeamEvidence extends ClassifiedEvidence {
 }
 
 export function bestEvidence(
-  team: Pick<Team, 'reports' | 'regulation'> & Partial<Pick<Team, 'id'>>,
+  team: Pick<Team, 'reports' | 'regulation'>,
   current: string
 ): TeamEvidence {
   let best: TeamEvidence | undefined;
@@ -423,8 +423,7 @@ export function bestEvidence(
     if (!best || priorityCompare(candidate.priority, best.priority) < 0)
       best = candidate;
   }
-  const result = best || { ...noEvidence(), event: '' };
-  return isCustomRulesTeam(team) ? { ...result, level: 3 } : result;
+  return best || { ...noEvidence(), event: '' };
 }
 
 const evidenceCache = new WeakMap<
@@ -493,7 +492,7 @@ export function listingReason(
 
 export function sourceName(
   team: Pick<Team, 'reports' | 'regulation'> &
-    Partial<Pick<Team, 'id' | 'sheetIds' | 'publishedAt'>>,
+    Partial<Pick<Team, 'sheetIds' | 'publishedAt'>>,
   current: string
 ): string {
   const best = bestEvidence(team, current);
@@ -563,9 +562,6 @@ export function compareTeams(
   current: string,
   tiebreak = 0
 ): number {
-  const customOrder =
-    Number(isCustomRulesTeam(a)) - Number(isCustomRulesTeam(b));
-  if (customOrder) return customOrder;
   const unknownOrder =
     Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
   if (unknownOrder) return unknownOrder;
@@ -673,9 +669,6 @@ function browseRankingOf(team: Team, current: string) {
 }
 
 export function compareBrowseTeams(a: Team, b: Team, current: string): number {
-  const customOrder =
-    Number(isCustomRulesTeam(a)) - Number(isCustomRulesTeam(b));
-  if (customOrder) return customOrder;
   const unknownOrder =
     Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
   if (unknownOrder) return unknownOrder;

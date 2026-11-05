@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { parsePaste } from '../src/lib/paste.ts';
 import { restoreCatalogAssets } from './sync-assets.mjs';
 import { resolveBattleForm } from '../src/lib/battle-forms.ts';
+import { isExcludedCatalogEvent } from '../src/lib/catalog.ts';
 import { isExcludedMasterBallTeam, normalize } from '../src/lib/catalog.ts';
 import {
   eligibilitySourceTexts,
@@ -742,7 +743,9 @@ async function main() {
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
   const catalogTeams = [...linked.teams, ...frozenTeams].filter(
-    (team) => !isExcludedMasterBallTeam(team, currentRegulation)
+    (team) =>
+      !isExcludedCatalogEvent(team) &&
+      !isExcludedMasterBallTeam(team, currentRegulation)
   );
   if (linked.spread_conflict)
     reasons.set('spread_conflict', linked.spread_conflict);

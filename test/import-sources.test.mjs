@@ -549,11 +549,19 @@ test('index payloads are admitted only for the candidate Champions regulation', 
     reasonChecker('roster_mismatch')
   );
 });
-test('cached import rejects ineligible sheet, public, and Poch teams before assets', async () => {
+test('cached import excludes the event and ineligible teams before assets', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'atlas-eligibility-import-'));
   try {
     const illegalPokemon = ['Brute Bonnet', ...mcPokemon.slice(1)];
     const illegalItems = ['Booster Energy', ...mcItems.slice(1)];
+    const tournament = (id, event) => ({
+      id,
+      player: id,
+      event,
+      format: 'M-C',
+      rule: 'double',
+      team: mcPokemon.map((name) => ({ name })),
+    });
     const badSheetUrl = 'https://pokepast.es/cccccccccccccccc';
     const pokemonIds = {
       Gengar: 94,
@@ -621,13 +629,21 @@ test('cached import rejects ineligible sheet, public, and Poch teams before asse
         pasteText(devonPokemon, devonItems),
         'Format: gen9championsvgc2026regma'
       ),
-      'poch-leaderboard.html': pochPage([
-        pochTeamRow('unknown-valid', mcPokemon),
-        pochTeamRow('unknown-ineligible', [
-          'Vivillon-Pokeball',
-          ...mcPokemon.slice(1),
-        ]),
-      ]),
+      'poch-leaderboard.html': pochPage(
+        [
+          pochTeamRow('unknown-valid', mcPokemon),
+          pochTeamRow('unknown-ineligible', [
+            'Vivillon-Pokeball',
+            ...mcPokemon.slice(1),
+          ]),
+        ],
+        [
+          tournament('6ab431f2e905c1db68748c9c-1', 'Spring Cup'),
+          tournament('event-6', "Mudkip's Marsh Pit #6"),
+          tournament('event-5', 'Mudkip’s Marsh Pit #5'),
+          tournament('event-60', 'Mudkip’s Marsh Pit #60'),
+        ]
+      ),
       [`${badSheetUrl.split('/').at(-1)}.json`]: pokePasteJson(
         pasteText(illegalPokemon, illegalItems),
         'Format: gen9vgcregulationmc'
@@ -662,6 +678,14 @@ test('cached import rejects ineligible sheet, public, and Poch teams before asse
     );
     assert.ok(!catalog.teams.some(({ sheetIds }) => sheetIds.includes('MC2')));
     assert.ok(catalog.teams.some(({ id }) => id === 'poch-x-unknown-valid'));
+    for (const id of ['event-5', 'event-60'])
+      assert.ok(
+        catalog.teams.some((team) => team.id === `poch-tournament-${id}`)
+      );
+    for (const id of ['6ab431f2e905c1db68748c9c-1', 'event-6'])
+      assert.ok(
+        !catalog.teams.some((team) => team.id === `poch-tournament-${id}`)
+      );
     assert.match(output, /1\/1 pastes enriched/);
     assert.match(
       output,
@@ -669,9 +693,10 @@ test('cached import rejects ineligible sheet, public, and Poch teams before asse
     );
     assert.match(
       output,
-      /Poch\.ms: 2 discovered — 0 accepted, 0 retained, 2 skipped, 0 merged\./
+      /Poch\.ms: 6 discovered — 2 accepted, 0 retained, 4 skipped, 0 merged\./
     );
     assert.match(output, /ineligible_species=2/);
+    assert.match(output, /excluded_event=2/);
     let assetRequests = JSON.parse(
       await readFile(fetchEnv.MOCK_FETCH_LOG, 'utf8')
     ).map((address) => new URL(address));
@@ -727,6 +752,18 @@ test('cached import rejects ineligible sheet, public, and Poch teams before asse
         pathname.endsWith('/ibooster_energy.png')
       )
     );
+
+    const historical = catalog.teams.find(
+      ({ regulation }) => regulation === 'M-B'
+    );
+    assert.ok(historical);
+    const excludedId = 'poch-tournament-6ab431f2e905c1db68748c9c-2';
+    catalog.teams.push({ ...historical, id: excludedId });
+    await writeFile(outputPath, JSON.stringify(catalog));
+    const afterExcludedPrior = runImport(directory, fetchEnv, ['--if-missing']);
+    catalog = await readCatalog(directory);
+    assert.ok(!catalog.teams.some(({ id }) => id === excludedId));
+    assert.match(afterExcludedPrior, /excluded_event=3/);
 
     const mbTeam = catalog.teams.find(({ regulation }) => regulation === 'M-B');
     assert.ok(mbTeam);

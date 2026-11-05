@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import {
   compareTeams,
-  isCustomRulesTeam,
   isPasteUrl,
   normalize,
   pokemonId,
@@ -407,7 +406,6 @@ export function catalogSuggestions(
   const eq = (a: string | null, b: string | null) =>
     Boolean(a && b && normalize(a) === normalize(b));
   for (const team of teams) {
-    if (isCustomRulesTeam(team)) continue;
     const isCurrent = team.regulation === currentRegulation;
     let teamSim = 0;
     if (teammates.length) {
@@ -528,7 +526,6 @@ export function pokemonSuggestions(
   tags?: TeamTagsIndex,
   query = ''
 ): PokemonSuggestion[] {
-  teams = teams.filter((team) => !isCustomRulesTeam(team));
   const excludeSpecies = new Set(teammates.map((t) => normalize(t.pokemon)));
   if (excludePokemon) {
     excludeSpecies.add(normalize(excludePokemon));
@@ -685,7 +682,6 @@ function catalogSpreadIndex(
   if (cached && cached.regulation === regulation) return cached.bySpecies;
   const bySpecies = new Map<string, Map<string, CatalogSpreadOption>>();
   for (const team of teams) {
-    if (isCustomRulesTeam(team)) continue;
     const isCurrent = team.regulation === regulation;
     for (const member of team.members) {
       const values = parseChampionsSpread(member.spread);
