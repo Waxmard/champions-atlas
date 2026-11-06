@@ -1,6 +1,7 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
 import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
+import { splitTeamName, withoutDivision } from './team-name.ts';
 
 export interface SpreadSource {
   pasteUrl: string;
@@ -97,33 +98,35 @@ export function teamHeading(
   source: { name: string; reports?: readonly Report[] } | null
 ): { title: string; context: string } {
   const original = { title: name, context: '' };
-  if (!source || name !== source.name || !source.reports) return original;
-
-  let heading: { title: string; context: string } | undefined;
-  for (const { event, rank } of source.reports) {
-    if (!event.trim()) continue;
-    const delimiter = ` ${event} `;
-    const index = name.lastIndexOf(delimiter);
-    if (index < 1) continue;
-    const label = name
-      .slice(0, index)
-      .replace(/['’]s$/, '')
-      .trim();
-    const suffix = name
-      .slice(index + delimiter.length)
-      .match(
-        /^(?:(?:Champion|Runner[ -]Up|Top \d+|\d+(?:st|nd|rd|th)(?: & \d+(?:st|nd|rd|th))*)(?: Place)? )?Team(?: (V\d+))?(?: (\([^()]+\)))?$/i
-      );
-    if (!label || !suffix) continue;
-
-    const title = [label, suffix[1], suffix[2]].filter(Boolean).join(' ');
-    const result = rank.trim();
-    const context = result ? `${event} · ${result}` : event;
-    if (heading && (heading.title !== title || heading.context !== context))
-      return original;
-    heading = { title, context };
+  if (!source || name !== source.name) return original;
+  const parsed = splitTeamName(name);
+  if (!parsed) return original;
+  const ranks = new Set<string>();
+  const events = new Set<string>();
+  for (const report of source.reports ?? []) {
+    const event = report.event.trim();
+    if (!event) continue;
+    if (
+      event !== parsed.middle &&
+      withoutDivision(event) !== withoutDivision(parsed.middle)
+    )
+      continue;
+    events.add(event);
+    const rank = report.rank.trim();
+    if (rank) ranks.add(rank);
   }
-  return heading ?? original;
+  if (ranks.size > 1) return original;
+  const result = [...ranks][0] ?? parsed.placement;
+  const event = [
+    events.size === 1 ? [...events][0] : parsed.middle,
+    parsed.division,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return {
+    title: parsed.title,
+    context: [event, result].filter(Boolean).join(' · '),
+  };
 }
 
 export function readFilters(params: URLSearchParams): MemberFilter[] {

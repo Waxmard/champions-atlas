@@ -37,73 +37,195 @@ const team = (regulation, event, rank) => ({
   pasteNotes: null,
 });
 
-test('team headings use structured event results while preserving names and variants', () => {
+test('team headings compact possessive team names and keep structured results', () => {
   const cases = [
     [
       "maGicaUra's Ranked Season M-4 1st Place Team",
-      'Ranked Season M-4',
-      '1st',
-      'maGicaUra',
-      'Ranked Season M-4 · 1st',
+      [['Ranked Season M-4', '1st']],
+      { title: 'maGicaUra', context: 'Ranked Season M-4 · 1st' },
     ],
     [
       "online's Ranked Season M-6 Top 8 Team",
-      'Ranked Season M-6',
-      '6th',
-      'online',
-      'Ranked Season M-6 · 6th',
+      [['Ranked Season M-6', '6th']],
+      { title: 'online', context: 'Ranked Season M-6 · 6th' },
     ],
     [
       "Atalanta's Ranked Season M-4 68th & 100th Place Team",
-      'Ranked Season M-4',
-      '68th & 100th',
-      'Atalanta',
-      'Ranked Season M-4 · 68th & 100th',
+      [['Ranked Season M-4', '68th & 100th']],
+      { title: 'Atalanta', context: 'Ranked Season M-4 · 68th & 100th' },
     ],
-    ["Player's Cup 1st Place Team V1", 'Cup', '1st', 'Player V1', 'Cup · 1st'],
+    [
+      "JPTK-VGC's 2027 Global Challenge I Top 4 Team",
+      [
+        ['2027 Global Challenge I (Seniors)', '3rd'],
+        ['YouTube video', ''],
+      ],
+      {
+        title: 'JPTK-VGC',
+        context: '2027 Global Challenge I (Seniors) · 3rd',
+      },
+    ],
+    [
+      "noahampalaya's 2027 Global Challenge I (Seniors) Top 8 Team",
+      [['2027 Global Challenge I (Seniors)', '7th']],
+      {
+        title: 'noahampalaya',
+        context: '2027 Global Challenge I (Seniors) · 7th',
+      },
+    ],
+    [
+      "CloverBells' Raichu-Y Frosslass Team",
+      [['Video', '']],
+      { title: 'CloverBells', context: 'Raichu-Y Frosslass' },
+    ],
+    [
+      "Nirinbo's Battle Cruise Top 8 Team",
+      [['TeamAqua ASD Battle Cruise', 'Top 8']],
+      { title: 'Nirinbo', context: 'Battle Cruise · Top 8' },
+    ],
+    [
+      "Trimoxis' Gdańsk Regional 2027 Top 64 Team",
+      [
+        ['Gdańsk Regional 2027', '41st'],
+        ['Gdańsk Regional 2027', ''],
+      ],
+      { title: 'Trimoxis', context: 'Gdańsk Regional 2027 · 41st' },
+    ],
+    [
+      "javivarela56's Gdańsk Regional 2027 Champion Team",
+      [
+        ['Gdańsk Regional 2027', 'Champion'],
+        ['Gdańsk Regional 2027', ''],
+      ],
+      { title: 'javivarela56', context: 'Gdańsk Regional 2027 · Champion' },
+    ],
+    [
+      "Matteo B.'s Nice Regional 2027 Champion (Seniors) Team",
+      [
+        ['Nice Regional 2027', 'Champion'],
+        ['Nice Regional 2027', ''],
+      ],
+      {
+        title: 'Matteo B.',
+        context: 'Nice Regional 2027 (Seniors) · Champion',
+      },
+    ],
+    [
+      "Chompy's Recreation of Andrew Cavanah's Louisville Regional 2027 Top 64 Team",
+      [
+        ['Video', ''],
+        ['YouTube video', ''],
+      ],
+      {
+        title: 'Chompy',
+        context:
+          "Recreation of Andrew Cavanah's Louisville Regional 2027 · Top 64",
+      },
+    ],
+    [
+      "Wowyang's TeraSquare #97 Runner Up Team",
+      [['', '']],
+      { title: 'Wowyang', context: 'TeraSquare #97 · Runner Up' },
+    ],
+    [
+      "O'Brien's Cup Team",
+      [['Cup', '1st']],
+      { title: "O'Brien", context: 'Cup · 1st' },
+    ],
+    [
+      "Player's Cup 1st Place Team V1",
+      [['Cup', '1st']],
+      { title: 'Player V1', context: 'Cup · 1st' },
+    ],
     [
       "Player's Cup 3rd Place Team (Annihilape)",
-      'Cup',
-      '  3rd  ',
-      'Player (Annihilape)',
-      'Cup · 3rd',
+      [['Cup', '  3rd  ']],
+      { title: 'Player (Annihilape)', context: 'Cup · 3rd' },
     ],
     [
       'Mary Jane’s Cup champion place tEaM v12 (Annihilape)',
-      'Cup',
-      'Winner',
-      'Mary Jane v12 (Annihilape)',
-      'Cup · Winner',
+      [['Cup', 'Winner']],
+      { title: 'Mary Jane v12 (Annihilape)', context: 'Cup · Winner' },
     ],
-    ['Two Word Name Cup Team', 'Cup', ' ', 'Two Word Name', 'Cup'],
-    ["Player's Cup Champion Team", 'Cup', '1st', 'Player', 'Cup · 1st'],
-    ["Player's Cup Runner Up Team", 'Cup', '2nd', 'Player', 'Cup · 2nd'],
-    ["Player's Cup Runner-Up Team", 'Cup', '2nd', 'Player', 'Cup · 2nd'],
-    ["Player's Cup 2nd Team", 'Cup', '2nd', 'Player', 'Cup · 2nd'],
-    ["Player's Cup 4th Team", 'Cup', '4th', 'Player', 'Cup · 4th'],
-    ["Player's Cup 11th Team", 'Cup', '11th', 'Player', 'Cup · 11th'],
+    [
+      "Player's Cup Champion Team",
+      [['Cup', '1st']],
+      { title: 'Player', context: 'Cup · 1st' },
+    ],
+    [
+      "Player's Cup Runner Up Team",
+      [['Cup', '2nd']],
+      { title: 'Player', context: 'Cup · 2nd' },
+    ],
+    [
+      "Player's Cup Runner-Up Team",
+      [['Cup', '2nd']],
+      { title: 'Player', context: 'Cup · 2nd' },
+    ],
+    [
+      "Player's Cup 2nd Team",
+      [['Cup', '2nd']],
+      { title: 'Player', context: 'Cup · 2nd' },
+    ],
+    [
+      "Player's Cup 4th Team",
+      [['Cup', '4th']],
+      { title: 'Player', context: 'Cup · 4th' },
+    ],
+    [
+      "Player's Cup 11th Team",
+      [['Cup', '11th']],
+      { title: 'Player', context: 'Cup · 11th' },
+    ],
     [
       "Player's Round (+) [A] Team",
-      'Round (+) [A]',
-      '',
-      'Player',
-      'Round (+) [A]',
+      [['Round (+) [A]', '']],
+      { title: 'Player', context: 'Round (+) [A]' },
     ],
-    ["Player Cup Partner's Cup Team", 'Cup', '', 'Player Cup Partner', 'Cup'],
+    [
+      "Player Cup Partner's Cup Team",
+      [['Cup', '']],
+      { title: 'Player Cup Partner', context: 'Cup' },
+    ],
+    [
+      "Player's Cup Finalist Team",
+      [['Cup', '1st']],
+      { title: 'Player', context: 'Cup Finalist' },
+    ],
+    [
+      "Player's Cup Top Eight Team",
+      [['Cup', '1st']],
+      { title: 'Player', context: 'Cup Top Eight' },
+    ],
+    [
+      "Player's Cup 1st and 2nd Place Team",
+      [['Cup', '1st']],
+      { title: 'Player', context: 'Cup 1st and 2nd Place' },
+    ],
+    [
+      "Player's Cup 1st Place Team",
+      [],
+      { title: 'Player', context: 'Cup · 1st' },
+    ],
+    [
+      "Player's Cup 1st Place Team",
+      [['cup', '1st']],
+      { title: 'Player', context: 'Cup · 1st' },
+    ],
   ];
-  for (const [name, event, rank, title, context] of cases) {
+  for (const [name, reports, expected] of cases) {
     const source = {
       name,
       creator: 'Jude Lee',
-      reports: [{ event, rank, sourceUrl: '' }],
+      reports: reports.map(([event, rank]) => ({ event, rank, sourceUrl: '' })),
     };
     const original = structuredClone(source);
-    assert.deepEqual(teamHeading(name, source), { title, context }, name);
+    assert.deepEqual(teamHeading(name, source), expected, name);
     assert.deepEqual(source, original);
   }
 });
 
-test('team headings leave unrecognized, renamed, and unsupported sources unchanged', () => {
+test('team headings leave renamed, custom, and unrecognized names unchanged', () => {
   const name = "Player's Cup 1st Place Team";
   const source = {
     name,
@@ -114,27 +236,12 @@ test('team headings leave unrecognized, renamed, and unsupported sources unchang
     title: 'My custom team',
     context: '',
   });
-  assert.deepEqual(teamHeading(name, { name }), { title: name, context: '' });
-  assert.deepEqual(teamHeading(name, { name, reports: [] }), {
-    title: name,
-    context: '',
-  });
   assert.deepEqual(teamHeading('My renamed team', source), {
     title: 'My renamed team',
     context: '',
   });
-  assert.deepEqual(
-    teamHeading(name, {
-      ...source,
-      reports: [{ ...source.reports[0], event: 'cup' }],
-    }),
-    { title: name, context: '' }
-  );
 
   for (const unrecognized of [
-    "Player's Cup Finalist Team",
-    "Player's Cup Top Eight Team",
-    "Player's Cup 1st and 2nd Place Team",
     "Player's Cup 1st Place Team Extra",
     "Player's Cup Team V",
     "Player's Cup Team V1 V2",
@@ -144,58 +251,39 @@ test('team headings leave unrecognized, renamed, and unsupported sources unchang
     '’s Cup Team',
     ' Cup Team',
     '  Cup Team',
+    'Two Word Name Cup Team',
+    "ayoitsbenji's WCG VGC Challenge Champion Team (Recreation of MichaelderBeste's VR October Challenge Champion Team)",
+    'Player  Team',
+    'Player   Team',
   ]) {
     assert.deepEqual(
-      teamHeading(unrecognized, { ...source, name: unrecognized }),
+      teamHeading(unrecognized, { name: unrecognized, reports: [] }),
       { title: unrecognized, context: '' },
       unrecognized
     );
   }
-  for (const [untitled, event] of [
-    ['Player  Team', ''],
-    ['Player   Team', ' '],
-  ]) {
-    assert.deepEqual(
-      teamHeading(untitled, {
-        name: untitled,
-        reports: [{ event, rank: '', sourceUrl: '' }],
-      }),
-      { title: untitled, context: '' }
-    );
-  }
 });
 
-test('team headings deduplicate reports and reject conflicting matches', () => {
+test('team headings reject conflicting ranks and ignore blank or unmatched reports', () => {
   const name = "Player's Cup Champion Team";
   const report = { event: 'Cup', rank: '1st', sourceUrl: '' };
-  const source = {
-    name,
-    reports: [report, { ...report, rank: ' 1st ', sourceUrl: 'other' }],
-  };
-  const original = structuredClone(source);
-  assert.deepEqual(teamHeading(name, source), {
-    title: 'Player',
-    context: 'Cup · 1st',
-  });
-  assert.deepEqual(
-    teamHeading(name, {
-      ...source,
-      reports: [{ ...report, event: 'Another event' }, report],
-    }),
-    { title: 'Player', context: 'Cup · 1st' }
-  );
-  assert.deepEqual(source, original);
-  for (const conflict of [
-    { ...report, rank: '2nd' },
-    { ...report, event: 'Cup Champion' },
+  const compacted = { title: 'Player', context: 'Cup · 1st' };
+  for (const reports of [
+    [report, { ...report, rank: ' 1st ', sourceUrl: 'other' }],
+    [{ ...report, event: 'Another event' }, report],
+    [report, { ...report, rank: '' }],
+    [report, { ...report, event: 'Cup Champion' }],
   ]) {
-    assert.deepEqual(
-      teamHeading(name, { ...source, reports: [report, conflict] }),
-      { title: name, context: '' }
-    );
+    const source = { name, reports };
+    const original = structuredClone(source);
+    assert.deepEqual(teamHeading(name, source), compacted);
+    assert.deepEqual(source, original);
   }
+  assert.deepEqual(
+    teamHeading(name, { name, reports: [report, { ...report, rank: '2nd' }] }),
+    { title: name, context: '' }
+  );
 });
-
 test('member constraints apply together to the same member; every member is required', () => {
   const fixture = team('M-C', '', '');
   const filters = [
