@@ -5,6 +5,7 @@ import {
   getMemberOptions,
   matchesTeam,
   readFilters,
+  teamHeading,
   writeFilters,
   normalize,
 } from '../src/lib/catalog.ts';
@@ -34,6 +35,165 @@ const team = (regulation, event, rank) => ({
   ],
   paste: null,
   pasteNotes: null,
+});
+
+test('team headings use structured event results while preserving names and variants', () => {
+  const cases = [
+    [
+      "maGicaUra's Ranked Season M-4 1st Place Team",
+      'Ranked Season M-4',
+      '1st',
+      'maGicaUra',
+      'Ranked Season M-4 · 1st',
+    ],
+    [
+      "online's Ranked Season M-6 Top 8 Team",
+      'Ranked Season M-6',
+      '6th',
+      'online',
+      'Ranked Season M-6 · 6th',
+    ],
+    [
+      "Atalanta's Ranked Season M-4 68th & 100th Place Team",
+      'Ranked Season M-4',
+      '68th & 100th',
+      'Atalanta',
+      'Ranked Season M-4 · 68th & 100th',
+    ],
+    ["Player's Cup 1st Place Team V1", 'Cup', '1st', 'Player V1', 'Cup · 1st'],
+    [
+      "Player's Cup 3rd Place Team (Annihilape)",
+      'Cup',
+      '  3rd  ',
+      'Player (Annihilape)',
+      'Cup · 3rd',
+    ],
+    [
+      'Mary Jane’s Cup champion place tEaM v12 (Annihilape)',
+      'Cup',
+      'Winner',
+      'Mary Jane v12 (Annihilape)',
+      'Cup · Winner',
+    ],
+    ['Two Word Name Cup Team', 'Cup', ' ', 'Two Word Name', 'Cup'],
+    ["Player's Cup Champion Team", 'Cup', '1st', 'Player', 'Cup · 1st'],
+    ["Player's Cup Runner Up Team", 'Cup', '2nd', 'Player', 'Cup · 2nd'],
+    ["Player's Cup Runner-Up Team", 'Cup', '2nd', 'Player', 'Cup · 2nd'],
+    ["Player's Cup 2nd Team", 'Cup', '2nd', 'Player', 'Cup · 2nd'],
+    ["Player's Cup 4th Team", 'Cup', '4th', 'Player', 'Cup · 4th'],
+    ["Player's Cup 11th Team", 'Cup', '11th', 'Player', 'Cup · 11th'],
+    [
+      "Player's Round (+) [A] Team",
+      'Round (+) [A]',
+      '',
+      'Player',
+      'Round (+) [A]',
+    ],
+    ["Player Cup Partner's Cup Team", 'Cup', '', 'Player Cup Partner', 'Cup'],
+  ];
+  for (const [name, event, rank, title, context] of cases) {
+    const source = {
+      name,
+      creator: 'Jude Lee',
+      reports: [{ event, rank, sourceUrl: '' }],
+    };
+    const original = structuredClone(source);
+    assert.deepEqual(teamHeading(name, source), { title, context }, name);
+    assert.deepEqual(source, original);
+  }
+});
+
+test('team headings leave unrecognized, renamed, and unsupported sources unchanged', () => {
+  const name = "Player's Cup 1st Place Team";
+  const source = {
+    name,
+    reports: [{ event: 'Cup', rank: '1st', sourceUrl: '' }],
+  };
+  assert.deepEqual(teamHeading(name, null), { title: name, context: '' });
+  assert.deepEqual(teamHeading('My custom team', null), {
+    title: 'My custom team',
+    context: '',
+  });
+  assert.deepEqual(teamHeading(name, { name }), { title: name, context: '' });
+  assert.deepEqual(teamHeading(name, { name, reports: [] }), {
+    title: name,
+    context: '',
+  });
+  assert.deepEqual(teamHeading('My renamed team', source), {
+    title: 'My renamed team',
+    context: '',
+  });
+  assert.deepEqual(
+    teamHeading(name, {
+      ...source,
+      reports: [{ ...source.reports[0], event: 'cup' }],
+    }),
+    { title: name, context: '' }
+  );
+
+  for (const unrecognized of [
+    "Player's Cup Finalist Team",
+    "Player's Cup Top Eight Team",
+    "Player's Cup 1st and 2nd Place Team",
+    "Player's Cup 1st Place Team Extra",
+    "Player's Cup Team V",
+    "Player's Cup Team V1 V2",
+    "Player's Cup Team (A) (B)",
+    "Player's Cup Team (A) V1",
+    "'s Cup Team",
+    '’s Cup Team',
+    ' Cup Team',
+    '  Cup Team',
+  ]) {
+    assert.deepEqual(
+      teamHeading(unrecognized, { ...source, name: unrecognized }),
+      { title: unrecognized, context: '' },
+      unrecognized
+    );
+  }
+  for (const [untitled, event] of [
+    ['Player  Team', ''],
+    ['Player   Team', ' '],
+  ]) {
+    assert.deepEqual(
+      teamHeading(untitled, {
+        name: untitled,
+        reports: [{ event, rank: '', sourceUrl: '' }],
+      }),
+      { title: untitled, context: '' }
+    );
+  }
+});
+
+test('team headings deduplicate reports and reject conflicting matches', () => {
+  const name = "Player's Cup Champion Team";
+  const report = { event: 'Cup', rank: '1st', sourceUrl: '' };
+  const source = {
+    name,
+    reports: [report, { ...report, rank: ' 1st ', sourceUrl: 'other' }],
+  };
+  const original = structuredClone(source);
+  assert.deepEqual(teamHeading(name, source), {
+    title: 'Player',
+    context: 'Cup · 1st',
+  });
+  assert.deepEqual(
+    teamHeading(name, {
+      ...source,
+      reports: [{ ...report, event: 'Another event' }, report],
+    }),
+    { title: 'Player', context: 'Cup · 1st' }
+  );
+  assert.deepEqual(source, original);
+  for (const conflict of [
+    { ...report, rank: '2nd' },
+    { ...report, event: 'Cup Champion' },
+  ]) {
+    assert.deepEqual(
+      teamHeading(name, { ...source, reports: [report, conflict] }),
+      { title: name, context: '' }
+    );
+  }
 });
 
 test('member constraints apply together to the same member; every member is required', () => {

@@ -9,7 +9,8 @@
   import WishlistList from '#lib/components/WishlistList.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { matchesTeam, type MemberFilter, type Team } from '#lib/catalog.js';
+  import { matchesTeam, teamHeading } from '#lib/catalog.js';
+  import type { MemberFilter, Team } from '#lib/catalog.js';
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
@@ -409,24 +410,15 @@
     void processShares(false);
   }
 
-  function reorder(
-    orderedIds: string[],
-    expectedIds: string[],
-    movedId: string
-  ): boolean {
+  function reorder(orderedIds: string[], expectedIds: string[]): boolean {
     errorMessage = '';
     invalidLink = false;
     try {
-      const saved = reorderWishlist(localStorage, orderedIds, expectedIds);
+      reorderWishlist(localStorage, orderedIds, expectedIds);
       refresh();
       if (orderedIds.every((id, index) => id === expectedIds[index]))
         return true;
-      const ordered = orderedWishlist(saved);
-      const index = ordered.findIndex((entry) => entry.id === movedId);
       void pushNow();
-      notify(
-        `${ordered[index].name} moved to position ${index + 1} of ${ordered.length}.`
-      );
       return true;
     } catch (error) {
       refresh();
@@ -528,8 +520,14 @@
 
 <svelte:head>
   <title
-    >{selectedEntry ? `${selectedEntry.name} — Wishlist` : 'Wishlist'} — Champion's
-    Atlas</title
+    >{selectedEntry
+      ? `${
+          teamHeading(
+            selectedEntry.name,
+            selectedEntry.origin === 'custom' ? null : selectedEntry.original
+          ).title
+        } — Wishlist`
+      : 'Wishlist'} — Champion's Atlas</title
   >
 </svelte:head>
 {#snippet shareRecovery()}
@@ -704,7 +702,6 @@
           entries={visibleEntries}
           disabled={!ready || !!pendingId || importPending || queuePending}
           sortable={filters.length === 0 && entries.length > 1}
-          owner={sync.user?.uid ?? null}
           {displayTeam}
           onuse={use}
           onremove={remove}

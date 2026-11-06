@@ -160,12 +160,12 @@ snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
 
 Suggestions are keyboard-operable. Operation errors use alerts. Deliberate
-actions, including Wishlist changes, imports, collection moves, deletions,
-restorations, copying, and in-game recording, use one temporary status message
-below navigation for three seconds. The message survives navigation but is not
-stored or replayed. Autosaved fields and background sync do not produce these
-messages. Validation errors and failed shared imports remain available until
-corrected or dismissed.
+actions, including Wishlist additions and removals, imports, collection moves,
+deletions, restorations, copying, and in-game recording, use one temporary status
+message below navigation for three seconds. The message survives navigation but
+is not stored or replayed. Wishlist reordering, autosaved fields, and background
+sync do not produce these messages. Validation errors and failed shared imports
+remain available until corrected or dismissed.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
@@ -285,10 +285,9 @@ base and Mega identities as Browse. Search does not change saved records. It
 stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
 
-With no Wishlist filters active, reorder bookmarks using the drag handle or
-move up and down controls. New bookmarks appear first without changing the
-relative order of existing bookmarks. The order persists across reloads and
-syncs with the account.
+With no Wishlist filters active, reorder bookmarks using the move up and down
+controls. New bookmarks appear first without changing the relative order of
+existing bookmarks. The order persists across reloads and syncs with the account.
 
 The catalog **Wishlist** button adds a bookmark or immediately removes the
 matching saved Wishlist copy and its edits; My teams copies remain unchanged.

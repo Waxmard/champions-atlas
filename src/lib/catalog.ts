@@ -92,6 +92,40 @@ export function isPasteUrl(value: string): boolean {
 export const regulationLabel = (regulation: string) =>
   regulation === 'Unknown' ? 'Regulation unknown' : `Reg ${regulation}`;
 
+export function teamHeading(
+  name: string,
+  source: { name: string; reports?: readonly Report[] } | null
+): { title: string; context: string } {
+  const original = { title: name, context: '' };
+  if (!source || name !== source.name || !source.reports) return original;
+
+  let heading: { title: string; context: string } | undefined;
+  for (const { event, rank } of source.reports) {
+    if (!event.trim()) continue;
+    const delimiter = ` ${event} `;
+    const index = name.lastIndexOf(delimiter);
+    if (index < 1) continue;
+    const label = name
+      .slice(0, index)
+      .replace(/['’]s$/, '')
+      .trim();
+    const suffix = name
+      .slice(index + delimiter.length)
+      .match(
+        /^(?:(?:Champion|Runner[ -]Up|Top \d+|\d+(?:st|nd|rd|th)(?: & \d+(?:st|nd|rd|th))*)(?: Place)? )?Team(?: (V\d+))?(?: (\([^()]+\)))?$/i
+      );
+    if (!label || !suffix) continue;
+
+    const title = [label, suffix[1], suffix[2]].filter(Boolean).join(' ');
+    const result = rank.trim();
+    const context = result ? `${event} · ${result}` : event;
+    if (heading && (heading.title !== title || heading.context !== context))
+      return original;
+    heading = { title, context };
+  }
+  return heading ?? original;
+}
+
 export function readFilters(params: URLSearchParams): MemberFilter[] {
   const values = params.getAll('member');
   if (values.length > 6) throw new Error('Select at most six Pokémon.');

@@ -23,6 +23,7 @@
     listingReason,
     regulationLabel,
     sourceRows,
+    teamHeading,
     youtubeChannelNames,
     type Member,
     type Team,
@@ -45,6 +46,7 @@
     catalogState.catalog.teams.find((entry) => entry.id === data.team.id) ??
       data.team
   );
+  const heading = $derived(teamHeading(team.name, team));
   const currentRegulation = $derived(catalogState.catalog.currentRegulation);
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
   const hasActiveEnrichment = $derived(
@@ -131,7 +133,7 @@
 </script>
 
 <svelte:head>
-  <title>{team.name} — Champion's Atlas</title>
+  <title>{heading.title} — Champion's Atlas</title>
 </svelte:head>
 
 <main id="main" class="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
@@ -153,7 +155,7 @@
       <h1
         class="max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-anywhere sm:text-3xl"
       >
-        {team.name}
+        {heading.title}
       </h1>
       <p class="provenance mt-1">
         {team.creator
