@@ -628,7 +628,7 @@
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
                 aria-label="Account menu"
-                class="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
+                class="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200"
               >
                 <Avatar.Root
                   class="relative flex size-7 shrink-0 overflow-hidden rounded-full border"

@@ -1,56 +1,52 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import { normalize, type Member } from '#lib/catalog.js';
+  import type { Member } from '#lib/catalog.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
   import type { CatalogSuggestion } from '#lib/workbench.js';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
+  import SuggestionList from '#lib/components/SuggestionList.svelte';
+  import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { NATURES } from '#lib/paste.js';
   import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
 
   interface Props {
     item: string;
     ability: string;
-    nature: string;
     filteredItems: CatalogSuggestion[];
     filteredAbilities: CatalogSuggestion[];
+    hasMoreItems: boolean;
+    hasMoreAbilities: boolean;
+    onshowmoreitems: () => void;
+    onshowmoreabilities: () => void;
     inGameMember?: Member;
-    legacyNature: string | null;
     error: string;
     errorField: EditableSetField | null;
     onitemchange: (val: string) => void;
     onabilitychange: (val: string) => void;
-    onnaturechange: (val: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onresetquery: (field: string) => void;
-    onclearerror: () => void;
     oncommit: () => void;
   }
 
   let {
     item,
     ability,
-    nature,
     filteredItems,
     filteredAbilities,
+    hasMoreItems,
+    hasMoreAbilities,
+    onshowmoreitems,
+    onshowmoreabilities,
     inGameMember,
-    legacyNature,
     error,
     errorField,
     onitemchange,
     onabilitychange,
-    onnaturechange,
     oningame,
     onresetquery,
-    onclearerror,
     oncommit,
   }: Props = $props();
-  const inGameNature = $derived(
-    NATURES.find(
-      (value) => normalize(value) === normalize(inGameMember?.nature ?? '')
-    ) ?? null
-  );
 </script>
 
 {#snippet detailField(
@@ -59,15 +55,17 @@
   value: string,
   placeholder: string,
   onvaluechange: (value: string) => void,
-  options: CatalogSuggestion[]
+  options: CatalogSuggestion[],
+  hasMore: boolean,
+  onshowmore: () => void
 )}
   <label for={`set-${field}-input`} class="term">{label}</label>
-  <div
-    class="input mt-1.5 flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
-  >
-    {#if field === 'item'}
-      <ItemIcon item={value} size={20} />
-    {/if}
+  <div class="input mt-1.5 flex min-h-11 items-center gap-2">
+    <span class="grid size-7 shrink-0 place-items-center" aria-hidden="true">
+      {#if field === 'item'}
+        <ItemIcon item={value} size={20} />
+      {/if}
+    </span>
     <input
       id={`set-${field}-input`}
       class="grow bg-transparent text-sm focus:outline-none"
@@ -79,7 +77,9 @@
       onblur={(event) => {
         if (!(
           event.relatedTarget instanceof HTMLElement &&
-          event.relatedTarget.closest('[data-detail-choice]')
+          event.relatedTarget.closest(
+            '[data-suggestion], [data-show-more], [data-detail-choice]'
+          )
         ))
           oncommit();
       }}
@@ -116,52 +116,35 @@
     {/if}
   </div>
 
-  <ul
+  <SuggestionList
     id={`set-${field}-suggestions`}
-    role="list"
-    aria-label={`${label} suggestions`}
-    class="mt-1.5 flex flex-wrap gap-1.5"
+    label={`${label} suggestions`}
+    inputId={`set-${field}-input`}
+    count={options.length}
+    {hasMore}
+    {onshowmore}
   >
     {#each options as opt (opt.value)}
-      <li>
-        <button
-          type="button"
-          class="hint"
-          data-detail-choice
-          data-suggestion
-          onpointerdown={(event) => event.preventDefault()}
-          onkeydown={(event) =>
-            handleSuggestionKeydown(
-              event,
-              document.getElementById(`set-${field}-suggestions`),
-              `set-${field}-input`
-            )}
-          onclick={() => {
-            if (opt.inGame) {
-              if (inGameMember) oningame({ kind: field }, inGameMember);
-              return;
-            }
-            onvaluechange(opt.value);
-            oncommit();
-          }}
-        >
-          {#if field === 'item'}<ItemIcon item={opt.value} size={18} />{/if}
-          <span>{opt.value}</span>
-          {#if opt.original || opt.inGame}
-            <span class="term">
-              {opt.original
-                ? opt.inGame
-                  ? 'Original · In-game'
-                  : 'Original'
-                : 'In-game'}
-            </span>
-          {/if}
-        </button>
-      </li>
-    {:else}
-      <li class="provenance">No matching suggestions.</li>
+      <SuggestionRow
+        label={`Use ${opt.value}${opt.inGame ? ' in-game' : ''} ${field}`}
+        glyph={field === 'item'
+          ? { kind: 'item', value: opt.value }
+          : { kind: 'none' }}
+        primary={opt.value}
+        secondary={[opt.original ? 'Original' : '', opt.inGame ? 'In-game' : '']
+          .filter(Boolean)
+          .join(' · ')}
+        onclick={() => {
+          if (opt.inGame) {
+            if (inGameMember) oningame({ kind: field }, inGameMember);
+            return;
+          }
+          onvaluechange(opt.value);
+          oncommit();
+        }}
+      />
     {/each}
-  </ul>
+  </SuggestionList>
 {/snippet}
 
 <section class="grid gap-5">
@@ -173,7 +156,9 @@
         item,
         'Item',
         onitemchange,
-        filteredItems
+        filteredItems,
+        hasMoreItems,
+        onshowmoreitems
       )}
     </div>
 
@@ -184,43 +169,14 @@
         ability,
         'Ability',
         onabilitychange,
-        filteredAbilities
+        filteredAbilities,
+        hasMoreAbilities,
+        onshowmoreabilities
       )}
-    </div>
-
-    <div class="min-w-0 sm:col-span-2">
-      <label for="set-nature-input" class="term">Nature</label>
-      <select
-        id="set-nature-input"
-        class="select mt-1.5 min-h-11 w-full text-sm"
-        value={nature}
-        onchange={(e) => {
-          const selected = e.currentTarget.value;
-          if (selected === inGameNature) {
-            if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
-            e.currentTarget.value = nature;
-            return;
-          }
-          onnaturechange(selected);
-          onclearerror();
-          oncommit();
-        }}
-      >
-        <option value="">Unknown</option>
-        {#if legacyNature}
-          <option value={legacyNature}>{legacyNature}</option>
-        {/if}
-        {#if inGameNature && inGameMember}
-          <option value={inGameNature}>{inGameNature} — In-game</option>
-        {/if}
-        {#each NATURES as n (n)}
-          {#if n !== inGameNature}<option value={n}>{n}</option>{/if}
-        {/each}
-      </select>
     </div>
   </div>
 
-  {#if error && (errorField === 'item' || errorField === 'ability' || errorField === 'nature')}
+  {#if error && (errorField === 'item' || errorField === 'ability')}
     <p
       role="alert"
       tabindex="-1"

@@ -107,11 +107,11 @@ It never changes another stat. If the selected stat cannot absorb the full
 difference, the differing total stays uncommitted and the editor reports it when
 you finish.
 
-Nature choices, the current allocation, and spread suggestions remain visible
-while manual controls are closed. **Adjust EVs manually** is a native disclosure
-that starts closed whenever you open the EV editor. It contains the number
-fields, quick allocation buttons, and sliders. The app does not save its open
-state.
+The nature field, its suggestion rows, the current allocation, and spread
+suggestions all live on the EV tab and remain visible while manual controls are
+closed. **Adjust EVs manually** is a native disclosure that starts closed
+whenever you open the EV editor. It contains the number fields, quick allocation
+buttons, and sliders. The app does not save its open state.
 
 Record and reuse one explicit **my in-game set** per Browse identity,
 representing the set currently in your Pokémon Champions box. Recording changes
@@ -161,7 +161,9 @@ offer a direct reuse action.
 
 Suggestions are keyboard-operable: arrow keys move from a field into its
 suggestion rows and between them, Home and End jump to the ends, Escape closes the
-list and returns to the field, and Enter selects. Operation errors use alerts. Deliberate
+list and returns to the field, and Enter selects. Opening an editor focuses its
+section heading and never a text field, so no keyboard opens on a phone. Focus is
+shown as a fill rather than a ring or outline. Operation errors use alerts. Deliberate
 actions, including Wishlist additions and removals, imports, collection moves,
 deletions, restorations, copying, and in-game recording, use one temporary status
 message below navigation for three seconds. The message survives navigation but
@@ -232,20 +234,32 @@ Changed item, ability, move, and Pokémon names must be known to the app. An
 unchanged legacy value stays accepted, and a committed value uses its canonical
 spelling. Custom team import and Wishlist import remain permissive.
 
-Catalog item, ability, and move rows show how many teams used the value and how
-many of those are in the current regulation. Items another teammate already holds
-are not offered.
+Catalog item, ability, and move suggestions show the value with provenance
+labels: **Original** for the original team's value, **In-game** for the recorded
+in-game set, and **Movepool** for a move no catalog team recorded. Items another
+teammate already holds are not offered. Move suggestions include the species'
+newest available movepool, which ranks after catalog observations.
+
+Every suggestion surface renders as full-width rows with an icon cell, the name,
+and one muted detail line. Item, ability, move, Pokémon, and spread lists start
+with ten rows; natures start with six. **Show more** appends ten rows as a muted
+dashed footer that is not a selectable row. It disappears when the list is
+complete and focuses the first newly revealed row. A check mark marks the
+selected nature and spread. Changing a field's query or committing input
+collapses its list again.
 
 EV spread suggestions include only complete, standard pairs whose Nature matches
 the selected Nature and whose spread resolves to the current battle form.
 Matching immutable original and in-game pairs come first. Exact duplicate pairs
 appear once with their source labels combined. The initial list contains up to
-five additional unique catalog pairs after up to two matching saved-source pairs.
-**Show more** appends up to five additional catalog pairs in the same ranked
-order. It disappears when no eligible pairs remain and focuses the first newly
-revealed row. Expansion does not change saved teams. Selecting a spread, adjusting
-EVs, or selecting the same Nature preserves the expanded depth. Selecting a
-different Nature or reopening the EV editor resets the catalog allowance to five.
+ten additional unique catalog pairs after up to two matching saved-source pairs.
+**Show more** appends ten additional catalog pairs in the same ranked order. It
+disappears when no eligible pairs remain and focuses the first newly revealed
+row. Each row shows its Nature and allocation, and its muted detail line carries
+the source, moved points, and unmodified Speed without team counts. Expansion
+does not change saved teams. Selecting a spread, adjusting EVs, or selecting the
+same Nature preserves the expanded depth. Selecting a different Nature or
+reopening the EV editor resets the catalog allowance to ten.
 Fewer rows appear when eligible recorded data is insufficient. Matching catalog
 pairs rank by the best actual source team's shared teammates and matching set
 details for those teammates, then by published results, regulation, and credentials.

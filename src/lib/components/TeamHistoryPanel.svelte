@@ -205,7 +205,7 @@
             {regulationLabel(team.original.regulation)}
             {#if team.original.regulationInference}
               <a
-                class="inline-flex min-h-11 link items-center focus-visible:ring-2 focus-visible:ring-primary"
+                class="inline-flex min-h-11 link items-center"
                 href={team.original.regulationInference.sourceUrl}
                 target="_blank"
                 rel="external noreferrer">Regulation inferred from video date</a

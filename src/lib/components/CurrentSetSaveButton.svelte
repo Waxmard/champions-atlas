@@ -364,7 +364,7 @@
                   name={`replace-current-set-${teamId}`}
                   value={entry.id}
                   aria-label={`Replace my in-game ${name} set`}
-                  class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
+                  class="size-5 accent-primary"
                   checked={checkedIds.includes(entry.id)}
                   onchange={(event) => {
                     checkedIds = event.currentTarget.checked

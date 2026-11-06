@@ -585,7 +585,7 @@
                 disabled={changed || editing || deleting || stale}
               />
               {#if match}<a
-                  class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
+                  class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
                   href={resolve(`teams/${match.id}`)}>View catalog details</a
                 >{/if}
               <div class="min-w-0 space-y-1">
@@ -658,7 +658,7 @@
         <details bind:open={showExport} class="min-w-0">
           <summary
             id="team-text-toggle"
-            class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70"
           >
             Showdown team text
           </summary>

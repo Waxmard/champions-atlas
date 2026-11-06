@@ -2,16 +2,20 @@
   import X from '@lucide/svelte/icons/x';
   import type { Member } from '#lib/catalog.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import SuggestionList from '#lib/components/SuggestionList.svelte';
+  import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import TypeMark from '#lib/components/TypeMark.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import type { CatalogSuggestion } from '#lib/workbench.js';
-  import { getMoveType, TYPE_COLORS } from '#lib/types.js';
+  import { getMoveType } from '#lib/types.js';
   import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
   let {
     moves,
     activeMoveSlot,
     moveOptions,
+    hasMore = false,
+    onshowmore,
     inGameMember,
     error,
     errorField,
@@ -25,6 +29,8 @@
     moves: string[];
     activeMoveSlot: number;
     moveOptions: CatalogSuggestion[];
+    hasMore?: boolean;
+    onshowmore?: () => void;
     inGameMember?: Member;
     error: string;
     errorField: EditableSetField | null;
@@ -41,16 +47,13 @@
   <div class="grid gap-2 sm:grid-cols-2">
     {#each moves as move, index (index)}
       {@const type = getMoveType(move)}
-      {@const typeColor = type ? TYPE_COLORS[type] : null}
-      <div
-        class="input flex min-h-11 items-center gap-2 border transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary {activeMoveSlot ===
-        index
-          ? 'border-primary'
-          : 'border-base-content/55 hover:border-base-content/80'}"
-        style={typeColor ? `border-left: 4px solid ${typeColor};` : ''}
-      >
-        <span class="term w-4 text-center tabular-nums">{index + 1}</span>
-        <TypeMark {type} size="md" />
+      <div class="input flex min-h-11 items-center gap-2">
+        <span
+          class="grid size-7 shrink-0 place-items-center"
+          aria-hidden="true"
+        >
+          <TypeMark {type} size="md" />
+        </span>
         <input
           id={`set-move-${index + 1}`}
           aria-label={`Move ${index + 1}`}
@@ -65,7 +68,9 @@
           onblur={(event) => {
             if (!(
               event.relatedTarget instanceof HTMLElement &&
-              event.relatedTarget.closest('[data-move-choice]')
+              event.relatedTarget.closest(
+                '[data-suggestion], [data-show-more], [data-move-choice]'
+              )
             ))
               oncommit();
           }}
@@ -85,7 +90,7 @@
         <Button
           variant="quiet"
           size="icon-compact"
-          class="-mr-2"
+          class="-me-2"
           aria-label={`Clear move ${index + 1}`}
           tabindex={0}
           disabled={!move}
@@ -96,54 +101,38 @@
       </div>
     {/each}
   </div>
-  <ul
+  <SuggestionList
     id="set-move-suggestions"
-    role="list"
-    aria-label={`Move ${activeMoveSlot + 1} suggestions`}
-    class="flex flex-wrap gap-1.5"
+    label={`Move ${activeMoveSlot + 1} suggestions`}
+    inputId={`set-move-${activeMoveSlot + 1}`}
+    count={moveOptions.length}
+    {hasMore}
+    {onshowmore}
   >
     {#each moveOptions as option (option.value)}
-      {@const optionType = getMoveType(option.value)}
-      <li>
-        <button
-          type="button"
-          class="hint"
-          data-move-choice
-          data-suggestion
-          onpointerdown={(event) => event.preventDefault()}
-          onkeydown={(event) =>
-            handleSuggestionKeydown(
-              event,
-              document.getElementById('set-move-suggestions'),
-              `set-move-${activeMoveSlot + 1}`
-            )}
-          onclick={() => {
-            if (option.inGame) {
-              if (inGameMember)
-                oningame(
-                  { kind: 'move', index: activeMoveSlot, move: option.value },
-                  inGameMember
-                );
-            } else onchoose(activeMoveSlot, option.value);
-          }}
-        >
-          <TypeMark type={optionType} size="md" />
-          <span>{option.value}</span>
-          {#if option.original || option.inGame}
-            <span class="term">
-              {option.original
-                ? option.inGame
-                  ? 'Original · In-game'
-                  : 'Original'
-                : 'In-game'}
-            </span>
-          {/if}
-        </button>
-      </li>
-    {:else}
-      <li class="provenance">No matching suggestions.</li>
+      <SuggestionRow
+        label={`Use ${option.value}${option.inGame ? ' in-game' : ''}`}
+        glyph={{ kind: 'move', value: option.value }}
+        primary={option.value}
+        secondary={[
+          option.original ? 'Original' : '',
+          option.inGame ? 'In-game' : '',
+          option.totalCount === 0 ? 'Movepool' : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        onclick={() => {
+          if (option.inGame) {
+            if (inGameMember)
+              oningame(
+                { kind: 'move', index: activeMoveSlot, move: option.value },
+                inGameMember
+              );
+          } else onchoose(activeMoveSlot, option.value);
+        }}
+      />
     {/each}
-  </ul>
+  </SuggestionList>
   {#if error && errorField === 'moves'}
     <p
       role="alert"

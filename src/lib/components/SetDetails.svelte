@@ -156,7 +156,7 @@
     {#if spreadSource}
       <div class="mt-3 flex min-w-0 flex-col">
         <a
-          class="inline-flex min-h-11 link items-center text-sm wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
+          class="inline-flex min-h-11 link items-center text-sm wrap-anywhere"
           href={spreadSource.pasteUrl}
           target="_blank"
           rel="external noreferrer"
@@ -167,7 +167,7 @@
         </a>
         {#each spreadSource.videoUrls as videoUrl, index (videoUrl)}
           <a
-            class="inline-flex min-h-11 link items-center text-sm wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
+            class="inline-flex min-h-11 link items-center text-sm wrap-anywhere"
             href={videoUrl}
             target="_blank"
             rel="external noreferrer"

@@ -1,17 +1,18 @@
 <script lang="ts">
-  import { tick } from 'svelte';
+  import X from '@lucide/svelte/icons/x';
   import {
     balanceChampionsStat,
     CHAMPIONS_STATS,
     championsSpreadTotal,
     formatChampionsSpread,
-    formatSpreadDelta,
     natureEffect,
     parseChampionsSpread,
     type ChampionsSpread,
     type ChampionsStat,
   } from '#lib/paste.js';
   import { normalize, type Member, type Team } from '#lib/catalog.js';
+  import SuggestionList from '#lib/components/SuggestionList.svelte';
+  import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
     catalogSpreadSuggestions,
@@ -20,6 +21,7 @@
     type SpreadSuggestion,
   } from '#lib/workbench.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
 
   let {
     member,
@@ -44,8 +46,27 @@
     onnaturechange: (nature: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
   } = $props();
-  let visibleCatalogCount = $state(5);
-  let suggestionSection: HTMLElement | null = null;
+  let visibleCatalogCount = $state(10);
+  let visibleNatureCount = $state(6);
+  let natureDraft = $state<string | null>(null);
+  let natureQuery = $state('');
+  const natureValue = $derived(natureDraft ?? member.nature ?? '');
+  const natureMatches = $derived(
+    natureSuggestions.filter((option) =>
+      normalize(option.value).includes(normalize(natureQuery))
+    )
+  );
+  const visibleNatures = $derived(natureMatches.slice(0, visibleNatureCount));
+  const hasMoreNatures = $derived(natureMatches.length > visibleNatureCount);
+  function commitNature() {
+    if (natureDraft === null || natureDraft.trim() === (member.nature ?? '')) {
+      natureDraft = null;
+      return;
+    }
+    const next = natureDraft.trim();
+    natureDraft = null;
+    onnaturechange(next);
+  }
   const spreadKey = (candidateNature: string, candidateSpread: string) =>
     `${normalize(candidateNature)}|${normalize(candidateSpread)}`;
 
@@ -85,11 +106,7 @@
       teammates
     )) {
       const key = spreadKey(option.nature, option.spread);
-      const source =
-        `${option.totalCount} catalog team${option.totalCount === 1 ? '' : 's'}` +
-        (option.currentCount
-          ? ` · ${option.currentCount} in ${currentRegulation}`
-          : '');
+      const source = 'Catalog spread';
       const existing = rows.find(
         (row) => spreadKey(row.nature, row.spread) === key
       );
@@ -114,14 +131,6 @@
     }
     return { rows, hasMore };
   });
-  async function showMoreSpreads(): Promise<void> {
-    const previousRowCount = spreadSuggestions.rows.length;
-    visibleCatalogCount += 5;
-    await tick();
-    suggestionSection
-      ?.querySelectorAll<HTMLButtonElement>('[data-ev-suggestion]')
-      [previousRowCount]?.focus();
-  }
   const spread = $derived(member.spread || '');
   const nature = $derived(member.nature || '');
 
@@ -209,58 +218,110 @@
   <!-- Nature modifies the stats below -->
   <fieldset class="mb-4 grid min-w-0 gap-2 border-b pb-4">
     <legend class="sr-only">Nature</legend>
-    <div class="flex flex-wrap items-baseline justify-between gap-3 px-0.5">
-      <span class="term">Nature</span>
-      <span class="value text-base-content/70">
-        {nature
-          ? `Current: ${nature}${effect ? ` (+${effect.raised} / -${effect.lowered})` : ''}`
-          : 'Unknown'}
-      </span>
+    <label for="set-nature-input" class="term">Nature</label>
+    <div class="input flex min-h-11 items-center gap-2">
+      <input
+        id="set-nature-input"
+        class="grow bg-transparent text-sm focus:outline-none"
+        placeholder="Nature"
+        value={natureValue}
+        onfocus={() => {
+          natureQuery = '';
+          visibleNatureCount = 6;
+        }}
+        onclick={() => {
+          natureQuery = '';
+          visibleNatureCount = 6;
+        }}
+        oninput={(event) => {
+          natureQuery = event.currentTarget.value;
+          natureDraft = event.currentTarget.value;
+          visibleNatureCount = 6;
+        }}
+        onblur={(event) => {
+          if (!(
+            event.relatedTarget instanceof HTMLElement &&
+            event.relatedTarget.closest(
+              '[data-suggestion], [data-show-more], [data-nature-choice]'
+            )
+          ))
+            commitNature();
+        }}
+        onkeydown={(event) => {
+          if (event.key === 'Enter' && !event.isComposing) {
+            event.preventDefault();
+            commitNature();
+            return;
+          }
+          handleSuggestionKeydown(
+            event,
+            document.getElementById('set-nature-suggestions'),
+            'set-nature-input'
+          );
+        }}
+      />
+      {#if natureValue}
+        <Button
+          variant="quiet"
+          size="icon-compact"
+          class="-me-2"
+          aria-label="Clear nature"
+          data-nature-choice
+          onpointerdown={(event) => event.preventDefault()}
+          onclick={() => {
+            natureDraft = null;
+            natureQuery = '';
+            onnaturechange('');
+          }}
+        >
+          <X class="size-4" />
+        </Button>
+      {/if}
     </div>
-    {#if natureSuggestions.length > 0}
-      <div class="flex flex-wrap gap-2">
-        {#each natureSuggestions.slice(0, 4) as option (option.value)}
-          {@const isSelected = nature === option.value}
-          <button
-            type="button"
-            class="min-h-11 rounded-[var(--radius-selector)] border px-3 text-[0.8125rem] transition-colors {isSelected
-              ? 'border-primary font-semibold'
-              : 'border-base-300 hover:bg-base-200/70'}"
-            aria-label={`Use ${option.value} nature${
-              option.original
-                ? option.inGame
-                  ? ' (original and in-game)'
-                  : ' (original)'
-                : option.inGame
-                  ? ' (in-game)'
-                  : ''
-            }`}
-            onclick={() => {
-              if (normalize(option.value) !== normalize(member.nature ?? ''))
-                visibleCatalogCount = 5;
-              if (option.inGame) {
-                if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
-              } else onnaturechange(option.value);
-            }}
-          >
-            {option.value}
-            {#if option.original || option.inGame}<span
-                class="provenance ms-2"
-                aria-hidden="true"
-                >{option.original
-                  ? option.inGame
-                    ? 'Original · In-game'
-                    : 'Original'
-                  : 'In-game'}</span
-              >{/if}
-          </button>
-        {/each}
-      </div>
-    {:else}
-      <p class="provenance py-2 text-center">
-        No catalog nature suggestions for this Pokémon.
-      </p>
-    {/if}
+    <SuggestionList
+      id="set-nature-suggestions"
+      label="Nature suggestions"
+      inputId="set-nature-input"
+      count={visibleNatures.length}
+      empty="No catalog nature suggestions for this Pokémon."
+      hasMore={hasMoreNatures}
+      onshowmore={() => (visibleNatureCount += 10)}
+    >
+      {#each visibleNatures as option (option.value)}
+        {@const modifier = natureEffect(option.value)}
+        <SuggestionRow
+          label={`Use ${option.value} nature${
+            option.original
+              ? option.inGame
+                ? ' (original and in-game)'
+                : ' (original)'
+              : option.inGame
+                ? ' (in-game)'
+                : ''
+          }`}
+          primary={option.value}
+          secondary={[
+            modifier ? `+${modifier.raised} / −${modifier.lowered}` : 'Neutral',
+            option.original ? 'Original' : '',
+            option.inGame ? 'In-game' : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          selected={normalize(option.value) === normalize(nature)}
+          onclick={() => {
+            if (normalize(option.value) !== normalize(member.nature ?? '')) {
+              visibleCatalogCount = 10;
+              visibleNatureCount = 6;
+            }
+            natureDraft = null;
+            natureQuery = '';
+            if (option.inGame) {
+              if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
+            } else onnaturechange(option.value);
+          }}
+        />
+      {/each}
+    </SuggestionList>
   </fieldset>
   <p class="provenance mb-2 px-0.5">
     {formatChampionsSpread(values) || 'No EVs allocated'} · {total} / 66
@@ -374,38 +435,19 @@
     </div>
   </details>
 </section>
-{#snippet chips(value: string)}
-  <div class="flex flex-wrap items-center gap-1.5">
-    {#each value.split(' / ').filter(Boolean) as part (part)}
-      <span
-        class="value inline-flex items-center rounded-[var(--radius-selector)] border border-base-300 px-2 py-0.5 font-mono"
-        >{part}</span
-      >
-    {/each}
-  </div>
-{/snippet}
-
-<section
-  bind:this={suggestionSection}
-  class="plate mt-4 grid divide-y"
-  aria-label="EV spread suggestions"
+<SuggestionList
+  id="set-spread-suggestions"
+  label="EV spread suggestions"
+  inputId="set-nature-input"
+  count={spreadSuggestions.rows.length}
+  class="mt-4"
+  empty="No recorded spreads match this Nature. Try another Nature or adjust EVs manually."
+  hasMore={spreadSuggestions.hasMore}
+  onshowmore={() => (visibleCatalogCount += 10)}
 >
-  <div class="px-3 py-2.5">
-    <h3 class="term">Suggested spreads</h3>
-    <p class="provenance mt-1">
-      Matching Nature; original and in-game sets first, then catalog spreads
-      ranked by team fit and results.
-    </p>
-  </div>
-  {#each spreadSuggestions.rows as option, i (option.spread + option.nature)}
-    <button
-      data-ev-suggestion
-      type="button"
-      class="group flex min-h-11 flex-col gap-1.5 px-3 py-2.5 text-start transition-colors hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary {spread ===
-      option.spread
-        ? 'font-semibold'
-        : ''}"
-      aria-label={'Use ' +
+  {#each spreadSuggestions.rows as option (option.spread + option.nature)}
+    <SuggestionRow
+      label={'Use ' +
         option.nature +
         ' spread ' +
         option.spread +
@@ -414,44 +456,24 @@
             ? ' (original team and in-game set)'
             : ' (in-game set)'
           : '')}
-      aria-describedby={'ev-suggestion-details-' + i}
+      prefix={option.nature}
+      primary={option.spread}
+      secondary={[
+        option.source,
+        `${option.movedPoints} points moved`,
+        option.speed !== null ? `Speed ${option.speed}` : '',
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+      selected={spread === option.spread}
       onclick={() => {
         if (option.inGame) {
           if (inGameMember) oningame({ kind: 'spread' }, inGameMember);
         } else onspreadchange(option.spread, option.nature);
       }}
-    >
-      <span id={'ev-suggestion-details-' + i} class="sr-only"
-        >{option.source} · {option.movedPoints} points moved</span
-      >
-      {@render chips(option.spread)}
-      <span class="value"
-        >{option.nature} · {formatSpreadDelta(option.deltas)}</span
-      >
-      <span class="provenance"
-        >{option.source} · {option.movedPoints} points moved</span
-      >
-      {#if option.speed !== null}
-        <span class="provenance">Unmodified Speed {option.speed}</span>
-      {/if}
-    </button>
-  {:else}
-    <p class="provenance px-3 py-2.5">
-      No recorded spreads match this Nature. Try another Nature or adjust EVs
-      manually.
-    </p>
+    />
   {/each}
-  {#if spreadSuggestions.hasMore}
-    <Button
-      type="button"
-      variant="quiet"
-      class="w-full"
-      onclick={showMoreSpreads}
-    >
-      Show more
-    </Button>
-  {/if}
-</section>
+</SuggestionList>
 
 <style>
   .range {

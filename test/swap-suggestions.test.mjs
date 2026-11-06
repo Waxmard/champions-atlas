@@ -189,10 +189,15 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     { value: 'Intimidate', currentCount: 2, totalCount: 5 },
     { value: 'Blaze', currentCount: 1, totalCount: 1 },
   ]);
-  assert.deepEqual(suggestions.moves, [
+  assert.deepEqual(suggestions.moves.slice(0, 2), [
     { value: 'Fake Out', currentCount: 2, totalCount: 5 },
     { value: 'Flare Blitz', currentCount: 1, totalCount: 1 },
   ]);
+  assert.ok(
+    suggestions.moves
+      .slice(2)
+      .every((option) => !option.totalCount && !option.currentCount)
+  );
   assert.deepEqual(
     catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
     [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]

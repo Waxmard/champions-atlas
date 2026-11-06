@@ -11,6 +11,7 @@ import {
   type Team,
 } from './catalog.ts';
 import { resolveBattleForm } from './battle-forms.ts';
+import { movepoolFor } from './movepools.ts';
 import {
   NATURES,
   canonicalMember,
@@ -370,6 +371,12 @@ export function catalogSuggestions(
     }
   }
 
+  for (const move of movepoolFor(targetMember.pokemon)) {
+    const key = normalize(move);
+    if (!moves.has(key))
+      moves.set(key, { value: move, currentCount: 0, totalCount: 0 });
+  }
+
   const original =
     originalMember && originalMemberFor(targetMember, [originalMember]);
   const inGame =
@@ -439,7 +446,8 @@ export function catalogSuggestions(
       currentRegulation,
       originalPokemon,
       tags,
-      pokemonQuery
+      pokemonQuery,
+      { limit: 30 }
     ),
   };
 }

@@ -108,7 +108,7 @@
                   {...props}
                   variant="quiet"
                   size="icon-compact"
-                  class="size-7 shrink-0 p-0 focus-visible:ring-2 focus-visible:ring-primary max-md:size-7"
+                  class="size-7 shrink-0 p-0 max-md:size-7"
                   aria-label={`More actions for ${member.pokemon}`}
                   data-preserve-team-name
                 >
@@ -145,7 +145,7 @@
                 {/if}
                 {#if spreadSource}
                   <a
-                    class="inline-flex min-h-11 min-w-0 link items-center text-sm leading-[1.4] wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
+                    class="inline-flex min-h-11 min-w-0 link items-center text-sm leading-[1.4] wrap-anywhere"
                     href={spreadSource.pasteUrl}
                     target="_blank"
                     rel="external noreferrer"
@@ -156,7 +156,7 @@
                   </a>
                   {#each spreadSource.videoUrls as videoUrl, index (videoUrl)}
                     <a
-                      class="inline-flex min-h-11 min-w-0 link items-center text-sm leading-[1.4] wrap-anywhere focus-visible:ring-2 focus-visible:ring-primary"
+                      class="inline-flex min-h-11 min-w-0 link items-center text-sm leading-[1.4] wrap-anywhere"
                       href={videoUrl}
                       target="_blank"
                       rel="external noreferrer"

@@ -11,7 +11,7 @@
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
   import { knownName } from '#lib/canonical-names.js';
-  import { NATURES, parseSetBlock, updateSetText } from '#lib/paste.js';
+  import { parseSetBlock, updateSetText } from '#lib/paste.js';
   import {
     memberRosterError,
     memberValidationError,
@@ -51,8 +51,8 @@
   }: Props = $props();
   function getInitialView(field: EditableSetField): EditorView {
     if (field === 'set' || field === 'pokemon') return 'pokemon';
-    if (field === 'item' || field === 'ability' || field === 'nature')
-      return 'details';
+    if (field === 'item' || field === 'ability') return 'details';
+    if (field === 'nature') return 'spread';
     return field;
   }
   const EDITOR_SECTIONS: { id: EditorView; label: string }[] = [
@@ -87,6 +87,10 @@
     itemQuery = $state(''),
     abilityQuery = $state('');
   let moveQueries = $state(['', '', '', '']);
+  let visibleItemCount = $state(10);
+  let visibleAbilityCount = $state(10);
+  let visibleMoveCount = $state(10);
+  let visiblePokemonCount = $state(10);
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
   let editorElement = $state<HTMLElement>();
@@ -130,26 +134,30 @@
   );
   const norm = (value: string, query: string) =>
     normalize(value).includes(normalize(query));
-  const filteredPokemon = $derived(suggestions.pokemon);
-  const filteredItems = $derived(
-    suggestions.items
-      .filter((option) => norm(option.value, itemQuery))
-      .slice(0, 5)
+  const pokemonMatches = $derived(suggestions.pokemon);
+  const visiblePokemon = $derived(pokemonMatches.slice(0, visiblePokemonCount));
+  const hasMorePokemon = $derived(pokemonMatches.length > visiblePokemonCount);
+  const itemMatches = $derived(
+    suggestions.items.filter((option) => norm(option.value, itemQuery))
+  );
+  const filteredItems = $derived(itemMatches.slice(0, visibleItemCount));
+  const hasMoreItems = $derived(itemMatches.length > visibleItemCount);
+  const abilityMatches = $derived(
+    suggestions.abilities.filter((option) => norm(option.value, abilityQuery))
   );
   const filteredAbilities = $derived(
-    suggestions.abilities
-      .filter((option) => norm(option.value, abilityQuery))
-      .slice(0, 5)
+    abilityMatches.slice(0, visibleAbilityCount)
   );
-  const legacyNature = $derived(
-    form.nature && !NATURES.some((nature) => nature === form.nature)
-      ? form.nature
-      : null
+  const hasMoreAbilities = $derived(
+    abilityMatches.length > visibleAbilityCount
   );
+  const moveMatches = $derived(moveSuggestions(activeMoveSlot));
+  const visibleMoveOptions = $derived(moveMatches.slice(0, visibleMoveCount));
+  const hasMoreMoves = $derived(moveMatches.length > visibleMoveCount);
   const subViewTitle = $derived(
     {
       pokemon: 'Pokémon',
-      details: 'Item, ability, and nature',
+      details: 'Item and ability',
       moves: 'Moves',
       spread: 'EV spread',
     }[currentView]
@@ -264,7 +272,7 @@
     commit();
   }
   function moveSuggestions(index: number) {
-    const options = suggestions.moves.filter(
+    return suggestions.moves.filter(
       (option) =>
         norm(option.value, moveQueries[index]) &&
         !form.moves.some(
@@ -273,13 +281,6 @@
             move &&
             normalize(move) === normalize(option.value)
         )
-    );
-    return options.slice(
-      0,
-      Math.max(
-        5,
-        options.filter((option) => option.original || option.inGame).length
-      )
     );
   }
   function validateMember(next: Member) {
@@ -312,6 +313,10 @@
     itemQuery = '';
     abilityQuery = '';
     moveQueries = ['', '', '', ''];
+    visibleItemCount = 10;
+    visibleAbilityCount = 10;
+    visibleMoveCount = 10;
+    visiblePokemonCount = 10;
     if (!dirty) {
       clearError();
       return true;
@@ -409,7 +414,7 @@
           0,
           target.offsetTop - contentElement.offsetTop - 8
         );
-      (target || editorHeading)?.focus({ preventScroll: true });
+      editorHeading?.focus({ preventScroll: true });
     });
   }
 </script>
@@ -424,8 +429,8 @@
         class="min-w-[min(6rem,100%)] flex-1 text-lg leading-tight font-semibold wrap-anywhere sm:text-[1.375rem]"
         tabindex="-1"
         data-editor-section={currentView === 'details'
-          ? initialField === 'ability' || initialField === 'nature'
-            ? initialField
+          ? initialField === 'ability'
+            ? 'ability'
             : 'item'
           : currentView}
       >
@@ -472,7 +477,9 @@
       <SetEditorMoves
         moves={form.moves}
         {activeMoveSlot}
-        moveOptions={moveSuggestions(activeMoveSlot)}
+        moveOptions={visibleMoveOptions}
+        hasMore={hasMoreMoves}
+        onshowmore={() => (visibleMoveCount += 10)}
         {inGameMember}
         oningame={chooseInGame}
         {error}
@@ -484,6 +491,7 @@
         onchange={(index, value) => {
           form.moves[index] = moveQueries[index] = value;
           activeMoveSlot = index;
+          visibleMoveCount = 10;
           clearError();
         }}
         onchoose={chooseMove}
@@ -494,27 +502,27 @@
       <SetEditorDetails
         item={form.item}
         ability={form.ability}
-        nature={form.nature}
         {filteredItems}
         {filteredAbilities}
-        {legacyNature}
+        {hasMoreItems}
+        {hasMoreAbilities}
+        onshowmoreitems={() => (visibleItemCount += 10)}
+        onshowmoreabilities={() => (visibleAbilityCount += 10)}
         {inGameMember}
         oningame={chooseInGame}
         {error}
         {errorField}
         onitemchange={(val) => {
           itemQuery = form.item = val;
+          visibleItemCount = 10;
           clearError();
         }}
         onabilitychange={(val) => {
           abilityQuery = form.ability = val;
+          visibleAbilityCount = 10;
           clearError();
         }}
-        onnaturechange={(val) => {
-          form.nature = val;
-        }}
         onresetquery={resetQuery}
-        onclearerror={clearError}
         oncommit={commit}
       />
     {:else if currentView === 'spread'}
@@ -540,7 +548,7 @@
             commit();
           }}
         />
-        {#if error && errorField === 'spread'}
+        {#if error && (errorField === 'spread' || errorField === 'nature')}
           <p
             role="alert"
             tabindex="-1"
@@ -554,9 +562,7 @@
     {:else if currentView === 'pokemon'}
       <section class="grid gap-4">
         <label for="set-pokemon-input" class="sr-only">Pokémon</label>
-        <label
-          class="input flex min-h-11 items-center gap-2 focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary"
-        >
+        <label class="input flex min-h-11 items-center gap-2">
           <PokemonSprite pokemon={form.pokemon} size={28} />
           <input
             id="set-pokemon-input"
@@ -569,6 +575,7 @@
             oninput={(event) => {
               pokemonQuery = event.currentTarget.value;
               form.pokemon = event.currentTarget.value;
+              visiblePokemonCount = 10;
               clearError();
             }}
             onblur={(event) => {
@@ -608,7 +615,9 @@
           {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
         {/if}
         <SetEditorPokemonSuggestions
-          options={filteredPokemon}
+          options={visiblePokemon}
+          hasMore={hasMorePokemon}
+          onshowmore={() => (visiblePokemonCount += 10)}
           onchoose={(next) => chooseSet(next, true)}
         />
         {#if error && errorField === 'pokemon'}
@@ -627,7 +636,7 @@
   <footer
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4"
   >
-    {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability', 'nature'].includes(errorField || '')) || (currentView === 'spread' && errorField === 'spread') || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
+    {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability'].includes(errorField || '')) || (currentView === 'spread' && (errorField === 'spread' || errorField === 'nature')) || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
         role="alert"
         tabindex="-1"
         class="mb-2 text-sm"
