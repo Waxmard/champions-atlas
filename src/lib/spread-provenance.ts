@@ -35,6 +35,7 @@ export const reportSchema = z.object({
   event: textSchema,
   rank: textSchema,
   sourceUrl: textSchema,
+  videoTitle: textSchema.optional(),
   entrants: z.number().int().positive().optional(),
 });
 export const sourceSchema = z.looseObject({

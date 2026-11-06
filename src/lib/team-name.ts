@@ -13,6 +13,18 @@ export interface TeamNameParts {
 export const withoutDivision = (text: string) =>
   text.replace(/ \([^()]*\)$/, '');
 
+export function videoHeading(
+  reports: readonly { event: string; videoTitle?: string }[]
+): { title: string; context: string } | null {
+  for (const report of reports) {
+    const title = report.videoTitle?.trim() ?? '';
+    const channel = /^(.+?) video$/.exec(report.event)?.[1]?.trim() ?? '';
+    if (title && channel && channel !== 'YouTube')
+      return { title: channel, context: title };
+  }
+  return null;
+}
+
 export function splitTeamName(name: string): TeamNameParts | null {
   const possessive = name.match(possessivePattern);
   const label = possessive?.[1].trim() ?? '';

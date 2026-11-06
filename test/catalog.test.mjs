@@ -74,9 +74,9 @@ test('team headings compact possessive team names and keep structured results', 
       },
     ],
     [
-      "CloverBells' Raichu-Y Frosslass Team",
+      "CloverBells' Raichu-Y Froslass Team",
       [['Video', '']],
-      { title: 'CloverBells', context: 'Raichu-Y Frosslass' },
+      { title: 'CloverBells', context: 'Raichu-Y Froslass' },
     ],
     [
       "Nirinbo's Battle Cruise Top 8 Team",
@@ -284,6 +284,87 @@ test('team headings reject conflicting ranks and ignore blank or unmatched repor
     { title: name, context: '' }
   );
 });
+
+test('team headings use YouTube video titles unless a placement is known', () => {
+  const cases = [
+    [
+      'Untitled 145',
+      [
+        ['pokeaimMD collection', ''],
+        ['pokeaimMD video', '', 'MEGA MENCE BELIEVE'],
+      ],
+      { title: 'pokeaimMD', context: 'MEGA MENCE BELIEVE' },
+    ],
+    [
+      "CloverBells' Raichu-Y Froslass Team",
+      [
+        ['CloverBells collection', ''],
+        ['CloverBells video', '', 'This Froslass Team is UNSTOPPABLE'],
+      ],
+      { title: 'CloverBells', context: 'This Froslass Team is UNSTOPPABLE' },
+    ],
+    [
+      "Cary's Louisville Regional 2027 Top 16 Team",
+      [
+        ['Louisville Regional 2027', '10th'],
+        ['CloverBells video', '', 'Whatever'],
+      ],
+      { title: 'Cary', context: 'Louisville Regional 2027 · 10th' },
+    ],
+    [
+      "Player's Cup 1st Place Team",
+      [
+        ['Cup', ''],
+        ['CloverBells video', '', 'Whatever'],
+      ],
+      { title: 'Player', context: 'Cup · 1st' },
+    ],
+    [
+      "CloverBells' Cup Team",
+      [['CloverBells video', '', '  Space title  ']],
+      { title: 'CloverBells', context: 'Space title' },
+    ],
+    [
+      "CloverBells' Cup Team",
+      [['CloverBells video', '', '   ']],
+      { title: 'CloverBells', context: 'Cup' },
+    ],
+    [
+      "CloverBells' Cup Team",
+      [['YouTube video', '', 'No channel']],
+      { title: 'CloverBells', context: 'Cup' },
+    ],
+    [
+      'Untitled 145',
+      [['CloverBells collection', '']],
+      { title: 'Untitled 145', context: '' },
+    ],
+    [
+      "CloverBells' Cup Champion Team",
+      [
+        ['Cup', '1st'],
+        ['Cup', '2nd'],
+        ['CloverBells video', '', 'Whatever'],
+      ],
+      { title: "CloverBells' Cup Champion Team", context: '' },
+    ],
+  ];
+  for (const [name, reports, expected] of cases) {
+    const source = {
+      name,
+      reports: reports.map(([event, rank, videoTitle]) => ({
+        event,
+        rank,
+        sourceUrl: '',
+        ...(videoTitle === undefined ? {} : { videoTitle }),
+      })),
+    };
+    const original = structuredClone(source);
+    assert.deepEqual(teamHeading(name, source), expected, name);
+    assert.deepEqual(source, original);
+  }
+});
+
 test('member constraints apply together to the same member; every member is required', () => {
   const fixture = team('M-C', '', '');
   const filters = [

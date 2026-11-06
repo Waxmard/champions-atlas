@@ -363,6 +363,7 @@ export function youtubeCandidate(discoveryCandidate, payload) {
         event: `${discoveryCandidate.sourceName} video`,
         rank: '',
         sourceUrl: videoUrl,
+        ...(video.title.trim() ? { videoTitle: video.title.trim() } : {}),
       },
     ],
   };

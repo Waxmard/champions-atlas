@@ -562,6 +562,18 @@ test('keeps rejected cached pre-Champions and unrelated uploads outside fallback
     );
 });
 
+test('keeps the video title on YouTube video reports', () => {
+  const url = pasteUrl('aaaaaaaaaaaaaaaa');
+  const row = youtubeRow(url, 'aaaaaaaaaaa', { title: 'Z-CELEBRATE GLACEON' });
+  const payload = pastePayload('');
+  const candidate = youtubeCandidate(row, payload);
+  assert.equal(candidate.reports[1].videoTitle, 'Z-CELEBRATE GLACEON');
+  assert.equal(candidate.reports[0].videoTitle, undefined);
+  const team = asTeam(row, payload);
+  assert.equal(team.reports[1].videoTitle, 'Z-CELEBRATE GLACEON');
+  assert.equal(team.reports[0].videoTitle, undefined);
+});
+
 test('keeps source-backed set construction and explicit-format metadata intact', () => {
   const url = pasteUrl('aaaaaaaaaaaaaaaa');
   const row = youtubeRow(url, 'aaaaaaaaaaa', {

@@ -1,7 +1,7 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
 import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
-import { splitTeamName, withoutDivision } from './team-name.ts';
+import { splitTeamName, videoHeading, withoutDivision } from './team-name.ts';
 
 export interface SpreadSource {
   pasteUrl: string;
@@ -35,6 +35,7 @@ export interface Report {
   event: string;
   rank: string;
   sourceUrl: string;
+  videoTitle?: string;
   entrants?: number;
 }
 export interface Team {
@@ -99,8 +100,9 @@ export function teamHeading(
 ): { title: string; context: string } {
   const original = { title: name, context: '' };
   if (!source || name !== source.name) return original;
+  const video = videoHeading(source.reports ?? []);
   const parsed = splitTeamName(name);
-  if (!parsed) return original;
+  if (!parsed) return video ?? original;
   const ranks = new Set<string>();
   const events = new Set<string>();
   for (const report of source.reports ?? []) {
@@ -117,6 +119,7 @@ export function teamHeading(
   }
   if (ranks.size > 1) return original;
   const result = [...ranks][0] ?? parsed.placement;
+  if (!result && video) return video;
   const event = [
     events.size === 1 ? [...events][0] : parsed.middle,
     parsed.division,
