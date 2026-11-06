@@ -331,19 +331,15 @@ test('Showdown labels remain below qualifying tournaments without Bo1 inference'
   ]);
 });
 
-test('custom-rule and unknown-regulation guards precede resource groups', () => {
+test('unknown regulation follows known teams despite richer resources', () => {
   const resourceRich = team('resource-rich');
-  const custom = team('poch-tournament-6ab431f2e905c1db68748c9c-1', {
-    reports: [report('Mudkip’s Marsh Pit #6', 'Champion', video)],
-  });
   const unknown = team('unknown', {
     regulation: 'Unknown',
     reports: [report('', '', video)],
   });
-  assert.deepEqual(order([resourceRich, custom, unknown]), [
+  assert.deepEqual(order([resourceRich, unknown]), [
     'resource-rich',
     'unknown',
-    'poch-tournament-6ab431f2e905c1db68748c9c-1',
   ]);
 });
 

@@ -2,31 +2,31 @@
   import type { Snippet } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
-  import {
-    isCustomRulesTeam,
-    regulationLabel,
-    type Team,
-  } from '#lib/catalog.js';
+  import { regulationLabel, teamHeading, type Team } from '#lib/catalog.js';
   import TeamSummary from './TeamSummary.svelte';
 
   let {
     team,
+    heading,
     showRegulation,
     query,
+    titleActions,
     leadingActions,
     trailingActions,
     href,
     fromCatalog = true,
   }: {
     team: Team;
+    heading?: { title: string; context: string };
     showRegulation: boolean;
     query: string;
+    titleActions?: Snippet;
     leadingActions?: Snippet;
     trailingActions?: Snippet;
     href?: `wishlist?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
   } = $props();
-  const custom = $derived(isCustomRulesTeam(team));
+  const resolvedHeading = $derived(heading ?? teamHeading(team.name, team));
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
   function open(event: MouseEvent) {
     if (
@@ -47,7 +47,12 @@
 </script>
 
 {#snippet content()}
-  <TeamSummary name={team.name} members={team.members} />
+  <TeamSummary
+    name={resolvedHeading.title}
+    context={resolvedHeading.context}
+    reserveTitleActions={!!titleActions}
+    members={team.members}
+  />
 {/snippet}
 <article
   class="plate relative flex min-w-0 flex-col overflow-hidden transition-colors duration-200 hover:border-primary"
@@ -59,7 +64,12 @@
   >
     {@render content()}
   </a>
-  {#if leadingActions || trailingActions || showRegulation || custom || team.publishedAt}
+  {#if titleActions}
+    <div class="absolute end-4 top-[1.375rem] z-10">
+      {@render titleActions()}
+    </div>
+  {/if}
+  {#if leadingActions || trailingActions || showRegulation || team.publishedAt}
     <div
       class="mx-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-t py-2"
     >
@@ -68,7 +78,7 @@
           {@render leadingActions()}
         </div>
       {/if}
-      {#if showRegulation || custom || team.publishedAt}
+      {#if showRegulation || team.publishedAt}
         <div
           class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
             ? 'col-start-2 justify-center text-center'
@@ -77,7 +87,6 @@
           {#if showRegulation}<span class="term"
               >{regulationLabel(team.regulation)}</span
             >{/if}
-          {#if custom}<span class="term">Custom rules</span>{/if}
           {#if team.publishedAt}<span class="provenance"
               >{team.publishedAt}</span
             >{/if}

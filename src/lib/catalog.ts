@@ -1,6 +1,7 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
 import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
+import { splitTeamName, videoHeading, withoutDivision } from './team-name.ts';
 
 export interface SpreadSource {
   pasteUrl: string;
@@ -34,6 +35,7 @@ export interface Report {
   event: string;
   rank: string;
   sourceUrl: string;
+  videoTitle?: string;
   entrants?: number;
 }
 export interface Team {
@@ -91,6 +93,44 @@ export function isPasteUrl(value: string): boolean {
 
 export const regulationLabel = (regulation: string) =>
   regulation === 'Unknown' ? 'Regulation unknown' : `Reg ${regulation}`;
+
+export function teamHeading(
+  name: string,
+  source: { name: string; reports?: readonly Report[] } | null
+): { title: string; context: string } {
+  const original = { title: name, context: '' };
+  if (!source || name !== source.name) return original;
+  const video = videoHeading(source.reports ?? []);
+  const parsed = splitTeamName(name);
+  if (!parsed) return video ?? original;
+  const ranks = new Set<string>();
+  const events = new Set<string>();
+  for (const report of source.reports ?? []) {
+    const event = report.event.trim();
+    if (!event) continue;
+    if (
+      event !== parsed.middle &&
+      withoutDivision(event) !== withoutDivision(parsed.middle)
+    )
+      continue;
+    events.add(event);
+    const rank = report.rank.trim();
+    if (rank) ranks.add(rank);
+  }
+  if (ranks.size > 1) return original;
+  const result = [...ranks][0] ?? parsed.placement;
+  if (!result && video) return video;
+  const event = [
+    events.size === 1 ? [...events][0] : parsed.middle,
+    parsed.division,
+  ]
+    .filter(Boolean)
+    .join(' ');
+  return {
+    title: parsed.title,
+    context: [event, result].filter(Boolean).join(' · '),
+  };
+}
 
 export function readFilters(params: URLSearchParams): MemberFilter[] {
   const values = params.getAll('member');
@@ -151,8 +191,7 @@ export function matchesTeam(
   );
 }
 
-const majorEventTier = (event: string) => {
-  const key = normalize(event);
+const majorEventTier = (key: string) => {
   if (['worlds', 'worlds2026', 'worlds2026sanfrancisco'].includes(key))
     return 0;
   if (['baltimoreregional2027', 'frankfurtregionalchampionships'].includes(key))
@@ -174,7 +213,7 @@ const noEvidence = (entrants?: number): ClassifiedEvidence => ({
   label: '',
   none: true,
   platform: 'Unknown',
-  priority: [6, 0, 0, 0, 0],
+  priority: [8, 0, 0, 0, 0],
   entrants,
 });
 const scalarCompare = (a: number, b: number) => (a === b ? 0 : a < b ? -1 : 1);
@@ -186,7 +225,7 @@ const priorityCompare = (a: Priority, b: Priority) => {
   return 0;
 };
 
-export function isCustomRulesTeam(team: {
+export function isExcludedCatalogEvent(team: {
   id?: string;
   reports?: readonly Report[];
 }): boolean {
@@ -209,8 +248,9 @@ export function evidence(
   regulation: string,
   current: string
 ): ClassifiedEvidence {
-  const { event, rank, entrants } = report;
-  if (!event || !rank) return noEvidence(entrants);
+  const { event, rank: rawRank, entrants } = report;
+  if (!event) return noEvidence(entrants);
+  const rank = rawRank.trim();
   const trimmed = event.trim();
   const showdown = /^Showdown Ladder(?: \(Bo[13]\))?$/i.test(trimmed);
   const champions =
@@ -219,6 +259,7 @@ export function evidence(
     );
   const ladder = showdown || champions;
   if (ladder) {
+    if (!rank) return noEvidence(entrants);
     const numeric =
       /^(?:Reported|Peak|Season finish) #?(\d+)(?:st|nd|rd|th)?$/i.exec(rank) ||
       /^(\d+)(?:st|nd|rd|th)$/i.exec(rank);
@@ -241,7 +282,7 @@ export function evidence(
         label: rank,
         platform,
         priority: [
-          0,
+          1,
           divisionNumber === '1' ? 1 : 0,
           position ?? Infinity,
           0,
@@ -257,7 +298,7 @@ export function evidence(
         level: 1,
         label: rank,
         platform,
-        priority: [2, champions ? 1 : 2, position, 0, 0],
+        priority: [4, champions ? 1 : 2, position, 0, 0],
         entrants,
       };
     if (divisionNumber === '2')
@@ -265,7 +306,7 @@ export function evidence(
         level: 1,
         label: rank,
         platform,
-        priority: [2, 0, 0, 0, 0],
+        priority: [4, 0, 0, 0, 0],
         entrants,
       };
     if (
@@ -278,7 +319,7 @@ export function evidence(
         label: rank,
         platform,
         priority: [
-          4,
+          6,
           divisionNumber === '3' ? 0 : divisionNumber === '4' ? 1 : 2,
           0,
           0,
@@ -290,11 +331,17 @@ export function evidence(
       level: 3,
       label: rank,
       platform,
-      priority: [5, 0, 0, 0, 0],
+      priority: [7, 0, 0, 0, 0],
       entrants,
     };
   }
-  const major = majorEventTier(trimmed);
+  const eventKey = normalize(trimmed);
+  const globalChallenge =
+    /^(?:20\d{2}globalchallenge|globalchallenge20\d{2})(?:[ivx]+)?(?:seniors)?$/.test(
+      eventKey
+    );
+  if (!rank && !globalChallenge) return noEvidence(entrants);
+  const major = majorEventTier(eventKey);
   const normalizedRank = rank.replace(/ \(Seniors\)$/i, '').trim();
   const finishMatch = /^(\d+)(?:st|nd|rd|th)$/i.exec(normalizedRank);
   const topMatch = /^Top (\d+)$/i.exec(normalizedRank);
@@ -309,6 +356,23 @@ export function evidence(
     : /^Runner up$/i.test(normalizedRank)
       ? 2
       : finish;
+  if (globalChallenge) {
+    const numeric = /^(?:Reported #)?(\d+)$/i.exec(normalizedRank);
+    const value = numeric ? Number(numeric[1]) : placing;
+    if (
+      value !== undefined &&
+      Number.isSafeInteger(value) &&
+      value > 0 &&
+      value <= 1000
+    )
+      return {
+        level: value <= 100 ? 0 : 1,
+        label: rank,
+        platform: 'Tournament',
+        priority: [value <= 100 ? 0 : 3, 0, value, 0, 0],
+        entrants,
+      };
+  }
   if (
     major !== null &&
     ((major === 0 &&
@@ -322,10 +386,11 @@ export function evidence(
       level: 0,
       label: rank,
       platform: 'Tournament',
-      priority: [1, major, placing ?? Infinity, -(entrants ?? 0), 0],
+      priority: [2, major, placing ?? Infinity, -(entrants ?? 0), 0],
       entrants,
     };
   if (
+    !globalChallenge &&
     entrants !== undefined &&
     Number.isSafeInteger(entrants) &&
     entrants >= 32 &&
@@ -336,16 +401,57 @@ export function evidence(
       level: 1,
       label: rank,
       platform: 'Tournament',
-      priority: [3, 0, placing / entrants, -entrants, placing],
+      priority: [5, 0, placing / entrants, -entrants, placing],
       entrants,
     };
   return {
     level: 3,
     label: rank,
     platform: 'Tournament',
-    priority: [5, 0, 0, 0, 0],
+    priority: [7, 0, 0, 0, 0],
     entrants,
   };
+}
+
+export function isExcludedMasterBallTeam(
+  team: Pick<Team, 'reports' | 'regulation'>,
+  current: string
+): boolean {
+  let excluded = false;
+  for (const report of team.reports) {
+    const event = report.event.trim();
+    const rank = report.rank.trim();
+    if (!event || !rank) continue;
+    const result = evidence(report, team.regulation, current);
+    if (
+      result.platform === 'Tournament' &&
+      !/ (?:collection|video)$/i.test(event)
+    )
+      return false;
+    if (
+      (result.platform === 'Champions ladder' ||
+        result.platform === 'Showdown') &&
+      result.level <= 1
+    )
+      return false;
+    if (
+      result.platform === 'Champions ladder' &&
+      /^Master ?Ball(?: Rank)? [34]$/i.test(rank)
+    )
+      excluded = true;
+  }
+  return excluded;
+}
+
+export function admittedTeams(
+  teams: readonly Team[],
+  currentRegulation: string
+): Team[] {
+  return teams.filter(
+    (team) =>
+      !isExcludedCatalogEvent(team) &&
+      !isExcludedMasterBallTeam(team, currentRegulation)
+  );
 }
 
 export interface TeamEvidence extends ClassifiedEvidence {
@@ -353,7 +459,7 @@ export interface TeamEvidence extends ClassifiedEvidence {
 }
 
 export function bestEvidence(
-  team: Pick<Team, 'reports' | 'regulation'> & Partial<Pick<Team, 'id'>>,
+  team: Pick<Team, 'reports' | 'regulation'>,
   current: string
 ): TeamEvidence {
   let best: TeamEvidence | undefined;
@@ -365,8 +471,7 @@ export function bestEvidence(
     if (!best || priorityCompare(candidate.priority, best.priority) < 0)
       best = candidate;
   }
-  const result = best || { ...noEvidence(), event: '' };
-  return isCustomRulesTeam(team) ? { ...result, level: 3 } : result;
+  return best || { ...noEvidence(), event: '' };
 }
 
 const evidenceCache = new WeakMap<
@@ -435,7 +540,7 @@ export function listingReason(
 
 export function sourceName(
   team: Pick<Team, 'reports' | 'regulation'> &
-    Partial<Pick<Team, 'id' | 'sheetIds' | 'publishedAt'>>,
+    Partial<Pick<Team, 'sheetIds' | 'publishedAt'>>,
   current: string
 ): string {
   const best = bestEvidence(team, current);
@@ -505,9 +610,6 @@ export function compareTeams(
   current: string,
   tiebreak = 0
 ): number {
-  const customOrder =
-    Number(isCustomRulesTeam(a)) - Number(isCustomRulesTeam(b));
-  if (customOrder) return customOrder;
   const unknownOrder =
     Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
   if (unknownOrder) return unknownOrder;
@@ -526,26 +628,21 @@ export function compareTeams(
   );
 }
 
+const browseBand = (priority: Priority): number => {
+  const [level, division] = priority;
+  if (level === 0) return 0;
+  if (level === 1) return division === 1 ? 2 : 1;
+  if (level === 2) return 3;
+  if (level === 5) return 4;
+  if (level === 3) return 5;
+  if (level === 4) return division === 0 ? 6 : division === 1 ? 7 : 8;
+  if (level === 6) return 9;
+  if (level === 7) return 10;
+  return 11;
+};
+
 const browsePriority = (priority: Priority): Priority => [
-  priority[0] === 0
-    ? priority[1] === 1
-      ? 1
-      : 0
-    : priority[0] === 1
-      ? 2
-      : priority[0] === 3
-        ? 3
-        : priority[0] === 2
-          ? priority[1] === 0
-            ? 4
-            : priority[1] === 1
-              ? 5
-              : 6
-          : priority[0] === 4
-            ? 7
-            : priority[0] === 5
-              ? 8
-              : 9,
+  browseBand(priority),
   priority[1],
   priority[2],
   priority[3],
@@ -594,7 +691,7 @@ function browseRankingOf(team: Team, current: string) {
     team.members.some((member) =>
       member.spreadSource?.videoUrls.some(isDirectYoutubeVideo)
     );
-  let priority: Priority = [9, 0, 0, 0, 0];
+  let priority: Priority = [11, 0, 0, 0, 0];
   for (const report of team.reports) {
     const candidate = browsePriority(
       evidence(report, team.regulation, current).priority
@@ -611,9 +708,6 @@ function browseRankingOf(team: Team, current: string) {
 }
 
 export function compareBrowseTeams(a: Team, b: Team, current: string): number {
-  const customOrder =
-    Number(isCustomRulesTeam(a)) - Number(isCustomRulesTeam(b));
-  if (customOrder) return customOrder;
   const unknownOrder =
     Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
   if (unknownOrder) return unknownOrder;

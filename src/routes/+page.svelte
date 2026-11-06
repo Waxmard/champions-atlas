@@ -7,17 +7,8 @@
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
-  import X from '@lucide/svelte/icons/x';
-  import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
+  import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
-  import TypeFilter from '#lib/components/TypeFilter.svelte';
-  import {
-    getPokemonTypes,
-    getTypeIcon,
-    TYPE_COLORS,
-    type PokemonType,
-  } from '#lib/types.js';
   import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import { notify } from '#lib/notifications.js';
   import {
@@ -33,17 +24,13 @@
     writeFilters,
     matchesTeam,
     compareBrowseTeams,
-    getMemberOptions,
-    isCustomRulesTeam,
-    browsePokemon,
-    pokemonId,
+    regulationLabel,
     type MemberFilter,
     type Team,
   } from '#lib/catalog.js';
-  const browseKeys = ['member', 'regulation', 'sort', 'page', 'type', 'custom'];
-  const ALL_TYPES = Object.keys(TYPE_COLORS) as PokemonType[];
+  const browseKeys = ['member', 'regulation', 'page'];
   let storageError = $state(false);
-  let typeOpen = $state(false);
+  let filtersOpen = $state(false);
   let ready = $state(false);
   let saved = $state.raw<SavedTeam[]>([]);
   let savedError = $state('');
@@ -75,45 +62,16 @@
   const regulation = $derived(
     page.url.searchParams.get('regulation') || current
   );
-  const sort = $derived(page.url.searchParams.get('sort') || 'priority');
-  const includeCustomRules = $derived(
-    page.url.searchParams.get('custom') === '1'
-  );
-  const selectedTypes = $derived(
-    page.url.searchParams
-      .getAll('type')
-      .map((value) => value.toLowerCase())
-      .filter((value): value is PokemonType =>
-        (ALL_TYPES as string[]).includes(value)
-      )
-  );
   const filterCount = $derived(
-    selectedTypes.length + (includeCustomRules ? 1 : 0)
+    filters.reduce(
+      (count, { item, ability, move }) =>
+        count +
+        Number(!!item.trim()) +
+        Number(!!ability.trim()) +
+        Number(!!move.trim()),
+      0
+    ) + Number(regulation !== current)
   );
-  const allPokemon = $derived(
-    [
-      ...new Set(
-        teams.flatMap((team) =>
-          team.members.map((member) => browsePokemon(member.pokemon))
-        )
-      ),
-    ].sort()
-  );
-  const availablePokemon = $derived(
-    allPokemon.filter(
-      (pokemon) =>
-        !filters.some(
-          (filter) => pokemonId(filter.pokemon) === pokemonId(pokemon)
-        )
-    )
-  );
-  function matchesTypes(team: Team, types: PokemonType[]) {
-    if (!types.length) return true;
-    const present = new Set(
-      team.members.flatMap((member) => getPokemonTypes(member.pokemon))
-    );
-    return types.every((type) => present.has(type));
-  }
   const results = $derived(
     filterState.error
       ? []
@@ -121,16 +79,9 @@
           .filter(
             (team) =>
               (regulation === 'all' || team.regulation === regulation) &&
-              (!isCustomRulesTeam(team) || includeCustomRules) &&
-              matchesTeam(team, filters) &&
-              matchesTypes(team, selectedTypes)
+              matchesTeam(team, filters)
           )
-          .sort((a, b) =>
-            sort === 'recent'
-              ? b.publishedAt.localeCompare(a.publishedAt) ||
-                a.id.localeCompare(b.id)
-              : compareBrowseTeams(a, b, current)
-          )
+          .sort((a, b) => compareBrowseTeams(a, b, current))
   );
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / 24)));
   const pageNumber = $derived(
@@ -148,13 +99,7 @@
 
   function browseParams(params: URLSearchParams) {
     const result = writeFilters(new URLSearchParams(), readFilters(params));
-    for (const value of params.getAll('type')) {
-      const type = value.toLowerCase();
-      if ((ALL_TYPES as string[]).includes(type)) result.append('type', type);
-    }
     result.set('regulation', params.get('regulation') || current);
-    result.set('sort', params.get('sort') === 'recent' ? 'recent' : 'priority');
-    if (params.get('custom') === '1') result.set('custom', '1');
     const pageValue = params.get('page');
 
     if (pageValue && /^\d+$/.test(pageValue) && Number(pageValue) > 1)
@@ -240,37 +185,6 @@
   function changeFilters(next: MemberFilter[]) {
     navigate(writeFilters(new URL(page.url.href).searchParams, next));
   }
-  function addPokemon(pokemon: string) {
-    pokemon = browsePokemon(pokemon);
-    if (
-      filters.length >= 6 ||
-      filters.some((filter) => pokemonId(filter.pokemon) === pokemonId(pokemon))
-    )
-      return;
-    changeFilters([
-      ...filters,
-      {
-        pokemon,
-        item: '',
-        ability: '',
-        move: '',
-      },
-    ]);
-  }
-  function updateMember(
-    index: number,
-    field: 'item' | 'ability' | 'move',
-    value: string
-  ) {
-    changeFilters(
-      filters.map((filter, i) =>
-        i === index ? { ...filter, [field]: value } : filter
-      )
-    );
-  }
-  function options(pokemon: string, field: 'item' | 'ability' | 'move') {
-    return getMemberOptions(teams, pokemon, field);
-  }
   function changeOption(key: string, value: string) {
     const params = new URL(page.url.href).searchParams;
     params.set(key, value);
@@ -280,14 +194,6 @@
 
   function clearFilters() {
     navigate(new URLSearchParams());
-  }
-
-  function setTypes(next: PokemonType[]) {
-    const params = new URL(page.url.href).searchParams;
-    params.delete('type');
-    for (const type of next) params.append('type', type.toLowerCase());
-    params.delete('page');
-    navigate(params, true);
   }
 </script>
 
@@ -320,214 +226,61 @@
       {savedError || actionError}
     </p>{/if}
 
-  <div class="mt-4 flex items-center gap-2">
-    <div class="min-w-0 flex-1">
-      <span class="sr-only" aria-live="polite"
-        >{filters.length} of 6 Pokémon selected</span
+  <PokemonFilters
+    {teams}
+    {filters}
+    onchange={changeFilters}
+    expanded={filtersOpen}
+    controlsId="browse-filters"
+  >
+    {#snippet actions()}
+      <Button
+        type="button"
+        variant="quiet"
+        class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
+        aria-expanded={filtersOpen}
+        aria-controls="browse-filters"
+        onclick={() => (filtersOpen = !filtersOpen)}
       >
-      <PokemonPicker
-        options={availablePokemon}
-        onselect={addPokemon}
-        disabled={filters.length >= 6}
-      />
-    </div>
-    <Button
-      type="button"
-      variant="quiet"
-      class="shrink-0 max-sm:size-11 max-sm:px-0"
-      aria-expanded={typeOpen}
-      aria-controls="browse-filters"
-      onclick={() => (typeOpen = !typeOpen)}
-    >
-      <Filter class="size-4" aria-hidden="true" />
-      <span class="max-sm:sr-only">Filters</span>
-      {#if filterCount}<span class="badge badge-primary">{filterCount}</span
-        >{/if}
-    </Button>
-  </div>
-
-  {#if typeOpen}
-    <div id="browse-filters" class="mt-2 space-y-2">
-      <TypeFilter
-        options={ALL_TYPES}
-        selected={selectedTypes}
-        onselect={setTypes}
-      />
-      <label
-        for="include-custom-rules"
-        class="term inline-flex min-h-11 cursor-pointer items-center gap-2.5"
-      >
-        <input
-          id="include-custom-rules"
-          type="checkbox"
-          name="custom"
-          value="1"
-          autocomplete="off"
-          class="size-5 accent-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:outline-solid"
-          checked={includeCustomRules}
-          disabled={!ready}
-          onchange={(event) =>
-            changeOption('custom', event.currentTarget.checked ? '1' : '')}
-        />
-        Include custom-rule teams
-      </label>
-    </div>
-  {/if}
-  {#if selectedTypes.length}
-    <div class="mt-2 flex flex-wrap gap-1.5">
-      {#each selectedTypes as type (type)}
-        <span
-          class="inline-flex items-center gap-1.5 border border-s-[3px] border-base-300 bg-base-100 py-1 ps-2 pe-1 text-[0.8125rem]"
-          style="border-inline-start-color: {TYPE_COLORS[type]}"
-        >
-          <img src={getTypeIcon(type)} alt="" class="size-3.5" /><span
-            class="font-medium">{type}</span
-          >
-          <Button
-            variant="quiet"
-            size="icon-compact"
-            aria-label={`Remove ${type} type filter`}
-            onclick={() => setTypes(selectedTypes.filter((t) => t !== type))}
-            ><X class="size-3.5" aria-hidden="true" /></Button
-          >
-        </span>
-      {/each}
-    </div>
-  {/if}
-
-  {#if filters.length}
-    <div class="mt-4 grid gap-3 md:grid-cols-2">
-      {#each filters as filter, index (filter.pokemon)}
-        <section
-          class="plate min-w-0 px-4 pt-3 pb-4"
-          style="border-inline-start: 3px solid {TYPE_COLORS[
-            getPokemonTypes(filter.pokemon)[0]
-          ]}"
-          aria-label={`${filter.pokemon} constraints`}
-        >
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex min-w-0 items-center gap-3">
-              <h2
-                class="min-w-0 text-lg leading-tight font-extrabold wrap-break-word"
-              >
-                <SpeciesLabel pokemon={filter.pokemon} spriteSize={36} />
-              </h2>
-            </div>
-            <Button
-              type="button"
-              variant="quiet"
-              size="icon-compact"
-              class="shrink-0"
-              aria-label={`Remove ${filter.pokemon}`}
-              onclick={() =>
-                changeFilters(filters.filter((_, i) => i !== index))}
-              ><X class="size-4" aria-hidden="true" /></Button
-            >
-          </div>
-
-          <div class="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <label for={`item-${index}`} class="term min-w-0"
-              >Held item
-              <select
-                id={`item-${index}`}
-                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                value={filter.item}
-                onchange={(event) =>
-                  updateMember(index, 'item', event.currentTarget.value)}
-              >
-                <option value="">Any item</option>
-                {#each options(filter.pokemon, 'item') as item (item)}<option
-                    value={item}>{item}</option
-                  >{/each}
-                {#if filter.item && !options(filter.pokemon, 'item').includes(filter.item)}<option
-                    value={filter.item}>{filter.item}</option
-                  >{/if}
-              </select>
-            </label>
-
-            <label for={`ability-${index}`} class="term min-w-0"
-              >Ability
-              <select
-                id={`ability-${index}`}
-                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                value={filter.ability}
-                onchange={(event) =>
-                  updateMember(index, 'ability', event.currentTarget.value)}
-              >
-                <option value="">Any ability</option>
-                {#if filter.ability && !options(filter.pokemon, 'ability').includes(filter.ability)}<option
-                    value={filter.ability}>{filter.ability}</option
-                  >{/if}
-                {#each options(filter.pokemon, 'ability') as ability (ability)}<option
-                    value={ability}>{ability}</option
-                  >{/each}
-              </select>
-            </label>
-
-            <label
-              for={`move-${index}`}
-              class="term col-span-2 min-w-0 sm:col-span-1"
-              >Move
-              <select
-                id={`move-${index}`}
-                class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-                value={filter.move}
-                onchange={(event) =>
-                  updateMember(index, 'move', event.currentTarget.value)}
-              >
-                <option value="">Any move</option>
-                {#if filter.move && !options(filter.pokemon, 'move').includes(filter.move)}<option
-                    value={filter.move}>{filter.move}</option
-                  >{/if}
-                {#each options(filter.pokemon, 'move') as move (move)}<option
-                    value={move}>{move}</option
-                  >{/each}
-              </select>
-            </label>
-          </div>
-        </section>
-      {/each}
-    </div>
-  {/if}
-
-  <div class="mt-4 grid grid-cols-2 gap-3">
-    <label for="regulation" class="term min-w-0"
-      >Regulation
-      <select
-        id="regulation"
-        class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-        value={regulation}
-        onchange={(event) =>
-          changeOption('regulation', event.currentTarget.value)}
-      >
-        <option value={current}>{current} (current)</option>
-        <option value="all">All regulations</option>
-        {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
-            value={regulation}
-            >{regulation === 'Unknown'
-              ? 'Unknown regulation'
-              : regulation}</option
+        <Filter class="size-4" aria-hidden="true" />
+        <span class="max-sm:sr-only">Filters</span>
+        {#if filterCount}<span class="badge badge-primary">{filterCount}</span
           >{/if}
-        {#each historicalRegulations as reg (reg)}<option value={reg}
-            >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
-          >{/each}
-      </select>
-    </label>
+      </Button>
+    {/snippet}
+    {#snippet controls()}
+      <label for="regulation" class="term block w-full sm:max-w-64"
+        >Regulation
+        <select
+          id="regulation"
+          class="select mt-1 min-h-11 w-full text-base sm:text-sm"
+          value={regulation}
+          onchange={(event) =>
+            changeOption('regulation', event.currentTarget.value)}
+        >
+          <option value={current}>{current} (current)</option>
+          <option value="all">All regulations</option>
+          {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
+              value={regulation}
+              >{regulation === 'Unknown'
+                ? 'Unknown regulation'
+                : regulation}</option
+            >{/if}
+          {#each historicalRegulations as reg (reg)}<option value={reg}
+              >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
+            >{/each}
+        </select>
+      </label>
+    {/snippet}
+  </PokemonFilters>
 
-    <label for="sort" class="term min-w-0"
-      >Sort
-      <select
-        id="sort"
-        aria-label="Sort teams"
-        class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-        value={sort}
-        onchange={(event) => changeOption('sort', event.currentTarget.value)}
-      >
-        <option value="priority">Recommended</option>
-        <option value="recent">Newest shared</option>
-      </select>
-    </label>
-  </div>
+  {#if !filtersOpen && regulation !== current}
+    <p class="mt-2 text-sm wrap-break-word text-base-content/70">
+      Regulation: {regulation === 'all'
+        ? 'All regulations'
+        : regulationLabel(regulation)}
+    </p>
+  {/if}
 
   <section aria-label="Matching teams" class="mt-5 min-w-0">
     <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
@@ -536,9 +289,10 @@
         aria-atomic="true"
         class="value font-semibold tracking-wide"
       >
-        {results.length} teams
+        {results.length}
+        {results.length === 1 ? 'team' : 'teams'}
       </p>
-      {#if filters.length || selectedTypes.length || regulation !== current || sort !== 'priority' || includeCustomRules || filterState.error}<Button
+      {#if filters.length || regulation !== current || filterState.error}<Button
           type="button"
           variant="quiet"
           disabled={!ready}

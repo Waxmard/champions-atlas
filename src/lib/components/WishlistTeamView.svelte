@@ -8,6 +8,7 @@
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { regulationLabel, type Team } from '#lib/catalog.js';
+  import { savedTeamHeading } from '#lib/team-collections.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
   import { exportPaste, type SavedTeam } from '#lib/workbench.js';
@@ -25,6 +26,7 @@
     onuse: () => void;
     onremove: () => void;
   } = $props();
+  const heading = $derived(savedTeamHeading(entry));
   let selectedIndex = $state<number | null>(null);
   let failedCopyText = $state('');
   const selectedMember = $derived(
@@ -50,11 +52,16 @@
 <div
   class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
 >
-  <h1
-    class="min-w-0 text-[1.75rem] leading-tight font-extrabold wrap-anywhere sm:text-4xl"
-  >
-    {entry.name}
-  </h1>
+  <div class="min-w-0 flex-1">
+    <h1
+      class="min-w-0 text-[1.75rem] leading-tight font-extrabold wrap-anywhere sm:text-4xl"
+    >
+      {heading.title}
+    </h1>
+    {#if heading.context}<p class="provenance mt-1 wrap-anywhere">
+        {heading.context}
+      </p>{/if}
+  </div>
   <div class="flex flex-wrap items-center gap-2">
     <Button variant="quiet" class="min-h-11" {disabled} onclick={onuse}>
       <AtlasIcon />

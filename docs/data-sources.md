@@ -329,25 +329,36 @@ M-C is the configured current regulation from the planning discussion. Catalog
 admission checks species, forms, and allowed Mega Evolutions under each team's own
 rules. It does not establish full current-rule legality or competitiveness.
 
+After duplicate reports merge, the catalog excludes a team whose only actual
+result is Champions Master Ball Rank 3 or 4. A qualifying ladder achievement
+or another tournament result retains it; collection and video provenance do
+not count as tournament results. Champions positions through 1,000 and Showdown
+positions through 100 qualify, as do Champion Tier and Master Ball 1 or 2.
+Lower ladder positions, ratings, and unspecified Master Ball claims do not.
+An explicit global position 3 or 4 is not a Master Ball division. Teams without
+an explicit Master Ball 3 or 4 claim remain eligible, and retained teams keep
+all their reports. The same rule filters bundled and downloaded catalog views,
+including previously stored bundles, without changing saved teams or bundle data.
+
 ## Ranking and discovery
 
-Automatic team and set suggestions order non-custom teams ahead of known
-custom-rule records, known regulations ahead of Unknown, then achievement band,
-current-regulation status, and credential merit. A supplied recommendation
-tiebreak follows merit; publication time and team ID settle remaining ties.
-**Newest shared** is a deliberate date-only sort.
+Automatic team and set suggestions order known regulations ahead of Unknown, then
+achievement band, current-regulation status, and credential merit. A supplied
+recommendation tiebreak follows merit; publication time and team ID settle
+remaining ties.
 
-Browse's **Recommended** order keeps the same custom-rule and unknown-regulation
-guards, then ranks resource groups: complete EVs with a video, complete EVs
-without a video, a video without complete EVs, and neither. Complete EVs require
+Browse orders known regulations ahead of Unknown, then ranks resource groups:
+complete EVs with a video, complete EVs without a video, a video without complete
+EVs, and neither. Complete EVs require
 exactly six Pokémon with valid 66-point allocations, with each stat from 0 to 32;
 Nature is not required. Attributed imported EV additions count as working sets.
 A video is a direct HTTPS YouTube watch, live, Shorts, or youtu.be link with a
 valid 11-character video ID, attached to a report or EV-addition attribution.
 Channel and playlist links do not count. Multiple videos count the same as one.
 
-Within each resource group, Browse ranks Champion Tier or Champions positions
-1–100, Master Ball 1, qualifying major finishes, qualifying community finishes,
+Within each resource group, Browse ranks Global Challenge positions 1–100,
+Champion Tier or Champions positions 1–100, Master Ball 1, qualifying major
+finishes, qualifying community finishes, Global Challenge positions 101–1,000,
 Master Ball 2, Champions positions 101–1,000, Showdown positions 1–100, eligible
 lower Master Ball results, other reported results, then no result. Current
 regulation comes before credential merit within each band, followed by
@@ -356,15 +367,22 @@ band. Showdown Bo1, Bo3, and unspecified labels receive the same qualification;
 none implies closed team sheets. These Browse rules do not change evidence
 labels or automatic suggestions.
 
-For automatic suggestions, achievement bands, from highest to lowest, are: (1) Champions Champion Tier or
-explicit Champions global, peak, or season-finish position 1–100, then Master Ball
-1; (2) qualifying major-event finishes; (3) Master Ball 2, Champions positions
-101–1,000, then Showdown positions 1–100; (4) supported community finishes; (5)
-Master Ball 3, Master Ball 4, then unspecified Master Ball in the current
-regulation; (6) other reported results; and (7) no result. Tournament Champion,
-Winner, and Runner up are placement labels, not ladder credentials. Numeric ladder
-positions retain their platform context and are not converted to tiers or compared
-across platforms.
+For automatic suggestions, achievement bands, from highest to lowest, are:
+(1) Global Challenge positions 1–100; (2) Champions Champion Tier, Champions
+global, peak, or season-finish positions 1–100, then Master Ball 1;
+(3) qualifying major-event finishes; (4) Global Challenge positions 101–1,000;
+(5) Master Ball 2, Champions positions 101–1,000, then Showdown positions 1–100;
+(6) supported community finishes; (7) eligible lower Master Ball results, with a
+bare Master Ball claim only in the current regulation; (8) other reported
+results; and (9) no result. Tournament
+Champion, Winner, and Runner up are placement labels, not ladder credentials.
+Numeric ladder positions retain their platform context and are not converted to
+tiers or compared across platforms.
+
+Global Challenge names must match the published year and event naming pattern,
+including optional Roman-numeral rounds and Seniors labels. Recognized finishes
+through 1,000 use their published placement without requiring an entrant count.
+Lower or unbounded finishes remain generic reports, even with a known field size.
 
 Major-event names match exact normalized aliases: Worlds, Worlds 2026, Worlds 2026
 San Francisco, Baltimore Regional 2027, and Frankfurt Regional Championships.
@@ -382,14 +400,11 @@ then larger field and finish. Other reported results and no-result teams have no
 inferred credential merit. Publication time cannot promote a lower achievement
 band above a higher one.
 
-Known custom-rule records match Mudkip's Marsh Pit #6 by normalized event name or
-its published Poch record IDs. They are hidden from Browse by default; the Include
-custom-rule teams option reveals them there. Automatic recommendations always
-exclude these records, regardless of the Browse option. They remain available by
-direct link, keep their source attribution, and can be saved or used as teams.
-Their displayed evidence receives reported-grade treatment. This policy does not
-classify other similarly named events or infer standard-format legality; unknown
-restrictions are not evidence of standard rules.
+The catalog excludes Mudkip's Marsh Pit #6 by normalized event name or its
+published Poch record IDs. This applies to imports and catalog views, including
+previously stored bundles. Other Poch tournaments and similarly named events
+remain eligible. Saved copies remain usable, as do user-created teams and
+Poképaste imports. This exclusion does not establish standard-format legality.
 
 Cached catalogs without entrant metadata remain readable and use unknown field
 size conservatively. Event aliases and result labels describe source claims; they

@@ -78,9 +78,7 @@
             ><SpeciesLabel {pokemon} spriteSize={32} /></Combobox.Item
           >
         {:else}
-          <p class="p-3 text-sm text-base-content/70">
-            No matching Pokémon in this catalog.
-          </p>
+          <p class="p-3 text-sm text-base-content/70">No matching Pokémon.</p>
         {/each}
       </Combobox.Viewport>
     </Combobox.Content>

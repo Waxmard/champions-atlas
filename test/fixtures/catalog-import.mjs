@@ -484,9 +484,9 @@ export const pochTeamRow = (id, pokemon) => ({
   rule: 'double',
   mons: pokemon.map((name) => ({ name, gender: null })),
 });
-export const pochPage = (rows) =>
+export const pochPage = (rows, entries = []) =>
   `<script>self.__next_f.push([1,${JSON.stringify(
-    `a:${JSON.stringify({ entries: [], x: rows })}`
+    `a:${JSON.stringify({ entries, x: rows })}`
   )}])</script>`;
 
 export async function writeFetchMock(directory, config) {

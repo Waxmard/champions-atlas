@@ -3,7 +3,7 @@
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { rankSavedTeams } from '#lib/team-collections.js';
+  import { rankSavedTeams, savedTeamHeading } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
@@ -27,6 +27,16 @@
     fieldEl = $state<HTMLElement | null>(null),
     contentEl = $state<HTMLElement | null>(null);
   const selected = $derived(teams.find((team) => team.id === value));
+  const selectedHeading = $derived(
+    selected ? savedTeamHeading(selected) : null
+  );
+  const selectedLabel = $derived(
+    selectedHeading
+      ? [selectedHeading.title, selectedHeading.context]
+          .filter(Boolean)
+          .join(' · ')
+      : 'Choose saved team'
+  );
   const options = $derived(open ? rankSavedTeams(teams, field) : teams);
   const roster = (team: SavedTeam) =>
     team.members.map((member) => member.pokemon);
@@ -88,7 +98,7 @@
 
 <div class="w-full min-w-0">
   <label class="sr-only" for={id}>
-    {selected ? `Saved team, currently ${selected.name}` : 'Saved team'}
+    {selectedHeading ? `Saved team, currently ${selectedLabel}` : 'Saved team'}
   </label>
   <Combobox.Root
     type="single"
@@ -109,9 +119,7 @@
       <Combobox.Input
         {id}
         bind:ref={inputEl}
-        placeholder={open
-          ? 'Search saved teams'
-          : (selected?.name ?? 'Choose saved team')}
+        placeholder={open ? 'Search saved teams' : selectedLabel}
         autocomplete="off"
         onclick={() => {
           if (!open) openMenu();
@@ -154,10 +162,11 @@
       >
         <Combobox.Viewport>
           {#each options as team (team.id)}
+            {@const heading = savedTeamHeading(team)}
             <Combobox.Item
               value={team.id}
-              label={team.name}
-              aria-label={`${team.name}: ${roster(team).join(', ')}`}
+              label={heading.title}
+              aria-label={`${heading.title}${heading.context ? `, ${heading.context}` : ''}: ${roster(team).join(', ')}`}
               class="option-row cursor-pointer border-b border-base-300 outline-none last:border-b-0 data-highlighted:bg-info data-highlighted:text-info-content"
             >
               {#snippet children({ selected: isSelected })}
@@ -170,8 +179,11 @@
                   <span
                     class="text-[0.8125rem] leading-tight wrap-break-word {isSelected
                       ? 'font-bold'
-                      : 'text-base-content/70'}">{team.name}</span
+                      : 'text-base-content/70'}">{heading.title}</span
                   >
+                  {#if heading.context}<span class="provenance wrap-anywhere">
+                      {heading.context}
+                    </span>{/if}
                 </span>
                 {#if isSelected}<Check
                     class="size-4 shrink-0"

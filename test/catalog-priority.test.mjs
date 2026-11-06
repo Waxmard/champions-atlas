@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parsePoch, pochUrl } from '../scripts/poch-source.mjs';
 import {
+  admittedTeams,
   bestEvidence,
   compareTeams,
   evidence,
   evidenceGrade,
-  isCustomRulesTeam,
+  isExcludedCatalogEvent,
   listingReason,
   sourceName,
   sourceRows,
@@ -149,44 +150,12 @@ const saved = (report_) => ({
   members: roster.map(member),
 });
 
-test('Poch tournament entrants are validated and custom identity stays narrow', () => {
+test('Poch tournament entrants are validated', () => {
   const valid = tournamentResult(tournament);
   const team = valid.teams.find(
     (candidate) => candidate.id === 'poch-tournament-' + tournament.id
   );
   assert.equal(team.reports[0].entrants, 40);
-  assert.equal(isCustomRulesTeam(team), true);
-  assert.equal(
-    isCustomRulesTeam({
-      id: 'poch-tournament-6ab431f2e905c1db68748c9c-60',
-      reports: [],
-    }),
-    true
-  );
-  assert.equal(
-    isCustomRulesTeam({
-      reports: [{ event: "Mudkip's Marsh Pit #6", rank: '', sourceUrl: '' }],
-    }),
-    true
-  );
-  assert.equal(
-    isCustomRulesTeam({
-      reports: [{ event: 'Mudkip’s Marsh Pit #60', rank: '', sourceUrl: '' }],
-    }),
-    false
-  );
-  assert.equal(
-    isCustomRulesTeam({
-      reports: [{ event: 'Mudkip’s Marsh Pit #5', rank: '', sourceUrl: '' }],
-    }),
-    false
-  );
-  assert.equal(
-    isCustomRulesTeam({
-      reports: [{ event: 'Marsh Pit #6 Open', rank: '', sourceUrl: '' }],
-    }),
-    false
-  );
 
   for (const players of [undefined, null, 0]) {
     const row = { ...tournament, players };
@@ -213,16 +182,71 @@ test('Poch tournament entrants are validated and custom identity stays narrow', 
   assert.equal(team.reports[0].sourceUrl, pochUrl);
 });
 
+test('excluded event classification matches only its event and tournament IDs', () => {
+  const prefix = 'poch-tournament-6ab431f2e905c1db68748c9c-';
+  for (const suffix of ['1', '60'])
+    assert.equal(isExcludedCatalogEvent({ id: prefix + suffix }), true, suffix);
+  for (const suffix of ['', '0', '01', '-1', '1-extra'])
+    assert.equal(
+      isExcludedCatalogEvent({ id: prefix + suffix }),
+      false,
+      suffix
+    );
+  assert.equal(
+    isExcludedCatalogEvent({ id: 'poch-tournament-other-1' }),
+    false
+  );
+  assert.equal(isExcludedCatalogEvent({}), false);
+
+  for (const event of ["Mudkip's Marsh Pit #6", 'Mudkip’s Marsh Pit #6'])
+    assert.equal(
+      isExcludedCatalogEvent({ reports: [report(event, '')] }),
+      true,
+      event
+    );
+  for (const event of [
+    'Mudkip’s Marsh Pit #5',
+    'Mudkip’s Marsh Pit #60',
+    'Marsh Pit #6 Open',
+  ])
+    assert.equal(
+      isExcludedCatalogEvent({ reports: [report(event, '')] }),
+      false,
+      event
+    );
+});
+
+test('admitted teams drop excluded events and Master Ball ranks', () => {
+  const kept = { id: 'kept-team', regulation: 'M-C', reports: [] };
+  const excludedEvent = {
+    id: 'poch-tournament-6ab431f2e905c1db68748c9c-1',
+    regulation: 'M-A',
+    reports: [],
+  };
+  const masterBall = {
+    id: 'master-ball-team',
+    regulation: 'M-C',
+    reports: [report('Champions ranked battles', 'Master Ball 4')],
+  };
+  assert.deepEqual(admittedTeams([kept, excludedEvent, masterBall], 'M-C'), [
+    kept,
+  ]);
+});
+
 test('saved report entrant metadata remains optional, retained, and protected from corruption', () => {
   const storage = new MemoryStorage();
   const withEntrants = saved({
-    event: 'Event',
+    event: 'Mudkip’s Marsh Pit #6',
     rank: '1st',
     sourceUrl: pochUrl,
     entrants: 40,
   });
+  withEntrants.original.id = 'poch-tournament-6ab431f2e905c1db68748c9c-1';
   saveTeam(storage, withEntrants);
-  assert.equal(readSavedTeams(storage)[0].original.reports[0].entrants, 40);
+  const restored = readSavedTeams(storage)[0];
+  assert.equal(restored.original.id, withEntrants.original.id);
+  assert.equal(restored.original.reports[0].event, 'Mudkip’s Marsh Pit #6');
+  assert.equal(restored.original.reports[0].entrants, 40);
   const edited = structuredClone(withEntrants);
   edited.name = 'Edited';
   edited.original.reports = [
@@ -230,6 +254,10 @@ test('saved report entrant metadata remains optional, retained, and protected fr
   ];
   saveTeam(storage, edited);
   assert.equal(readSavedTeams(storage)[0].original.reports[0].entrants, 40);
+  assert.equal(
+    readSavedTeams(storage)[0].original.reports[0].event,
+    'Mudkip’s Marsh Pit #6'
+  );
 
   const legacy = saved({ event: 'Legacy', rank: '1st', sourceUrl: pochUrl });
   storage.value = JSON.stringify([legacy]);
@@ -507,7 +535,7 @@ test('compareTeams reclassifies a cached team when the current regulation change
   );
 });
 
-test('custom-rule source teams are excluded from every recommendation boundary while user options remain', () => {
+test('catalog and original member suggestions use available source teams', () => {
   const suggestionTeam = (id, reports) => ({
     id,
     regulation: 'M-C',
@@ -564,30 +592,17 @@ test('custom-rule source teams are excluded from every recommendation boundary w
       },
     ],
   });
-  const custom = suggestionTeam('poch-tournament-6ab431f2e905c1db68748c9c-1', [
-    {
-      event: 'Mudkip’s Marsh Pit #6',
-      rank: '1st',
-      sourceUrl: '',
-      entrants: 40,
-    },
-  ]);
   const control = suggestionTeam('control', [
     { event: 'Champions ranked battles', rank: 'Master Ball 1', sourceUrl: '' },
   ]);
   const pikachu = control.members[0];
   const rotom = control.members[1];
 
-  assert.deepEqual(pokemonSuggestions([pikachu], [custom], 'M-C'), []);
   assert.deepEqual(
     pokemonSuggestions([pikachu], [control], 'M-C').map(
       (suggestion) => suggestion.pokemon
     ),
     ['Rotom-Wash', 'Archaludon', 'Incineroar', 'Amoonguss', 'Rillaboom']
-  );
-  assert.deepEqual(
-    pokemonSuggestions([pikachu], [custom, control], 'M-C'),
-    pokemonSuggestions([pikachu], [control], 'M-C')
   );
 
   const swapSource = (id, reports) => {
@@ -605,41 +620,17 @@ test('custom-rule source teams are excluded from every recommendation boundary w
   const swapControl = swapSource('swap', [
     { event: 'Champions ranked battles', rank: 'Master Ball 1', sourceUrl: '' },
   ]);
-  const swapCustom = swapSource('poch-tournament-6ab431f2e905c1db68748c9c-2', [
-    {
-      event: 'Mudkip’s Marsh Pit #6',
-      rank: '1st',
-      sourceUrl: '',
-      entrants: 40,
-    },
-  ]);
-  assert.deepEqual(swapSuggestions(control.members, [swapCustom], 'M-C'), []);
   assert.ok(
     swapSuggestions(control.members, [swapControl], 'M-C').some(
       (suggestion) => suggestion.pokemon === 'Gholdengo'
     )
   );
-  assert.deepEqual(
-    swapSuggestions(control.members, [swapCustom, swapControl], 'M-C'),
-    swapSuggestions(control.members, [swapControl], 'M-C')
-  );
-
-  const empty = catalogSuggestions(rotom, [custom], 'M-C', [pikachu]);
-  assert.deepEqual(empty.items, []);
-  assert.deepEqual(empty.abilities, []);
-  assert.deepEqual(empty.natures, []);
-  assert.deepEqual(empty.moves, []);
   const full = catalogSuggestions(rotom, [control], 'M-C', [pikachu]);
   assert.ok(full.items.some((entry) => entry.value === 'Leftovers'));
   assert.ok(full.abilities.some((entry) => entry.value === 'Levitate'));
   assert.ok(full.natures.some((entry) => entry.value === 'Modest'));
   assert.ok(full.moves.some((entry) => entry.value === 'Hydro Pump'));
-  assert.deepEqual(
-    catalogSuggestions(rotom, [custom, control], 'M-C', [pikachu]),
-    full
-  );
 
-  assert.deepEqual(catalogSpreadSuggestions(rotom, [custom], 'M-C'), []);
   assert.deepEqual(
     catalogSpreadSuggestions(rotom, [control], 'M-C').map(
       ({ spread, nature }) => ({ spread, nature })
@@ -650,10 +641,6 @@ test('custom-rule source teams are excluded from every recommendation boundary w
     catalogSpreadSuggestions({ ...rotom, nature: 'Timid' }, [control], 'M-C'),
     []
   );
-  assert.deepEqual(
-    catalogSpreadSuggestions(rotom, [custom, control], 'M-C'),
-    catalogSpreadSuggestions(rotom, [control], 'M-C')
-  );
 
   const originalMember = {
     ...rotom,
@@ -662,7 +649,7 @@ test('custom-rule source teams are excluded from every recommendation boundary w
   };
   const withOriginal = catalogSuggestions(
     rotom,
-    [custom],
+    [],
     'M-C',
     [pikachu],
     undefined,

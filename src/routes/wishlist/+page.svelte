@@ -5,12 +5,12 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-  import Trash2 from '@lucide/svelte/icons/trash-2';
-  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
-  import TeamCard from '#lib/components/TeamCard.svelte';
+  import PokemonFilters from '#lib/components/PokemonFilters.svelte';
+  import WishlistList from '#lib/components/WishlistList.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import type { Team } from '#lib/catalog.js';
+  import { matchesTeam } from '#lib/catalog.js';
+  import type { MemberFilter, Team } from '#lib/catalog.js';
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
@@ -21,9 +21,12 @@
   import {
     addCatalogToWishlist,
     addPokepasteToWishlist,
+    orderedWishlist,
+    reorderWishlist,
     removeWishlistedTeam,
     resolveCatalogTeam,
     SavedTeamError,
+    savedTeamHeading,
     useWishlistedTeam,
     wishlistedCatalogEntries,
   } from '#lib/team-collections.js';
@@ -33,6 +36,11 @@
     type SavedTeam,
   } from '#lib/workbench.js';
   let entries = $state<SavedTeam[]>([]);
+  let filters = $state<MemberFilter[]>([]);
+  const pickerTeams = $derived(entries.map(displayTeam));
+  const visibleEntries = $derived(
+    entries.filter((entry) => matchesTeam(entry, filters))
+  );
   let ready = $state(false),
     loaded = $state(false),
     storageError = $state(''),
@@ -115,11 +123,11 @@
     } as Team;
   }
 
+  const changeFilters = (next: MemberFilter[]) => (filters = next);
+
   function refresh() {
     try {
-      entries = readSavedTeams(localStorage)
-        .filter((entry) => entry.collection === 'wishlist')
-        .reverse();
+      entries = orderedWishlist(readSavedTeams(localStorage));
       storageError = '';
     } catch {
       entries = [];
@@ -396,6 +404,24 @@
     void processShares(false);
   }
 
+  function reorder(orderedIds: string[], expectedIds: string[]): boolean {
+    errorMessage = '';
+    invalidLink = false;
+    try {
+      const next = reorderWishlist(localStorage, orderedIds, expectedIds);
+      refresh();
+      if (next) void pushNow();
+      return true;
+    } catch (error) {
+      refresh();
+      errorMessage =
+        error instanceof SavedTeamError
+          ? error.message
+          : 'Could not reorder Wishlist. Existing saved teams have been left untouched.';
+      return false;
+    }
+  }
+
   async function use(entry: SavedTeam) {
     if (pendingId) return;
     pendingId = entry.id;
@@ -446,7 +472,7 @@
     pendingId = entry.id;
     errorMessage = '';
     invalidLink = false;
-    const index = entries.findIndex(({ id }) => id === entry.id);
+    const index = visibleEntries.findIndex(({ id }) => id === entry.id);
     const wasSelected = selectedId === entry.id;
     try {
       removeWishlistedTeam(localStorage, entry.id);
@@ -473,7 +499,7 @@
     }
     await tick();
     const next = document.querySelectorAll<HTMLElement>('[data-wishlist-use]')[
-      Math.min(index, entries.length - 1)
+      Math.min(index, visibleEntries.length - 1)
     ];
     if (next) {
       next.focus({ preventScroll: true });
@@ -486,8 +512,9 @@
 
 <svelte:head>
   <title
-    >{selectedEntry ? `${selectedEntry.name} — Wishlist` : 'Wishlist'} — Champion's
-    Atlas</title
+    >{selectedEntry
+      ? `${savedTeamHeading(selectedEntry).title} — Wishlist`
+      : 'Wishlist'} — Champion's Atlas</title
   >
 </svelte:head>
 {#snippet shareRecovery()}
@@ -636,45 +663,52 @@
       </p>
     {:else if !storageError}
       {#if entries.length}
-        <ul class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {#each entries as entry (entry.id)}
-            <li class="min-w-0">
-              <TeamCard
-                team={displayTeam(entry)}
-                showRegulation
-                query=""
-                href={`wishlist?team=${encodeURIComponent(entry.id)}`}
-                fromCatalog={false}
-              >
-                {#snippet leadingActions()}
-                  <Button
-                    data-wishlist-use
-                    variant="quiet"
-                    class="min-h-11 ps-0 pe-1.5"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => use(entry)}
-                  >
-                    <AtlasIcon />
-                    <span>My Teams</span>
-                  </Button>
-                {/snippet}
-                {#snippet trailingActions()}
-                  <Button
-                    variant="quiet"
-                    size="icon-compact"
-                    class="size-11"
-                    aria-label="Remove from Wishlist"
-                    title="Remove from Wishlist"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => remove(entry)}
-                  >
-                    <Trash2 class="size-4" aria-hidden="true" />
-                  </Button>
-                {/snippet}
-              </TeamCard>
-            </li>
-          {/each}
-        </ul>
+        <PokemonFilters
+          teams={pickerTeams}
+          {filters}
+          onchange={changeFilters}
+        />
+        <div
+          class="mt-5 flex items-baseline justify-between gap-3 border-b pb-1.5"
+        >
+          <p
+            aria-live="polite"
+            aria-atomic="true"
+            class="value font-semibold tracking-wide"
+          >
+            {visibleEntries.length} matching {visibleEntries.length === 1
+              ? 'team'
+              : 'teams'}
+          </p>
+          {#if filters.length}
+            <Button type="button" variant="quiet" onclick={() => (filters = [])}
+              >Clear filters</Button
+            >
+          {/if}
+        </div>
+        {#if filters.length && entries.length > 1}
+          <p class="provenance mt-2">Clear filters to reorder Wishlist.</p>
+        {/if}
+        {#if visibleEntries.length}
+          <WishlistList
+            entries={visibleEntries}
+            disabled={!ready || !!pendingId || importPending || queuePending}
+            sortable={filters.length === 0 && entries.length > 1}
+            {displayTeam}
+            onuse={use}
+            onremove={remove}
+            onreorder={reorder}
+          />
+        {:else}
+          <div class="plate mt-2 max-w-xl px-4 py-3">
+            <h2 class="text-lg leading-tight font-extrabold">
+              No matching teams
+            </h2>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed">
+              Remove a Pokémon or clear filters to see more teams.
+            </p>
+          </div>
+        {/if}
       {:else}
         <p
           class="plate mt-2 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed"

@@ -10,6 +10,7 @@ import {
   moveInUseTeamToWishlist,
   useWishlistedTeam,
   removeWishlistedTeam,
+  orderedWishlist,
   rankSavedTeams,
   SavedTeamError,
   wishlistedCatalogEntries,
@@ -184,6 +185,7 @@ test('Wishlist deduplicates catalog IDs and promotion preserves the exact saved 
   saveTeam(s, changed);
   const before = readSavedTeams(s).find((x) => x.id === first.id);
   const promoted = useWishlistedTeam(s, first.id);
+  assert.deepEqual(orderedWishlist(readSavedTeams(s)), [other]);
   assert.equal(promoted.collection, 'my-teams');
   assert.equal(promoted.id, first.id);
   assert.deepEqual(promoted.original, before.original);

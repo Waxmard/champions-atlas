@@ -33,7 +33,8 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   calculations. Legacy filters canonicalize to the shared identity while
   retaining explicit constraints; duplicate aliases remain invalid.
 - Default Browse to the current regulation; make older regulations available
-  through All regulations.
+  through All regulations. Selected Pokémon remain compact when **Filters** is
+  open, with item, ability, and move controls inside each selection.
 - Prioritize relevant results with the ordering in [data sources](data-sources.md).
 - Saving or moving a team does not hide its catalog entry; Browse filters still
   apply.
@@ -42,16 +43,13 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   or the featured channel or listing source otherwise. Keep placements on team
   details, and show result evidence, paste links, and copyable rental/replica
   codes when published.
-- Preserve filters, sorting, and scroll position when opening teams and
-  returning. Back to teams stays visible while browsing a team.
-- Encode filters in the URL so a refresh or shared link restores the selection.
+- Preserve Browse filters and scroll position when opening teams and returning.
+  Back to teams stays visible while browsing a team.
+- Encode Browse filters in the URL so a refresh or shared link restores the selection.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
   silently modify imported teams.
-- Known custom-rule teams stay hidden from Browse by default; **Include
-  custom-rule teams** reveals them, while automatic recommendations always
-  exclude them. The identification rule is in [data sources](data-sources.md).
 
 Tournament details support team selection, not a separate tournament-browsing
 product. A compact result label is sufficient.
@@ -162,12 +160,12 @@ snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
 
 Suggestions are keyboard-operable. Operation errors use alerts. Deliberate
-actions, including Wishlist changes, imports, collection moves, deletions,
-restorations, copying, and in-game recording, use one temporary status message
-below navigation for three seconds. The message survives navigation but is not
-stored or replayed. Autosaved fields and background sync do not produce these
-messages. Validation errors and failed shared imports remain available until
-corrected or dismissed.
+actions, including Wishlist additions and removals, imports, collection moves,
+deletions, restorations, copying, and in-game recording, use one temporary status
+message below navigation for three seconds. The message survives navigation but
+is not stored or replayed. Wishlist reordering, autosaved fields, and background
+sync do not produce these messages. Validation errors and failed shared imports
+remain available until corrected or dismissed.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
@@ -280,6 +278,16 @@ from My teams selection and its active-team fallback. Move a record in either
 direction without changing its ID, original snapshot, edits, or sources. Moving
 from My teams is unavailable while edits are pending and rejects stale records
 or a conflicting Wishlist copy. Separate copies are never merged.
+
+Wishlist Pokémon search matches the saved roster, including edits, rather than
+the original catalog roster. All selected Pokémon must match, using the same
+base and Mega identities as Browse. Search does not change saved records. It
+stays active when opening a bookmark and returning to the list, but resets on
+reload or a new visit. Wishlist search is independent of Browse filters.
+
+With no Wishlist filters active, reorder bookmarks using the move up and down
+controls. New bookmarks appear first without changing the relative order of
+existing bookmarks. The order persists across reloads and syncs with the account.
 
 The catalog **Wishlist** button adds a bookmark or immediately removes the
 matching saved Wishlist copy and its edits; My teams copies remain unchanged.

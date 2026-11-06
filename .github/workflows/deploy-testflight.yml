@@ -29,7 +29,7 @@ jobs:
         run: echo "build_number=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
       - uses: actions/cache@v6
         with:
           path: |
@@ -80,6 +80,7 @@ jobs:
         with:
           name: web-build-${{ github.run_id }}-${{ github.run_attempt }}
           path: build
+          if-no-files-found: error
           retention-days: 1
 
   deploy-ios-testflight:
@@ -90,7 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
         with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.ref }}
+          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
       - uses: jdx/mise-action@v5
       - run: npm ci --ignore-scripts
       - uses: actions/download-artifact@v8

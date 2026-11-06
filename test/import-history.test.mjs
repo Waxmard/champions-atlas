@@ -215,7 +215,7 @@ test('cold then warm: frozen history retained deeply equal, current add/update/r
   assert.match(
     output,
     new RegExp(
-      `Frozen history: ${coldHistorical.length} teams retained; refreshing M-C\\.`
+      `Frozen history: ${coldHistorical.length} teams considered; refreshing M-C\\.`
     )
   );
 });
@@ -389,7 +389,7 @@ test('fetch and budget: no historical URL or paste fetches, offline replay witho
   const offlineOutput = runImport(directory, { OFFLINE: '1' });
   assert.match(
     offlineOutput,
-    /Frozen history: 4 teams retained; refreshing M-C\./
+    /Frozen history: 4 teams considered; refreshing M-C\./
   );
 });
 
@@ -671,4 +671,126 @@ test('full rebuild (REFRESH=1), bootstrap roots, atomic failure, and if-missing 
     'valid if-missing shortcut must leave catalog bytes unchanged'
   );
   assert.doesNotMatch(ifMissingOutput, /Frozen history/);
+});
+
+test('routine imports filter Master Ball 3/4 after merging and including frozen history', async (t) => {
+  const directory = await mkdtemp(join(tmpdir(), 'atlas-history-master-ball-'));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+
+  const mergedPaste = 'https://pokepast.es/aaaaaaaaaaaaaaaa';
+  const excludedPaste = 'https://pokepast.es/cccccccccccccccc';
+  const sheet = (mergedRank, excludedRank) =>
+    sheetCsv([
+      sheetRow('MC1', {
+        pokemon: mcPokemon,
+        items: mcItems,
+        paste: mergedPaste,
+        event: 'Champions ranked battles',
+        rank: mergedRank,
+      }),
+      sheetRow('MC2', {
+        pokemon: mcPokemon,
+        items: mcItems,
+        paste: excludedPaste,
+        event: 'Champions ranked battles',
+        rank: excludedRank,
+      }),
+    ]);
+  const cache = await writeCache(directory, {
+    ...defaultFixtureFiles(),
+    'M-C.csv': sheet('', 'Master Ball'),
+    'cccccccccccccccc.json': pokePasteJson(
+      pasteText(mcPokemon, mcItems),
+      'Format: gen9vgcregulationmc\nGlobal rank: #44823'
+    ),
+  });
+  runImport(directory);
+  const before = await readCatalog(directory);
+  const merged = before.teams.find((team) => team.sheetIds?.includes('MC1'));
+  const excluded = before.teams.find((team) => team.sheetIds?.includes('MC2'));
+  const history = before.teams.filter((team) => team.regulation !== 'M-C');
+  const frozenSource = history.find((team) => team.regulation === 'M-B');
+  assert.ok(merged && excluded && frozenSource);
+  assert.ok(excluded.reports.some(({ rank }) => rank === 'Reported #44823'));
+
+  const expectedIds = before.teams
+    .filter(({ id }) => id !== excluded.id)
+    .map(({ id }) => id)
+    .sort();
+  before.teams = before.teams.filter(({ id }) => id !== excluded.id);
+  before.teams.push({
+    ...frozenSource,
+    id: 'frozen-master-ball-4',
+    reports: [
+      {
+        event: 'Champions ranked battles',
+        rank: 'Master Ball Rank 4',
+        sourceUrl: '',
+      },
+      {
+        event: 'Source video',
+        rank: '',
+        sourceUrl: 'https://example.com/video',
+      },
+    ],
+  });
+  await writeFile(catalogPath(directory), JSON.stringify(before));
+  await writeFile(
+    join(cache, 'M-C.csv'),
+    sheet('Master Ball Rank 4', 'Master Ball Rank 3')
+  );
+  await writeFile(
+    join(cache, 'victory-road.html'),
+    victoryRoadPage([
+      vrRow('Alice', rosterHtml(vrRoster), 'https://www.vrpastes.com/AbC12345'),
+      vrRow('Merged', rosterHtml(mcPokemon), mergedPaste, '1001st').replace(
+        'Spring Cup',
+        '2027 Global Challenge I'
+      ),
+    ])
+  );
+
+  for (const phase of ['routine import', 'warm replay']) {
+    runImport(directory, { OFFLINE: '1' });
+    const catalog = await readCatalog(directory);
+    assert.deepEqual(
+      catalog.teams.map(({ id }) => id).sort(),
+      expectedIds,
+      phase
+    );
+    assert.ok(!catalog.teams.some(({ id }) => id === excluded.id), phase);
+    assert.ok(
+      !catalog.teams.some(({ id }) => id === 'frozen-master-ball-4'),
+      phase
+    );
+    assert.deepEqual(
+      catalog.teams.filter((team) => team.regulation !== 'M-C'),
+      history,
+      phase
+    );
+    const retained = catalog.teams.find(({ id }) => id === merged.id);
+    assert.ok(retained, phase);
+    assert.deepEqual(retained.sheetIds, ['MC1'], phase);
+    assert.deepEqual(
+      retained.reports,
+      [
+        {
+          event: 'Champions ranked battles',
+          rank: 'Master Ball Rank 4',
+          sourceUrl: '',
+        },
+        {
+          event: '2027 Global Challenge I',
+          rank: '1001st',
+          sourceUrl: 'https://victoryroad.pro/champions-replica/',
+        },
+        {
+          event: 'Victory Road collection',
+          rank: '',
+          sourceUrl: 'https://victoryroad.pro/champions-replica/',
+        },
+      ],
+      phase
+    );
+  }
 });

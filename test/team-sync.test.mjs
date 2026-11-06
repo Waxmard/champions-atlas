@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mergeSavedTeams, teamsSnapshot } from '../src/lib/team-sync.ts';
+import { orderedWishlist } from '../src/lib/team-collections.ts';
 
 const team = (id, name = id) => ({
   id,
@@ -222,4 +223,188 @@ test('first adoption recovery retains Wishlist collection on the displaced team'
       { name: 'Local (recovered)', collection: 'wishlist' },
     ]
   );
+});
+
+const ranked = (id, wishlistOrder, name = id) => ({
+  ...wishlisted(id, name),
+  wishlistOrder,
+});
+
+test('one-sided Wishlist reorders sync in either direction and survive rebase', () => {
+  const base = [ranked('a', 0), ranked('b', 1), ranked('c', 2)];
+  const reordered = [ranked('a', 1), ranked('b', 0), ranked('c', 2)];
+  assert.deepEqual(merge(base, reordered, base), reordered);
+  assert.deepEqual(merge(base, base, reordered), reordered);
+  assert.notEqual(teamsSnapshot(base), teamsSnapshot(reordered));
+  assert.equal(
+    teamsSnapshot(reordered),
+    teamsSnapshot([...reordered].reverse())
+  );
+
+  const remote = [ranked('a', 0), ranked('b', 2), ranked('c', 1)];
+  const committed = merge(base, reordered, remote);
+  assert.deepEqual(committed, [ranked('a', 1), ranked('b', 0), ranked('c', 1)]);
+  const newer = [ranked('a', 2), ranked('b', 0), ranked('c', 2)];
+  const rebased = merge(reordered, newer, committed);
+  assert.deepEqual(rebased, [ranked('a', 2), ranked('b', 0), ranked('c', 1)]);
+  assert.notEqual(teamsSnapshot(rebased), teamsSnapshot(committed));
+});
+
+test('Wishlist reorders combine with opposite-side edits without recovery', () => {
+  const base = [ranked('wish', 0)];
+  const reordered = [ranked('wish', 2)];
+  const renamed = { ...base[0], name: 'Renamed' };
+  const edited = structuredClone(base[0]);
+  edited.members[0].item = 'Life Orb';
+  edited.members[0].set = 'Exact edited set\nIVs: 0 Atk';
+  for (const edit of [renamed, edited]) {
+    const expected = [{ ...edit, wishlistOrder: 2 }];
+    assert.deepEqual(merge(base, reordered, [edit]), expected);
+    assert.deepEqual(merge(base, [edit], reordered), expected);
+  }
+});
+
+test('deletion and promotion win over an opposite-side Wishlist reorder', () => {
+  const base = [ranked('wish', 0)];
+  const reordered = [ranked('wish', 3)];
+  assert.deepEqual(merge(base, [], reordered), []);
+  assert.deepEqual(merge(base, reordered, []), []);
+
+  const promoted = { ...base[0], collection: 'my-teams' };
+  delete promoted.wishlistOrder;
+  assert.deepEqual(merge(base, [promoted], reordered), [promoted]);
+  assert.deepEqual(merge(base, reordered, [promoted]), [promoted]);
+  const legacyPromotion = { ...promoted };
+  delete legacyPromotion.collection;
+  assert.deepEqual(merge(base, [legacyPromotion], reordered), [
+    legacyPromotion,
+  ]);
+  assert.deepEqual(merge(base, reordered, [legacyPromotion]), [
+    legacyPromotion,
+  ]);
+  const staleRank = { ...promoted, wishlistOrder: 17 };
+  for (const result of [
+    merge(base, [staleRank], reordered),
+    merge(base, reordered, [staleRank]),
+    merge(null, [staleRank], []),
+  ]) {
+    assert.deepEqual(result, [promoted]);
+    assert.equal(Object.hasOwn(result[0], 'wishlistOrder'), false);
+  }
+});
+
+test('concurrent Wishlist reorders use per-record local changes and stable ties', () => {
+  const first = 'wish-alpha';
+  const second = 'wish-beta';
+  const base = [ranked('a', 0), ranked(first, 1), ranked(second, 2)];
+  const local = [ranked('a', 1), ranked(first, 0), ranked(second, 2)];
+  const remote = [ranked('a', 2), ranked(first, 1), ranked(second, 0)];
+  const merged = merge(base, local, remote);
+  const reversed = merge(base, [...local].reverse(), [...remote].reverse());
+  assert.deepEqual(merged, [
+    ranked('a', 1),
+    ranked(first, 0),
+    ranked(second, 0),
+  ]);
+  assert.equal(teamsSnapshot(merged), teamsSnapshot(reversed));
+  for (const result of [merged, reversed]) {
+    assert.deepEqual(
+      orderedWishlist(result).map(({ id }) => id),
+      [first, second, 'a']
+    );
+  }
+});
+
+test('Wishlist order reconciliation omits an absent winning rank', () => {
+  const base = [ranked('wish', 0)];
+  const unranked = wishlisted('wish');
+  const remote = ranked('wish', 2);
+  const result = merge(base, [unranked], [remote]);
+  assert.deepEqual(result, [unranked]);
+  assert.equal(Object.hasOwn(result[0], 'wishlistOrder'), false);
+
+  const unrankedBase = [unranked];
+  assert.deepEqual(merge(unrankedBase, [unranked], [remote]), [remote]);
+  assert.deepEqual(merge(unrankedBase, [remote], [unranked]), [remote]);
+});
+
+test('first adoption and new shared IDs prefer defined remote Wishlist rank', () => {
+  const unranked = wishlisted('wish');
+  for (const base of [null, []]) {
+    for (const [local, remote, expected] of [
+      [ranked('wish', 3), ranked('wish', 0), ranked('wish', 0)],
+      [unranked, ranked('wish', 2), ranked('wish', 2)],
+      [ranked('wish', 3), unranked, ranked('wish', 3)],
+      [unranked, unranked, unranked],
+    ]) {
+      const result = merge(base, [local], [remote]);
+      assert.deepEqual(result, [expected]);
+      if (expected.wishlistOrder === undefined)
+        assert.equal(Object.hasOwn(result[0], 'wishlistOrder'), false);
+    }
+  }
+  assert.deepEqual(merge(null, [ranked('local', 4)], []), [ranked('local', 4)]);
+  assert.deepEqual(merge(null, [], [ranked('remote', 5)]), [
+    ranked('remote', 5),
+  ]);
+});
+
+test('Wishlist content conflicts retain exact sets and reuse recovery IDs across rank changes', () => {
+  const base = [ranked('wish', 0)];
+  const local = [ranked('wish', 1, 'Local')];
+  const remote = [ranked('wish', 2, 'Remote')];
+  remote[0].members[0].item = 'Life Orb';
+  remote[0].members[0].set = 'Exact displaced set\nIVs: 0 Atk';
+  const ids = new Map();
+  const first = merge(base, local, remote, ids);
+  const retry = merge(base, local, [{ ...remote[0], wishlistOrder: 3 }], ids);
+  const unrankedRemote = { ...remote[0] };
+  delete unrankedRemote.wishlistOrder;
+  const retryUnranked = merge(base, local, [unrankedRemote], ids);
+  assert.equal(first.length, 2);
+  assert.equal(retry.length, 2);
+  assert.equal(retryUnranked.length, 2);
+  assert.deepEqual(first[0], local[0]);
+  assert.deepEqual(retry[0], local[0]);
+  assert.equal(first[1].id, retry[1].id);
+  assert.equal(first[1].id, retryUnranked[1].id);
+  assert.equal(ids.size, 1);
+  assert.equal(first[1].name, 'Remote (recovered)');
+  assert.equal(first[1].wishlistOrder, 2);
+  assert.equal(retry[1].wishlistOrder, 3);
+  assert.equal(Object.hasOwn(retryUnranked[1], 'wishlistOrder'), false);
+  assert.equal(retry[1].members[0].item, 'Life Orb');
+  assert.equal(retry[1].members[0].set, 'Exact displaced set\nIVs: 0 Atk');
+});
+
+test('conflicts across collections retain each surviving source rank', () => {
+  const base = [ranked('wish', 0)];
+  const local = ranked('wish', 3, 'Local');
+  const promoted = { ...base[0], collection: 'my-teams' };
+  delete promoted.wishlistOrder;
+  const merged = merge(base, [local], [promoted]);
+  assert.equal(merged.length, 2);
+  assert.deepEqual(merged[0], local);
+  assert.equal(merged[1].collection, 'my-teams');
+  assert.equal(Object.hasOwn(merged[1], 'wishlistOrder'), false);
+
+  const cloud = { ...promoted, name: 'Cloud' };
+  const adopted = merge(null, [local], [cloud]);
+  assert.deepEqual(adopted[0], cloud);
+  assert.equal(adopted[1].name, 'Local (recovered)');
+  assert.equal(adopted[1].collection, 'wishlist');
+  assert.equal(adopted[1].wishlistOrder, 3);
+
+  for (const [cloudWishlist, expectedRank] of [
+    [ranked('wish', 5, 'Cloud'), 5],
+    [wishlisted('wish', 'Cloud'), 3],
+  ]) {
+    const result = merge(null, [local], [cloudWishlist]);
+    assert.deepEqual(result[0], {
+      ...cloudWishlist,
+      wishlistOrder: expectedRank,
+    });
+    assert.equal(result[1].name, 'Local (recovered)');
+    assert.equal(result[1].wishlistOrder, 3);
+  }
 });

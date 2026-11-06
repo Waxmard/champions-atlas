@@ -19,11 +19,11 @@
     bestEvidence,
     evidence,
     evidenceGrade,
-    isCustomRulesTeam,
     isPasteUrl,
     listingReason,
     regulationLabel,
     sourceRows,
+    teamHeading,
     youtubeChannelNames,
     type Member,
     type Team,
@@ -46,6 +46,7 @@
     catalogState.catalog.teams.find((entry) => entry.id === data.team.id) ??
       data.team
   );
+  const heading = $derived(teamHeading(team.name, team));
   const currentRegulation = $derived(catalogState.catalog.currentRegulation);
   const paste = $derived(team.paste ? exportPaste(team.members) : '');
   const hasActiveEnrichment = $derived(
@@ -60,7 +61,6 @@
       : ''
   );
   const strongest = $derived(bestEvidence(team, currentRegulation));
-  const custom = $derived(isCustomRulesTeam(team));
   const reason = $derived(strongest.none ? listingReason(team) : null);
   const channels = $derived(youtubeChannelNames(team.reports));
   const summaryContext = $derived(
@@ -133,7 +133,7 @@
 </script>
 
 <svelte:head>
-  <title>{team.name} — Champion's Atlas</title>
+  <title>{heading.title} — Champion's Atlas</title>
 </svelte:head>
 
 <main id="main" class="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10">
@@ -155,7 +155,7 @@
       <h1
         class="max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-anywhere sm:text-3xl"
       >
-        {team.name}
+        {heading.title}
       </h1>
       <p class="provenance mt-1">
         {team.creator
@@ -166,9 +166,7 @@
       </p>
       <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span class="detail-badge">{regulationLabel(team.regulation)}</span>
-        <span
-          class="detail-badge"
-          data-grade={evidenceGrade(custom ? 3 : strongest.level)}
+        <span class="detail-badge" data-grade={evidenceGrade(strongest.level)}
           >{reason?.label ?? strongest.label}</span
         >
         {#if !reason && strongest.event}<span class="provenance"
@@ -284,10 +282,6 @@
       {/if}
     </div>
 
-    {#if custom}<p class="term mt-2">
-        Custom-rule event: this team was shared for a tournament with additional
-        Pokémon restrictions. Hidden from normal recommendations.
-      </p>{/if}
     {#if savedError || actionError}<p
         role="alert"
         class="mt-2 text-[0.9375rem] leading-relaxed"
@@ -374,7 +368,7 @@
               <div class="min-w-0">
                 {#if team.reports.length > 1 && !result.none}<span
                     class="stamp"
-                    data-grade={evidenceGrade(custom ? 3 : result.level)}
+                    data-grade={evidenceGrade(result.level)}
                     >{result.label}</span
                   >{/if}
                 <div

@@ -7,17 +7,22 @@
 
   let {
     name,
+    context = '',
+    reserveTitleActions = false,
     members,
   }: {
     name: string;
+    context?: string;
+    reserveTitleActions?: boolean;
     members: readonly Pick<Member, 'pokemon' | 'item'>[];
   } = $props();
 </script>
 
-<div class="mt-1.5 flex items-start justify-between gap-3">
-  <h2 class="min-w-0 flex-1 text-lg leading-[1.4] font-extrabold wrap-anywhere">
+<div class="mt-1.5 min-w-0 {reserveTitleActions ? 'min-h-11 pe-24' : ''}">
+  <h2 class="text-lg leading-[1.4] font-extrabold wrap-anywhere">
     {name}
   </h2>
+  {#if context}<p class="provenance mt-1 wrap-anywhere">{context}</p>{/if}
 </div>
 <ul class="mt-3 grid grid-cols-3 gap-2" aria-label="Team members">
   {#each members as member, index (index)}

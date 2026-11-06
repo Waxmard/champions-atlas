@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import {
   compareTeams,
-  isCustomRulesTeam,
   isPasteUrl,
   normalize,
   pokemonId,
@@ -170,6 +169,7 @@ const savedTeamSchema = z.object({
   sources: z.array(sourceSchema).max(100),
   origin: z.enum(['catalog', 'custom']).optional(),
   collection: z.enum(['my-teams', 'wishlist']).optional(),
+  wishlistOrder: z.number().int().safe().optional(),
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;
@@ -195,14 +195,16 @@ export function saveTeam(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   team: SavedTeam
 ): SavedTeam[] {
-  const validation = savedTeamsSchema.safeParse([team]);
-  if (!validation.success)
-    throw new Error(
-      'Saved teams could not be read. Existing data has been left untouched.'
-    );
-  const candidate = validation.data[0];
+  const [candidate] = readSavedTeams({ getItem: () => JSON.stringify([team]) });
   const saved = readSavedTeams(storage);
   const previous = saved.find((entry) => entry.id === candidate.id);
+  if (
+    previous?.collection === 'wishlist' &&
+    candidate.collection === 'wishlist' &&
+    previous.wishlistOrder !== undefined
+  )
+    candidate.wishlistOrder = previous.wishlistOrder;
+  else delete candidate.wishlistOrder;
   const nextTeam = previous
     ? { ...candidate, original: previous.original, origin: previous.origin }
     : candidate;
@@ -407,7 +409,6 @@ export function catalogSuggestions(
   const eq = (a: string | null, b: string | null) =>
     Boolean(a && b && normalize(a) === normalize(b));
   for (const team of teams) {
-    if (isCustomRulesTeam(team)) continue;
     const isCurrent = team.regulation === currentRegulation;
     let teamSim = 0;
     if (teammates.length) {
@@ -528,7 +529,6 @@ export function pokemonSuggestions(
   tags?: TeamTagsIndex,
   query = ''
 ): PokemonSuggestion[] {
-  teams = teams.filter((team) => !isCustomRulesTeam(team));
   const excludeSpecies = new Set(teammates.map((t) => normalize(t.pokemon)));
   if (excludePokemon) {
     excludeSpecies.add(normalize(excludePokemon));
@@ -685,7 +685,6 @@ function catalogSpreadIndex(
   if (cached && cached.regulation === regulation) return cached.bySpecies;
   const bySpecies = new Map<string, Map<string, CatalogSpreadOption>>();
   for (const team of teams) {
-    if (isCustomRulesTeam(team)) continue;
     const isCurrent = team.regulation === regulation;
     for (const member of team.members) {
       const values = parseChampionsSpread(member.spread);

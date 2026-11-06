@@ -6,7 +6,7 @@
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, setContext, tick, type ComponentProps } from 'svelte';
-  import type { ResolvedPathname } from '$app/types';
+  import type { PathnameWithSearchOrHash, ResolvedPathname } from '$app/types';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
   import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
   import type TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
@@ -49,8 +49,10 @@
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
   const lastScrollKey = 'champions-atlas:last-scroll:v1';
+  const lastCollectionKey = 'champions-atlas:last-collection:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   const authReturnSourceKey = 'champions-atlas:auth-return-source:v1';
+  let lastCollection = $state<PathnameWithSearchOrHash | null>(null);
   let initialUrl = $state<URL | null>(null);
   let startupReady = $state(false);
   let startupSettled = $state(false);
@@ -68,6 +70,10 @@
   let shareReadError = $state(false);
   let checkingShares = false;
   let notificationAccount: string | undefined;
+
+  const teamsHref = $derived(
+    lastCollection ? resolve(lastCollection) : resolve('my-teams')
+  );
 
   function validDestination(value: string | null): string | null {
     if (
@@ -113,6 +119,24 @@
     } catch {
       return null;
     }
+  }
+
+  function collectionDestination(
+    url: Readonly<Pick<URL, 'pathname' | 'search'>>
+  ): PathnameWithSearchOrHash | null {
+    if (
+      url.pathname !== resolve('my-teams') &&
+      url.pathname !== resolve('wishlist')
+    )
+      return null;
+    return url.pathname as PathnameWithSearchOrHash;
+  }
+
+  function storedCollection(): PathnameWithSearchOrHash | null {
+    const value = storedDestination('local', lastCollectionKey);
+    return value
+      ? collectionDestination(new URL(value, page.url.origin))
+      : null;
   }
 
   function updateStorage(
@@ -224,8 +248,8 @@
   function canonicalizing(from: URL, to: URL): boolean {
     if (from.pathname !== to.pathname) return false;
     if (from.pathname === resolve('/'))
-      return !['member', 'regulation', 'sort', 'page', 'type', 'custom'].some(
-        (key) => from.searchParams.has(key)
+      return !['member', 'regulation', 'page'].some((key) =>
+        from.searchParams.has(key)
       );
     if (from.pathname !== resolve('my-teams')) return false;
     const selected = from.searchParams.get('team');
@@ -259,6 +283,11 @@
     navigationGeneration++;
     if (!to) return;
     settledUrl = urlString(to.url);
+    const collection = collectionDestination(to.url);
+    if (collection) {
+      lastCollection = collection;
+      updateStorage('local', lastCollectionKey, collection);
+    }
     if (!startupReady) return;
     if (pendingScroll && settledUrl !== pendingScroll.url) {
       if (
@@ -422,6 +451,7 @@
 
   onMount(() => {
     initialScroll = readScroll();
+    lastCollection = storedCollection();
     try {
       migrateStoredData(localStorage);
     } catch {
@@ -568,11 +598,11 @@
             : 'text-primary hover:bg-info'}">Browse</a
         >
         <a
-          href={resolve('my-teams')}
+          href={teamsHref}
           aria-current={isMyTeams ? 'page' : undefined}
           class="nav-pill {isMyTeams
             ? 'bg-info text-info-content'
-            : 'text-primary hover:bg-info'}">My Teams</a
+            : 'text-primary hover:bg-info'}">Saved</a
         >
       </nav>
       <div

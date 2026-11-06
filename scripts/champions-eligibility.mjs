@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { normalize } from '../src/lib/catalog.ts';
+import { isExcludedCatalogEvent, normalize } from '../src/lib/catalog.ts';
 import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
 
 const sourceStems = ['m-a', 'm-b', 'm-c'];
@@ -133,6 +133,7 @@ function errorForSnapshot(team, snapshot) {
 export function teamEligibilityError(team) {
   if (!team || typeof team !== 'object' || Array.isArray(team))
     return 'Regulation missing: team is malformed.';
+  if (isExcludedCatalogEvent(team)) return 'Excluded catalog event.';
   if (typeof team.regulation !== 'string' || !team.regulation.trim())
     return 'Regulation missing: regulation is missing or malformed.';
   const regulation = team.regulation;
@@ -156,10 +157,14 @@ export function teamEligibilityError(team) {
   return errorForSnapshot(team, snapshot);
 }
 
+const isExcludedEvent = (team) =>
+  Boolean(team && typeof team === 'object' && !Array.isArray(team)) &&
+  isExcludedCatalogEvent(team);
+
 export function rejectIneligibleTeam(source, team, noteReason) {
   const error = teamEligibilityError(team);
   if (!error) return false;
-  noteReason('ineligible_species');
+  noteReason(isExcludedEvent(team) ? 'excluded_event' : 'ineligible_species');
   console.warn(
     `${source}: skipped ${team?.name || team?.id || 'unnamed team'} (${error})`
   );

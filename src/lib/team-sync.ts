@@ -14,6 +14,17 @@ export function teamsSnapshot(teams: SavedTeam[]): string {
   );
 }
 
+function withoutWishlistOrder(team: SavedTeam): SavedTeam {
+  if (team.wishlistOrder === undefined) return team;
+  const content = { ...team };
+  delete content.wishlistOrder;
+  return content;
+}
+
+function contentSnapshot(team: SavedTeam): string {
+  return canonicalSnapshot(withoutWishlistOrder(team));
+}
+
 export function validateTeamIds(value: unknown): string[] {
   if (
     !Array.isArray(value) ||
@@ -63,24 +74,42 @@ export function mergeSavedTeams(
     a === b ||
     (a !== undefined &&
       b !== undefined &&
-      canonicalSnapshot(a) === canonicalSnapshot(b));
+      contentSnapshot(a) === contentSnapshot(b));
   const choose = (id: string): SavedTeam | undefined => {
     const l = locals.get(id);
     const r = remotes.get(id);
     const b = bases.get(id);
-    if (same(l, r)) return l;
-    if (original === null) {
-      if (!l || !r) return l ?? r;
-      recover(l);
-      return r;
+    let selected: SavedTeam | undefined;
+    if (same(l, r)) selected = l;
+    else if (original === null) {
+      if (!l || !r) selected = l ?? r;
+      else {
+        recover(l);
+        selected = r;
+      }
+    } else if (same(l, b)) selected = r;
+    else if (same(r, b)) selected = l;
+    else {
+      if (r) recover(r);
+      selected = l;
     }
-    if (same(l, b)) return r;
-    if (same(r, b)) return l;
-    if (r) recover(r);
-    return l;
+    if (!selected) return;
+    if (selected.collection !== 'wishlist')
+      return withoutWishlistOrder(selected);
+    if (l?.collection !== 'wishlist' || r?.collection !== 'wishlist')
+      return selected;
+    const order = b
+      ? l.wishlistOrder === b.wishlistOrder
+        ? r.wishlistOrder
+        : l.wishlistOrder
+      : (r.wishlistOrder ?? l.wishlistOrder);
+    const ordered = { ...selected };
+    if (order === undefined) delete ordered.wishlistOrder;
+    else ordered.wishlistOrder = order;
+    return ordered;
   };
   const recover = (team: SavedTeam) => {
-    const key = canonicalSnapshot(team);
+    const key = contentSnapshot(team);
     let id = recoveryIds.get(key);
     if (!id) {
       do id = generateUUID();
