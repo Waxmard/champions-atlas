@@ -60,7 +60,7 @@
   onshowmore: () => void
 )}
   <label for={`set-${field}-input`} class="term">{label}</label>
-  <div class="input mt-1.5 flex min-h-11 items-center gap-2">
+  <div class="field mt-1.5">
     <span class="grid size-7 shrink-0 place-items-center" aria-hidden="true">
       {#if field === 'item'}
         <ItemIcon item={value} size={20} />

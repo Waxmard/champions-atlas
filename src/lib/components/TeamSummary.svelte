@@ -2,7 +2,7 @@
   import { localImageSrc } from '#lib/assets.js';
   import type { Member } from '#lib/catalog.js';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
-  import { getPokemonTypes, TYPE_COLORS } from '#lib/types.js';
+  import { getPokemonTypes, typeBand } from '#lib/types.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
   let {
@@ -27,7 +27,7 @@
 <ul class="mt-3 grid grid-cols-3 gap-2" aria-label="Team members">
   {#each members as member, index (index)}
     {@const types = getPokemonTypes(member.pokemon)}
-    {@const band = `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[types[0]]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[types[types.length - 1]]} 24%, var(--color-base-100)))`}
+    {@const band = typeBand(types)}
     <li class="flex min-w-0 flex-col gap-0.5">
       <p
         class="truncate px-0.5 text-[0.75rem] leading-tight font-bold text-[color:var(--color-muted)]"

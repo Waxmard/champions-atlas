@@ -43,6 +43,26 @@ export const TYPE_COLORS: Record<PokemonType, string> = {
   steel: '#B8B8D0',
   fairy: '#EE99AC',
 };
+
+export function typeBand(types: readonly PokemonType[]): string {
+  const first = types[0];
+  const last = types[types.length - 1] ?? first;
+  if (!first) return '';
+  return `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[first]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[last]} 24%, var(--color-base-100)))`;
+}
+
+export function typeFill(type: PokemonType | null): string {
+  return type
+    ? `background: linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 28%, var(--color-base-100)) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 16%, var(--color-base-100)) 100%); border: 1px solid color-mix(in oklab, ${TYPE_COLORS[type]} 38%, var(--color-base-300));`
+    : 'background: var(--color-base-200); border: 1px solid var(--color-base-300);';
+}
+
+export function typeRowWash(type: PokemonType | null): string {
+  return type
+    ? `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 14%, transparent) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 6%, transparent) 100%)`
+    : '';
+}
+
 const typeData = rawData as {
   moves: Record<string, PokemonType>;
   pokemon: Record<string, PokemonType[]>;

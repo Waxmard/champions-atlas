@@ -13,7 +13,8 @@
   import {
     getMoveType,
     getPokemonTypes,
-    TYPE_COLORS,
+    typeBand,
+    typeFill,
     type PokemonType,
   } from '#lib/types.js';
 
@@ -53,14 +54,7 @@
   const itemSrc = $derived(
     member.item?.trim() ? localImageSrc('items', member.item) : ''
   );
-  const band = $derived(
-    `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[types[0]]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[types[types.length - 1]]} 24%, var(--color-base-100)))`
-  );
-  function moveBarStyle(type: PokemonType | null): string {
-    return type
-      ? `background: linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 28%, var(--color-base-100)) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 16%, var(--color-base-100)) 100%); border: 1px solid color-mix(in oklab, ${TYPE_COLORS[type]} 38%, var(--color-base-300));`
-      : 'background: var(--color-base-200); border: 1px solid var(--color-base-300);';
-  }
+  const band = $derived(typeBand(types));
   function clickablePlate(node: HTMLElement) {
     const handleClick = () => {
       if (!onedit && onopen && !disabled) {
@@ -313,7 +307,7 @@
                 data-set-field={index === 0 ? 'moves' : undefined}
                 data-move-slot={index}
                 class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content disabled:pointer-events-none disabled:opacity-50"
-                style={moveBarStyle(type)}
+                style={typeFill(type)}
                 aria-label={`Edit ${member.pokemon} move ${index + 1}: ${move || (member.moves.length ? 'Empty' : 'Unknown')}`}
                 {disabled}
                 onclick={() => onedit('moves', index)}
@@ -323,7 +317,7 @@
             {:else}
               <div
                 class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
-                style={moveBarStyle(type)}
+                style={typeFill(type)}
               >
                 {@render moveContent(move, type)}
               </div>

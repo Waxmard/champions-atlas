@@ -8,7 +8,7 @@
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import type { CatalogSuggestion } from '#lib/workbench.js';
-  import { getMoveType } from '#lib/types.js';
+  import { getMoveType, TYPE_COLORS } from '#lib/types.js';
   import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
   let {
     moves,
@@ -47,7 +47,11 @@
   <div class="grid gap-2 sm:grid-cols-2">
     {#each moves as move, index (index)}
       {@const type = getMoveType(move)}
-      <div class="input flex min-h-11 items-center gap-2">
+      <div
+        class="field"
+        data-tint={type ?? undefined}
+        style:--field-tint={type ? TYPE_COLORS[type] : undefined}
+      >
         <span
           class="grid size-7 shrink-0 place-items-center"
           aria-hidden="true"

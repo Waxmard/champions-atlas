@@ -219,7 +219,7 @@
   <fieldset class="mb-4 grid min-w-0 gap-2 border-b pb-4">
     <legend class="sr-only">Nature</legend>
     <label for="set-nature-input" class="term">Nature</label>
-    <div class="input flex min-h-11 items-center gap-2">
+    <div class="field">
       <input
         id="set-nature-input"
         class="grow bg-transparent text-sm focus:outline-none"

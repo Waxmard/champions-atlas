@@ -562,7 +562,7 @@
     {:else if currentView === 'pokemon'}
       <section class="grid gap-4">
         <label for="set-pokemon-input" class="sr-only">Pokémon</label>
-        <label class="input flex min-h-11 items-center gap-2">
+        <label class="field">
           <PokemonSprite pokemon={form.pokemon} size={28} />
           <input
             id="set-pokemon-input"

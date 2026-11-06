@@ -12,8 +12,8 @@
   import {
     getMoveType,
     getPokemonTypes,
-    TYPE_COLORS,
-    type PokemonType,
+    typeBand,
+    typeFill,
   } from '#lib/types.js';
 
   const ZERO_SPREAD = {
@@ -28,19 +28,12 @@
   let { member }: { member: Member } = $props();
 
   const types = $derived(getPokemonTypes(member.pokemon));
-  const band = $derived(
-    `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[types[0]]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[types[types.length - 1]]} 24%, var(--color-base-100)))`
-  );
+  const band = $derived(typeBand(types));
   const effect = $derived(natureEffect(member.nature));
   const spread = $derived(
     member.spread?.trim() ? parseChampionsSpread(member.spread) : ZERO_SPREAD
   );
   const spreadSource = $derived(activeSpreadSource(member));
-  function moveBarStyle(type: PokemonType | null): string {
-    return type
-      ? `background: linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 28%, var(--color-base-100)) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 16%, var(--color-base-100)) 100%); border: 1px solid color-mix(in oklab, ${TYPE_COLORS[type]} 38%, var(--color-base-300));`
-      : 'background: var(--color-base-200); border: 1px solid var(--color-base-300);';
-  }
 </script>
 
 <div class="grid min-w-0 gap-3.5">
@@ -190,7 +183,7 @@
         {@const type = move ? getMoveType(move) : null}
         <li
           class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
-          style={moveBarStyle(type)}
+          style={typeFill(type)}
         >
           {#if type}<TypeBadge {type} size="md" />{/if}
           <span
