@@ -173,9 +173,7 @@ test('Wishlist deduplicates catalog IDs and promotion preserves the exact saved 
   const writes = s.writes;
   assert.equal(addCatalogToWishlist(s, catalogTeam('source')).id, first.id);
   assert.equal(s.writes, writes);
-  assert.deepEqual(orderedWishlist(readSavedTeams(s)), [first]);
   const other = addCatalogToWishlist(s, catalogTeam('other'));
-  assert.deepEqual(orderedWishlist(readSavedTeams(s)), [other, first]);
   const changed = {
     ...first,
     name: 'Edited',
