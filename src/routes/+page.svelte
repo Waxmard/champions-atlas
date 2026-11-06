@@ -28,7 +28,6 @@
     type Team,
   } from '#lib/catalog.js';
   const browseKeys = ['member', 'regulation', 'page'];
-  const explicitBrowseKeys = [...browseKeys, 'type', 'sort', 'custom'];
   let storageError = $state(false);
   let filtersOpen = $state(false);
   let ready = $state(false);
@@ -136,7 +135,7 @@
   function restoreBrowse() {
     if (page.url.pathname !== resolve('/')) return;
 
-    if (explicitBrowseKeys.some((key) => page.url.searchParams.has(key))) {
+    if (browseKeys.some((key) => page.url.searchParams.has(key))) {
       try {
         rememberBrowse(browseParams(new URL(page.url.href).searchParams));
       } catch {

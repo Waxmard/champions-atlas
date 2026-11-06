@@ -36,6 +36,13 @@
         )
       : null
   );
+  const selectedLabel = $derived(
+    selectedHeading
+      ? [selectedHeading.title, selectedHeading.context]
+          .filter(Boolean)
+          .join(' · ')
+      : 'Choose saved team'
+  );
   const options = $derived(open ? rankSavedTeams(teams, field) : teams);
   const roster = (team: SavedTeam) =>
     team.members.map((member) => member.pokemon);
@@ -97,9 +104,7 @@
 
 <div class="w-full min-w-0">
   <label class="sr-only" for={id}>
-    {selectedHeading
-      ? `Saved team, currently ${selectedHeading.title}`
-      : 'Saved team'}
+    {selectedHeading ? `Saved team, currently ${selectedLabel}` : 'Saved team'}
   </label>
   <Combobox.Root
     type="single"
@@ -120,9 +125,7 @@
       <Combobox.Input
         {id}
         bind:ref={inputEl}
-        placeholder={open
-          ? 'Search saved teams'
-          : (selectedHeading?.title ?? 'Choose saved team')}
+        placeholder={open ? 'Search saved teams' : selectedLabel}
         autocomplete="off"
         onclick={() => {
           if (!open) openMenu();

@@ -160,7 +160,7 @@ test('cold then warm: frozen history retained deeply equal, current add/update/r
     ])
   );
 
-  runImport(directory, { PASTE_LIMIT: '5' });
+  const output = runImport(directory, { PASTE_LIMIT: '5' });
   const warm = await readCatalog(directory);
 
   for (const coldTeam of coldHistorical) {
@@ -210,6 +210,13 @@ test('cold then warm: frozen history retained deeply equal, current add/update/r
     warmMc2.pasteNotes,
     'Format: gen9vgcregulationmc\nNew MC2 team',
     'MC2 paste notes must be enriched'
+  );
+
+  assert.match(
+    output,
+    new RegExp(
+      `Frozen history: ${coldHistorical.length} teams considered; refreshing M-C\\.`
+    )
   );
 });
 
@@ -379,7 +386,11 @@ test('fetch and budget: no historical URL or paste fetches, offline replay witho
       .map((team) => team.id)
   );
 
-  runImport(directory, { OFFLINE: '1' });
+  const offlineOutput = runImport(directory, { OFFLINE: '1' });
+  assert.match(
+    offlineOutput,
+    /Frozen history: 4 teams considered; refreshing M-C\./
+  );
 });
 
 test('historical validation and malformed resilience: ineligible historical team omitted, malformed record warns without throwing', async (t) => {

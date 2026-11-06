@@ -157,14 +157,14 @@ export function teamEligibilityError(team) {
   return errorForSnapshot(team, snapshot);
 }
 
+const isExcludedEvent = (team) =>
+  Boolean(team && typeof team === 'object' && !Array.isArray(team)) &&
+  isExcludedCatalogEvent(team);
+
 export function rejectIneligibleTeam(source, team, noteReason) {
   const error = teamEligibilityError(team);
   if (!error) return false;
-  noteReason(
-    error === 'Excluded catalog event.'
-      ? 'excluded_event'
-      : 'ineligible_species'
-  );
+  noteReason(isExcludedEvent(team) ? 'excluded_event' : 'ineligible_species');
   console.warn(
     `${source}: skipped ${team?.name || team?.id || 'unnamed team'} (${error})`
   );

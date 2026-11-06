@@ -446,6 +446,17 @@ export function isExcludedMasterBallTeam(
   return excluded;
 }
 
+export function admittedTeams(
+  teams: readonly Team[],
+  currentRegulation: string
+): Team[] {
+  return teams.filter(
+    (team) =>
+      !isExcludedCatalogEvent(team) &&
+      !isExcludedMasterBallTeam(team, currentRegulation)
+  );
+}
+
 export interface TeamEvidence extends ClassifiedEvidence {
   event: string;
 }

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { parsePoch, pochUrl } from '../scripts/poch-source.mjs';
 import {
+  admittedTeams,
   bestEvidence,
   compareTeams,
   evidence,
@@ -213,6 +214,23 @@ test('excluded event classification matches only its event and tournament IDs', 
       false,
       event
     );
+});
+
+test('admitted teams drop excluded events and Master Ball ranks', () => {
+  const kept = { id: 'kept-team', regulation: 'M-C', reports: [] };
+  const excludedEvent = {
+    id: 'poch-tournament-6ab431f2e905c1db68748c9c-1',
+    regulation: 'M-A',
+    reports: [],
+  };
+  const masterBall = {
+    id: 'master-ball-team',
+    regulation: 'M-C',
+    reports: [report('Champions ranked battles', 'Master Ball 4')],
+  };
+  assert.deepEqual(admittedTeams([kept, excludedEvent, masterBall], 'M-C'), [
+    kept,
+  ]);
 });
 
 test('saved report entrant metadata remains optional, retained, and protected from corruption', () => {

@@ -5,7 +5,7 @@ import bundledCatalog, {
   type CatalogBundle,
   type CatalogData,
 } from './catalog-data.ts';
-import { isExcludedCatalogEvent, isExcludedMasterBallTeam } from './catalog.ts';
+import { admittedTeams } from './catalog.ts';
 import type { TeamTagsIndex } from './tags.ts';
 
 const DB_NAME = 'champions-atlas-catalog';
@@ -16,11 +16,7 @@ const VISIBILITY_THROTTLE_MS = 5 * 60 * 1000;
 function admittedCatalog(catalog: CatalogData): CatalogData {
   return {
     ...catalog,
-    teams: catalog.teams.filter(
-      (team) =>
-        !isExcludedCatalogEvent(team) &&
-        !isExcludedMasterBallTeam(team, catalog.currentRegulation)
-    ),
+    teams: admittedTeams(catalog.teams, catalog.currentRegulation),
   };
 }
 
