@@ -372,8 +372,9 @@ For automatic suggestions, achievement bands, from highest to lowest, are:
 global, peak, or season-finish positions 1–100, then Master Ball 1;
 (3) qualifying major-event finishes; (4) Global Challenge positions 101–1,000;
 (5) Master Ball 2, Champions positions 101–1,000, then Showdown positions 1–100;
-(6) supported community finishes; (7) eligible lower Master Ball results in the
-current regulation; (8) other reported results; and (9) no result. Tournament
+(6) supported community finishes; (7) eligible lower Master Ball results, with a
+bare Master Ball claim only in the current regulation; (8) other reported
+results; and (9) no result. Tournament
 Champion, Winner, and Runner up are placement labels, not ladder credentials.
 Numeric ladder positions retain their platform context and are not converted to
 tiers or compared across platforms.
