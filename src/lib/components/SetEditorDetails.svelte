@@ -1,6 +1,6 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import { normalize, regulationLabel, type Member } from '#lib/catalog.js';
+  import { normalize, type Member } from '#lib/catalog.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
   import type { CatalogSuggestion } from '#lib/workbench.js';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
@@ -13,8 +13,6 @@
     item: string;
     ability: string;
     nature: string;
-    currentRegulation: string;
-    activeSuggestions: string | null;
     filteredItems: CatalogSuggestion[];
     filteredAbilities: CatalogSuggestion[];
     inGameMember?: Member;
@@ -25,8 +23,7 @@
     onabilitychange: (val: string) => void;
     onnaturechange: (val: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
-    onopensuggestions: (field: string) => void;
-    onclearsuggestions: () => void;
+    onresetquery: (field: string) => void;
     onclearerror: () => void;
     oncommit: () => void;
   }
@@ -35,8 +32,6 @@
     item,
     ability,
     nature,
-    currentRegulation,
-    activeSuggestions,
     filteredItems,
     filteredAbilities,
     inGameMember,
@@ -47,8 +42,7 @@
     onabilitychange,
     onnaturechange,
     oningame,
-    onopensuggestions,
-    onclearsuggestions,
+    onresetquery,
     onclearerror,
     oncommit,
   }: Props = $props();
@@ -79,8 +73,8 @@
       class="grow bg-transparent text-sm focus:outline-none"
       {placeholder}
       {value}
-      onfocus={() => onopensuggestions(field)}
-      onclick={() => onopensuggestions(field)}
+      onfocus={() => onresetquery(field)}
+      onclick={() => onresetquery(field)}
       oninput={(event) => onvaluechange(event.currentTarget.value)}
       onblur={(event) => {
         if (!(
@@ -92,15 +86,13 @@
       onkeydown={(event) => {
         if (event.key === 'Enter' && !event.isComposing) {
           event.preventDefault();
-          onclearsuggestions();
           oncommit();
           return;
         }
         handleSuggestionKeydown(
           event,
           document.getElementById(`set-${field}-suggestions`),
-          `set-${field}-input`,
-          onclearsuggestions
+          `set-${field}-input`
         );
       }}
     />
@@ -124,69 +116,52 @@
     {/if}
   </div>
 
-  {#if activeSuggestions === field}
-    <section
-      id={`set-${field}-suggestions`}
-      aria-label={`${label} suggestions`}
-      class="plate mt-2 max-h-60 overflow-y-auto"
-    >
-      <div class="term px-3 py-1.5">{label} suggestions</div>
-      <ul role="list" class="divide-y">
-        {#each options as opt (opt.value)}
-          <li>
-            <button
-              type="button"
-              class="option-row"
-              data-detail-choice
-              data-suggestion
-              onpointerdown={(event) => event.preventDefault()}
-              onkeydown={(event) =>
-                handleSuggestionKeydown(
-                  event,
-                  document.getElementById(`set-${field}-suggestions`),
-                  `set-${field}-input`,
-                  onclearsuggestions
-                )}
-              onclick={() => {
-                if (opt.inGame) {
-                  if (inGameMember) oningame({ kind: field }, inGameMember);
-                  return;
-                }
-                onvaluechange(opt.value);
-                onclearsuggestions();
-                oncommit();
-              }}
-            >
-              {#if field === 'item'}
-                <ItemIcon item={opt.value} size={20} />
-                <span class="value">{opt.value}</span>
-              {:else}
-                {opt.value}
-              {/if}
-              <span class="term ms-auto shrink-0">
-                {opt.totalCount} team{opt.totalCount === 1
-                  ? ''
-                  : 's'}{opt.currentCount
-                  ? ` · ${opt.currentCount} in ${regulationLabel(currentRegulation)}`
-                  : ''}
-              </span>
-              {#if opt.original || opt.inGame}
-                <span class="stamp" data-grade="reported">
-                  {opt.original
-                    ? opt.inGame
-                      ? 'Original · In-game'
-                      : 'Original'
-                    : 'In-game'}
-                </span>
-              {/if}
-            </button>
-          </li>
-        {:else}
-          <li class="provenance p-3">No matching suggestions.</li>
-        {/each}
-      </ul>
-    </section>
-  {/if}
+  <ul
+    id={`set-${field}-suggestions`}
+    role="list"
+    aria-label={`${label} suggestions`}
+    class="mt-1.5 flex flex-wrap gap-1.5"
+  >
+    {#each options as opt (opt.value)}
+      <li>
+        <button
+          type="button"
+          class="hint"
+          data-detail-choice
+          data-suggestion
+          onpointerdown={(event) => event.preventDefault()}
+          onkeydown={(event) =>
+            handleSuggestionKeydown(
+              event,
+              document.getElementById(`set-${field}-suggestions`),
+              `set-${field}-input`
+            )}
+          onclick={() => {
+            if (opt.inGame) {
+              if (inGameMember) oningame({ kind: field }, inGameMember);
+              return;
+            }
+            onvaluechange(opt.value);
+            oncommit();
+          }}
+        >
+          {#if field === 'item'}<ItemIcon item={opt.value} size={18} />{/if}
+          <span>{opt.value}</span>
+          {#if opt.original || opt.inGame}
+            <span class="term">
+              {opt.original
+                ? opt.inGame
+                  ? 'Original · In-game'
+                  : 'Original'
+                : 'In-game'}
+            </span>
+          {/if}
+        </button>
+      </li>
+    {:else}
+      <li class="provenance">No matching suggestions.</li>
+    {/each}
+  </ul>
 {/snippet}
 
 <section class="grid gap-5">
@@ -219,7 +194,6 @@
         id="set-nature-input"
         class="select mt-1.5 min-h-11 w-full text-sm"
         value={nature}
-        onfocus={onclearsuggestions}
         onchange={(e) => {
           const selected = e.currentTarget.value;
           if (selected === inGameNature) {

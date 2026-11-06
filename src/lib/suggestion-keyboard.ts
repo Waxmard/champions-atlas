@@ -5,8 +5,7 @@ const rows = (section: Element | null) => [
 export function handleSuggestionKeydown(
   event: KeyboardEvent,
   section: Element | null,
-  inputId: string,
-  close: () => void
+  inputId: string
 ): void {
   const items = rows(section);
   if (!items.length) return;
@@ -20,18 +19,16 @@ export function handleSuggestionKeydown(
       focus(current + 1);
       break;
     case 'ArrowUp':
-      focus(current < 0 ? items.length - 1 : current - 1);
+      if (current <= 0) {
+        event.preventDefault();
+        document.getElementById(inputId)?.focus();
+      } else focus(current - 1);
       break;
     case 'Home':
       focus(0);
       break;
     case 'End':
       focus(items.length - 1);
-      break;
-    case 'Escape':
-      event.preventDefault();
-      document.getElementById(inputId)?.focus();
-      close();
       break;
   }
 }

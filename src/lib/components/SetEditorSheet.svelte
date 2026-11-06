@@ -1,5 +1,4 @@
 <script lang="ts">
-  import InGameSetSuggestion from '#lib/components/InGameSetSuggestion.svelte';
   import SetEditorPokemonSuggestions from '#lib/components/SetEditorPokemonSuggestions.svelte';
   import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
   import { reuseCurrentSet, type CurrentSetChoice } from '#lib/current-sets.js';
@@ -84,15 +83,6 @@
   let currentView = $state<EditorView>(initialView);
   let activeMoveSlot = $state(initialMoveIndex);
   let replacement = $state<Member | null>(null);
-  let activeSuggestions = $state<string | null>(
-    initialView === 'pokemon'
-      ? 'pokemon'
-      : initialView === 'moves'
-        ? `move-${initialMoveIndex}`
-        : fieldOnOpen === 'item' || fieldOnOpen === 'ability'
-          ? fieldOnOpen
-          : null
-  );
   let pokemonQuery = $state(''),
     itemQuery = $state(''),
     abilityQuery = $state('');
@@ -125,23 +115,6 @@
       (entry) => entry.id === pokemonId(draftMember.pokemon)
     )?.member
   );
-  const previewCurrent = $derived<Member>({
-    ...draftMember,
-    set:
-      canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields)
-        ? fieldText
-        : accepted.set,
-  });
-  const inGameReason = $derived(
-    inGameMember
-      ? (memberValidationError(
-          structuredClone($state.snapshot(inGameMember)),
-          accepted,
-          teammates,
-          'structured'
-        )?.message ?? '')
-      : ''
-  );
   const suggestions = $derived(
     catalogSuggestions(
       draftMember,
@@ -157,12 +130,7 @@
   );
   const norm = (value: string, query: string) =>
     normalize(value).includes(normalize(query));
-  const visibleInGameMember = $derived(
-    inGameMember && norm(inGameMember.pokemon, pokemonQuery)
-      ? inGameMember
-      : null
-  );
-  const filteredPokemon = $derived(suggestions.pokemon.slice(0, 5));
+  const filteredPokemon = $derived(suggestions.pokemon);
   const filteredItems = $derived(
     suggestions.items
       .filter((option) => norm(option.value, itemQuery))
@@ -202,8 +170,7 @@
     errorField = field;
     error = message;
   }
-  function openSuggestions(field: string) {
-    activeSuggestions = field;
+  function resetQuery(field: string) {
     if (field === 'pokemon') pokemonQuery = '';
     else if (field === 'item') itemQuery = '';
     else if (field === 'ability') abilityQuery = '';
@@ -212,7 +179,6 @@
   }
   function applyPreFilled(next: Member) {
     form = fields(next);
-    activeSuggestions = null;
   }
   function accept(next: Member, preserveMoves = false) {
     if (!onchange(next)) {
@@ -252,8 +218,6 @@
   function chooseInGame(choice: CurrentSetChoice, displayed: Member): void {
     const displayedSnapshot = canonicalSnapshot($state.snapshot(displayed));
     const moveSlots = MOVE_SLOTS.map((index) => form.moves[index].trim());
-    if (choice.kind === 'set' && !flush()) return;
-
     const selectedId = pokemonId(displayed.pokemon);
     const latestSets = currentSets.refresh();
     if (!latestSets) return;
@@ -282,12 +246,8 @@
         $state.snapshot(latestMember),
         choice
       );
-      if (choice.kind === 'set') {
-        chooseSet(candidate);
-      } else {
-        if (choice.kind === 'move') moveSlots[choice.index] = choice.move;
-        chooseSet(candidate, false, moveSlots);
-      }
+      if (choice.kind === 'move') moveSlots[choice.index] = choice.move;
+      chooseSet(candidate, false, moveSlots);
     } catch (caught) {
       showError(
         'set',
@@ -297,12 +257,10 @@
   }
   function chooseMove(index: number, value: string) {
     form.moves[index] = value;
-    activeSuggestions = null;
     commit();
   }
   function clearMove(index: number) {
     form.moves[index] = '';
-    activeSuggestions = null;
     commit();
   }
   function moveSuggestions(index: number) {
@@ -350,6 +308,10 @@
     event.preventDefault();
   }
   function commit(): boolean {
+    pokemonQuery = '';
+    itemQuery = '';
+    abilityQuery = '';
+    moveQueries = ['', '', '', ''];
     if (!dirty) {
       clearError();
       return true;
@@ -403,7 +365,6 @@
   function switchView(view: EditorView) {
     if (view === currentView) return;
     currentView = view;
-    activeSuggestions = view === 'pokemon' ? 'pokemon' : null;
     requestAnimationFrame(() => {
       if (contentElement) contentElement.scrollTop = 0;
       editorHeading?.focus({ preventScroll: true });
@@ -421,10 +382,6 @@
     else focusError();
   }
   export function requestClose(): boolean {
-    if (activeSuggestions) {
-      activeSuggestions = null;
-      return false;
-    }
     if (flush()) return true;
     return confirm('Discard unsaved input?');
   }
@@ -458,17 +415,6 @@
 </script>
 
 <div bind:this={editorElement} class="flex min-h-0 grow flex-col">
-  {#snippet savedSetSuggestion()}
-    {#if inGameMember}
-      <InGameSetSuggestion
-        current={previewCurrent}
-        saved={inGameMember}
-        reason={inGameReason}
-        onchoose={(displayed) => chooseInGame({ kind: 'set' }, displayed)}
-      />
-    {/if}
-  {/snippet}
-
   <header
     class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:px-6 sm:pt-5"
   >
@@ -526,26 +472,22 @@
       <SetEditorMoves
         moves={form.moves}
         {activeMoveSlot}
-        {activeSuggestions}
         moveOptions={moveSuggestions(activeMoveSlot)}
         {inGameMember}
-        {currentRegulation}
         oningame={chooseInGame}
         {error}
         {errorField}
         onfocus={(index) => {
           activeMoveSlot = index;
-          openSuggestions(`move-${index}`);
+          resetQuery(`move-${index}`);
         }}
         onchange={(index, value) => {
           form.moves[index] = moveQueries[index] = value;
           activeMoveSlot = index;
-          activeSuggestions = `move-${index}`;
           clearError();
         }}
         onchoose={chooseMove}
         onclear={clearMove}
-        onclosesuggestions={() => (activeSuggestions = null)}
         oncommit={commit}
       />
     {:else if currentView === 'details'}
@@ -553,8 +495,6 @@
         item={form.item}
         ability={form.ability}
         nature={form.nature}
-        {currentRegulation}
-        {activeSuggestions}
         {filteredItems}
         {filteredAbilities}
         {legacyNature}
@@ -564,19 +504,16 @@
         {errorField}
         onitemchange={(val) => {
           itemQuery = form.item = val;
-          activeSuggestions = 'item';
           clearError();
         }}
         onabilitychange={(val) => {
           abilityQuery = form.ability = val;
-          activeSuggestions = 'ability';
           clearError();
         }}
         onnaturechange={(val) => {
           form.nature = val;
         }}
-        onopensuggestions={openSuggestions}
-        onclearsuggestions={() => (activeSuggestions = null)}
+        onresetquery={resetQuery}
         onclearerror={clearError}
         oncommit={commit}
       />
@@ -627,12 +564,11 @@
             class="grow bg-transparent text-sm focus:outline-none"
             placeholder="Pokémon"
             bind:value={form.pokemon}
-            onfocus={() => openSuggestions('pokemon')}
-            onclick={() => openSuggestions('pokemon')}
+            onfocus={() => resetQuery('pokemon')}
+            onclick={() => resetQuery('pokemon')}
             oninput={(event) => {
               pokemonQuery = event.currentTarget.value;
               form.pokemon = event.currentTarget.value;
-              activeSuggestions = 'pokemon';
               clearError();
             }}
             onblur={(event) => {
@@ -645,15 +581,13 @@
             onkeydown={(event) => {
               if (event.key === 'Enter' && !event.isComposing) {
                 event.preventDefault();
-                activeSuggestions = null;
                 flush();
                 return;
               }
               handleSuggestionKeydown(
                 event,
                 document.getElementById('set-pokemon-suggestions'),
-                'set-pokemon-input',
-                () => (activeSuggestions = null)
+                'set-pokemon-input'
               );
             }}
           />
@@ -673,17 +607,10 @@
           >
           {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
         {/if}
-        {#if activeSuggestions === 'pokemon'}
-          <SetEditorPokemonSuggestions
-            options={filteredPokemon}
-            {currentRegulation}
-            inGameSuggestion={visibleInGameMember
-              ? savedSetSuggestion
-              : undefined}
-            onclosesuggestions={() => (activeSuggestions = null)}
-            onchoose={(next) => chooseSet(next, true)}
-          />
-        {/if}
+        <SetEditorPokemonSuggestions
+          options={filteredPokemon}
+          onchoose={(next) => chooseSet(next, true)}
+        />
         {#if error && errorField === 'pokemon'}
           <p
             role="alert"
@@ -716,7 +643,6 @@
         variant="quiet"
         onpointerdown={keepFocus}
         onclick={() => {
-          activeSuggestions = null;
           if (requestClose()) onclose();
         }}>Close</Button
       >

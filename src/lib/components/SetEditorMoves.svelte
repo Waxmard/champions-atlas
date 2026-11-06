@@ -1,20 +1,18 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import { regulationLabel, type Member } from '#lib/catalog.js';
+  import type { Member } from '#lib/catalog.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
   import TypeMark from '#lib/components/TypeMark.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import type { CatalogSuggestion } from '#lib/workbench.js';
-  import { getMoveSummary, getMoveType, TYPE_COLORS } from '#lib/types.js';
+  import { getMoveType, TYPE_COLORS } from '#lib/types.js';
   import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
   let {
     moves,
     activeMoveSlot,
-    activeSuggestions,
     moveOptions,
     inGameMember,
-    currentRegulation,
     error,
     errorField,
     onfocus,
@@ -22,15 +20,12 @@
     onchoose,
     oningame,
     onclear,
-    onclosesuggestions,
     oncommit,
   }: {
     moves: string[];
     activeMoveSlot: number;
-    activeSuggestions: string | null;
     moveOptions: CatalogSuggestion[];
     inGameMember?: Member;
-    currentRegulation: string;
     error: string;
     errorField: EditableSetField | null;
     onfocus: (index: number) => void;
@@ -38,7 +33,6 @@
     onchoose: (index: number, value: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onclear: (index: number) => void;
-    onclosesuggestions: () => void;
     oncommit: () => void;
   } = $props();
 </script>
@@ -84,8 +78,7 @@
             handleSuggestionKeydown(
               event,
               document.getElementById('set-move-suggestions'),
-              `set-move-${index + 1}`,
-              onclosesuggestions
+              `set-move-${index + 1}`
             );
           }}
         />
@@ -103,77 +96,54 @@
       </div>
     {/each}
   </div>
-  {#if activeSuggestions === `move-${activeMoveSlot}`}
-    <section
-      id="set-move-suggestions"
-      aria-label="Move suggestions"
-      class="plate max-h-60 divide-y overflow-y-auto"
-    >
-      <div class="term px-3 py-1.5">Move {activeMoveSlot + 1} suggestions</div>
-      <ul role="list" class="divide-y">
-        {#each moveOptions as option (option.value)}
-          {@const optionType = getMoveType(option.value)}
-          {@const optionColor = optionType ? TYPE_COLORS[optionType] : null}
-          <li>
-            <button
-              type="button"
-              data-move-choice
-              data-suggestion
-              onpointerdown={(event) => event.preventDefault()}
-              onkeydown={(event) =>
-                handleSuggestionKeydown(
-                  event,
-                  document.getElementById('set-move-suggestions'),
-                  `set-move-${activeMoveSlot + 1}`,
-                  onclosesuggestions
-                )}
-              class="option-row"
-              style={optionColor
-                ? `border-left: 3px solid ${optionColor};`
-                : ''}
-              onclick={() => {
-                if (option.inGame) {
-                  if (inGameMember)
-                    oningame(
-                      {
-                        kind: 'move',
-                        index: activeMoveSlot,
-                        move: option.value,
-                      },
-                      inGameMember
-                    );
-                } else onchoose(activeMoveSlot, option.value);
-              }}
-            >
-              <TypeMark type={optionType} size="md" />
-              <span class="value">{option.value}</span>
-              <span class="provenance shrink-0"
-                >{getMoveSummary(option.value)}</span
-              >
-              <span class="term ms-auto shrink-0">
-                {option.totalCount} team{option.totalCount === 1
-                  ? ''
-                  : 's'}{option.currentCount
-                  ? ` · ${option.currentCount} in ${regulationLabel(currentRegulation)}`
-                  : ''}
-              </span>
-              {#if option.original || option.inGame}<span
-                  class="stamp"
-                  data-grade="reported"
-                  >{option.original
-                    ? option.inGame
-                      ? 'Original · In-game'
-                      : 'Original'
-                    : 'In-game'}</span
-                >{/if}
-            </button>
-          </li>
-        {:else}
-          <li class="provenance p-3">No matching move suggestions.</li>
-        {/each}
-      </ul>
-    </section>
-  {/if}
+  <ul
+    id="set-move-suggestions"
+    role="list"
+    aria-label={`Move ${activeMoveSlot + 1} suggestions`}
+    class="flex flex-wrap gap-1.5"
+  >
+    {#each moveOptions as option (option.value)}
+      {@const optionType = getMoveType(option.value)}
+      <li>
+        <button
+          type="button"
+          class="hint"
+          data-move-choice
+          data-suggestion
+          onpointerdown={(event) => event.preventDefault()}
+          onkeydown={(event) =>
+            handleSuggestionKeydown(
+              event,
+              document.getElementById('set-move-suggestions'),
+              `set-move-${activeMoveSlot + 1}`
+            )}
+          onclick={() => {
+            if (option.inGame) {
+              if (inGameMember)
+                oningame(
+                  { kind: 'move', index: activeMoveSlot, move: option.value },
+                  inGameMember
+                );
+            } else onchoose(activeMoveSlot, option.value);
+          }}
+        >
+          <TypeMark type={optionType} size="md" />
+          <span>{option.value}</span>
+          {#if option.original || option.inGame}
+            <span class="term">
+              {option.original
+                ? option.inGame
+                  ? 'Original · In-game'
+                  : 'Original'
+                : 'In-game'}
+            </span>
+          {/if}
+        </button>
+      </li>
+    {:else}
+      <li class="provenance">No matching suggestions.</li>
+    {/each}
+  </ul>
   {#if error && errorField === 'moves'}
     <p
       role="alert"
