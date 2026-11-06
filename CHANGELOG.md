@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.3.0](https://github.com/Waxmard/champions-atlas/compare/v3.2.1...v3.3.0) (2026-11-06)
+
+
+### Features
+
+* reorder saved teams in wishlist and search by pokemon ([#82](https://github.com/Waxmard/champions-atlas/issues/82)) ([1dcf015](https://github.com/Waxmard/champions-atlas/commit/1dcf01592061377e883489929b3ad0b4b1ef0af7))
+
 ## [3.2.1](https://github.com/Waxmard/champions-atlas/compare/v3.2.0...v3.2.1) (2026-11-05)
 
 
