@@ -11,6 +11,7 @@
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
+  import { knownName } from '#lib/canonical-names.js';
   import { NATURES, parseSetBlock, updateSetText } from '#lib/paste.js';
   import {
     memberRosterError,
@@ -19,6 +20,7 @@
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import { catalogSuggestions, originalMemberFor } from '#lib/workbench.js';
+  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
   type EditorView = 'pokemon' | 'details' | 'moves' | 'spread';
   interface Props {
     member: Member;
@@ -377,7 +379,19 @@
         pokemon: draftMember.pokemon,
       };
       if (!validateMember(candidate)) return false;
-      return accept(candidate, true);
+      return accept(
+        {
+          ...candidate,
+          item: candidate.item
+            ? (knownName('item', candidate.item) ?? candidate.item)
+            : candidate.item,
+          ability: candidate.ability
+            ? (knownName('ability', candidate.ability) ?? candidate.ability)
+            : candidate.ability,
+          moves: candidate.moves.map((move) => knownName('move', move) ?? move),
+        },
+        true
+      );
     } catch (caught) {
       showError(
         'set',
@@ -515,6 +529,7 @@
         {activeSuggestions}
         moveOptions={moveSuggestions(activeMoveSlot)}
         {inGameMember}
+        {currentRegulation}
         oningame={chooseInGame}
         {error}
         {errorField}
@@ -530,6 +545,7 @@
         }}
         onchoose={chooseMove}
         onclear={clearMove}
+        onclosesuggestions={() => (activeSuggestions = null)}
         oncommit={commit}
       />
     {:else if currentView === 'details'}
@@ -537,6 +553,7 @@
         item={form.item}
         ability={form.ability}
         nature={form.nature}
+        {currentRegulation}
         {activeSuggestions}
         {filteredItems}
         {filteredAbilities}
@@ -630,7 +647,14 @@
                 event.preventDefault();
                 activeSuggestions = null;
                 flush();
+                return;
               }
+              handleSuggestionKeydown(
+                event,
+                document.getElementById('set-pokemon-suggestions'),
+                'set-pokemon-input',
+                () => (activeSuggestions = null)
+              );
             }}
           />
         </label>
@@ -652,9 +676,11 @@
         {#if activeSuggestions === 'pokemon'}
           <SetEditorPokemonSuggestions
             options={filteredPokemon}
+            {currentRegulation}
             inGameSuggestion={visibleInGameMember
               ? savedSetSuggestion
               : undefined}
+            onclosesuggestions={() => (activeSuggestions = null)}
             onchoose={(next) => chooseSet(next, true)}
           />
         {/if}

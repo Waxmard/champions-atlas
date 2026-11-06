@@ -159,7 +159,9 @@ changes before selection. Selecting the suggestion applies the complete saved
 snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
 
-Suggestions are keyboard-operable. Operation errors use alerts. Deliberate
+Suggestions are keyboard-operable: arrow keys move from a field into its
+suggestion rows and between them, Home and End jump to the ends, Escape closes the
+list and returns to the field, and Enter selects. Operation errors use alerts. Deliberate
 actions, including Wishlist additions and removals, imports, collection moves,
 deletions, restorations, copying, and in-game recording, use one temporary status
 message below navigation for three seconds. The message survives navigation but
@@ -191,12 +193,18 @@ Only unsaved input prompts before navigation. Browse filters and
 position remain device-local.
 
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
-fields and moves next, then uses result ordering for ties. All regulations are
-included. Replacement sets favor retaining the chosen Pokémon and its set
-details, then use source-team ranking for ties, with duplicate sets collapsed and
-species already in another slot excluded. Sources need not match the fixed five
-members exactly. Source result claims are not attributed to the user's edited
-team. Exact forms remain distinct.
+fields and moves next, then uses result ordering for ties. Only teams in the
+current regulation are considered. A suggestion whose resolved form appears with
+one complete set in several teams keeps that set; otherwise the app assembles the
+most common item, the most common ability among sets holding that item, the most
+common Nature and EV pair for those, and the four most frequent moves. An item
+another teammate holds is never reused, and a suggested Mega keeps its own Mega
+Stone. Candidates rank by shared teammates, then by how many qualifying teams use
+the form, then by matching details for those teammates, then by published
+results, regulation, and credentials. Inferred archetype and role tags break only
+equally proven ties. Sources need not match the fixed five members exactly. Source
+result claims are not attributed to the user's edited team. Exact forms remain
+distinct.
 
 - One Pokémon toggle replaces individual item, move, and ability locks.
 - Show concrete differences for the proposed single-slot replacement.
@@ -209,6 +217,24 @@ its saved ID or source history. **Restore original set** is available only when
 it does not duplicate a Pokémon or exceed the replacement Mega limit.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
+
+**Suggest swaps** in **Manage team** lists up to four whole-set replacements
+built from current-regulation teams, at most one per slot. Each row names the
+slot, the current and suggested Pokémon, the set, its shared-teammate count, and
+either how many teams share that exact set or how many sets it was assembled
+from, with its best supporting result. Applying a row replaces the whole set and
+leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
+resolved form up across every slot. Swaps stay unavailable while team text is
+unsaved or an editor is open, and a team already holding two Mega Pokémon is not
+offered another.
+
+Changed item, ability, move, and Pokémon names must be known to the app. An
+unchanged legacy value stays accepted, and a committed value uses its canonical
+spelling. Custom team import and Wishlist import remain permissive.
+
+Catalog item, ability, and move rows show how many teams used the value and how
+many of those are in the current regulation. Items another teammate already holds
+are not offered.
 
 EV spread suggestions include only complete, standard pairs whose Nature matches
 the selected Nature and whose spread resolves to the current battle form.

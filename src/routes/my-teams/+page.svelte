@@ -16,28 +16,24 @@
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
-  import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import SwapSuggestions from '#lib/components/SwapSuggestions.svelte';
   import Plus from '@lucide/svelte/icons/plus';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import X from '@lucide/svelte/icons/x';
   import { Button } from '#lib/components/ui/button/index.js';
   import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
   import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
   import { canonicalSnapshot, restoreTeam } from '#lib/team-history.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
-  import { normalize, type Member } from '#lib/catalog.js';
+  import { type Member } from '#lib/catalog.js';
   import { parseTeamPaste } from '#lib/member-validation.js';
   import {
     activeTeamKey,
     deleteTeam,
     exportPaste,
-    isMegaSpecies,
-    MAX_TEAM_MEGAS,
     readSavedTeams,
     rosterConflict,
     saveTeam,
-    swapSuggestions,
     type SavedTeam,
   } from '#lib/workbench.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
@@ -72,27 +68,8 @@
       flush: () => boolean;
       requestClose: () => boolean;
     }>(),
-    pendingSpecies = $state<string | null>(null),
-    showSwapPicker = $state(false),
-    swapUnavailable = $state(false),
     appliedRevision = 0;
   const teams = $derived(catalogState.catalog.teams);
-  const allSpecies = $derived(
-    [...new Set(teams.flatMap((t) => t.members.map((m) => m.pokemon)))].sort()
-  );
-  const availableSpecies = $derived(
-    allSpecies.filter(
-      (p) =>
-        !(draft?.members ?? []).some(
-          (m) => normalize(m.pokemon) === normalize(p)
-        ) &&
-        !(
-          isMegaSpecies(p) &&
-          (draft?.members ?? []).filter((m) => isMegaSpecies(m.pokemon))
-            .length >= MAX_TEAM_MEGAS
-        )
-    )
-  );
   const current = $derived(catalogState.catalog.currentRegulation);
   const editing = $derived(activeEditIndex !== null);
   const hasTeam = $derived(ready && !storageError && !!draft);
@@ -108,13 +85,6 @@
     (id
       ? resolve('my-teams') + '?team=' + encodeURIComponent(id)
       : resolve('my-teams')) as ResolvedPathname;
-  function revealPanel(node: HTMLElement) {
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    node.dataset.motionReady = 'true';
-    node.dataset.open = 'false';
-    const frame = requestAnimationFrame(() => (node.dataset.open = 'true'));
-    return { destroy: () => cancelAnimationFrame(frame) };
-  }
   function openSaved(
     id: string | null,
     activeOverride?: string | null,
@@ -150,8 +120,8 @@
           void goto(dest, { replace: true });
       }
       const f = false;
-      showExport = editorPending = stale = showSwapPicker = swapUnavailable = f;
-      activeEditIndex = editorMember = pendingSpecies = null;
+      showExport = editorPending = stale = f;
+      activeEditIndex = editorMember = null;
       message =
         id && !entry && !collections.resolveSavedTeamId(saved, null, activeId)
           ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
@@ -182,9 +152,8 @@
       ? {
           oncopy: copyPaste,
           onmanage: openTeamControls,
-          onswap: () => openTeamControls(true),
-          swapDisabled:
-            changed || editing || !!pendingSpecies || showSwapPicker,
+          onsuggest: () => openTeamControls(true),
+          suggestDisabled: changed || editing,
           disabled: changed || editing || deleting,
         }
       : null;
@@ -231,8 +200,9 @@
   function openTeamControls(swap = false) {
     if (changed) return;
     teamControlsOpen = true;
-    if (swap) showSwapPicker = true;
-    const sel = swap ? '[aria-label="Change a Pokémon"]' : '#team-name';
+    const sel = swap
+      ? '[data-swap-suggestions] button, [data-swap-suggestions] input'
+      : '#team-name';
     void tick().then(() => document.querySelector<HTMLElement>(sel)?.focus());
   }
   function blurName(e: FocusEvent) {
@@ -387,7 +357,6 @@
   const openSetEditor = (i: number, field: EditableSetField, move = 0) => {
     const member = !changed && !editing ? draft?.members[i] : null;
     if (!member) return;
-    pendingSpecies = null;
     editorPending = false;
     [activeEditIndex, activeEditField, activeEditMoveSlot] = [i, field, move];
     editorMember = structuredClone($state.snapshot(member));
@@ -412,28 +381,13 @@
     editorPending = false;
     if (slot !== null) void tick().then(() => focusSetField(slot, field, move));
   }
-  function startSpeciesSwap(pokemon: string) {
-    if (!draft || changed || editing) return;
-    pendingSpecies = pokemon;
-    showSwapPicker = false;
-    const best = swapSuggestions(
-      draft.members,
-      teams,
-      current,
-      pokemon,
-      catalogState.tags
-    )[0];
-    swapUnavailable = !best;
-    if (!best) return;
-    persistChange((t) => ({
-      ...t,
-      members: replaceSlot(t.members, best.slot, $state.snapshot(best.member)),
+  function applySwap(slot: number, member: Member): boolean {
+    if (!draft || changed || editing || deleting || stale) return false;
+    return persistChange((team) => ({
+      ...team,
+      members: replaceSlot(team.members, slot, $state.snapshot(member)),
     }));
   }
-  const cancelSpeciesSwap = () => (
-    (pendingSpecies = null),
-    (swapUnavailable = false)
-  );
   async function copyPaste() {
     if (!draft || changed || editing) return;
     showExport = true;
@@ -474,9 +428,9 @@
       deleting = false;
       return;
     }
-    draft = activeEditIndex = editorMember = pendingSpecies = null;
+    draft = activeEditIndex = editorMember = null;
     baseline = pasteText = pasteError = '';
-    editorPending = showSwapPicker = swapUnavailable = showExport = false;
+    editorPending = showExport = false;
     const nextId = collections.resolveSavedTeamId(remaining, null, prevActive);
     let activeFailed = false;
     try {
@@ -647,39 +601,16 @@
                   Editing does not create a working rental code.
                 </p>
               </div>
-              {#if pendingSpecies}
-                <div
-                  class="t-panel-slide input flex h-auto min-h-12 w-full items-center justify-between gap-2 py-1"
-                  use:revealPanel
-                >
-                  <span class="min-w-0 flex-1 wrap-anywhere"
-                    >{pendingSpecies}</span
-                  >
-                  <Button
-                    variant="quiet"
-                    size="icon-compact"
-                    aria-label="Clear selected Pokémon"
-                    onclick={cancelSpeciesSwap}
-                    ><X class="size-4" aria-hidden="true" /></Button
-                  >
-                </div>
-              {:else if showSwapPicker}
-                <div class="t-panel-slide min-w-0" use:revealPanel>
-                  <PokemonPicker
-                    options={availableSpecies}
-                    onselect={startSpeciesSwap}
-                    disabled={changed || editing}
-                    label="Change a Pokémon"
-                    placeholder="Choose a Pokémon to swap in…"
-                    disabledPlaceholder="Finish editing first"
-                  />
-                </div>
-              {/if}
-              {#if swapUnavailable && pendingSpecies}
-                <p class="provenance" role="status">
-                  No catalog team with {pendingSpecies} shares a remaining teammate.
-                </p>
-              {/if}
+              <div data-swap-suggestions>
+                <SwapSuggestions
+                  members={draft.members}
+                  {teams}
+                  currentRegulation={current}
+                  tags={catalogState.tags}
+                  disabled={changed || editing || deleting || stale}
+                  onapply={applySwap}
+                />
+              </div>
               <Button
                 variant="destructive"
                 class="h-auto min-h-11 max-w-full text-start whitespace-normal"

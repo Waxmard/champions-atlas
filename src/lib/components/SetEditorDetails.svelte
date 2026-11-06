@@ -1,17 +1,19 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
-  import { normalize, type Member } from '#lib/catalog.js';
+  import { normalize, regulationLabel, type Member } from '#lib/catalog.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
   import type { CatalogSuggestion } from '#lib/workbench.js';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { NATURES } from '#lib/paste.js';
+  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
 
   interface Props {
     item: string;
     ability: string;
     nature: string;
+    currentRegulation: string;
     activeSuggestions: string | null;
     filteredItems: CatalogSuggestion[];
     filteredAbilities: CatalogSuggestion[];
@@ -33,6 +35,7 @@
     item,
     ability,
     nature,
+    currentRegulation,
     activeSuggestions,
     filteredItems,
     filteredAbilities,
@@ -91,7 +94,14 @@
           event.preventDefault();
           onclearsuggestions();
           oncommit();
+          return;
         }
+        handleSuggestionKeydown(
+          event,
+          document.getElementById(`set-${field}-suggestions`),
+          `set-${field}-input`,
+          onclearsuggestions
+        );
       }}
     />
     {#if value}
@@ -120,6 +130,7 @@
       aria-label={`${label} suggestions`}
       class="plate mt-2 max-h-60 overflow-y-auto"
     >
+      <div class="term px-3 py-1.5">{label} suggestions</div>
       <ul role="list" class="divide-y">
         {#each options as opt (opt.value)}
           <li>
@@ -127,7 +138,15 @@
               type="button"
               class="option-row"
               data-detail-choice
+              data-suggestion
               onpointerdown={(event) => event.preventDefault()}
+              onkeydown={(event) =>
+                handleSuggestionKeydown(
+                  event,
+                  document.getElementById(`set-${field}-suggestions`),
+                  `set-${field}-input`,
+                  onclearsuggestions
+                )}
               onclick={() => {
                 if (opt.inGame) {
                   if (inGameMember) oningame({ kind: field }, inGameMember);
@@ -144,8 +163,15 @@
               {:else}
                 {opt.value}
               {/if}
+              <span class="term ms-auto shrink-0">
+                {opt.totalCount} team{opt.totalCount === 1
+                  ? ''
+                  : 's'}{opt.currentCount
+                  ? ` · ${opt.currentCount} in ${regulationLabel(currentRegulation)}`
+                  : ''}
+              </span>
               {#if opt.original || opt.inGame}
-                <span class="provenance" class:ms-2={field === 'ability'}>
+                <span class="stamp" data-grade="reported">
                   {opt.original
                     ? opt.inGame
                       ? 'Original · In-game'
@@ -170,7 +196,7 @@
         'item',
         'Item',
         item,
-        'Custom item',
+        'Item',
         onitemchange,
         filteredItems
       )}
@@ -181,7 +207,7 @@
         'ability',
         'Ability',
         ability,
-        'Custom ability',
+        'Ability',
         onabilitychange,
         filteredAbilities
       )}

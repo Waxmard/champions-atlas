@@ -16,11 +16,9 @@ import {
 import {
   catalogSuggestions,
   catalogSpreadSuggestions,
-  pokemonSuggestions,
   readSavedTeams,
   saveTeam,
   storageKey,
-  swapSuggestions,
 } from '../src/lib/workbench.ts';
 
 const roster = [
@@ -598,33 +596,6 @@ test('catalog and original member suggestions use available source teams', () =>
   const pikachu = control.members[0];
   const rotom = control.members[1];
 
-  assert.deepEqual(
-    pokemonSuggestions([pikachu], [control], 'M-C').map(
-      (suggestion) => suggestion.pokemon
-    ),
-    ['Rotom-Wash', 'Archaludon', 'Incineroar', 'Amoonguss', 'Rillaboom']
-  );
-
-  const swapSource = (id, reports) => {
-    const team = suggestionTeam(id, reports);
-    team.members[5] = {
-      ...team.members[5],
-      pokemon: 'Gholdengo',
-      item: 'Choice Specs',
-      ability: 'Good as Gold',
-      nature: 'Modest',
-      moves: ['Make It Rain'],
-    };
-    return team;
-  };
-  const swapControl = swapSource('swap', [
-    { event: 'Champions ranked battles', rank: 'Master Ball 1', sourceUrl: '' },
-  ]);
-  assert.ok(
-    swapSuggestions(control.members, [swapControl], 'M-C').some(
-      (suggestion) => suggestion.pokemon === 'Gholdengo'
-    )
-  );
   const full = catalogSuggestions(rotom, [control], 'M-C', [pikachu]);
   assert.ok(full.items.some((entry) => entry.value === 'Leftovers'));
   assert.ok(full.abilities.some((entry) => entry.value === 'Levitate'));

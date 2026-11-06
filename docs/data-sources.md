@@ -342,10 +342,10 @@ including previously stored bundles, without changing saved teams or bundle data
 
 ## Ranking and discovery
 
-Automatic team and set suggestions order known regulations ahead of Unknown, then
-achievement band, current-regulation status, and credential merit. A supplied
-recommendation tiebreak follows merit; publication time and team ID settle
-remaining ties.
+Automatic team and set suggestions consider only teams in the current regulation,
+then order by achievement band, current-regulation status, and credential merit.
+A supplied recommendation tiebreak follows merit; publication time and team ID
+settle remaining ties.
 
 Browse orders known regulations ahead of Unknown, then ranks resource groups:
 complete EVs with a video, complete EVs without a video, a video without complete

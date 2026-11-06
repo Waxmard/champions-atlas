@@ -1,3 +1,5 @@
+import { Generations } from '@smogon/calc/dist/data/index.js';
+import type { ID } from '@smogon/calc/dist/data/interface.js';
 import { asset } from '$app/paths';
 import type { AssetPath } from '$app/types';
 import { normalize } from '#lib/catalog.js';
@@ -55,6 +57,14 @@ export function getTypeIcon(type: string): string {
 export function getMoveType(move: string): PokemonType | null {
   const key = normalize(move);
   return typeData.moves[key] || null;
+}
+
+export function getMoveSummary(move: string): string {
+  const data = Generations.get(0).moves.get(normalize(move) as ID);
+  if (!data) return '';
+  return [data.category, data.basePower > 0 ? `${data.basePower} BP` : '']
+    .filter(Boolean)
+    .join(' · ');
 }
 
 export function getPokemonTypes(pokemon: string): PokemonType[] {

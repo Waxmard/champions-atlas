@@ -72,6 +72,12 @@ export const normalize = (text: string) =>
 export const megaStoneTargets = (item: string) =>
   Generations.get(0).items.get(normalize(item) as ID)?.megaStone;
 
+export const MAX_TEAM_MEGAS = 2;
+export const isMegaSpecies = (pokemon: string) =>
+  /-Mega(-[XYZ])?$/i.test(pokemon.trim());
+export const basePokemon = (name: string) =>
+  normalize(name).replace(/mega[a-z]?$/, '');
+
 export function browsePokemon(name: string): string {
   if (
     ['floetteeternal', 'floetteeternalmega', 'floettemega'].includes(

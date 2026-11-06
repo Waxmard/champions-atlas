@@ -13,8 +13,8 @@ const member = (
   spread = '32 Atk / 32 Spe / 2 HP'
 ) => ({
   pokemon,
-  item: 'Item',
-  ability: 'Ability',
+  item: 'Leftovers',
+  ability: 'Intimidate',
   nature,
   spread,
   moves: ['Protect'],
@@ -242,10 +242,12 @@ test('team text matches reordered sets by normalized Pokémon identity', () => {
   assert.deepEqual(current, before);
 
   const replacement = parseTeamPaste(
-    text.replace('Pikachu', 'Mew').replace('20 Def', '32 Atk / 32 Spe / 2 HP'),
+    text
+      .replace('Pikachu', 'Garchomp')
+      .replace('20 Def', '32 Atk / 32 Spe / 2 HP'),
     current
   );
-  assert.equal(replacement[0].pokemon, 'Mew');
+  assert.equal(replacement[0].pokemon, 'Garchomp');
   assert.equal(replacement[0].marker, undefined);
   assert.equal(replacement[0].spreadSource, undefined);
 
@@ -267,11 +269,11 @@ test('team text matches reordered sets by normalized Pokémon identity', () => {
     /Changed EV spreads must total 66 points \(currently 31\)/
   );
   assert.throws(
-    () => parseTeamPaste(text.replace('mr-mime', 'Mew'), current),
+    () => parseTeamPaste(text.replace('mr-mime', 'Garchomp'), current),
     /Choose a standard nature/
   );
   assert.throws(
-    () => parseTeamPaste(text.replace('Pikachu', 'Mew'), current),
+    () => parseTeamPaste(text.replace('Pikachu', 'Garchomp'), current),
     /Changed EV spreads must total 66 points \(currently 20\)/
   );
   assert.throws(

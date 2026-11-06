@@ -12,12 +12,13 @@
   interface Props {
     oncopy: () => void;
     onmanage: () => void;
-    onswap: () => void;
-    swapDisabled: boolean;
+    onsuggest: () => void;
+    suggestDisabled: boolean;
     disabled: boolean;
   }
 
-  let { oncopy, onmanage, onswap, swapDisabled, disabled }: Props = $props();
+  let { oncopy, onmanage, onsuggest, suggestDisabled, disabled }: Props =
+    $props();
   let actionAfterClose: (() => void) | undefined;
 
   function focusAfterClose(event: Event) {
@@ -77,11 +78,11 @@
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row cursor-pointer outline-none data-disabled:opacity-50 data-highlighted:bg-info data-highlighted:text-info-content"
-        disabled={swapDisabled}
-        onSelect={() => (actionAfterClose = onswap)}
+        disabled={suggestDisabled}
+        onSelect={() => (actionAfterClose = onsuggest)}
       >
         <ArrowLeftRight class="size-4" aria-hidden="true" />
-        Change a Pokémon
+        Suggest swaps
       </DropdownMenu.Item>
     </DropdownMenu.Content>
   </DropdownMenu.Portal>
