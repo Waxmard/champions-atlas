@@ -24,6 +24,7 @@
     writeFilters,
     matchesTeam,
     compareBrowseTeams,
+    regulationLabel,
     type MemberFilter,
     type Team,
   } from '#lib/catalog.js';
@@ -275,7 +276,9 @@
 
   {#if !filtersOpen && regulation !== current}
     <p class="mt-2 text-sm wrap-break-word text-base-content/70">
-      Regulation: {regulation === 'all' ? 'All regulations' : regulation}
+      Regulation: {regulation === 'all'
+        ? 'All regulations'
+        : regulationLabel(regulation)}
     </p>
   {/if}
 
@@ -286,7 +289,8 @@
         aria-atomic="true"
         class="value font-semibold tracking-wide"
       >
-        {results.length} teams
+        {results.length}
+        {results.length === 1 ? 'team' : 'teams'}
       </p>
       {#if filters.length || regulation !== current || filterState.error}<Button
           type="button"

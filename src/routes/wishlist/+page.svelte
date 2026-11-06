@@ -662,47 +662,53 @@
         Loading Wishlist…
       </p>
     {:else if !storageError}
-      <PokemonFilters teams={pickerTeams} {filters} onchange={changeFilters} />
-      <div
-        class="mt-5 flex items-baseline justify-between gap-3 border-b pb-1.5"
-      >
-        <p
-          aria-live="polite"
-          aria-atomic="true"
-          class="value font-semibold tracking-wide"
-        >
-          {visibleEntries.length} matching {visibleEntries.length === 1
-            ? 'team'
-            : 'teams'}
-        </p>
-        {#if filters.length}
-          <Button type="button" variant="quiet" onclick={() => (filters = [])}
-            >Clear filters</Button
-          >
-        {/if}
-      </div>
-      {#if filters.length && entries.length > 1}
-        <p class="provenance mt-2">Clear filters to reorder Wishlist.</p>
-      {/if}
-      {#if visibleEntries.length}
-        <WishlistList
-          entries={visibleEntries}
-          disabled={!ready || !!pendingId || importPending || queuePending}
-          sortable={filters.length === 0 && entries.length > 1}
-          {displayTeam}
-          onuse={use}
-          onremove={remove}
-          onreorder={reorder}
+      {#if entries.length}
+        <PokemonFilters
+          teams={pickerTeams}
+          {filters}
+          onchange={changeFilters}
         />
-      {:else if entries.length}
-        <div class="plate mt-2 max-w-xl px-4 py-3">
-          <h2 class="text-lg leading-tight font-extrabold">
-            No matching teams
-          </h2>
-          <p class="mt-2 text-[0.9375rem] leading-relaxed">
-            Remove a Pokémon or clear filters to see more teams.
+        <div
+          class="mt-5 flex items-baseline justify-between gap-3 border-b pb-1.5"
+        >
+          <p
+            aria-live="polite"
+            aria-atomic="true"
+            class="value font-semibold tracking-wide"
+          >
+            {visibleEntries.length} matching {visibleEntries.length === 1
+              ? 'team'
+              : 'teams'}
           </p>
+          {#if filters.length}
+            <Button type="button" variant="quiet" onclick={() => (filters = [])}
+              >Clear filters</Button
+            >
+          {/if}
         </div>
+        {#if filters.length && entries.length > 1}
+          <p class="provenance mt-2">Clear filters to reorder Wishlist.</p>
+        {/if}
+        {#if visibleEntries.length}
+          <WishlistList
+            entries={visibleEntries}
+            disabled={!ready || !!pendingId || importPending || queuePending}
+            sortable={filters.length === 0 && entries.length > 1}
+            {displayTeam}
+            onuse={use}
+            onremove={remove}
+            onreorder={reorder}
+          />
+        {:else}
+          <div class="plate mt-2 max-w-xl px-4 py-3">
+            <h2 class="text-lg leading-tight font-extrabold">
+              No matching teams
+            </h2>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed">
+              Remove a Pokémon or clear filters to see more teams.
+            </p>
+          </div>
+        {/if}
       {:else}
         <p
           class="plate mt-2 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed"

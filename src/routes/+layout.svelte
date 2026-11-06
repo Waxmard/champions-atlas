@@ -129,7 +129,7 @@
       url.pathname !== resolve('wishlist')
     )
       return null;
-    return `${url.pathname}${url.search}` as PathnameWithSearchOrHash;
+    return url.pathname as PathnameWithSearchOrHash;
   }
 
   function storedCollection(): PathnameWithSearchOrHash | null {
@@ -602,7 +602,7 @@
           aria-current={isMyTeams ? 'page' : undefined}
           class="nav-pill {isMyTeams
             ? 'bg-info text-info-content'
-            : 'text-primary hover:bg-info'}">My Teams</a
+            : 'text-primary hover:bg-info'}">Saved</a
         >
       </nav>
       <div
