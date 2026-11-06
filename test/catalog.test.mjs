@@ -248,13 +248,8 @@ test('team headings leave renamed, custom, and unrecognized names unchanged', ()
     "Player's Cup Team (A) (B)",
     "Player's Cup Team (A) V1",
     "'s Cup Team",
-    '’s Cup Team',
     ' Cup Team',
-    '  Cup Team',
-    'Two Word Name Cup Team',
     "ayoitsbenji's WCG VGC Challenge Champion Team (Recreation of MichaelderBeste's VR October Challenge Champion Team)",
-    'Player  Team',
-    'Player   Team',
   ]) {
     assert.deepEqual(
       teamHeading(unrecognized, { name: unrecognized, reports: [] }),

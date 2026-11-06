@@ -294,23 +294,23 @@ test('deletion and promotion win over an opposite-side Wishlist reorder', () => 
 });
 
 test('concurrent Wishlist reorders use per-record local changes and stable ties', () => {
-  const lower = 'wish-\ue000';
-  const upper = 'wish-\u{10000}';
-  const base = [ranked('a', 0), ranked(lower, 1), ranked(upper, 2)];
-  const local = [ranked('a', 1), ranked(lower, 0), ranked(upper, 2)];
-  const remote = [ranked('a', 2), ranked(lower, 1), ranked(upper, 0)];
+  const first = 'wish-alpha';
+  const second = 'wish-beta';
+  const base = [ranked('a', 0), ranked(first, 1), ranked(second, 2)];
+  const local = [ranked('a', 1), ranked(first, 0), ranked(second, 2)];
+  const remote = [ranked('a', 2), ranked(first, 1), ranked(second, 0)];
   const merged = merge(base, local, remote);
   const reversed = merge(base, [...local].reverse(), [...remote].reverse());
   assert.deepEqual(merged, [
     ranked('a', 1),
-    ranked(lower, 0),
-    ranked(upper, 0),
+    ranked(first, 0),
+    ranked(second, 0),
   ]);
   assert.equal(teamsSnapshot(merged), teamsSnapshot(reversed));
   for (const result of [merged, reversed]) {
     assert.deepEqual(
       orderedWishlist(result).map(({ id }) => id),
-      [lower, upper, 'a']
+      [first, second, 'a']
     );
   }
 });

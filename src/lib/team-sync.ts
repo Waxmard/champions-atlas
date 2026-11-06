@@ -14,11 +14,15 @@ export function teamsSnapshot(teams: SavedTeam[]): string {
   );
 }
 
-function contentSnapshot(team: SavedTeam): string {
-  if (team.wishlistOrder === undefined) return canonicalSnapshot(team);
+function withoutWishlistOrder(team: SavedTeam): SavedTeam {
+  if (team.wishlistOrder === undefined) return team;
   const content = { ...team };
   delete content.wishlistOrder;
-  return canonicalSnapshot(content);
+  return content;
+}
+
+function contentSnapshot(team: SavedTeam): string {
+  return canonicalSnapshot(withoutWishlistOrder(team));
 }
 
 export function validateTeamIds(value: unknown): string[] {
@@ -90,12 +94,8 @@ export function mergeSavedTeams(
       selected = l;
     }
     if (!selected) return;
-    if (selected.collection !== 'wishlist') {
-      if (selected.wishlistOrder === undefined) return selected;
-      const withoutOrder = { ...selected };
-      delete withoutOrder.wishlistOrder;
-      return withoutOrder;
-    }
+    if (selected.collection !== 'wishlist')
+      return withoutWishlistOrder(selected);
     if (l?.collection !== 'wishlist' || r?.collection !== 'wishlist')
       return selected;
     const order = b

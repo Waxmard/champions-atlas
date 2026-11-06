@@ -7,7 +7,8 @@
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { regulationLabel, teamHeading, type Team } from '#lib/catalog.js';
+  import { regulationLabel, type Team } from '#lib/catalog.js';
+  import { savedTeamHeading } from '#lib/team-collections.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
   import { exportPaste, type SavedTeam } from '#lib/workbench.js';
@@ -25,9 +26,7 @@
     onuse: () => void;
     onremove: () => void;
   } = $props();
-  const heading = $derived(
-    teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original)
-  );
+  const heading = $derived(savedTeamHeading(entry));
   let selectedIndex = $state<number | null>(null);
   let failedCopyText = $state('');
   const selectedMember = $derived(

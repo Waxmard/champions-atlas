@@ -9,7 +9,7 @@
   import WishlistList from '#lib/components/WishlistList.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { matchesTeam, teamHeading } from '#lib/catalog.js';
+  import { matchesTeam } from '#lib/catalog.js';
   import type { MemberFilter, Team } from '#lib/catalog.js';
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
@@ -26,6 +26,7 @@
     removeWishlistedTeam,
     resolveCatalogTeam,
     SavedTeamError,
+    savedTeamHeading,
     useWishlistedTeam,
     wishlistedCatalogEntries,
   } from '#lib/team-collections.js';
@@ -122,14 +123,7 @@
     } as Team;
   }
 
-  function changeFilters(next: MemberFilter[]) {
-    filters = next.map(({ pokemon }) => ({
-      pokemon,
-      item: '',
-      ability: '',
-      move: '',
-    }));
-  }
+  const changeFilters = (next: MemberFilter[]) => (filters = next);
 
   function refresh() {
     try {
@@ -414,11 +408,9 @@
     errorMessage = '';
     invalidLink = false;
     try {
-      reorderWishlist(localStorage, orderedIds, expectedIds);
+      const next = reorderWishlist(localStorage, orderedIds, expectedIds);
       refresh();
-      if (orderedIds.every((id, index) => id === expectedIds[index]))
-        return true;
-      void pushNow();
+      if (next) void pushNow();
       return true;
     } catch (error) {
       refresh();
@@ -521,12 +513,7 @@
 <svelte:head>
   <title
     >{selectedEntry
-      ? `${
-          teamHeading(
-            selectedEntry.name,
-            selectedEntry.origin === 'custom' ? null : selectedEntry.original
-          ).title
-        } — Wishlist`
+      ? `${savedTeamHeading(selectedEntry).title} — Wishlist`
       : 'Wishlist'} — Champion's Atlas</title
   >
 </svelte:head>

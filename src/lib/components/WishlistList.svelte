@@ -3,7 +3,8 @@
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import { teamHeading, type Team } from '#lib/catalog.js';
+  import { type Team } from '#lib/catalog.js';
+  import { savedTeamHeading } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import AtlasIcon from './AtlasIcon.svelte';
   import TeamCard from './TeamCard.svelte';
@@ -31,9 +32,9 @@
 
   function focusMoved(id: string, control: 'up' | 'down') {
     void tick().then(() => {
-      const item = Array.from(
-        list?.querySelectorAll<HTMLElement>('[data-wishlist-id]') ?? []
-      ).find((candidate) => candidate.dataset.wishlistId === id);
+      const item = list?.querySelector<HTMLElement>(
+        `[data-wishlist-id="${CSS.escape(id)}"]`
+      );
       const requested = item?.querySelector<HTMLButtonElement>(
         `[data-wishlist-control="${control}"]`
       );
@@ -70,10 +71,7 @@
 
 <ul bind:this={list} class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
   {#each entries as entry, index (entry.id)}
-    {@const heading = teamHeading(
-      entry.name,
-      entry.origin === 'custom' ? null : entry.original
-    )}
+    {@const heading = savedTeamHeading(entry)}
     <li class="min-w-0" data-wishlist-id={entry.id}>
       {#snippet titleActions()}
         <div class="flex gap-2">

@@ -248,8 +248,9 @@ export function evidence(
   regulation: string,
   current: string
 ): ClassifiedEvidence {
-  const { event, rank, entrants } = report;
+  const { event, rank: rawRank, entrants } = report;
   if (!event) return noEvidence(entrants);
+  const rank = rawRank.trim();
   const trimmed = event.trim();
   const showdown = /^Showdown Ladder(?: \(Bo[13]\))?$/i.test(trimmed);
   const champions =
@@ -421,11 +422,7 @@ export function isExcludedMasterBallTeam(
     const event = report.event.trim();
     const rank = report.rank.trim();
     if (!event || !rank) continue;
-    const result = evidence(
-      rank === report.rank ? report : { ...report, rank },
-      team.regulation,
-      current
-    );
+    const result = evidence(report, team.regulation, current);
     if (
       result.platform === 'Tournament' &&
       !/ (?:collection|video)$/i.test(event)
@@ -631,30 +628,21 @@ export function compareTeams(
   );
 }
 
+const browseBand = (priority: Priority): number => {
+  const [level, division] = priority;
+  if (level === 0) return 0;
+  if (level === 1) return division === 1 ? 2 : 1;
+  if (level === 2) return 3;
+  if (level === 5) return 4;
+  if (level === 3) return 5;
+  if (level === 4) return division === 0 ? 6 : division === 1 ? 7 : 8;
+  if (level === 6) return 9;
+  if (level === 7) return 10;
+  return 11;
+};
+
 const browsePriority = (priority: Priority): Priority => [
-  priority[0] === 0
-    ? 0
-    : priority[0] === 1
-      ? priority[1] === 1
-        ? 2
-        : 1
-      : priority[0] === 2
-        ? 3
-        : priority[0] === 5
-          ? 4
-          : priority[0] === 3
-            ? 5
-            : priority[0] === 4
-              ? priority[1] === 0
-                ? 6
-                : priority[1] === 1
-                  ? 7
-                  : 8
-              : priority[0] === 6
-                ? 9
-                : priority[0] === 7
-                  ? 10
-                  : 11,
+  browseBand(priority),
   priority[1],
   priority[2],
   priority[3],

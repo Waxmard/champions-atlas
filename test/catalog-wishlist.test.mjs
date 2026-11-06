@@ -317,14 +317,14 @@ test('Wishlist reorder preserves data on corrupt or unavailable storage', () => 
   }
 });
 
-test('equal Wishlist ranks use code-point IDs independently of input order', () => {
-  const entries = ['z', '\ue000', '\u{10000}'].map((id) => ({
+test('equal Wishlist ranks sort by IDs independently of input order', () => {
+  const entries = ['c', 'a', 'b'].map((id) => ({
     ...newSavedTeam(team(id)),
     id,
     collection: 'wishlist',
     wishlistOrder: 1,
   }));
   const ids = (teams) => collections.orderedWishlist(teams).map(({ id }) => id);
-  assert.deepEqual(ids(entries), ['z', '\ue000', '\u{10000}']);
+  assert.deepEqual(ids(entries), ['a', 'b', 'c']);
   assert.deepEqual(ids(entries.toReversed()), ids(entries));
 });

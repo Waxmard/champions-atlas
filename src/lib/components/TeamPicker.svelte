@@ -2,9 +2,8 @@
   import { Combobox } from 'bits-ui';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import { teamHeading } from '#lib/catalog.js';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { rankSavedTeams } from '#lib/team-collections.js';
+  import { rankSavedTeams, savedTeamHeading } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import PokemonSprite from './PokemonSprite.svelte';
 
@@ -29,12 +28,7 @@
     contentEl = $state<HTMLElement | null>(null);
   const selected = $derived(teams.find((team) => team.id === value));
   const selectedHeading = $derived(
-    selected
-      ? teamHeading(
-          selected.name,
-          selected.origin === 'custom' ? null : selected.original
-        )
-      : null
+    selected ? savedTeamHeading(selected) : null
   );
   const selectedLabel = $derived(
     selectedHeading
@@ -168,10 +162,7 @@
       >
         <Combobox.Viewport>
           {#each options as team (team.id)}
-            {@const heading = teamHeading(
-              team.name,
-              team.origin === 'custom' ? null : team.original
-            )}
+            {@const heading = savedTeamHeading(team)}
             <Combobox.Item
               value={team.id}
               label={heading.title}

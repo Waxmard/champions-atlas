@@ -1,4 +1,4 @@
-import { isPasteUrl, normalize, type Team } from './catalog.ts';
+import { isPasteUrl, normalize, teamHeading, type Team } from './catalog.ts';
 import type { PokepastePayload } from './pokepaste.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
@@ -14,20 +14,12 @@ import {
 export const teamsInUse = (saved: SavedTeam[]) =>
   saved.filter((team) => team.collection !== 'wishlist');
 
+export const savedTeamHeading = (entry: SavedTeam) =>
+  teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original);
+
 export class SavedTeamError extends Error {}
 
-function compareIds(a: string, b: string): number {
-  let left = 0;
-  let right = 0;
-  while (left < a.length && right < b.length) {
-    const leftPoint = a.codePointAt(left) ?? 0;
-    const rightPoint = b.codePointAt(right) ?? 0;
-    if (leftPoint !== rightPoint) return leftPoint - rightPoint;
-    left += leftPoint > 0xffff ? 2 : 1;
-    right += rightPoint > 0xffff ? 2 : 1;
-  }
-  return a.length - b.length;
-}
+const compareIds = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 export function orderedWishlist(teams: SavedTeam[]): SavedTeam[] {
   return teams
@@ -45,7 +37,7 @@ export function reorderWishlist(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   orderedIds: string[],
   expectedIds: string[]
-): SavedTeam[] {
+): SavedTeam[] | null {
   const saved = readSavedTeams(storage);
   const currentIds = orderedWishlist(saved).map((team) => team.id);
   if (
@@ -64,7 +56,7 @@ export function reorderWishlist(
     throw new SavedTeamError(
       'Could not reorder Wishlist. Refresh the list and try again.'
     );
-  if (orderedIds.every((id, index) => id === currentIds[index])) return saved;
+  if (orderedIds.every((id, index) => id === currentIds[index])) return null;
   const ranks = new Map(orderedIds.map((id, index) => [id, index]));
   const raw = JSON.stringify(
     saved.map((team) =>

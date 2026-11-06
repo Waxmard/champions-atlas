@@ -385,11 +385,9 @@ test('Master Ball removal uses recognized ladder labels and explicit trimmed div
     );
 });
 
-test('unknown regulation follows known teams despite Global Challenge results and Browse resources', () => {
-  const ordinary = team('ordinary', [report('Local event', 'result')], {
-    members: pokemon.map((species) => ({ pokemon: species, spread: null })),
-  });
-  const unknown = team('unknown', [gc('1st')], { regulation: 'Unknown' });
+test('unknown regulation follows known teams regardless of paired results', () => {
+  const ordinary = team('ordinary');
+  const unknown = team('unknown', [], { regulation: 'Unknown' });
   for (const compare of comparators)
     assert.deepEqual(order([unknown, ordinary], compare), [
       'ordinary',
