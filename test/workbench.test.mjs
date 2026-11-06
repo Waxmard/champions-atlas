@@ -154,6 +154,81 @@ test('saved teams round-trip, preserve other teams, and never overwrite corrupt 
   assert.throws(() => readSavedTeams(storage), /untouched/);
 });
 
+test('saved Wishlist ranks are validated and protected from stale saves', () => {
+  const existing = {
+    ...newSavedTeam(team('ranked')),
+    collection: 'wishlist',
+    wishlistOrder: 7,
+  };
+  const inUse = {
+    ...newSavedTeam(team('in-use')),
+    collection: 'my-teams',
+    wishlistOrder: 9,
+  };
+  let raw = JSON.stringify([existing, inUse]);
+  let writes = 0;
+  const storage = {
+    getItem: () => raw,
+    setItem: (_, value) => {
+      raw = value;
+      writes++;
+    },
+  };
+  const stale = structuredClone(existing);
+  delete stale.wishlistOrder;
+  stale.original.name = 'Untrusted original';
+  let saved = saveTeam(storage, stale).find(({ id }) => id === existing.id);
+  assert.equal(saved.wishlistOrder, 7);
+  assert.deepEqual(saved.original, existing.original);
+  saved = saveTeam(storage, { ...stale, wishlistOrder: 3 }).find(
+    ({ id }) => id === existing.id
+  );
+  assert.equal(saved.wishlistOrder, 7);
+  saved = saveTeam(storage, { ...saved, collection: 'my-teams' }).find(
+    ({ id }) => id === existing.id
+  );
+  assert.equal(Object.hasOwn(saved, 'wishlistOrder'), false);
+  saved = saveTeam(storage, { ...existing, wishlistOrder: 3 }).find(
+    ({ id }) => id === existing.id
+  );
+  assert.equal(Object.hasOwn(saved, 'wishlistOrder'), false);
+  const fresh = {
+    ...newSavedTeam(team('new')),
+    collection: 'wishlist',
+    wishlistOrder: 4,
+  };
+  saved = saveTeam(storage, fresh).find(({ id }) => id === fresh.id);
+  assert.equal(Object.hasOwn(saved, 'wishlistOrder'), false);
+  saved = saveTeam(storage, inUse).find(({ id }) => id === inUse.id);
+  assert.equal(Object.hasOwn(saved, 'wishlistOrder'), false);
+  const unchanged = raw;
+  const writesBeforeErrors = writes;
+  for (const wishlistOrder of [0.5, Number.MAX_SAFE_INTEGER + 1, '1', null]) {
+    const invalid = JSON.stringify([{ ...existing, wishlistOrder }]);
+    assert.throws(
+      () => readSavedTeams({ getItem: () => invalid }),
+      /untouched/
+    );
+    assert.throws(
+      () => saveTeam(storage, { ...existing, wishlistOrder }),
+      /untouched/
+    );
+  }
+  for (const wishlistOrder of [
+    Number.MIN_SAFE_INTEGER,
+    0,
+    Number.MAX_SAFE_INTEGER,
+  ]) {
+    const value = JSON.stringify([{ ...existing, wishlistOrder }]);
+    assert.equal(
+      readSavedTeams({ getItem: () => value })[0].wishlistOrder,
+      wishlistOrder
+    );
+  }
+  assert.equal(raw, unchanged);
+  assert.equal(writes, writesBeforeErrors);
+});
+
 test('delete saved team preserves remaining teams and corrupt data', () => {
   const first = newSavedTeam(team('first'));
   const second = newSavedTeam(team('second'));

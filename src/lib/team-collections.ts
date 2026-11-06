@@ -7,6 +7,7 @@ import {
   newSavedTeam,
   readSavedTeams,
   saveTeam,
+  storageKey,
   type SavedTeam,
 } from './workbench.ts';
 
@@ -14,6 +15,68 @@ export const teamsInUse = (saved: SavedTeam[]) =>
   saved.filter((team) => team.collection !== 'wishlist');
 
 export class SavedTeamError extends Error {}
+
+function compareIds(a: string, b: string): number {
+  let left = 0;
+  let right = 0;
+  while (left < a.length && right < b.length) {
+    const leftPoint = a.codePointAt(left) ?? 0;
+    const rightPoint = b.codePointAt(right) ?? 0;
+    if (leftPoint !== rightPoint) return leftPoint - rightPoint;
+    left += leftPoint > 0xffff ? 2 : 1;
+    right += rightPoint > 0xffff ? 2 : 1;
+  }
+  return a.length - b.length;
+}
+
+export function orderedWishlist(teams: SavedTeam[]): SavedTeam[] {
+  return teams
+    .filter((team) => team.collection === 'wishlist')
+    .reverse()
+    .sort((a, b) => {
+      if (a.wishlistOrder === undefined)
+        return b.wishlistOrder === undefined ? 0 : -1;
+      if (b.wishlistOrder === undefined) return 1;
+      return a.wishlistOrder - b.wishlistOrder || compareIds(a.id, b.id);
+    });
+}
+
+export function reorderWishlist(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  orderedIds: string[],
+  expectedIds: string[]
+): SavedTeam[] {
+  const saved = readSavedTeams(storage);
+  const currentIds = orderedWishlist(saved).map((team) => team.id);
+  if (
+    currentIds.length !== expectedIds.length ||
+    currentIds.some((id, index) => id !== expectedIds[index])
+  )
+    throw new SavedTeamError(
+      'Wishlist changed elsewhere. Refresh before reordering.'
+    );
+  const currentIdSet = new Set(currentIds);
+  if (
+    orderedIds.length !== currentIds.length ||
+    new Set(orderedIds).size !== currentIds.length ||
+    orderedIds.some((id) => !currentIdSet.has(id))
+  )
+    throw new SavedTeamError(
+      'Could not reorder Wishlist. Refresh the list and try again.'
+    );
+  if (orderedIds.every((id, index) => id === currentIds[index])) return saved;
+  const ranks = new Map(orderedIds.map((id, index) => [id, index]));
+  const raw = JSON.stringify(
+    saved.map((team) =>
+      team.collection === 'wishlist'
+        ? { ...team, wishlistOrder: ranks.get(team.id) }
+        : team
+    )
+  );
+  const normalized = readSavedTeams({ getItem: () => raw });
+  storage.setItem(storageKey, raw);
+  return normalized;
+}
 
 const saveAndGet = (
   storage: Pick<Storage, 'getItem' | 'setItem'>,

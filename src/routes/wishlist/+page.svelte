@@ -5,10 +5,8 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
-  import Trash2 from '@lucide/svelte/icons/trash-2';
-  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
-  import TeamCard from '#lib/components/TeamCard.svelte';
+  import WishlistList from '#lib/components/WishlistList.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { matchesTeam, type MemberFilter, type Team } from '#lib/catalog.js';
@@ -22,6 +20,8 @@
   import {
     addCatalogToWishlist,
     addPokepasteToWishlist,
+    orderedWishlist,
+    reorderWishlist,
     removeWishlistedTeam,
     resolveCatalogTeam,
     SavedTeamError,
@@ -132,9 +132,7 @@
 
   function refresh() {
     try {
-      entries = readSavedTeams(localStorage)
-        .filter((entry) => entry.collection === 'wishlist')
-        .reverse();
+      entries = orderedWishlist(readSavedTeams(localStorage));
       storageError = '';
     } catch {
       entries = [];
@@ -411,6 +409,35 @@
     void processShares(false);
   }
 
+  function reorder(
+    orderedIds: string[],
+    expectedIds: string[],
+    movedId: string
+  ): boolean {
+    errorMessage = '';
+    invalidLink = false;
+    try {
+      const saved = reorderWishlist(localStorage, orderedIds, expectedIds);
+      refresh();
+      if (orderedIds.every((id, index) => id === expectedIds[index]))
+        return true;
+      const ordered = orderedWishlist(saved);
+      const index = ordered.findIndex((entry) => entry.id === movedId);
+      void pushNow();
+      notify(
+        `${ordered[index].name} moved to position ${index + 1} of ${ordered.length}.`
+      );
+      return true;
+    } catch (error) {
+      refresh();
+      errorMessage =
+        error instanceof SavedTeamError
+          ? error.message
+          : 'Could not reorder Wishlist. Existing saved teams have been left untouched.';
+      return false;
+    }
+  }
+
   async function use(entry: SavedTeam) {
     if (pendingId) return;
     pendingId = entry.id;
@@ -669,46 +696,20 @@
           >
         {/if}
       </div>
+      {#if filters.length && entries.length > 1}
+        <p class="provenance mt-2">Clear filters to reorder Wishlist.</p>
+      {/if}
       {#if visibleEntries.length}
-        <ul class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {#each visibleEntries as entry (entry.id)}
-            <li class="min-w-0">
-              <TeamCard
-                team={displayTeam(entry)}
-                showRegulation
-                query=""
-                href={`wishlist?team=${encodeURIComponent(entry.id)}`}
-                fromCatalog={false}
-              >
-                {#snippet leadingActions()}
-                  <Button
-                    data-wishlist-use
-                    variant="quiet"
-                    class="min-h-11 ps-0 pe-1.5"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => use(entry)}
-                  >
-                    <AtlasIcon />
-                    <span>My Teams</span>
-                  </Button>
-                {/snippet}
-                {#snippet trailingActions()}
-                  <Button
-                    variant="quiet"
-                    size="icon-compact"
-                    class="size-11"
-                    aria-label="Remove from Wishlist"
-                    title="Remove from Wishlist"
-                    disabled={!ready || !!pendingId}
-                    onclick={() => remove(entry)}
-                  >
-                    <Trash2 class="size-4" aria-hidden="true" />
-                  </Button>
-                {/snippet}
-              </TeamCard>
-            </li>
-          {/each}
-        </ul>
+        <WishlistList
+          entries={visibleEntries}
+          disabled={!ready || !!pendingId || importPending || queuePending}
+          sortable={filters.length === 0 && entries.length > 1}
+          owner={sync.user?.uid ?? null}
+          {displayTeam}
+          onuse={use}
+          onremove={remove}
+          onreorder={reorder}
+        />
       {:else if entries.length}
         <div class="plate mt-2 max-w-xl px-4 py-3">
           <h2 class="text-lg leading-tight font-extrabold">

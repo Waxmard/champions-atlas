@@ -285,6 +285,11 @@ base and Mega identities as Browse. Search does not change saved records. It
 stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
 
+With no Wishlist filters active, reorder bookmarks using the drag handle or
+move up and down controls. New bookmarks appear first without changing the
+relative order of existing bookmarks. The order persists across reloads and
+syncs with the account.
+
 The catalog **Wishlist** button adds a bookmark or immediately removes the
 matching saved Wishlist copy and its edits; My teams copies remain unchanged.
 If multiple Wishlist records match, remove them individually in Wishlist rather

@@ -111,6 +111,9 @@ opening a team and returning. Wishlist has its own Pokémon search over saved
 rosters, which resets on reload. Use the **Wishlist** button on a catalog team to
 add or remove its bookmark; removal immediately deletes that saved copy and its
 edits.
+Clear Wishlist filters to reorder bookmarks with the drag handle or move up and
+down controls. New bookmarks appear first. Your order persists across reloads
+and syncs with your account.
 From a Poképaste page, share the link to **Champion’s Atlas**, select
 **Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
 open **Wishlist actions** and choose **Add a Poképaste**, then enter a

@@ -169,6 +169,7 @@ const savedTeamSchema = z.object({
   sources: z.array(sourceSchema).max(100),
   origin: z.enum(['catalog', 'custom']).optional(),
   collection: z.enum(['my-teams', 'wishlist']).optional(),
+  wishlistOrder: z.number().int().safe().optional(),
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;
@@ -194,14 +195,16 @@ export function saveTeam(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   team: SavedTeam
 ): SavedTeam[] {
-  const validation = savedTeamsSchema.safeParse([team]);
-  if (!validation.success)
-    throw new Error(
-      'Saved teams could not be read. Existing data has been left untouched.'
-    );
-  const candidate = validation.data[0];
+  const [candidate] = readSavedTeams({ getItem: () => JSON.stringify([team]) });
   const saved = readSavedTeams(storage);
   const previous = saved.find((entry) => entry.id === candidate.id);
+  if (
+    previous?.collection === 'wishlist' &&
+    candidate.collection === 'wishlist' &&
+    previous.wishlistOrder !== undefined
+  )
+    candidate.wishlistOrder = previous.wishlistOrder;
+  else delete candidate.wishlistOrder;
   const nextTeam = previous
     ? { ...candidate, original: previous.original, origin: previous.origin }
     : candidate;
