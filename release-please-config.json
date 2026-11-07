@@ -1,9 +1,11 @@
 {
   "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "bootstrap-sha": "b42b219f05c4dd763765b80d35b6d9685013d125",
   "packages": {
     ".": {
       "release-type": "node",
       "include-component-in-tag": false,
+      "bump-minor-pre-major": true,
       "changelog-sections": [
         { "type": "feat", "section": "Features" },
         { "type": "fix", "section": "Bug Fixes" },
