@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/Waxmard/champions-atlas/compare/v0.4.0...v0.5.0) (2026-11-07)
+
+
+### Features
+
+* suggest current-regulation Pokémon swaps for team slots ([#86](https://github.com/Waxmard/champions-atlas/issues/86)) ([7e12b74](https://github.com/Waxmard/champions-atlas/commit/7e12b74995c0345bfa651f3f99e377007e93fff1))
+
 ## [3.3.0](https://github.com/Waxmard/champions-atlas/compare/v3.2.1...v3.3.0) (2026-11-06)
 
 
