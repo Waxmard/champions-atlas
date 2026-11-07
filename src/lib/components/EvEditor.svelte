@@ -21,7 +21,6 @@
     type SpreadSuggestion,
   } from '#lib/workbench.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
-  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
 
   let {
     member,
@@ -238,26 +237,12 @@
           natureDraft = event.currentTarget.value;
           visibleNatureCount = 6;
         }}
-        onblur={(event) => {
-          if (!(
-            event.relatedTarget instanceof HTMLElement &&
-            event.relatedTarget.closest(
-              '[data-suggestion], [data-show-more], [data-nature-choice]'
-            )
-          ))
-            commitNature();
-        }}
+        onblur={commitNature}
         onkeydown={(event) => {
           if (event.key === 'Enter' && !event.isComposing) {
             event.preventDefault();
             commitNature();
-            return;
           }
-          handleSuggestionKeydown(
-            event,
-            document.getElementById('set-nature-suggestions'),
-            'set-nature-input'
-          );
         }}
       />
       {#if natureValue}
@@ -266,7 +251,6 @@
           size="icon-compact"
           class="-me-2"
           aria-label="Clear nature"
-          data-nature-choice
           onpointerdown={(event) => event.preventDefault()}
           onclick={() => {
             natureDraft = null;
@@ -281,7 +265,6 @@
     <SuggestionList
       id="set-nature-suggestions"
       label="Nature suggestions"
-      inputId="set-nature-input"
       count={visibleNatures.length}
       empty="No catalog nature suggestions for this Pokémon."
       hasMore={hasMoreNatures}
@@ -438,7 +421,6 @@
 <SuggestionList
   id="set-spread-suggestions"
   label="EV spread suggestions"
-  inputId="set-nature-input"
   count={spreadSuggestions.rows.length}
   class="mt-4"
   empty="No recorded spreads match this Nature. Try another Nature or adjust EVs manually."

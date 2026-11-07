@@ -100,7 +100,7 @@ selection and competing edits are unavailable. Reordered sets keep their
 Pokémon's metadata and unchanged legacy details. Deleting the team still confirms
 before discarding unsaved input.
 
-The EV slider keeps its native keyboard controls and vertical page scrolling,
+The EV slider keeps vertical page scrolling,
 with a 44-pixel touch target across its full height. **Fill** adds or removes
 points from the selected stat to reach 66 total, within that stat's 0–32 bounds.
 It never changes another stat. If the selected stat cannot absorb the full
@@ -159,11 +159,9 @@ changes before selection. Selecting the suggestion applies the complete saved
 snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
 
-Suggestions are keyboard-operable: arrow keys move from a field into its
-suggestion rows and between them, Home and End jump to the ends, Escape closes the
-list and returns to the field, and Enter selects. Opening an editor focuses its
-section heading and never a text field, so no keyboard opens on a phone. Focus is
-shown as a fill rather than a ring or outline. Operation errors use alerts. Deliberate
+Opening an editor focuses its section heading and never a text field, so no
+keyboard opens on a phone. Focus is shown as a fill rather than a ring or
+outline. Operation errors use alerts. Deliberate
 actions, including Wishlist additions and removals, imports, collection moves,
 deletions, restorations, copying, and in-game recording, use one temporary status
 message below navigation for three seconds. The message survives navigation but
@@ -244,7 +242,7 @@ Every suggestion surface renders as full-width rows with an icon cell, the name,
 and one muted detail line. Item, ability, move, Pokémon, and spread lists start
 with ten rows; natures start with six. **Show more** appends ten rows as a muted
 dashed footer that is not a selectable row. It disappears when the list is
-complete and focuses the first newly revealed row. A check mark marks the
+complete. A check mark marks the
 selected nature and spread. Changing a field's query or committing input
 collapses its list again.
 
@@ -254,8 +252,8 @@ Matching immutable original and in-game pairs come first. Exact duplicate pairs
 appear once with their source labels combined. The initial list contains up to
 ten additional unique catalog pairs after up to two matching saved-source pairs.
 **Show more** appends ten additional catalog pairs in the same ranked order. It
-disappears when no eligible pairs remain and focuses the first newly revealed
-row. Each row shows its Nature and allocation, and its muted detail line carries
+disappears when no eligible pairs remain. Each row shows its Nature and
+allocation, and its muted detail line carries
 the source, moved points, and unmodified Speed without team counts. Expansion
 does not change saved teams. Selecting a spread, adjusting EVs, or selecting the
 same Nature preserves the expanded depth. Selecting a different Nature or
@@ -370,7 +368,7 @@ Escape restores the current team without renaming it.
 - Unknown placements, tiers, spreads, and legality are not fabricated.
 - Reimporting does not create duplicate teams or erase valid cached data on failure.
 - Current team(s) survive reload and app reopening without a cloud account.
-- Mobile layout, keyboard access, and reduced-motion behavior work; state
+- Mobile layout and reduced-motion behavior work; state
   transitions are smooth without disturbing browsing position.
 - Relevant tests, lint, type checking, and production build pass with the selected
   toolchain.

@@ -19,7 +19,6 @@
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import { catalogSuggestions, originalMemberFor } from '#lib/workbench.js';
-  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
   type EditorView = 'pokemon' | 'details' | 'moves' | 'spread';
   interface Props {
     member: Member;
@@ -578,24 +577,12 @@
               visiblePokemonCount = 10;
               clearError();
             }}
-            onblur={(event) => {
-              if (!(
-                event.relatedTarget instanceof HTMLElement &&
-                event.relatedTarget.closest('[data-set-choice]')
-              ))
-                flush();
-            }}
+            onblur={() => flush()}
             onkeydown={(event) => {
               if (event.key === 'Enter' && !event.isComposing) {
                 event.preventDefault();
                 flush();
-                return;
               }
-              handleSuggestionKeydown(
-                event,
-                document.getElementById('set-pokemon-suggestions'),
-                'set-pokemon-input'
-              );
             }}
           />
         </label>
@@ -606,7 +593,6 @@
           <Button
             variant="quiet"
             disabled={!!originalReason}
-            data-set-choice
             onpointerdown={(event) => event.preventDefault()}
             onclick={() => {
               if (originalSlotMember) chooseSet(originalSlotMember, true);

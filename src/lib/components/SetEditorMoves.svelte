@@ -9,7 +9,6 @@
   import { Button } from '#lib/components/ui/button/index.js';
   import type { CatalogSuggestion } from '#lib/workbench.js';
   import { getMoveType, TYPE_COLORS } from '#lib/types.js';
-  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
   let {
     moves,
     activeMoveSlot,
@@ -69,26 +68,12 @@
           onfocus={() => onfocus(index)}
           onclick={() => onfocus(index)}
           oninput={(event) => onchange(index, event.currentTarget.value)}
-          onblur={(event) => {
-            if (!(
-              event.relatedTarget instanceof HTMLElement &&
-              event.relatedTarget.closest(
-                '[data-suggestion], [data-show-more], [data-move-choice]'
-              )
-            ))
-              oncommit();
-          }}
+          onblur={oncommit}
           onkeydown={(event) => {
             if (event.key === 'Enter' && !event.isComposing) {
               event.preventDefault();
               oncommit();
-              return;
             }
-            handleSuggestionKeydown(
-              event,
-              document.getElementById('set-move-suggestions'),
-              `set-move-${index + 1}`
-            );
           }}
         />
         <Button
@@ -98,7 +83,6 @@
           aria-label={`Clear move ${index + 1}`}
           tabindex={0}
           disabled={!move}
-          data-move-choice
           onpointerdown={(event) => event.preventDefault()}
           onclick={() => onclear(index)}><X class="size-4" /></Button
         >
@@ -108,7 +92,6 @@
   <SuggestionList
     id="set-move-suggestions"
     label={`Move ${activeMoveSlot + 1} suggestions`}
-    inputId={`set-move-${activeMoveSlot + 1}`}
     count={moveOptions.length}
     {hasMore}
     {onshowmore}

@@ -1,11 +1,9 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { getContext } from 'svelte';
   import Check from '@lucide/svelte/icons/check';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import TypeMark from '#lib/components/TypeMark.svelte';
-  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
   import { getMoveType, typeRowWash } from '#lib/types.js';
 
   type Glyph = { kind: 'pokemon' | 'item' | 'move' | 'none'; value?: string };
@@ -33,34 +31,22 @@
     onclick,
     children,
   }: Props = $props();
-  const inputId = getContext<() => string>('suggestion-input-id') ?? (() => '');
   const wash = $derived(
     glyph?.kind === 'move' && glyph.value
       ? typeRowWash(getMoveType(glyph.value))
       : ''
   );
-  function keydown(
-    event: KeyboardEvent & { currentTarget: HTMLButtonElement }
-  ) {
-    handleSuggestionKeydown(
-      event,
-      event.currentTarget.closest('ul'),
-      inputId()
-    );
-  }
 </script>
 
 <li>
   <button
     type="button"
     class="option-row w-full"
-    data-suggestion
     data-selected={selected}
     style:background-image={wash}
     aria-label={label}
     {disabled}
     onpointerdown={(event) => event.preventDefault()}
-    onkeydown={keydown}
     {onclick}
   >
     {#if children}

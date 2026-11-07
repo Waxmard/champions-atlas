@@ -8,7 +8,6 @@
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { handleSuggestionKeydown } from '#lib/suggestion-keyboard.js';
 
   interface Props {
     item: string;
@@ -74,26 +73,12 @@
       onfocus={() => onresetquery(field)}
       onclick={() => onresetquery(field)}
       oninput={(event) => onvaluechange(event.currentTarget.value)}
-      onblur={(event) => {
-        if (!(
-          event.relatedTarget instanceof HTMLElement &&
-          event.relatedTarget.closest(
-            '[data-suggestion], [data-show-more], [data-detail-choice]'
-          )
-        ))
-          oncommit();
-      }}
+      onblur={oncommit}
       onkeydown={(event) => {
         if (event.key === 'Enter' && !event.isComposing) {
           event.preventDefault();
           oncommit();
-          return;
         }
-        handleSuggestionKeydown(
-          event,
-          document.getElementById(`set-${field}-suggestions`),
-          `set-${field}-input`
-        );
       }}
     />
     {#if value}
@@ -102,7 +87,6 @@
         size="icon-compact"
         class="-me-2"
         aria-label={`Clear ${field}`}
-        data-detail-choice
         onpointerdown={(event) => event.preventDefault()}
         onclick={(event) => {
           event.preventDefault();
@@ -119,7 +103,6 @@
   <SuggestionList
     id={`set-${field}-suggestions`}
     label={`${label} suggestions`}
-    inputId={`set-${field}-input`}
     count={options.length}
     {hasMore}
     {onshowmore}
