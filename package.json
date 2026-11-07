@@ -46,7 +46,7 @@
     "bits-ui": "^2.20.2",
     "csv-parse": "^7.0.3",
     "daisyui": "^5.7.50",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.23.1",
     "firebase-tools": "^15.34.2",
