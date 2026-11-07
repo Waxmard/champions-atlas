@@ -100,18 +100,18 @@ selection and competing edits are unavailable. Reordered sets keep their
 Pokémon's metadata and unchanged legacy details. Deleting the team still confirms
 before discarding unsaved input.
 
-The EV slider keeps its native keyboard controls and vertical page scrolling,
+The EV slider keeps vertical page scrolling,
 with a 44-pixel touch target across its full height. **Fill** adds or removes
 points from the selected stat to reach 66 total, within that stat's 0–32 bounds.
 It never changes another stat. If the selected stat cannot absorb the full
 difference, the differing total stays uncommitted and the editor reports it when
 you finish.
 
-Nature choices, the current allocation, and spread suggestions remain visible
-while manual controls are closed. **Adjust EVs manually** is a native disclosure
-that starts closed whenever you open the EV editor. It contains the number
-fields, quick allocation buttons, and sliders. The app does not save its open
-state.
+The nature field, its suggestion rows, the current allocation, and spread
+suggestions all live on the EV tab and remain visible while manual controls are
+closed. **Adjust EVs manually** is a native disclosure that starts closed
+whenever you open the EV editor. It contains the number fields, quick allocation
+buttons, and sliders. The app does not save its open state.
 
 Record and reuse one explicit **my in-game set** per Browse identity,
 representing the set currently in your Pokémon Champions box. Recording changes
@@ -159,7 +159,9 @@ changes before selection. Selecting the suggestion applies the complete saved
 snapshot subject to normal editor and roster validation. Saved team cards do not
 offer a direct reuse action.
 
-Suggestions are keyboard-operable. Operation errors use alerts. Deliberate
+Opening an editor focuses its section heading and never a text field, so no
+keyboard opens on a phone. Focus is shown as a fill rather than a ring or
+outline. Operation errors use alerts. Deliberate
 actions, including Wishlist additions and removals, imports, collection moves,
 deletions, restorations, copying, and in-game recording, use one temporary status
 message below navigation for three seconds. The message survives navigation but
@@ -191,12 +193,18 @@ Only unsaved input prompts before navigation. Browse filters and
 position remain device-local.
 
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
-fields and moves next, then uses result ordering for ties. All regulations are
-included. Replacement sets favor retaining the chosen Pokémon and its set
-details, then use source-team ranking for ties, with duplicate sets collapsed and
-species already in another slot excluded. Sources need not match the fixed five
-members exactly. Source result claims are not attributed to the user's edited
-team. Exact forms remain distinct.
+fields and moves next, then uses result ordering for ties. Only teams in the
+current regulation are considered. A suggestion whose resolved form appears with
+one complete set in several teams keeps that set; otherwise the app assembles the
+most common item, the most common ability among sets holding that item, the most
+common Nature and EV pair for those, and the four most frequent moves. An item
+another teammate holds is never reused, and a suggested Mega keeps its own Mega
+Stone. Candidates rank by shared teammates, then by how many qualifying teams use
+the form, then by matching details for those teammates, then by published
+results, regulation, and credentials. Inferred archetype and role tags break only
+equally proven ties. Sources need not match the fixed five members exactly. Source
+result claims are not attributed to the user's edited team. Exact forms remain
+distinct.
 
 - One Pokémon toggle replaces individual item, move, and ability locks.
 - Show concrete differences for the proposed single-slot replacement.
@@ -210,16 +218,46 @@ it does not duplicate a Pokémon or exceed the replacement Mega limit.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
+**Suggest swaps** in **Manage team** lists up to four whole-set replacements
+built from current-regulation teams, at most one per slot. Each row names the
+slot, the current and suggested Pokémon, the set, its shared-teammate count, and
+either how many teams share that exact set or how many sets it was assembled
+from, with its best supporting result. Applying a row replaces the whole set and
+leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
+resolved form up across every slot. Swaps stay unavailable while team text is
+unsaved or an editor is open, and a team already holding two Mega Pokémon is not
+offered another.
+
+Changed item, ability, move, and Pokémon names must be known to the app. An
+unchanged legacy value stays accepted, and a committed value uses its canonical
+spelling. Custom team import and Wishlist import remain permissive.
+
+Catalog item, ability, and move suggestions show the value with provenance
+labels: **Original** for the original team's value, **In-game** for the recorded
+in-game set, and **Movepool** for a move no catalog team recorded. Items another
+teammate already holds are not offered. Move suggestions include the species'
+newest available movepool, which ranks after catalog observations.
+
+Every suggestion surface renders as full-width rows with an icon cell, the name,
+and one muted detail line. Item, ability, move, Pokémon, and spread lists start
+with ten rows; natures start with six. **Show more** appends ten rows as a muted
+dashed footer that is not a selectable row. It disappears when the list is
+complete. A check mark marks the
+selected nature and spread. Changing a field's query or committing input
+collapses its list again.
+
 EV spread suggestions include only complete, standard pairs whose Nature matches
 the selected Nature and whose spread resolves to the current battle form.
 Matching immutable original and in-game pairs come first. Exact duplicate pairs
 appear once with their source labels combined. The initial list contains up to
-five additional unique catalog pairs after up to two matching saved-source pairs.
-**Show more** appends up to five additional catalog pairs in the same ranked
-order. It disappears when no eligible pairs remain and focuses the first newly
-revealed row. Expansion does not change saved teams. Selecting a spread, adjusting
-EVs, or selecting the same Nature preserves the expanded depth. Selecting a
-different Nature or reopening the EV editor resets the catalog allowance to five.
+ten additional unique catalog pairs after up to two matching saved-source pairs.
+**Show more** appends ten additional catalog pairs in the same ranked order. It
+disappears when no eligible pairs remain. Each row shows its Nature and
+allocation, and its muted detail line carries
+the source, moved points, and unmodified Speed without team counts. Expansion
+does not change saved teams. Selecting a spread, adjusting EVs, or selecting the
+same Nature preserves the expanded depth. Selecting a different Nature or
+reopening the EV editor resets the catalog allowance to ten.
 Fewer rows appear when eligible recorded data is insufficient. Matching catalog
 pairs rank by the best actual source team's shared teammates and matching set
 details for those teammates, then by published results, regulation, and credentials.
@@ -330,7 +368,7 @@ Escape restores the current team without renaming it.
 - Unknown placements, tiers, spreads, and legality are not fabricated.
 - Reimporting does not create duplicate teams or erase valid cached data on failure.
 - Current team(s) survive reload and app reopening without a cloud account.
-- Mobile layout, keyboard access, and reduced-motion behavior work; state
+- Mobile layout and reduced-motion behavior work; state
   transitions are smooth without disturbing browsing position.
 - Relevant tests, lint, type checking, and production build pass with the selected
   toolchain.

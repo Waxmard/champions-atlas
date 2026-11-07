@@ -1,6 +1,9 @@
 import { z } from 'zod';
 import {
+  MAX_TEAM_MEGAS,
+  basePokemon,
   compareTeams,
+  isMegaSpecies,
   isPasteUrl,
   normalize,
   pokemonId,
@@ -8,6 +11,7 @@ import {
   type Team,
 } from './catalog.ts';
 import { resolveBattleForm } from './battle-forms.ts';
+import { movepoolFor } from './movepools.ts';
 import {
   NATURES,
   canonicalMember,
@@ -24,12 +28,11 @@ import {
 } from './paste.ts';
 import { speedFor } from './stats.ts';
 import {
-  missingRoles,
-  postalRole,
-  roleFlags,
-  tagsForTeam,
-  type TeamTagsIndex,
-} from './tags.ts';
+  pokemonSuggestions,
+  sourceTeamFit,
+  type SourceTeamFit,
+} from './swap-suggestions.ts';
+import type { TeamTagsIndex } from './tags.ts';
 import {
   pasteUrlSchema,
   regulationInferenceSchema,
@@ -226,10 +229,6 @@ export function deleteTeam(
   return remaining;
 }
 
-export const MAX_TEAM_MEGAS = 2;
-export const isMegaSpecies = (pokemon: string) =>
-  /-Mega(-[XYZ])?$/i.test(pokemon.trim());
-
 export function rosterConflict(
   member: Member,
   members: Member[],
@@ -247,9 +246,6 @@ export function rosterConflict(
     return 'mega';
   return null;
 }
-
-export const basePokemon = (name: string) =>
-  normalize(name).replace(/mega[a-z]?$/, '');
 
 export interface CatalogSuggestion {
   value: string;
@@ -276,84 +272,8 @@ export function originalMemberFor(
   });
 }
 
-export interface PokemonSuggestion {
-  pokemon: string;
-  member: Member;
-  sharedTeammates: number;
-  matchingDetails: number;
-  role: string | null;
-  roleFill: boolean;
-  archetype: string | null;
-  source: Team;
-}
-
 const canonicalNature = (nature: string | null) =>
   NATURES.find((name) => normalize(name) === normalize(nature ?? ''));
-
-const matchingDetails = (a: Member, b: Member) =>
-  (['item', 'ability', 'nature', 'spread'] as const).filter(
-    (field) =>
-      a[field] && b[field] && normalize(a[field]) === normalize(b[field])
-  ).length +
-  a.moves.filter((move) =>
-    b.moves.some((other) => normalize(move) === normalize(other))
-  ).length;
-
-interface SourceTeamFit {
-  shared: number;
-  details: number;
-}
-
-function sourceTeamFit(team: Team, teammates: Member[]): SourceTeamFit {
-  let shared = 0;
-  let details = 0;
-  for (const member of teammates) {
-    const match = team.members.find(
-      (candidate) => normalize(candidate.pokemon) === normalize(member.pokemon)
-    );
-    if (!match) continue;
-    shared++;
-    details += matchingDetails(member, match);
-  }
-  return { shared, details };
-}
-
-function rankedSourceTeams(
-  teammates: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  tags?: TeamTagsIndex
-) {
-  const missing =
-    Object.keys(tags?.teams ?? {}).length > 0
-      ? missingRoles(teammates, teams, tags)
-      : [];
-  return {
-    missing,
-    ranked: teams
-      .map((team) => {
-        const { shared, details } = sourceTeamFit(team, teammates);
-        const roleBonus = missing.some((role) =>
-          team.members.some((member) => roleFlags(member).includes(role))
-        )
-          ? 1
-          : 0;
-        return { team, shared, details, roleBonus };
-      })
-      .filter(({ shared }) => shared > 0)
-      .sort(
-        (a, b) =>
-          b.shared - a.shared ||
-          b.details - a.details ||
-          compareTeams(
-            a.team,
-            b.team,
-            currentRegulation,
-            b.roleBonus - a.roleBonus
-          )
-      ),
-  };
-}
 
 export function catalogSuggestions(
   target: string | Member,
@@ -379,6 +299,9 @@ export function catalogSuggestions(
     : target;
   const normTarget = normalize(targetMember.pokemon);
   const baseTarget = basePokemon(targetMember.pokemon);
+  const teammateItems = new Set(
+    teammates.map((member) => normalize(member.item ?? '')).filter(Boolean)
+  );
   const items = new Map<string, CatalogSuggestion>();
   const abilities = new Map<string, CatalogSuggestion>();
   const moves = new Map<string, CatalogSuggestion>();
@@ -438,13 +361,20 @@ export function catalogSuggestions(
           member.moves.some((om) => normalize(mv) === normalize(om))
         ).length || 0) * 1.5;
 
-      add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
+      if (!teammateItems.has(normalize(member.item ?? '')))
+        add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
       add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
       add(natures, member.nature, baseScore + im + am + mm, isCurrent);
       for (const move of member.moves) {
         add(moves, move, baseScore + im + am + nm + sm, isCurrent);
       }
     }
+  }
+
+  for (const move of movepoolFor(targetMember.pokemon)) {
+    const key = normalize(move);
+    if (!moves.has(key))
+      moves.set(key, { value: move, currentCount: 0, totalCount: 0 });
   }
 
   const original =
@@ -516,106 +446,10 @@ export function catalogSuggestions(
       currentRegulation,
       originalPokemon,
       tags,
-      pokemonQuery
+      pokemonQuery,
+      { limit: 30 }
     ),
   };
-}
-
-export function pokemonSuggestions(
-  teammates: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  excludePokemon?: string,
-  tags?: TeamTagsIndex,
-  query = ''
-): PokemonSuggestion[] {
-  const excludeSpecies = new Set(teammates.map((t) => normalize(t.pokemon)));
-  if (excludePokemon) {
-    excludeSpecies.add(normalize(excludePokemon));
-    excludeSpecies.add(basePokemon(excludePokemon));
-  }
-  const megaCount = teammates.filter((t) => isMegaSpecies(t.pokemon)).length;
-  const { ranked: rankedTeams, missing } = rankedSourceTeams(
-    teammates,
-    teams,
-    currentRegulation,
-    tags
-  );
-  const seen = new Set<string>();
-  const suggestions: PokemonSuggestion[] = [];
-  for (const { team, shared, details } of rankedTeams) {
-    for (const m of team.members) {
-      const norm = normalize(m.pokemon);
-      if (
-        excludeSpecies.has(norm) ||
-        excludeSpecies.has(basePokemon(m.pokemon))
-      )
-        continue;
-      if (megaCount >= MAX_TEAM_MEGAS && isMegaSpecies(m.pokemon)) continue;
-      if (query && !norm.includes(normalize(query))) continue;
-      if (seen.has(norm)) continue;
-      seen.add(norm);
-      suggestions.push({
-        pokemon: m.pokemon,
-        member: m,
-        sharedTeammates: shared,
-        matchingDetails: details,
-        role: postalRole(m.pokemon, teams, tags),
-        roleFill: missing.some((role) => roleFlags(m).includes(role)),
-        archetype: tagsForTeam(tags, team.id)?.archetype ?? null,
-        source: team,
-      });
-      if (suggestions.length >= 6) break;
-    }
-    if (suggestions.length >= 6) break;
-  }
-  return suggestions;
-}
-
-export interface SwapSuggestion extends PokemonSuggestion {
-  slot: number;
-}
-
-export function swapSuggestions(
-  members: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  pokemon = '',
-  tags?: TeamTagsIndex
-): SwapSuggestion[] {
-  const candidates: SwapSuggestion[] = [];
-  for (const [slot, replaced] of members.entries()) {
-    const teammates = members.filter((_, index) => index !== slot);
-    for (const suggestion of pokemonSuggestions(
-      teammates,
-      teams,
-      currentRegulation,
-      replaced.pokemon,
-      tags,
-      pokemon
-    )) {
-      if (pokemon && normalize(suggestion.pokemon) !== normalize(pokemon))
-        continue;
-      candidates.push({ ...suggestion, slot });
-    }
-  }
-  candidates.sort(
-    (a, b) =>
-      b.sharedTeammates - a.sharedTeammates ||
-      b.matchingDetails - a.matchingDetails ||
-      compareTeams(a.source, b.source, currentRegulation) ||
-      a.slot - b.slot
-  );
-  if (pokemon) return candidates;
-  const seen = new Set<string>();
-  return candidates
-    .filter(({ pokemon }) => {
-      const key = normalize(pokemon);
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    })
-    .slice(0, 6);
 }
 
 interface CatalogSpreadOption {

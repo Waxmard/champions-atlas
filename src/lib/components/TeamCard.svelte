@@ -60,7 +60,7 @@
   <a
     href={resolve(destination)}
     onclick={open}
-    class="block flex-1 rounded-[inherit] p-4 outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset"
+    class="block flex-1 rounded-[inherit] p-4 outline-none"
   >
     {@render content()}
   </a>

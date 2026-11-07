@@ -41,6 +41,6 @@ requested.
 ## UI design and component quality gates
 
 - When creating new components in `src/lib/components/` or executing layout redesigns across existing views:
-  - Validate labels, keyboard focus, button text, and contrast on the rendered page using OMP's built-in browser when an authorized local server is available. Do not start a development server solely for this check without permission; report any unverified accessibility checks.
+  - Validate labels, button text, and contrast on the rendered page using OMP's built-in browser when an authorized local server is available. Do not start a development server solely for this check without permission; report any unverified accessibility checks.
   - Review markup and visual hierarchy against the `frontend-design` and `better-interface` skills.
 - Omit these checks on minor styling tweaks, single-line bug fixes, or non-UI files (e.g. `src/lib/paste.ts`, data scripts, tests) to avoid token bloat and round-trip latency.

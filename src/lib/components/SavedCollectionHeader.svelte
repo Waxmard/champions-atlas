@@ -35,13 +35,13 @@
 <header class="flex min-w-0 items-center gap-2">
   <nav
     aria-label="Team collections"
-    class="grid w-full min-w-0 flex-1 grid-cols-2 items-center rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1"
+    class="surface grid w-full min-w-0 flex-1 grid-cols-2 items-center p-1"
   >
     <a
       href={resolve('my-teams')}
       aria-label="My Teams collection"
       aria-current={collection === 'my-teams' ? 'page' : undefined}
-      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary max-md:min-h-11 {collection ===
+      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none max-md:min-h-11 {collection ===
       'my-teams'
         ? 'bg-info text-info-content'
         : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
@@ -52,7 +52,7 @@
     <a
       href={resolve('wishlist')}
       aria-current={collection === 'wishlist' ? 'page' : undefined}
-      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary max-md:min-h-11 {collection ===
+      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none max-md:min-h-11 {collection ===
       'wishlist'
         ? 'bg-info text-info-content'
         : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
@@ -83,10 +83,10 @@
           align="end"
           sideOffset={8}
           onCloseAutoFocus={focusAfterClose}
-          class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
+          class="surface picker-popover-enter z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
         >
           <DropdownMenu.Item
-            class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+            class="option-row"
             onSelect={() => (openImportAfterClose = true)}
           >
             <Plus class="size-4" aria-hidden="true" />

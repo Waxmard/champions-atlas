@@ -628,7 +628,7 @@
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
                 aria-label="Account menu"
-                class="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200 focus-visible:ring-2 focus-visible:ring-primary"
+                class="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200"
               >
                 <Avatar.Root
                   class="relative flex size-7 shrink-0 overflow-hidden rounded-full border"
@@ -648,7 +648,7 @@
                 <DropdownMenu.Content
                   align="end"
                   sideOffset={6}
-                  class="z-50 min-w-56 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg"
+                  class="surface z-50 min-w-56 p-1 text-base-content shadow-lg"
                 >
                   <div class="px-2 py-1.5">
                     <p class="text-sm font-semibold wrap-anywhere">
@@ -671,14 +671,13 @@
                     </p>
                     <DropdownMenu.Item
                       onSelect={() => void pushNow()}
-                      class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+                      class="option-row min-h-9 px-2"
                       >Retry sync</DropdownMenu.Item
                     >
                   {/if}
                   <DropdownMenu.Item
                     onSelect={signOut}
-                    class="flex min-h-9 cursor-pointer items-center px-2 text-sm outline-none data-highlighted:bg-info data-highlighted:text-info-content"
-                    >Sign out</DropdownMenu.Item
+                    class="option-row min-h-9 px-2">Sign out</DropdownMenu.Item
                   >
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>

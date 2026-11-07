@@ -143,7 +143,7 @@
     <a
       href={resolve(`?${page.url.searchParams}`)}
       onclick={back}
-      class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
+      class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content"
     >
       <ArrowLeft class="size-4" aria-hidden="true" />
       Back to teams
@@ -240,11 +240,11 @@
               side="bottom"
               align="end"
               sideOffset={8}
-              class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
+              class="surface picker-popover-enter z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
             >
               {#if paste}
                 <DropdownMenu.Item
-                  class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+                  class="option-row"
                   onSelect={() =>
                     copy(
                       paste,
@@ -260,9 +260,7 @@
                 </DropdownMenu.Item>
               {/if}
               {#if isPasteUrl(team.pasteUrl)}
-                <DropdownMenu.Item
-                  class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
-                >
+                <DropdownMenu.Item class="option-row">
                   {#snippet child({ props })}
                     <a
                       {...props}

@@ -24,6 +24,10 @@ const member = (pokemon, extra = {}) => ({
   spread: null,
   ...extra,
 });
+const recorded = (options) =>
+  options.filter(
+    (option) => option.totalCount || option.original || option.inGame
+  );
 const sourceTeam = () => ({
   id: 'catalog-id',
   sheetIds: ['sheet'],
@@ -438,7 +442,7 @@ test('original field choices lead in published order without inflating catalog c
     original: true,
   });
   assert.deepEqual(
-    promoted.moves.map(({ value }) => value),
+    promoted.moves.slice(0, 4).map(({ value }) => value),
     ['Snatch', 'Protect', 'Ice Shard', 'Fake Out']
   );
   assert.deepEqual(promoted.moves[0], {
@@ -588,7 +592,7 @@ test('in-game promotion filters blank values and uses Browse identity', () => {
       moves: ['', 'Unknown', '   '],
     })
   );
-  for (const field of fields) assert.deepEqual(blank[field], []);
+  for (const field of fields) assert.deepEqual(recorded(blank[field]), []);
 
   const mega = choices(
     member('Raichu'),
@@ -608,7 +612,8 @@ test('in-game promotion filters blank values and uses Browse identity', () => {
     [member('Floette-Eternal'), member('Floette', { item: 'Ordinary item' })],
   ]) {
     const separated = choices(target, saved);
-    for (const field of fields) assert.deepEqual(separated[field], []);
+    for (const field of fields)
+      assert.deepEqual(recorded(separated[field]), []);
   }
 });
 
@@ -632,7 +637,7 @@ test('original field recommendations reject unrelated forms, unknown values, and
       original
     );
   for (const field of ['items', 'abilities', 'moves', 'natures'])
-    assert.deepEqual(choices(self, unrelated)[field], []);
+    assert.deepEqual(recorded(choices(self, unrelated)[field]), []);
   const unknown = member('Unlisted-Species', {
     item: 'Rare',
     ability: '---',

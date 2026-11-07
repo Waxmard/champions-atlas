@@ -728,7 +728,7 @@
     >
       <a
         href={resolve('wishlist')}
-        class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary"
+        class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content"
       >
         <ArrowLeft class="size-4" aria-hidden="true" />
         Back to Wishlist

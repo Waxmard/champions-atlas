@@ -64,6 +64,11 @@ for the initial import unless source files are already cached. The built app
 uses the bundled catalog without fetching source data at runtime. Importing an
 unknown Poképaste link fetches that paste directly from Poképaste.
 
+Species movepools are generated the same way: `npm run sync:movepools` writes
+the ignored `src/lib/data/movepools.json` from each species' newest learnsets,
+and the dev, build, typecheck, and test hooks generate it when missing. See
+[data sources](docs/data-sources.md#species-movepools).
+
 A full refresh replaces historical records that sources change or remove.
 Offline imports require cached source files and do not disable asset downloads.
 Choose the import mode with:

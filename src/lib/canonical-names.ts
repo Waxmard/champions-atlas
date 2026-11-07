@@ -12,6 +12,10 @@ const lookup: Record<NameKind, (id: ID) => string | undefined> = {
   move: (id) => generation.moves.get(id)?.name,
 };
 
+export function knownName(kind: NameKind, value: string): string | undefined {
+  return lookup[kind](normalize(value) as ID);
+}
+
 export function canonicalName(kind: NameKind, value: string): string {
-  return lookup[kind](normalize(value) as ID) ?? value;
+  return knownName(kind, value) ?? value;
 }

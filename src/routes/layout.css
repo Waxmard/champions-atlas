@@ -147,6 +147,42 @@
   );
 }
 
+a:focus,
+a:focus-visible,
+button:focus,
+button:focus-visible,
+input:focus,
+input:focus-visible,
+select:focus,
+select:focus-visible,
+textarea:focus,
+textarea:focus-visible,
+summary:focus,
+summary:focus-visible,
+[tabindex]:focus,
+[tabindex]:focus-visible,
+.input:focus-within,
+.select:focus-within,
+.textarea:focus-within {
+  outline: none;
+  box-shadow: none;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.input:focus-within,
+.select:focus-visible,
+.textarea:focus-visible {
+  background-color: var(--color-base-200);
+}
+
+/* Unlayered like the rule above: a layered rule would lose to it. */
+.field input:focus,
+.field input:focus-visible {
+  background-color: transparent;
+}
+
 .catalog-wishlist-button:not(:disabled) {
   background-color: transparent;
   border-color: transparent;
@@ -176,6 +212,12 @@
     background: var(--color-base-100);
     border: 1px solid var(--color-base-300);
     border-radius: var(--radius-box);
+  }
+
+  .surface {
+    background-color: var(--color-base-100);
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-field);
   }
 
   .term {
@@ -256,11 +298,61 @@
     text-align: start;
     font-size: 0.875rem;
   }
-  .option-row:hover {
-    background: color-mix(in oklab, var(--color-base-200) 70%, transparent);
-  }
+  .option-row:hover,
   .option-row:focus-visible {
-    box-shadow: 0 0 0 2px var(--color-primary);
+    background-color: color-mix(
+      in oklab,
+      var(--color-base-200) 70%,
+      transparent
+    );
+  }
+  .option-row:is(button, [role='option'], [role='menuitem']) {
+    cursor: pointer;
+  }
+  .option-row[data-highlighted] {
+    background-color: var(--color-info);
+    color: var(--color-info-content);
+  }
+  .option-row[data-disabled] {
+    opacity: 0.5;
+  }
+
+  .field {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    gap: 0.5rem;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--color-base-300);
+    border-radius: var(--radius-field);
+    background-color: var(--color-base-200);
+  }
+  .field[data-tint] {
+    border-color: color-mix(
+      in oklab,
+      var(--field-tint) 38%,
+      var(--color-base-300)
+    );
+    background-color: var(--color-base-100);
+    background-image: linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--field-tint) 28%, transparent) 0%,
+      color-mix(in oklab, var(--field-tint) 16%, transparent) 100%
+    );
+  }
+  .field:not([data-tint]):focus-within {
+    background-color: color-mix(
+      in oklab,
+      var(--color-primary) 10%,
+      var(--color-base-200)
+    );
+  }
+  .field[data-tint]:focus-within {
+    background-image: linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--field-tint) 40%, transparent) 0%,
+      color-mix(in oklab, var(--field-tint) 24%, transparent) 100%
+    );
   }
 
   .nav-pill {
@@ -273,10 +365,6 @@
     border-radius: var(--radius-field);
     font-size: 0.875rem;
     font-weight: 700;
-  }
-  .nav-pill:focus-visible {
-    box-shadow: 0 0 0 2px var(--color-primary);
-    outline: none;
   }
 }
 /* transitions.dev: panel reveal */

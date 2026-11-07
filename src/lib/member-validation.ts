@@ -1,11 +1,17 @@
-import { normalize, type Member } from './catalog.ts';
+import {
+  isMegaSpecies,
+  MAX_TEAM_MEGAS,
+  normalize,
+  type Member,
+} from './catalog.ts';
+import { battleSpecies } from './battle-forms.ts';
+import { knownName } from './canonical-names.ts';
 import {
   championsSpreadTotal,
   NATURES,
   parseChampionsSpread,
   parsePaste,
 } from './paste.ts';
-import { isMegaSpecies, MAX_TEAM_MEGAS } from './workbench.ts';
 
 export function memberRosterError(
   next: Member,
@@ -33,7 +39,11 @@ export function memberValidationError(
   accepted: Member,
   teammates: Member[],
   mode: 'structured' | 'text'
-): { field: 'pokemon' | 'nature' | 'spread' | 'text'; message: string } | null {
+): {
+  field:
+    'pokemon' | 'item' | 'ability' | 'nature' | 'spread' | 'moves' | 'text';
+  message: string;
+} | null {
   const reason = memberRosterError(next, accepted, teammates);
   if (reason)
     return {
@@ -44,6 +54,48 @@ export function memberValidationError(
     return {
       field: mode === 'text' ? 'text' : 'pokemon',
       message: 'Enter a Pokémon.',
+    };
+  if (
+    normalize(next.pokemon) !== normalize(accepted.pokemon) &&
+    !battleSpecies(next.pokemon)
+  )
+    return {
+      field: mode === 'text' ? 'text' : 'pokemon',
+      message: 'Choose a known Pokémon.',
+    };
+
+  const item = next.item ?? '';
+  if (
+    normalize(item) &&
+    normalize(item) !== normalize(accepted.item ?? '') &&
+    !knownName('item', item)
+  )
+    return {
+      field: mode === 'text' ? 'text' : 'item',
+      message: 'Choose a known item.',
+    };
+  const ability = next.ability ?? '';
+  if (
+    normalize(ability) &&
+    normalize(ability) !== normalize(accepted.ability ?? '') &&
+    !knownName('ability', ability)
+  )
+    return {
+      field: mode === 'text' ? 'text' : 'ability',
+      message: 'Choose a known ability.',
+    };
+  const acceptedMoves = new Set(accepted.moves.map(normalize));
+  if (
+    next.moves.some(
+      (move) =>
+        normalize(move) &&
+        !acceptedMoves.has(normalize(move)) &&
+        !knownName('move', move)
+    )
+  )
+    return {
+      field: mode === 'text' ? 'text' : 'moves',
+      message: 'Choose a known move.',
     };
 
   const nature = next.nature?.trim() || '';
@@ -88,7 +140,15 @@ export function parseTeamPaste(text: string, current: Member[]): Member[] {
     const previous = current.find(
       (candidate) => normalize(candidate.pokemon) === normalize(member.pokemon)
     );
-    const accepted = previous ?? { ...member, nature: null, spread: null };
+    const accepted = previous ?? {
+      ...member,
+      pokemon: '',
+      item: null,
+      ability: null,
+      moves: [],
+      nature: null,
+      spread: null,
+    };
     const error = memberValidationError(
       member,
       accepted,

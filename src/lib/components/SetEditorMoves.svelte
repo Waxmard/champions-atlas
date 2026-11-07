@@ -2,6 +2,8 @@
   import X from '@lucide/svelte/icons/x';
   import type { Member } from '#lib/catalog.js';
   import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import SuggestionList from '#lib/components/SuggestionList.svelte';
+  import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import TypeMark from '#lib/components/TypeMark.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -10,8 +12,9 @@
   let {
     moves,
     activeMoveSlot,
-    activeSuggestions,
     moveOptions,
+    hasMore = false,
+    onshowmore,
     inGameMember,
     error,
     errorField,
@@ -24,8 +27,9 @@
   }: {
     moves: string[];
     activeMoveSlot: number;
-    activeSuggestions: string | null;
     moveOptions: CatalogSuggestion[];
+    hasMore?: boolean;
+    onshowmore?: () => void;
     inGameMember?: Member;
     error: string;
     errorField: EditableSetField | null;
@@ -42,16 +46,17 @@
   <div class="grid gap-2 sm:grid-cols-2">
     {#each moves as move, index (index)}
       {@const type = getMoveType(move)}
-      {@const typeColor = type ? TYPE_COLORS[type] : null}
       <div
-        class="input flex min-h-11 items-center gap-2 border transition-colors focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-primary {activeMoveSlot ===
-        index
-          ? 'border-primary'
-          : 'border-base-content/55 hover:border-base-content/80'}"
-        style={typeColor ? `border-left: 4px solid ${typeColor};` : ''}
+        class="field"
+        data-tint={type ?? undefined}
+        style:--field-tint={type ? TYPE_COLORS[type] : undefined}
       >
-        <span class="term w-4 text-center tabular-nums">{index + 1}</span>
-        <TypeMark {type} size="md" />
+        <span
+          class="grid size-7 shrink-0 place-items-center"
+          aria-hidden="true"
+        >
+          <TypeMark {type} size="md" />
+        </span>
         <input
           id={`set-move-${index + 1}`}
           aria-label={`Move ${index + 1}`}
@@ -63,13 +68,7 @@
           onfocus={() => onfocus(index)}
           onclick={() => onfocus(index)}
           oninput={(event) => onchange(index, event.currentTarget.value)}
-          onblur={(event) => {
-            if (!(
-              event.relatedTarget instanceof HTMLElement &&
-              event.relatedTarget.closest('[data-move-choice]')
-            ))
-              oncommit();
-          }}
+          onblur={oncommit}
           onkeydown={(event) => {
             if (event.key === 'Enter' && !event.isComposing) {
               event.preventDefault();
@@ -80,66 +79,47 @@
         <Button
           variant="quiet"
           size="icon-compact"
-          class="-mr-2"
+          class="-me-2"
           aria-label={`Clear move ${index + 1}`}
           tabindex={0}
           disabled={!move}
-          data-move-choice
           onpointerdown={(event) => event.preventDefault()}
           onclick={() => onclear(index)}><X class="size-4" /></Button
         >
       </div>
     {/each}
   </div>
-  {#if activeSuggestions === `move-${activeMoveSlot}`}
-    <section
-      aria-label="Move suggestions"
-      class="plate max-h-60 divide-y overflow-y-auto"
-    >
-      <div class="term px-3 py-1.5">Move {activeMoveSlot + 1} suggestions</div>
-      <ul role="list" class="divide-y">
-        {#each moveOptions as option (option.value)}
-          {@const optionType = getMoveType(option.value)}
-          {@const optionColor = optionType ? TYPE_COLORS[optionType] : null}
-          <li>
-            <button
-              type="button"
-              data-move-choice
-              onpointerdown={(event) => event.preventDefault()}
-              class="option-row"
-              style={optionColor
-                ? `border-left: 3px solid ${optionColor};`
-                : ''}
-              onclick={() => {
-                if (option.inGame) {
-                  if (inGameMember)
-                    oningame(
-                      {
-                        kind: 'move',
-                        index: activeMoveSlot,
-                        move: option.value,
-                      },
-                      inGameMember
-                    );
-                } else onchoose(activeMoveSlot, option.value);
-              }}
-              ><TypeMark type={optionType} size="md" /><span class="value"
-                >{option.value}</span
-              >{#if option.original || option.inGame}<span class="provenance"
-                  >{option.original
-                    ? option.inGame
-                      ? 'Original · In-game'
-                      : 'Original'
-                    : 'In-game'}</span
-                >{/if}</button
-            >
-          </li>
-        {:else}
-          <li class="provenance p-3">No matching move suggestions.</li>
-        {/each}
-      </ul>
-    </section>
-  {/if}
+  <SuggestionList
+    id="set-move-suggestions"
+    label={`Move ${activeMoveSlot + 1} suggestions`}
+    count={moveOptions.length}
+    {hasMore}
+    {onshowmore}
+  >
+    {#each moveOptions as option (option.value)}
+      <SuggestionRow
+        label={`Use ${option.value}${option.inGame ? ' in-game' : ''}`}
+        glyph={{ kind: 'move', value: option.value }}
+        primary={option.value}
+        secondary={[
+          option.original ? 'Original' : '',
+          option.inGame ? 'In-game' : '',
+          option.totalCount === 0 ? 'Movepool' : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        onclick={() => {
+          if (option.inGame) {
+            if (inGameMember)
+              oningame(
+                { kind: 'move', index: activeMoveSlot, move: option.value },
+                inGameMember
+              );
+          } else onchoose(activeMoveSlot, option.value);
+        }}
+      />
+    {/each}
+  </SuggestionList>
   {#if error && errorField === 'moves'}
     <p
       role="alert"

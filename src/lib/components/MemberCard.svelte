@@ -13,7 +13,8 @@
   import {
     getMoveType,
     getPokemonTypes,
-    TYPE_COLORS,
+    typeBand,
+    typeFill,
     type PokemonType,
   } from '#lib/types.js';
 
@@ -53,14 +54,7 @@
   const itemSrc = $derived(
     member.item?.trim() ? localImageSrc('items', member.item) : ''
   );
-  const band = $derived(
-    `linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[types[0]]} 24%, var(--color-base-100)), color-mix(in oklab, ${TYPE_COLORS[types[types.length - 1]]} 24%, var(--color-base-100)))`
-  );
-  function moveBarStyle(type: PokemonType | null): string {
-    return type
-      ? `background: linear-gradient(135deg, color-mix(in oklab, ${TYPE_COLORS[type]} 28%, var(--color-base-100)) 0%, color-mix(in oklab, ${TYPE_COLORS[type]} 16%, var(--color-base-100)) 100%); border: 1px solid color-mix(in oklab, ${TYPE_COLORS[type]} 38%, var(--color-base-300));`
-      : 'background: var(--color-base-200); border: 1px solid var(--color-base-300);';
-  }
+  const band = $derived(typeBand(types));
   function clickablePlate(node: HTMLElement) {
     const handleClick = () => {
       if (!onedit && onopen && !disabled) {
@@ -187,7 +181,7 @@
       <button
         bind:this={openButton}
         type="button"
-        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Change ${member.pokemon}`}
         data-set-field="pokemon"
         title={member.pokemon}
@@ -200,7 +194,7 @@
       <button
         bind:this={openButton}
         type="button"
-        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content disabled:pointer-events-none disabled:opacity-50"
         aria-label={`View full set for ${member.pokemon}`}
         data-set-field="set"
         title={member.pokemon}
@@ -242,7 +236,7 @@
       {#if onedit}
         <button
           type="button"
-          class="grid size-14 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          class="grid size-14 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Change ${member.pokemon}`}
           {disabled}
           onclick={() => onedit('pokemon')}
@@ -252,7 +246,7 @@
         <button
           type="button"
           data-set-field="ability"
-          class="flex min-h-11 min-w-0 items-center rounded-[var(--radius-field)] px-1 text-start hover:bg-base-100/60 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          class="flex min-h-11 min-w-0 items-center rounded-[var(--radius-field)] px-1 text-start hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit ${member.pokemon} ability`}
           {disabled}
           onclick={() => onedit('ability')}
@@ -262,7 +256,7 @@
         <button
           type="button"
           data-set-field="item"
-          class="grid size-9 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          class="grid size-9 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit ${member.pokemon} item`}
           title={member.item?.trim() || 'Unknown item'}
           {disabled}
@@ -289,7 +283,7 @@
         <button
           type="button"
           data-set-field="spread"
-          class="flex min-h-9 w-full min-w-0 flex-col justify-center gap-0.5 rounded-[var(--radius-field)] px-1 py-1 text-start hover:bg-base-200/70 focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
+          class="flex min-h-9 w-full min-w-0 flex-col justify-center gap-0.5 rounded-[var(--radius-field)] px-1 py-1 text-start hover:bg-base-200/70 disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit ${member.pokemon} EV spread and nature`}
           {disabled}
           onclick={() => onedit('spread')}
@@ -312,8 +306,8 @@
                 type="button"
                 data-set-field={index === 0 ? 'moves' : undefined}
                 data-move-slot={index}
-                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content focus-visible:ring-2 focus-visible:ring-primary disabled:pointer-events-none disabled:opacity-50"
-                style={moveBarStyle(type)}
+                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content disabled:pointer-events-none disabled:opacity-50"
+                style={typeFill(type)}
                 aria-label={`Edit ${member.pokemon} move ${index + 1}: ${move || (member.moves.length ? 'Empty' : 'Unknown')}`}
                 {disabled}
                 onclick={() => onedit('moves', index)}
@@ -323,7 +317,7 @@
             {:else}
               <div
                 class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
-                style={moveBarStyle(type)}
+                style={typeFill(type)}
               >
                 {@render moveContent(move, type)}
               </div>
