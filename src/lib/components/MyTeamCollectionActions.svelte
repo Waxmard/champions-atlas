@@ -2,12 +2,14 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import Bookmark from '@lucide/svelte/icons/bookmark';
+  import Star from '@lucide/svelte/icons/star';
   import type { Member } from '#lib/catalog.js';
   import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { notify } from '#lib/notifications.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import {
+    moveInUseTeamToFavorites,
     moveInUseTeamToWishlist,
     resolveSavedTeamId,
     SavedTeamError,
@@ -27,20 +29,23 @@
     movedId = $state<string | null>(null),
     errorMessage = $state('');
 
-  async function move() {
+  async function move(target: 'favorites' | 'wishlist') {
     if (disabled || dirty || pending || movedId === teamId) return;
     const id = teamId;
+    const label = target === 'favorites' ? 'Favorites' : 'Wishlist';
     pending = true;
     errorMessage = '';
     let previousActiveId: string | null;
     try {
       previousActiveId = localStorage.getItem(activeTeamKey);
-      moveInUseTeamToWishlist(localStorage, id, baseline);
+      if (target === 'favorites')
+        moveInUseTeamToFavorites(localStorage, id, baseline);
+      else moveInUseTeamToWishlist(localStorage, id, baseline);
     } catch (error) {
       errorMessage =
         error instanceof SavedTeamError
           ? error.message
-          : 'Could not move this team to Wishlist. Check app storage access and available space. Your team was not changed.';
+          : `Could not move this team to ${label}. Check app storage access and available space. Your team was not changed.`;
       pending = false;
       return;
     }
@@ -56,24 +61,22 @@
       if (replacement) localStorage.setItem(activeTeamKey, replacement);
       else localStorage.removeItem(activeTeamKey);
     } catch {
-      errorMessage =
-        'Team moved to Wishlist, but the active team could not be remembered.';
+      errorMessage = `Team moved to ${label}, but the active team could not be remembered.`;
       pending = false;
-      notify('Team moved to Wishlist.');
+      notify(`Team moved to ${label}.`);
       return;
     }
     try {
-      await goto(resolve('wishlist'));
+      await goto(resolve(target));
     } catch {
-      const navigationError =
-        'Team moved to Wishlist, but Wishlist could not be opened.';
+      const navigationError = `Team moved to ${label}, but ${label} could not be opened.`;
       errorMessage = errorMessage
         ? `${errorMessage} ${navigationError}`
         : navigationError;
     } finally {
       pending = false;
     }
-    notify('Team moved to Wishlist.');
+    notify(`Team moved to ${label}.`);
   }
 </script>
 
@@ -85,7 +88,16 @@
     variant="quiet"
     class="h-auto min-h-11"
     disabled={disabled || dirty || pending || movedId === teamId}
-    onclick={move}
+    onclick={() => move('favorites')}
+  >
+    <Star class="size-4" aria-hidden="true" />
+    <span>Move to Favorites</span>
+  </Button>
+  <Button
+    variant="quiet"
+    class="h-auto min-h-11"
+    disabled={disabled || dirty || pending || movedId === teamId}
+    onclick={() => move('wishlist')}
   >
     <Bookmark class="size-4" aria-hidden="true" />
     <span>Move to Wishlist</span>

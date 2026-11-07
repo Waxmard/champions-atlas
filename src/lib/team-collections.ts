@@ -11,8 +11,11 @@ import {
   type SavedTeam,
 } from './workbench.ts';
 
-export const teamsInUse = (saved: SavedTeam[]) =>
-  saved.filter((team) => team.collection !== 'wishlist');
+export const isTeamInUse = (team: SavedTeam): boolean =>
+  team.collection === undefined || team.collection === 'my-teams';
+
+export const teamsInUse = (saved: SavedTeam[]): SavedTeam[] =>
+  saved.filter(isTeamInUse);
 
 export const savedTeamHeading = (entry: SavedTeam) =>
   teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original);
@@ -21,31 +24,41 @@ export class SavedTeamError extends Error {}
 
 const compareIds = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
-export function orderedWishlist(teams: SavedTeam[]): SavedTeam[] {
+function orderedCollection(
+  teams: SavedTeam[],
+  collection: 'wishlist' | 'favorites',
+  orderKey: 'wishlistOrder' | 'favoriteOrder'
+): SavedTeam[] {
   return teams
-    .filter((team) => team.collection === 'wishlist')
+    .filter((team) => team.collection === collection)
     .reverse()
     .sort((a, b) => {
-      if (a.wishlistOrder === undefined)
-        return b.wishlistOrder === undefined ? 0 : -1;
-      if (b.wishlistOrder === undefined) return 1;
-      return a.wishlistOrder - b.wishlistOrder || compareIds(a.id, b.id);
+      const rankA = a[orderKey];
+      const rankB = b[orderKey];
+      if (rankA === undefined) return rankB === undefined ? 0 : -1;
+      if (rankB === undefined) return 1;
+      return rankA - rankB || compareIds(a.id, b.id);
     });
 }
 
-export function reorderWishlist(
+function reorderCollection(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   orderedIds: string[],
-  expectedIds: string[]
+  expectedIds: string[],
+  collection: 'wishlist' | 'favorites',
+  orderKey: 'wishlistOrder' | 'favoriteOrder',
+  label: 'Wishlist' | 'Favorites'
 ): SavedTeam[] | null {
   const saved = readSavedTeams(storage);
-  const currentIds = orderedWishlist(saved).map((team) => team.id);
+  const currentIds = orderedCollection(saved, collection, orderKey).map(
+    (team) => team.id
+  );
   if (
     currentIds.length !== expectedIds.length ||
     currentIds.some((id, index) => id !== expectedIds[index])
   )
     throw new SavedTeamError(
-      'Wishlist changed elsewhere. Refresh before reordering.'
+      `${label} changed elsewhere. Refresh before reordering.`
     );
   const currentIdSet = new Set(currentIds);
   if (
@@ -54,20 +67,58 @@ export function reorderWishlist(
     orderedIds.some((id) => !currentIdSet.has(id))
   )
     throw new SavedTeamError(
-      'Could not reorder Wishlist. Refresh the list and try again.'
+      `Could not reorder ${label}. Refresh the list and try again.`
     );
   if (orderedIds.every((id, index) => id === currentIds[index])) return null;
   const ranks = new Map(orderedIds.map((id, index) => [id, index]));
   const raw = JSON.stringify(
     saved.map((team) =>
-      team.collection === 'wishlist'
-        ? { ...team, wishlistOrder: ranks.get(team.id) }
+      team.collection === collection
+        ? { ...team, [orderKey]: ranks.get(team.id) }
         : team
     )
   );
   const normalized = readSavedTeams({ getItem: () => raw });
   storage.setItem(storageKey, raw);
   return normalized;
+}
+
+export function orderedWishlist(teams: SavedTeam[]): SavedTeam[] {
+  return orderedCollection(teams, 'wishlist', 'wishlistOrder');
+}
+
+export function reorderWishlist(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  orderedIds: string[],
+  expectedIds: string[]
+): SavedTeam[] | null {
+  return reorderCollection(
+    storage,
+    orderedIds,
+    expectedIds,
+    'wishlist',
+    'wishlistOrder',
+    'Wishlist'
+  );
+}
+
+export function orderedFavorites(teams: SavedTeam[]): SavedTeam[] {
+  return orderedCollection(teams, 'favorites', 'favoriteOrder');
+}
+
+export function reorderFavorites(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  orderedIds: string[],
+  expectedIds: string[]
+): SavedTeam[] | null {
+  return reorderCollection(
+    storage,
+    orderedIds,
+    expectedIds,
+    'favorites',
+    'favoriteOrder',
+    'Favorites'
+  );
 }
 
 const saveAndGet = (
@@ -172,7 +223,11 @@ export function useWishlistedTeam(
     throw new SavedTeamError(
       'This Wishlist team is no longer saved. Refresh the list.'
     );
-  if (entry.collection !== 'wishlist') return entry;
+  if (isTeamInUse(entry)) return entry;
+  if (entry.collection !== 'wishlist')
+    throw new SavedTeamError(
+      'This team is no longer in Wishlist. Refresh the list.'
+    );
   const promoted = { ...entry, collection: 'my-teams' as const };
   return saveAndGet(storage, promoted);
 }
@@ -186,7 +241,7 @@ export function moveInUseTeamToWishlist(
   const latest = saved.find((team) => team.id === id);
   if (
     !latest ||
-    latest.collection === 'wishlist' ||
+    !isTeamInUse(latest) ||
     canonicalSnapshot({ name: latest.name, members: latest.members }) !==
       baseline
   )
@@ -207,6 +262,43 @@ export function moveInUseTeamToWishlist(
       'A copy of this team is already in Wishlist. Move or remove that copy first.'
     );
   return saveAndGet(storage, { ...latest, collection: 'wishlist' });
+}
+
+export function moveInUseTeamToFavorites(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  id: string,
+  baseline: string
+): SavedTeam {
+  const saved = readSavedTeams(storage);
+  const latest = saved.find((team) => team.id === id);
+  if (
+    !latest ||
+    !isTeamInUse(latest) ||
+    canonicalSnapshot({ name: latest.name, members: latest.members }) !==
+      baseline
+  )
+    throw new SavedTeamError(
+      'This team changed elsewhere. Reopen My Teams before moving it.'
+    );
+  return saveAndGet(storage, { ...latest, collection: 'favorites' });
+}
+
+export function useFavoriteTeam(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  id: string
+): SavedTeam {
+  const saved = readSavedTeams(storage);
+  const entry = saved.find((team) => team.id === id);
+  if (!entry)
+    throw new SavedTeamError(
+      'This Favorite team is no longer saved. Refresh the list.'
+    );
+  if (isTeamInUse(entry)) return entry;
+  if (entry.collection !== 'favorites')
+    throw new SavedTeamError(
+      'This team is no longer in Favorites. Refresh the list.'
+    );
+  return saveAndGet(storage, { ...entry, collection: 'my-teams' });
 }
 
 export function useCatalogTeam(
@@ -238,12 +330,26 @@ export function removeWishlistedTeam(
   return deleteTeam(storage, id);
 }
 
+export function removeFavoriteTeam(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  id: string
+): SavedTeam[] {
+  const saved = readSavedTeams(storage);
+  const entry = saved.find((team) => team.id === id);
+  if (!entry) return saved;
+  if (entry.collection !== 'favorites')
+    throw new SavedTeamError(
+      'This team is no longer in Favorites. Refresh the list.'
+    );
+  return deleteTeam(storage, id);
+}
+
 export function liveInUseTeam(
   storage: Pick<Storage, 'getItem'>,
   id: string
 ): SavedTeam | null {
   const latest = readSavedTeams(storage).find((team) => team.id === id);
-  return latest && latest.collection !== 'wishlist' ? latest : null;
+  return latest && isTeamInUse(latest) ? latest : null;
 }
 
 const subsequence = (query: string, field: string) => {

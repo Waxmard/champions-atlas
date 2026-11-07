@@ -7,6 +7,7 @@ import {
 } from '../src/lib/team-history.ts';
 import {
   catalogSuggestions,
+  favoriteMembersFor,
   originalMemberFor,
   originalSpreadSuggestion,
   newSavedTeam,
@@ -26,7 +27,8 @@ const member = (pokemon, extra = {}) => ({
 });
 const recorded = (options) =>
   options.filter(
-    (option) => option.totalCount || option.original || option.inGame
+    (option) =>
+      option.totalCount || option.original || option.inGame || option.favorite
   );
 const sourceTeam = () => ({
   id: 'catalog-id',
@@ -694,4 +696,84 @@ test('original EV recommendation computes spread deltas and speed without changi
   const withoutNature = { ...self };
   delete withoutNature.nature;
   assert.equal(originalSpreadSuggestion(withoutNature, original), undefined);
+});
+
+test('Favorite teams promote all distinct field values in fit+order sequence and respect Item Clause', () => {
+  const target = member('Weavile');
+  const teammates = [member('Incineroar', { item: 'Assault Vest' })];
+  const m = (item, ability, nature, moves) =>
+    member('Weavile', { item, ability, nature, moves });
+  const orig = m('Life Orb', 'Pressure', 'Jolly', ['Protect']);
+  const inGame = m('Focus Sash', 'Pickpocket', 'Adamant', ['Fake Out']);
+  const favLowFit = {
+    id: 'fav-1',
+    name: 'Fav 1',
+    members: [
+      m('Choice Band', 'Pressure', 'Careful', ['Knock Off', 'Fake Out']),
+      member('Rotom-Wash'),
+    ],
+  };
+  const favHighFit = {
+    id: 'fav-2',
+    name: 'Fav 2',
+    members: [
+      m('Clear Amulet', 'Pickpocket', 'Impish', ['Ice Spinner']),
+      teammates[0],
+    ],
+  };
+  const favBlocked = { id: 'f3', name: 'F3', members: [m('Assault Vest')] };
+  const catTeam = {
+    ...sourceTeam(),
+    members: [m('Sitrus Berry', 'Pressure', 'Timid', ['Taunt'])],
+  };
+  const matched = favoriteMembersFor(
+    target,
+    [favLowFit, favHighFit],
+    teammates
+  );
+  assert.deepEqual(
+    matched.map((x) => x.teamName),
+    ['Fav 2', 'Fav 1']
+  );
+  const res = catalogSuggestions(
+    target,
+    [catTeam],
+    'M-C',
+    teammates,
+    undefined,
+    '',
+    'Weavile',
+    orig,
+    inGame,
+    [favLowFit, favHighFit, favBlocked]
+  );
+  assert.deepEqual(
+    res.items.map((x) => [
+      x.value,
+      x.original,
+      x.inGame,
+      x.favorite,
+      x.totalCount,
+    ]),
+    [
+      ['Life Orb', true, undefined, undefined, 0],
+      ['Focus Sash', undefined, true, undefined, 0],
+      ['Clear Amulet', undefined, undefined, true, 0],
+      ['Choice Band', undefined, undefined, true, 0],
+      ['Sitrus Berry', undefined, undefined, undefined, 1],
+    ]
+  );
+  assert.equal(res.abilities[0].original && res.abilities[0].favorite, true);
+  assert.equal(res.abilities[0].totalCount, 1);
+  assert.equal(res.abilities[1].inGame && res.abilities[1].favorite, true);
+  assert.deepEqual(
+    res.natures.map((x) => x.value),
+    ['Jolly', 'Adamant', 'Impish', 'Careful', 'Timid']
+  );
+  assert.deepEqual(
+    recorded(res.moves).map((x) => x.value),
+    ['Protect', 'Fake Out', 'Ice Spinner', 'Knock Off', 'Taunt']
+  );
+  const fakeOut = res.moves.find((x) => x.value === 'Fake Out');
+  assert.equal(fakeOut.inGame && fakeOut.favorite, true);
 });

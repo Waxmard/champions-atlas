@@ -20,26 +20,50 @@
     type SwapSuggestion,
   } from '#lib/swap-suggestions.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
+  import type { SavedTeam } from '#lib/workbench.js';
 
   interface Props {
     members: Member[];
     teams: Team[];
     currentRegulation: string;
     tags?: TeamTagsIndex;
+    favoriteTeams?: SavedTeam[];
     disabled: boolean;
     onapply: (slot: number, member: Member) => boolean;
   }
 
-  let { members, teams, currentRegulation, tags, disabled, onapply }: Props =
-    $props();
+  let {
+    members,
+    teams,
+    currentRegulation,
+    tags,
+    favoriteTeams = [],
+    disabled,
+    onapply,
+  }: Props = $props();
   let query = $state('');
   let heading = $state<HTMLElement>();
   const regulation = $derived(regulationLabel(currentRegulation));
-  const ideas = $derived(swapIdeas(members, teams, currentRegulation, tags));
-  const searched = $derived(
-    query ? swapSuggestions(members, teams, currentRegulation, query, tags) : []
+  const ideas = $derived(
+    swapIdeas(members, teams, currentRegulation, tags, 4, favoriteTeams)
   );
-  const options = $derived(swapTargets(members, teams, currentRegulation));
+  const searched = $derived(
+    query
+      ? swapSuggestions(
+          members,
+          teams,
+          currentRegulation,
+          query,
+          tags,
+          favoriteTeams
+        )
+      : []
+  );
+  const options = $derived(
+    swapTargets(members, teams, currentRegulation, favoriteTeams)
+  );
+  const swapRowKey = (row: SwapSuggestion) =>
+    `${row.slot}:${row.favorite ? 'fav:' + (row.favoriteTeamName ?? '') : 'cat'}:${row.pokemon}:${row.member.item ?? ''}:${row.member.ability ?? ''}:${row.member.nature ?? ''}:${row.member.spread ?? ''}:${row.member.moves.join(',')}`;
   const evidence = (item: SwapSuggestion) =>
     [
       sourceName(item.source, currentRegulation),
@@ -82,10 +106,14 @@
       <span class="term shrink-0">{item.sharedTeammates} shared</span>
     </span>
     <span class="provenance">
-      {item.consensus
-        ? `${item.consensusSupport} teams share this set`
-        : `Assembled from ${item.support} team${item.support === 1 ? '' : 's'}`}
-      {supporting ? `— best supporting: ${supporting}` : ''}
+      {#if item.favorite}
+        Favorite{item.favoriteTeamName ? ` — ${item.favoriteTeamName}` : ''}
+      {:else}
+        {item.consensus
+          ? `${item.consensusSupport} teams share this set`
+          : `Assembled from ${item.support} team${item.support === 1 ? '' : 's'}`}
+        {supporting ? `— best supporting: ${supporting}` : ''}
+      {/if}
     </span>
   </span>
 {/snippet}
@@ -109,7 +137,7 @@
     count={ideas.length}
     empty={`No strong current ${regulation} swap fits this team yet. Pick a specific Pokémon below.`}
   >
-    {#each ideas as idea (idea.slot)}
+    {#each ideas as idea (swapRowKey(idea))}
       <SuggestionRow
         label={`Use ${idea.member.pokemon} set for slot ${idea.slot + 1}`}
         {disabled}
@@ -147,7 +175,7 @@
           count={searched.length}
           empty={`No usable current ${regulation} set with ${query} for this team.`}
         >
-          {#each searched as row (row.slot)}
+          {#each searched as row (swapRowKey(row))}
             <SuggestionRow
               label={`Use ${row.member.pokemon} set for slot ${row.slot + 1}`}
               {disabled}

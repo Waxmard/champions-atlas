@@ -30,6 +30,7 @@
     natureSuggestions,
     originalMember,
     inGameMember,
+    favoriteMembers = [],
     onspreadchange,
     onnaturechange,
     oningame,
@@ -41,6 +42,7 @@
     natureSuggestions: CatalogSuggestion[];
     originalMember?: Member;
     inGameMember?: Member;
+    favoriteMembers?: Member[];
     onspreadchange: (spread: string, nature?: string | null) => void;
     onnaturechange: (nature: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
@@ -55,8 +57,16 @@
       normalize(option.value).includes(normalize(natureQuery))
     )
   );
-  const visibleNatures = $derived(natureMatches.slice(0, visibleNatureCount));
-  const hasMoreNatures = $derived(natureMatches.length > visibleNatureCount);
+  const extraFavoriteNatures = $derived(
+    natureMatches.filter((opt) => opt.favorite && !opt.original && !opt.inGame)
+      .length
+  );
+  const visibleNatures = $derived(
+    natureMatches.slice(0, visibleNatureCount + extraFavoriteNatures)
+  );
+  const hasMoreNatures = $derived(
+    natureMatches.length > visibleNatureCount + extraFavoriteNatures
+  );
   function commitNature() {
     if (natureDraft === null || natureDraft.trim() === (member.nature ?? '')) {
       natureDraft = null;
@@ -93,6 +103,27 @@
         });
       }
     }
+    for (const favMember of favoriteMembers) {
+      const fav = originalSpreadSuggestion(member, favMember);
+      if (!fav) continue;
+      const key = spreadKey(fav.nature, fav.spread);
+      const existing = rows.find(
+        (row) => spreadKey(row.nature, row.spread) === key
+      );
+      if (existing) {
+        if (!existing.favorite) {
+          existing.favorite = true;
+          existing.source += ' · Favorite team';
+        }
+      } else {
+        rows.push({
+          ...fav,
+          source: 'Favorite team',
+          original: undefined,
+          favorite: true,
+        });
+      }
+    }
     let catalogCount = 0;
     let hasMore = false;
     // Saved-source duplicates take limit slots without counting as catalog
@@ -110,7 +141,7 @@
         (row) => spreadKey(row.nature, row.spread) === key
       );
       if (existing) {
-        if (existing.inGame || existing.original)
+        if (existing.inGame || existing.original || existing.favorite)
           existing.source += ` · ${source}`;
         continue;
       }
@@ -280,13 +311,16 @@
                 : ' (original)'
               : option.inGame
                 ? ' (in-game)'
-                : ''
+                : option.favorite
+                  ? ' (favorite)'
+                  : ''
           }`}
           primary={option.value}
           secondary={[
             modifier ? `+${modifier.raised} / −${modifier.lowered}` : 'Neutral',
             option.original ? 'Original' : '',
             option.inGame ? 'In-game' : '',
+            option.favorite ? 'Favorite' : '',
           ]
             .filter(Boolean)
             .join(' · ')}
@@ -437,7 +471,9 @@
           ? option.original
             ? ' (original team and in-game set)'
             : ' (in-game set)'
-          : '')}
+          : option.favorite
+            ? ' (favorite team)'
+            : '')}
       prefix={option.nature}
       primary={option.spread}
       secondary={[

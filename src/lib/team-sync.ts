@@ -14,15 +14,17 @@ export function teamsSnapshot(teams: SavedTeam[]): string {
   );
 }
 
-function withoutWishlistOrder(team: SavedTeam): SavedTeam {
-  if (team.wishlistOrder === undefined) return team;
+function withoutCollectionOrder(team: SavedTeam): SavedTeam {
+  if (team.wishlistOrder === undefined && team.favoriteOrder === undefined)
+    return team;
   const content = { ...team };
   delete content.wishlistOrder;
+  delete content.favoriteOrder;
   return content;
 }
 
 function contentSnapshot(team: SavedTeam): string {
-  return canonicalSnapshot(withoutWishlistOrder(team));
+  return canonicalSnapshot(withoutCollectionOrder(team));
 }
 
 export function validateTeamIds(value: unknown): string[] {
@@ -94,19 +96,35 @@ export function mergeSavedTeams(
       selected = l;
     }
     if (!selected) return;
-    if (selected.collection !== 'wishlist')
-      return withoutWishlistOrder(selected);
-    if (l?.collection !== 'wishlist' || r?.collection !== 'wishlist')
-      return selected;
-    const order = b
-      ? l.wishlistOrder === b.wishlistOrder
-        ? r.wishlistOrder
-        : l.wishlistOrder
-      : (r.wishlistOrder ?? l.wishlistOrder);
-    const ordered = { ...selected };
-    if (order === undefined) delete ordered.wishlistOrder;
-    else ordered.wishlistOrder = order;
-    return ordered;
+    if (selected.collection === 'wishlist') {
+      const ordered = { ...selected };
+      delete ordered.favoriteOrder;
+      if (l?.collection !== 'wishlist' || r?.collection !== 'wishlist')
+        return ordered;
+      const order = b
+        ? l.wishlistOrder === b.wishlistOrder
+          ? r.wishlistOrder
+          : l.wishlistOrder
+        : (r.wishlistOrder ?? l.wishlistOrder);
+      if (order === undefined) delete ordered.wishlistOrder;
+      else ordered.wishlistOrder = order;
+      return ordered;
+    }
+    if (selected.collection === 'favorites') {
+      const ordered = { ...selected };
+      delete ordered.wishlistOrder;
+      if (l?.collection !== 'favorites' || r?.collection !== 'favorites')
+        return ordered;
+      const order = b
+        ? l.favoriteOrder === b.favoriteOrder
+          ? r.favoriteOrder
+          : l.favoriteOrder
+        : (r.favoriteOrder ?? l.favoriteOrder);
+      if (order === undefined) delete ordered.favoriteOrder;
+      else ordered.favoriteOrder = order;
+      return ordered;
+    }
+    return withoutCollectionOrder(selected);
   };
   const recover = (team: SavedTeam) => {
     const key = contentSnapshot(team);

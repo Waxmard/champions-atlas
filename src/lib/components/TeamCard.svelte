@@ -23,7 +23,7 @@
     titleActions?: Snippet;
     leadingActions?: Snippet;
     trailingActions?: Snippet;
-    href?: `wishlist?${string}` | `teams/${string}`;
+    href?: `wishlist?${string}` | `favorites?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
   } = $props();
   const resolvedHeading = $derived(heading ?? teamHeading(team.name, team));

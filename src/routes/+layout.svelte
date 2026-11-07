@@ -29,6 +29,7 @@
   const isMyTeams = $derived(
     page.route.id === '/my-teams' ||
       page.route.id === '/my-teams/new' ||
+      page.route.id === '/favorites' ||
       page.route.id === '/wishlist'
   );
   const isBrowse = $derived(isHome || page.route.id === '/teams/[id]');
@@ -91,6 +92,7 @@
       if (
         path !== resolve('/') &&
         path !== resolve('my-teams') &&
+        path !== resolve('favorites') &&
         path !== resolve('wishlist') &&
         path !== resolve('my-teams/new') &&
         !(
@@ -126,6 +128,7 @@
   ): PathnameWithSearchOrHash | null {
     if (
       url.pathname !== resolve('my-teams') &&
+      url.pathname !== resolve('favorites') &&
       url.pathname !== resolve('wishlist')
     )
       return null;
@@ -691,7 +694,11 @@
     <div class="w-full">
       <div class="app-container py-2">
         <SavedCollectionHeader
-          collection={page.route.id === '/wishlist' ? 'wishlist' : 'my-teams'}
+          collection={page.route.id === '/wishlist'
+            ? 'wishlist'
+            : page.route.id === '/favorites'
+              ? 'favorites'
+              : 'my-teams'}
           teamActions={page.route.id === '/my-teams'
             ? teamActions.current
             : null}

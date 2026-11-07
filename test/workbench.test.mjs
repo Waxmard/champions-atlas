@@ -407,6 +407,30 @@ test('custom teams validate paste and preserve independent snapshots and empty s
   assert.throws(() => saveTeam(storage, invalid), /untouched/);
 });
 
+test('savedTeamSchema and saveTeam validate and preserve favoriteOrder only within favorites', () => {
+  const paste = Array.from(
+    { length: 6 },
+    (_, i) =>
+      `Pokemon${i} @ Item\nAbility: Ability\nEVs: 32 HP / 32 Atk / 2 Spe\nAdamant Nature\n- One\n- Two\n- Three\n- Four`
+  ).join('\n\n');
+  const base = {
+    ...newCustomTeam('Fav', 'M-C', paste),
+    collection: 'favorites',
+  };
+  let raw = JSON.stringify([{ ...base, favoriteOrder: 2 }]);
+  const storage = { getItem: () => raw, setItem: (_, value) => (raw = value) };
+  assert.equal(readSavedTeams(storage)[0].favoriteOrder, 2);
+  const renamed = saveTeam(storage, {
+    ...base,
+    name: 'Renamed',
+    favoriteOrder: 99,
+  })[0];
+  assert.equal(renamed.favoriteOrder, 2);
+  const promoted = saveTeam(storage, { ...renamed, collection: 'my-teams' })[0];
+  assert.equal(promoted.favoriteOrder, undefined);
+  assert.equal(Object.hasOwn(promoted, 'favoriteOrder'), false);
+});
+
 test('generateUUID produces valid RFC4122 v4 UUID', () => {
   const team = newSavedTeam({
     id: 'test',

@@ -44,6 +44,7 @@
     current: ComponentProps<typeof TeamActionsMenu> | null;
   }>('team-actions');
   let saved = $state<SavedTeam[]>([]),
+    favorites = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
     baseline = $state(''),
     visitBaseline = $state<{ id: string; members: Member[] } | null>(null),
@@ -91,7 +92,9 @@
     navigate = true
   ) {
     try {
-      saved = collections.teamsInUse(readSavedTeams(localStorage));
+      const allSaved = readSavedTeams(localStorage);
+      saved = collections.teamsInUse(allSaved);
+      favorites = collections.orderedFavorites(allSaved);
       storageError = '';
       const activeId =
         activeOverride === undefined
@@ -233,7 +236,9 @@
       }
       const next = patch(latest);
       const pendingName = draft.name;
-      saved = collections.teamsInUse(saveTeam(localStorage, next));
+      const allSaved = saveTeam(localStorage, next);
+      saved = collections.teamsInUse(allSaved);
+      favorites = collections.orderedFavorites(allSaved);
       const persisted = saved.find(({ id }) => id === next.id);
       if (!persisted) throw new Error('saved team is missing after saving');
       baseline = contentSnapshot(persisted);
@@ -607,6 +612,7 @@
                   {teams}
                   currentRegulation={current}
                   tags={catalogState.tags}
+                  favoriteTeams={favorites}
                   disabled={changed || editing || deleting || stale}
                   onapply={applySwap}
                 />
@@ -716,6 +722,7 @@
         initialMoveSlot={activeEditMoveSlot}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={catalogState.tags}
+        favoriteTeams={favorites}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}
