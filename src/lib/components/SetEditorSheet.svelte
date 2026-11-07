@@ -8,6 +8,8 @@
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
   import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
+  import SuggestionList from '#lib/components/SuggestionList.svelte';
+  import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
   import { knownName } from '#lib/canonical-names.js';
@@ -16,9 +18,16 @@
     memberRosterError,
     memberValidationError,
   } from '#lib/member-validation.js';
+  import { memberSetSignature } from '#lib/spread-provenance.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
-  import { catalogSuggestions, originalMemberFor } from '#lib/workbench.js';
+  import {
+    catalogSuggestions,
+    favoriteMembersFor,
+    originalMemberFor,
+    type CatalogSuggestion,
+    type SavedTeam,
+  } from '#lib/workbench.js';
   type EditorView = 'pokemon' | 'details' | 'moves' | 'spread';
   interface Props {
     member: Member;
@@ -30,6 +39,7 @@
     tagIndex?: TeamTagsIndex;
     originalMembers?: Member[];
     originalSlotMember?: Member;
+    favoriteTeams?: SavedTeam[];
     onchange: (member: Member) => boolean;
     onclose: () => void;
     onpendingchange: (pending: boolean) => void;
@@ -44,6 +54,7 @@
     tagIndex,
     originalMembers = [],
     originalSlotMember,
+    favoriteTeams = [],
     onchange,
     onclose,
     onpendingchange,
@@ -118,6 +129,9 @@
       (entry) => entry.id === pokemonId(draftMember.pokemon)
     )?.member
   );
+  const favoriteEntries = $derived(
+    favoriteMembersFor(draftMember, favoriteTeams, teammates)
+  );
   const suggestions = $derived(
     catalogSuggestions(
       draftMember,
@@ -128,31 +142,53 @@
       pokemonQuery,
       accepted.pokemon,
       originalMember,
-      inGameMember
+      inGameMember,
+      favoriteTeams
     )
   );
   const norm = (value: string, query: string) =>
     normalize(value).includes(normalize(query));
+  const extraFavorites = (options: readonly CatalogSuggestion[]) =>
+    options.filter((opt) => opt.favorite && !opt.original && !opt.inGame)
+      .length;
   const pokemonMatches = $derived(suggestions.pokemon);
-  const visiblePokemon = $derived(pokemonMatches.slice(0, visiblePokemonCount));
-  const hasMorePokemon = $derived(pokemonMatches.length > visiblePokemonCount);
+  const extraFavoritePokemon = $derived(
+    pokemonMatches.filter((opt) => opt.favorite).length
+  );
+  const visiblePokemon = $derived(
+    pokemonMatches.slice(0, visiblePokemonCount + extraFavoritePokemon)
+  );
+  const hasMorePokemon = $derived(
+    pokemonMatches.length > visiblePokemonCount + extraFavoritePokemon
+  );
   const itemMatches = $derived(
     suggestions.items.filter((option) => norm(option.value, itemQuery))
   );
-  const filteredItems = $derived(itemMatches.slice(0, visibleItemCount));
-  const hasMoreItems = $derived(itemMatches.length > visibleItemCount);
+  const filteredItems = $derived(
+    itemMatches.slice(0, visibleItemCount + extraFavorites(itemMatches))
+  );
+  const hasMoreItems = $derived(
+    itemMatches.length > visibleItemCount + extraFavorites(itemMatches)
+  );
   const abilityMatches = $derived(
     suggestions.abilities.filter((option) => norm(option.value, abilityQuery))
   );
   const filteredAbilities = $derived(
-    abilityMatches.slice(0, visibleAbilityCount)
+    abilityMatches.slice(
+      0,
+      visibleAbilityCount + extraFavorites(abilityMatches)
+    )
   );
   const hasMoreAbilities = $derived(
-    abilityMatches.length > visibleAbilityCount
+    abilityMatches.length > visibleAbilityCount + extraFavorites(abilityMatches)
   );
   const moveMatches = $derived(moveSuggestions(activeMoveSlot));
-  const visibleMoveOptions = $derived(moveMatches.slice(0, visibleMoveCount));
-  const hasMoreMoves = $derived(moveMatches.length > visibleMoveCount);
+  const visibleMoveOptions = $derived(
+    moveMatches.slice(0, visibleMoveCount + extraFavorites(moveMatches))
+  );
+  const hasMoreMoves = $derived(
+    moveMatches.length > visibleMoveCount + extraFavorites(moveMatches)
+  );
   const subViewTitle = $derived(
     {
       pokemon: 'Pokémon',
@@ -168,6 +204,29 @@
     !!originalSlotMember &&
       canonicalSnapshot(originalSlotMember) !== canonicalSnapshot(accepted)
   );
+  const setSignature = (candidate: Member) =>
+    memberSetSignature(candidate) ?? canonicalSnapshot(fields(candidate));
+  const favoriteSlotSets = $derived.by(() => {
+    const currentKey = setSignature(accepted);
+    const rows: {
+      member: Member;
+      teamName: string;
+      reason: string;
+      key: string;
+    }[] = [];
+    for (const entry of favoriteMembersFor(
+      accepted,
+      favoriteTeams,
+      teammates
+    )) {
+      if (pokemonQuery.trim() && !norm(entry.member.pokemon, pokemonQuery))
+        continue;
+      const key = setSignature(entry.member);
+      if (key === currentKey || rows.some((row) => row.key === key)) continue;
+      rows.push({ ...entry, reason: rosterError(entry.member), key });
+    }
+    return rows;
+  });
   $effect(() => onpendingchange(dirty));
   function clearError() {
     error = '';
@@ -533,6 +592,7 @@
           {teammates}
           {currentRegulation}
           {originalMember}
+          favoriteMembers={favoriteEntries.map(({ member: fav }) => fav)}
           natureSuggestions={suggestions.natures}
           {inGameMember}
           oningame={chooseInGame}
@@ -599,6 +659,32 @@
             }}>Use original set</Button
           >
           {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
+        {/if}
+        {#if favoriteSlotSets.length}
+          <SuggestionList
+            id="set-favorite-sets"
+            label="Favorite sets for this Pokémon"
+            count={favoriteSlotSets.length}
+          >
+            {#each favoriteSlotSets as fav (fav.key)}
+              <SuggestionRow
+                label={`Use favorite ${fav.member.pokemon} set from ${fav.teamName}`}
+                glyph={{ kind: 'pokemon', value: fav.member.pokemon }}
+                primary={fav.member.pokemon}
+                secondary={[
+                  'Favorite',
+                  fav.teamName,
+                  fav.member.item,
+                  fav.member.ability,
+                  fav.member.nature,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+                disabled={!!fav.reason}
+                onclick={() => chooseSet(fav.member, true)}
+              />
+            {/each}
+          </SuggestionList>
         {/if}
         <SetEditorPokemonSuggestions
           options={visiblePokemon}

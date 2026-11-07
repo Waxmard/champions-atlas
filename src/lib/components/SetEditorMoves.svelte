@@ -98,12 +98,13 @@
   >
     {#each moveOptions as option (option.value)}
       <SuggestionRow
-        label={`Use ${option.value}${option.inGame ? ' in-game' : ''}`}
+        label={`Use ${option.value}${option.inGame ? ' in-game' : option.favorite ? ' favorite' : ''}`}
         glyph={{ kind: 'move', value: option.value }}
         primary={option.value}
         secondary={[
           option.original ? 'Original' : '',
           option.inGame ? 'In-game' : '',
+          option.favorite ? 'Favorite' : '',
           option.totalCount === 0 ? 'Movepool' : '',
         ]
           .filter(Boolean)

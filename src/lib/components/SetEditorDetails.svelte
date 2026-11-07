@@ -109,12 +109,16 @@
   >
     {#each options as opt (opt.value)}
       <SuggestionRow
-        label={`Use ${opt.value}${opt.inGame ? ' in-game' : ''} ${field}`}
+        label={`Use ${opt.value}${opt.inGame ? ' in-game' : opt.favorite ? ' favorite' : ''} ${field}`}
         glyph={field === 'item'
           ? { kind: 'item', value: opt.value }
           : { kind: 'none' }}
         primary={opt.value}
-        secondary={[opt.original ? 'Original' : '', opt.inGame ? 'In-game' : '']
+        secondary={[
+          opt.original ? 'Original' : '',
+          opt.inGame ? 'In-game' : '',
+          opt.favorite ? 'Favorite' : '',
+        ]
           .filter(Boolean)
           .join(' · ')}
         onclick={() => {

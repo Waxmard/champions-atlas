@@ -15,6 +15,8 @@
     onshowmore?: () => void;
     onchoose: (member: Member) => void;
   } = $props();
+  const optionKey = (option: PokemonSuggestion) =>
+    `${option.favorite ? 'fav:' + (option.favoriteTeamName ?? '') : 'cat'}:${option.pokemon}:${option.member.item ?? ''}:${option.member.ability ?? ''}:${option.member.nature ?? ''}:${option.member.spread ?? ''}:${option.member.moves.join(',')}`;
 </script>
 
 <SuggestionList
@@ -25,12 +27,17 @@
   {hasMore}
   {onshowmore}
 >
-  {#each options as option (option.pokemon)}
+  {#each options as option (optionKey(option))}
     <SuggestionRow
       label={`Use ${option.pokemon} set`}
       glyph={{ kind: 'pokemon', value: option.pokemon }}
       primary={option.pokemon}
       secondary={[
+        option.favorite
+          ? option.favoriteTeamName
+            ? `Favorite (${option.favoriteTeamName})`
+            : 'Favorite'
+          : '',
         option.member.item,
         option.member.ability,
         option.member.nature,

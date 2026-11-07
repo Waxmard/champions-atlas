@@ -14,18 +14,21 @@
   import { exportPaste, type SavedTeam } from '#lib/workbench.js';
 
   let {
+    collection = 'wishlist',
     entry,
     match,
     disabled,
     onuse,
     onremove,
   }: {
+    collection?: 'wishlist' | 'favorites';
     entry: SavedTeam;
     match: Team | undefined;
     disabled: boolean;
     onuse: () => void;
     onremove: () => void;
   } = $props();
+  const label = $derived(collection === 'favorites' ? 'Favorites' : 'Wishlist');
   const heading = $derived(savedTeamHeading(entry));
   let selectedIndex = $state<number | null>(null);
   let failedCopyText = $state('');
@@ -71,8 +74,8 @@
       variant="quiet"
       size="icon-compact"
       class="min-h-11 min-w-11"
-      aria-label="Remove from Wishlist"
-      title="Remove from Wishlist"
+      aria-label={`Remove from ${label}`}
+      title={`Remove from ${label}`}
       {disabled}
       onclick={onremove}
     >
