@@ -112,10 +112,7 @@
     allowDeselect={false}
     {disabled}
   >
-    <div
-      bind:this={fieldEl}
-      class="input relative flex h-auto min-h-11 w-full items-center pe-12"
-    >
+    <div bind:this={fieldEl} class="field relative w-full pe-12">
       <Combobox.Input
         {id}
         bind:ref={inputEl}
@@ -158,7 +155,7 @@
         customAnchor={fieldEl}
         sideOffset={6}
         onpointerdown={(event) => event.preventDefault()}
-        class="picker-popover-enter z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 shadow-lg"
+        class="surface picker-popover-enter z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto p-1 shadow-lg"
       >
         <Combobox.Viewport>
           {#each options as team (team.id)}
@@ -167,7 +164,7 @@
               value={team.id}
               label={heading.title}
               aria-label={`${heading.title}${heading.context ? `, ${heading.context}` : ''}: ${roster(team).join(', ')}`}
-              class="option-row cursor-pointer border-b border-base-300 outline-none last:border-b-0 data-highlighted:bg-info data-highlighted:text-info-content"
+              class="option-row border-b border-base-300 last:border-b-0"
             >
               {#snippet children({ selected: isSelected })}
                 <span class="flex min-w-0 flex-1 flex-col gap-1">

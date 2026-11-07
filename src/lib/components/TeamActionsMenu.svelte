@@ -53,31 +53,28 @@
       align="end"
       sideOffset={8}
       onCloseAutoFocus={focusAfterClose}
-      class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
+      class="surface picker-popover-enter z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
     >
-      <DropdownMenu.Item
-        class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
-        onSelect={oncopy}
-      >
+      <DropdownMenu.Item class="option-row" onSelect={oncopy}>
         <Copy class="size-4" aria-hidden="true" />
         Copy team text
       </DropdownMenu.Item>
       <DropdownMenu.Item
-        class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+        class="option-row"
         onSelect={() => (actionAfterClose = onmanage)}
       >
         <Settings2 class="size-4" aria-hidden="true" />
         Manage team
       </DropdownMenu.Item>
       <DropdownMenu.Item
-        class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+        class="option-row"
         onSelect={() => void goto(resolve('my-teams/new'))}
       >
         <Plus class="size-4" aria-hidden="true" />
         Add custom team
       </DropdownMenu.Item>
       <DropdownMenu.Item
-        class="option-row cursor-pointer outline-none data-disabled:opacity-50 data-highlighted:bg-info data-highlighted:text-info-content"
+        class="option-row"
         disabled={suggestDisabled}
         onSelect={() => (actionAfterClose = onsuggest)}
       >

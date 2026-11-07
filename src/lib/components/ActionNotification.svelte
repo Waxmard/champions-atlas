@@ -48,7 +48,7 @@
 >
   {#if message}
     <div
-      class="max-w-sm min-w-0 rounded-[var(--radius-field)] border border-base-300 bg-base-100 px-3 py-2 text-sm leading-normal font-normal wrap-anywhere text-base-content shadow-sm"
+      class="surface max-w-sm min-w-0 px-3 py-2 text-sm leading-normal font-normal wrap-anywhere text-base-content shadow-sm"
     >
       {message}
     </div>

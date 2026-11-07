@@ -125,7 +125,7 @@
                 sideOffset={8}
                 trapFocus={false}
                 onCloseAutoFocus={restoreSetFocus}
-                class="z-50 flex max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-2 text-base-content shadow-lg"
+                class="surface z-50 flex max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain p-2 text-base-content shadow-lg"
               >
                 {#if canRecord}
                   <Button

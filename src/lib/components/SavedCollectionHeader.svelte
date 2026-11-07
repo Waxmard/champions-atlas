@@ -35,7 +35,7 @@
 <header class="flex min-w-0 items-center gap-2">
   <nav
     aria-label="Team collections"
-    class="grid w-full min-w-0 flex-1 grid-cols-2 items-center rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1"
+    class="surface grid w-full min-w-0 flex-1 grid-cols-2 items-center p-1"
   >
     <a
       href={resolve('my-teams')}
@@ -83,10 +83,10 @@
           align="end"
           sideOffset={8}
           onCloseAutoFocus={focusAfterClose}
-          class="picker-popover-enter z-50 min-w-48 rounded-[var(--radius-field)] border border-base-300 bg-base-100 p-1 text-base-content shadow-lg outline-none"
+          class="surface picker-popover-enter z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
         >
           <DropdownMenu.Item
-            class="option-row cursor-pointer outline-none data-highlighted:bg-info data-highlighted:text-info-content"
+            class="option-row"
             onSelect={() => (openImportAfterClose = true)}
           >
             <Plus class="size-4" aria-hidden="true" />
