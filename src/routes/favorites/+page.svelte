@@ -318,8 +318,8 @@
         <p
           class="plate mt-2 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed"
         >
-          No favorite teams yet. Open Manage team in My Teams and choose “Move
-          to Favorites”.
+          No favorite teams yet. Choose “Move to Favorites” below a team in My
+          Teams.
         </p>
       {/if}
     {/if}

@@ -18,7 +18,6 @@
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import SwapSuggestions from '#lib/components/SwapSuggestions.svelte';
   import Plus from '@lucide/svelte/icons/plus';
-  import Trash2 from '@lucide/svelte/icons/trash-2';
   import { Button } from '#lib/components/ui/button/index.js';
   import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
   import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
@@ -583,10 +582,10 @@
                 </p>
               </div>
               <MyTeamCollectionActions
+                placement="manage"
                 teamId={draft.id}
                 {baseline}
                 {dirty}
-                members={draft.members}
                 disabled={changed || editing || deleting || stale}
               />
               {#if match}<a
@@ -617,15 +616,6 @@
                   onapply={applySwap}
                 />
               </div>
-              <Button
-                variant="destructive"
-                class="h-auto min-h-11 max-w-full text-start whitespace-normal"
-                disabled={editing || deleting}
-                onclick={removeSelectedTeam}
-              >
-                <Trash2 class="size-4" aria-hidden="true" />
-                <span>Delete team</span>
-              </Button>
             </div>
           </section>
         {/if}
@@ -655,6 +645,18 @@
               />
             {/snippet}
           </TeamSetGrid>
+        {/key}
+        {#key activeTeam.id}
+          <MyTeamCollectionActions
+            placement="sheet"
+            teamId={activeTeam.id}
+            {baseline}
+            {dirty}
+            members={activeTeam.members}
+            disabled={changed || editing || deleting || stale}
+            deleteDisabled={editing || deleting}
+            ondelete={removeSelectedTeam}
+          />
         {/key}
         {#if changed}
           <p role="status" class="provenance mt-1">
