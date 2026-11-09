@@ -86,8 +86,11 @@ It is unavailable when the set is unchanged, while editing or deleting, or when
 restoration conflicts with the current roster.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
-save immediately; invalid interim EV allocations remain uncommitted. There is no
-separate Apply step.
+save immediately and close the keyboard; invalid interim EV allocations remain
+uncommitted, and editor text fields keep focus until a valid option is chosen or
+cleared. Item suggestions include all valid Pokémon Champions items for the
+Pokémon, ability suggestions include all legal species abilities, and nature
+suggestions include all 25 standard natures. There is no separate Apply step.
 
 **Done** commits valid pending input. **Close** offers to discard invalid or
 failed-write input without undoing earlier autosaves. **Advanced set text**

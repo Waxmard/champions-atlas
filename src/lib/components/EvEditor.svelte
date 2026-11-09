@@ -5,6 +5,7 @@
     CHAMPIONS_STATS,
     championsSpreadTotal,
     formatChampionsSpread,
+    NATURES,
     natureEffect,
     parseChampionsSpread,
     type ChampionsSpread,
@@ -67,14 +68,34 @@
   const hasMoreNatures = $derived(
     natureMatches.length > visibleNatureCount + extraFavoriteNatures
   );
-  function commitNature() {
-    if (natureDraft === null || natureDraft.trim() === (member.nature ?? '')) {
-      natureDraft = null;
-      return;
+  function commitNature(blurOnSuccess = false): boolean {
+    if (natureDraft === null) {
+      if (blurOnSuccess) (document.activeElement as HTMLElement | null)?.blur();
+      return true;
     }
-    const next = natureDraft.trim();
-    natureDraft = null;
-    onnaturechange(next);
+    const raw = natureDraft.trim();
+    const matched = !raw
+      ? ''
+      : normalize(raw) === normalize(member.nature ?? '')
+        ? (member.nature ?? '')
+        : (natureSuggestions.find(
+            (opt) => normalize(opt.value) === normalize(raw)
+          )?.value ?? NATURES.find((n) => normalize(n) === normalize(raw)));
+    if (matched !== undefined) {
+      natureDraft = null;
+      natureQuery = '';
+      visibleNatureCount = 6;
+      onnaturechange(matched);
+      if (blurOnSuccess) (document.activeElement as HTMLElement | null)?.blur();
+      return true;
+    }
+    onnaturechange(raw);
+    const input = document.getElementById(
+      'set-nature-input'
+    ) as HTMLElement | null;
+    queueMicrotask(() => input?.focus({ preventScroll: true }));
+    requestAnimationFrame(() => input?.focus({ preventScroll: true }));
+    return false;
   }
   const spreadKey = (candidateNature: string, candidateSpread: string) =>
     `${normalize(candidateNature)}|${normalize(candidateSpread)}`;
@@ -196,6 +217,7 @@
     onspreadchange(next);
   }
   export function flush(): void {
+    if (natureDraft !== null) commitNature(false);
     commitDraft();
   }
   function setFromPointer(
@@ -256,11 +278,11 @@
         placeholder="Nature"
         value={natureValue}
         onfocus={() => {
-          natureQuery = '';
+          if (natureDraft === null) natureQuery = '';
           visibleNatureCount = 6;
         }}
         onclick={() => {
-          natureQuery = '';
+          if (natureDraft === null) natureQuery = '';
           visibleNatureCount = 6;
         }}
         oninput={(event) => {
@@ -268,11 +290,11 @@
           natureDraft = event.currentTarget.value;
           visibleNatureCount = 6;
         }}
-        onblur={commitNature}
+        onblur={() => commitNature(false)}
         onkeydown={(event) => {
           if (event.key === 'Enter' && !event.isComposing) {
             event.preventDefault();
-            commitNature();
+            commitNature(true);
           }
         }}
       />
@@ -287,6 +309,7 @@
             natureDraft = null;
             natureQuery = '';
             onnaturechange('');
+            (document.activeElement as HTMLElement | null)?.blur();
           }}
         >
           <X class="size-4" />
@@ -335,6 +358,7 @@
             if (option.inGame) {
               if (inGameMember) oningame({ kind: 'nature' }, inGameMember);
             } else onnaturechange(option.value);
+            (document.activeElement as HTMLElement | null)?.blur();
           }}
         />
       {/each}

@@ -10,8 +10,8 @@ import {
   type Member,
   type Team,
 } from './catalog.ts';
-import { resolveBattleForm } from './battle-forms.ts';
-import { movepoolFor } from './movepools.ts';
+import { battleSpecies, resolveBattleForm } from './battle-forms.ts';
+import { abilitiesFor, championsItemsFor, movepoolFor } from './movepools.ts';
 import {
   NATURES,
   canonicalMember,
@@ -390,7 +390,15 @@ export function catalogSuggestions(
           member.moves.some((om) => normalize(mv) === normalize(om))
         ).length || 0) * 1.5;
 
-      if (!teammateItems.has(normalize(member.item ?? '')))
+      if (
+        !teammateItems.has(normalize(member.item ?? '')) &&
+        (!battleSpecies(targetMember.pokemon) ||
+          resolveBattleForm({
+            pokemon: targetMember.pokemon,
+            item: member.item,
+            ability: null,
+          }).error === null)
+      )
         add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
       add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
       add(natures, member.nature, baseScore + im + am + mm, isCurrent);
@@ -400,10 +408,27 @@ export function catalogSuggestions(
     }
   }
 
+  for (const item of championsItemsFor(targetMember.pokemon)) {
+    const key = normalize(item);
+    if (!teammateItems.has(key) && !items.has(key))
+      items.set(key, { value: item, currentCount: 0, totalCount: 0 });
+  }
+  for (const ability of abilitiesFor(targetMember.pokemon)) {
+    const key = normalize(ability);
+    if (!abilities.has(key))
+      abilities.set(key, { value: ability, currentCount: 0, totalCount: 0 });
+  }
   for (const move of movepoolFor(targetMember.pokemon)) {
     const key = normalize(move);
     if (!moves.has(key))
       moves.set(key, { value: move, currentCount: 0, totalCount: 0 });
+  }
+  if (battleSpecies(targetMember.pokemon)) {
+    for (const nature of NATURES) {
+      const key = normalize(nature);
+      if (!natures.has(key))
+        natures.set(key, { value: nature, currentCount: 0, totalCount: 0 });
+    }
   }
 
   const original =

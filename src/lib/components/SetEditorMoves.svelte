@@ -38,7 +38,7 @@
     onchoose: (index: number, value: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onclear: (index: number) => void;
-    oncommit: () => void;
+    oncommit: (blurOnSuccess?: boolean) => boolean;
   } = $props();
 </script>
 
@@ -68,11 +68,11 @@
           onfocus={() => onfocus(index)}
           onclick={() => onfocus(index)}
           oninput={(event) => onchange(index, event.currentTarget.value)}
-          onblur={oncommit}
+          onblur={() => oncommit(false)}
           onkeydown={(event) => {
             if (event.key === 'Enter' && !event.isComposing) {
               event.preventDefault();
-              oncommit();
+              oncommit(true);
             }
           }}
         />
@@ -105,7 +105,12 @@
           option.original ? 'Original' : '',
           option.inGame ? 'In-game' : '',
           option.favorite ? 'Favorite' : '',
-          option.totalCount === 0 ? 'Movepool' : '',
+          option.totalCount === 0 &&
+          !option.original &&
+          !option.inGame &&
+          !option.favorite
+            ? 'Movepool'
+            : '',
         ]
           .filter(Boolean)
           .join(' · ')}

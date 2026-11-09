@@ -300,3 +300,54 @@ test('team text matches reordered sets by normalized Pokémon identity', () => {
     /at most two Mega Pokémon/
   );
 });
+
+test('structured validation enforces Champions items, species abilities, and movepools', () => {
+  const accepted = member('Incineroar');
+  const teammates = [member('Rillaboom')];
+  assert.deepEqual(
+    memberValidationError(
+      { ...accepted, item: 'Heavy-Duty Boots' },
+      accepted,
+      teammates,
+      'structured'
+    ),
+    { field: 'item', message: 'Choose a known item.' }
+  );
+  assert.deepEqual(
+    memberValidationError(
+      { ...accepted, ability: 'Wonder Guard' },
+      accepted,
+      teammates,
+      'structured'
+    ),
+    { field: 'ability', message: 'Choose a known ability.' }
+  );
+  assert.deepEqual(
+    memberValidationError(
+      { ...accepted, moves: ['Spore'] },
+      accepted,
+      teammates,
+      'structured'
+    ),
+    { field: 'moves', message: 'Choose a known move.' }
+  );
+  const legacy = {
+    ...accepted,
+    item: 'Heavy-Duty Boots',
+    ability: 'Wonder Guard',
+    moves: ['Spore'],
+  };
+  assert.equal(
+    memberValidationError(legacy, legacy, teammates, 'structured'),
+    null
+  );
+  assert.equal(
+    memberValidationError(
+      { ...accepted, moves: ['Spore'] },
+      accepted,
+      teammates,
+      'text'
+    ),
+    null
+  );
+});

@@ -179,16 +179,26 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
     [current, historical, otherForm, wash],
     'M-C'
   );
-  assert.deepEqual(suggestions.items, [
+  assert.deepEqual(suggestions.items.slice(0, 4), [
     { value: 'Beta', currentCount: 1, totalCount: 3 },
     { value: 'sitrus-berry', currentCount: 1, totalCount: 2 },
     { value: 'Alpha', currentCount: 1, totalCount: 1 },
     { value: 'Gamma', currentCount: 1, totalCount: 1 },
   ]);
-  assert.deepEqual(suggestions.abilities, [
+  assert.ok(
+    suggestions.items
+      .slice(4)
+      .every((option) => !option.totalCount && !option.currentCount)
+  );
+  assert.deepEqual(suggestions.abilities.slice(0, 2), [
     { value: 'Intimidate', currentCount: 2, totalCount: 5 },
     { value: 'Blaze', currentCount: 1, totalCount: 1 },
   ]);
+  assert.ok(
+    suggestions.abilities
+      .slice(2)
+      .every((option) => !option.totalCount && !option.currentCount)
+  );
   assert.deepEqual(suggestions.moves.slice(0, 2), [
     { value: 'Fake Out', currentCount: 2, totalCount: 5 },
     { value: 'Flare Blitz', currentCount: 1, totalCount: 1 },
@@ -198,9 +208,18 @@ test('catalogSuggestions ranks current usage, merges normalized values, and isol
       .slice(2)
       .every((option) => !option.totalCount && !option.currentCount)
   );
-  assert.deepEqual(
-    catalogSuggestions('Rotom-Wash', [otherForm, wash], 'M-C').items,
-    [{ value: 'Wash item', currentCount: 1, totalCount: 1 }]
+  const washItems = catalogSuggestions(
+    'Rotom-Wash',
+    [otherForm, wash],
+    'M-C'
+  ).items;
+  assert.deepEqual(washItems.slice(0, 1), [
+    { value: 'Wash item', currentCount: 1, totalCount: 1 },
+  ]);
+  assert.ok(
+    washItems
+      .slice(1)
+      .every((option) => !option.totalCount && !option.currentCount)
   );
 });
 

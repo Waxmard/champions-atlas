@@ -114,7 +114,6 @@ function rankedSourceTeams(
           : 0;
         return { team, shared, details, roleBonus };
       })
-      .filter(({ shared }) => shared > 0)
       .sort(
         (a, b) =>
           b.shared - a.shared ||
@@ -460,8 +459,9 @@ export function pokemonSuggestions(
     )
   );
   const candidates = new Map<string, Candidate>();
+  const effectiveMinShared = queryKey ? 0 : minShared;
   for (const { team, shared, details } of ranked) {
-    if (shared < minShared) break;
+    if (shared < effectiveMinShared) break;
     for (const member of team.members) {
       const resolved = resolveBattleForm(member);
       if (resolved.error) continue;
@@ -664,7 +664,10 @@ export function swapSuggestions(
       { minShared: 1, limit: 6 },
       favoriteTeams
     ))
-      if (normalize(resolveBattleForm(suggestion.member).pokemon) === wanted)
+      if (
+        (suggestion.favorite || suggestion.sharedTeammates > 0) &&
+        normalize(resolveBattleForm(suggestion.member).pokemon) === wanted
+      )
         candidates.push({ ...suggestion, slot });
   }
   return candidates.sort((a, b) => {

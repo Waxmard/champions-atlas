@@ -655,7 +655,7 @@ test('original field recommendations reject unrelated forms, unknown values, and
     ['Protect']
   );
   assert.deepEqual(
-    choices(self, member('Rotom-Wash', { item: 'Unknown' })).items,
+    recorded(choices(self, member('Rotom-Wash', { item: 'Unknown' })).items),
     []
   );
 });
@@ -748,7 +748,7 @@ test('Favorite teams promote all distinct field values in fit+order sequence and
     [favLowFit, favHighFit, favBlocked]
   );
   assert.deepEqual(
-    res.items.map((x) => [
+    recorded(res.items).map((x) => [
       x.value,
       x.original,
       x.inGame,
@@ -763,13 +763,15 @@ test('Favorite teams promote all distinct field values in fit+order sequence and
       ['Sitrus Berry', undefined, undefined, undefined, 1],
     ]
   );
+  assert.ok(res.items.length > 5);
   assert.equal(res.abilities[0].original && res.abilities[0].favorite, true);
   assert.equal(res.abilities[0].totalCount, 1);
   assert.equal(res.abilities[1].inGame && res.abilities[1].favorite, true);
   assert.deepEqual(
-    res.natures.map((x) => x.value),
+    recorded(res.natures).map((x) => x.value),
     ['Jolly', 'Adamant', 'Impish', 'Careful', 'Timid']
   );
+  assert.equal(res.natures.length, 25);
   assert.deepEqual(
     recorded(res.moves).map((x) => x.value),
     ['Protect', 'Fake Out', 'Ice Spinner', 'Knock Off', 'Taunt']

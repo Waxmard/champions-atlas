@@ -4,12 +4,9 @@
   import { reuseCurrentSet, type CurrentSetChoice } from '#lib/current-sets.js';
   import EvEditor from '#lib/components/EvEditor.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
-  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
   import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
-  import SuggestionList from '#lib/components/SuggestionList.svelte';
-  import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
   import { knownName } from '#lib/canonical-names.js';
@@ -103,13 +100,14 @@
   let visiblePokemonCount = $state(10);
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
+  let closing = false;
   let editorElement = $state<HTMLElement>();
   let contentElement = $state<HTMLElement>();
   let editorHeading = $state<HTMLElement>();
   let evEditor = $state<{ flush: () => void }>();
   const draftMember = $derived<Member>({
     ...accepted,
-    pokemon: form.pokemon.trim(),
+    pokemon: replacement?.pokemon ?? accepted.pokemon,
     item: form.item.trim() || null,
     ability: form.ability.trim() || null,
     nature: form.nature.trim() || null,
@@ -151,6 +149,10 @@
   const extraFavorites = (options: readonly CatalogSuggestion[]) =>
     options.filter((opt) => opt.favorite && !opt.original && !opt.inGame)
       .length;
+  const pageList = (options: readonly CatalogSuggestion[], limit: number) => {
+    const end = limit + extraFavorites(options);
+    return { visible: options.slice(0, end), hasMore: options.length > end };
+  };
   const pokemonMatches = $derived(suggestions.pokemon);
   const extraFavoritePokemon = $derived(
     pokemonMatches.filter((opt) => opt.favorite).length
@@ -161,33 +163,20 @@
   const hasMorePokemon = $derived(
     pokemonMatches.length > visiblePokemonCount + extraFavoritePokemon
   );
-  const itemMatches = $derived(
-    suggestions.items.filter((option) => norm(option.value, itemQuery))
-  );
-  const filteredItems = $derived(
-    itemMatches.slice(0, visibleItemCount + extraFavorites(itemMatches))
-  );
-  const hasMoreItems = $derived(
-    itemMatches.length > visibleItemCount + extraFavorites(itemMatches)
-  );
-  const abilityMatches = $derived(
-    suggestions.abilities.filter((option) => norm(option.value, abilityQuery))
-  );
-  const filteredAbilities = $derived(
-    abilityMatches.slice(
-      0,
-      visibleAbilityCount + extraFavorites(abilityMatches)
+  const itemPage = $derived(
+    pageList(
+      suggestions.items.filter((opt) => norm(opt.value, itemQuery)),
+      visibleItemCount
     )
   );
-  const hasMoreAbilities = $derived(
-    abilityMatches.length > visibleAbilityCount + extraFavorites(abilityMatches)
+  const abilityPage = $derived(
+    pageList(
+      suggestions.abilities.filter((opt) => norm(opt.value, abilityQuery)),
+      visibleAbilityCount
+    )
   );
-  const moveMatches = $derived(moveSuggestions(activeMoveSlot));
-  const visibleMoveOptions = $derived(
-    moveMatches.slice(0, visibleMoveCount + extraFavorites(moveMatches))
-  );
-  const hasMoreMoves = $derived(
-    moveMatches.length > visibleMoveCount + extraFavorites(moveMatches)
+  const movePage = $derived(
+    pageList(moveSuggestions(activeMoveSlot), visibleMoveCount)
   );
   const subViewTitle = $derived(
     {
@@ -236,29 +225,52 @@
     errorField = field;
     error = message;
   }
-  function resetQuery(field: string) {
-    if (field === 'pokemon') pokemonQuery = '';
-    else if (field === 'item') itemQuery = '';
-    else if (field === 'ability') abilityQuery = '';
-    else if (field.startsWith('move-'))
-      moveQueries[Number(field.slice(5))] = '';
+  function resetQueries() {
+    pokemonQuery = itemQuery = abilityQuery = '';
+    moveQueries = ['', '', '', ''];
+    visibleItemCount =
+      visibleAbilityCount =
+      visibleMoveCount =
+      visiblePokemonCount =
+        10;
   }
-  function applyPreFilled(next: Member) {
-    form = fields(next);
+  function resetQuery(field: string) {
+    if (
+      field === 'pokemon' &&
+      normalize(form.pokemon) === normalize(acceptedFields.pokemon)
+    )
+      pokemonQuery = '';
+    else if (
+      field === 'item' &&
+      normalize(form.item) === normalize(acceptedFields.item)
+    )
+      itemQuery = '';
+    else if (
+      field === 'ability' &&
+      normalize(form.ability) === normalize(acceptedFields.ability)
+    )
+      abilityQuery = '';
+    else if (field.startsWith('move-')) {
+      const index = Number(field.slice(5));
+      if (
+        normalize(form.moves[index]) === normalize(acceptedFields.moves[index])
+      )
+        moveQueries[index] = '';
+    }
   }
   function accept(next: Member, preserveMoves = false) {
     if (!onchange(next)) {
       showError(
         'set',
-        'Could not save this input. Your edits are still here. ' +
-          'Close and reopen the editor, then try again.'
+        'Could not save this input. Your edits are still here. Close and reopen the editor, then try again.'
       );
       return false;
     }
+    resetQueries();
     const moves = form.moves.map((move) => move.trim());
     accepted = structuredClone($state.snapshot(next));
     replacement = null;
-    applyPreFilled(next);
+    form = fields(next);
     if (preserveMoves) form.moves = moves;
     acceptedFields = structuredClone($state.snapshot(form));
     clearError();
@@ -277,9 +289,10 @@
     }
     if (!trusted && !validateMember(candidate)) return;
     replacement = candidate;
-    applyPreFilled(candidate);
+    form = fields(candidate);
     if (moveSlots) form.moves = [...moveSlots];
-    accept(candidate, !!moveSlots);
+    if (accept(candidate, !!moveSlots))
+      (document.activeElement as HTMLElement | null)?.blur();
   }
   function chooseInGame(choice: CurrentSetChoice, displayed: Member): void {
     const displayedSnapshot = canonicalSnapshot($state.snapshot(displayed));
@@ -294,13 +307,11 @@
       pokemonId(draftMember.pokemon) !== selectedId ||
       !latestMember ||
       canonicalSnapshot($state.snapshot(latestMember)) !== displayedSnapshot
-    ) {
-      showError(
+    )
+      return showError(
         'set',
         'My in-game set changed. Review the updated suggestions and choose again.'
       );
-      return;
-    }
 
     try {
       const current =
@@ -323,11 +334,11 @@
   }
   function chooseMove(index: number, value: string) {
     form.moves[index] = value;
-    commit();
+    if (commit()) (document.activeElement as HTMLElement | null)?.blur();
   }
   function clearMove(index: number) {
     form.moves[index] = '';
-    commit();
+    if (commit()) (document.activeElement as HTMLElement | null)?.blur();
   }
   function moveSuggestions(index: number) {
     return suggestions.moves.filter(
@@ -341,25 +352,29 @@
         )
     );
   }
-  function validateMember(next: Member) {
-    const validation = memberValidationError(
+  function validateMember(next: Member, baseAccepted = accepted) {
+    const err = memberValidationError(
       next,
-      accepted,
+      baseAccepted,
       teammates,
       'structured'
     );
-    if (validation) {
-      showError(
-        validation.field === 'text' ? 'set' : validation.field,
-        validation.message
-      );
-      return false;
-    }
-    return true;
+    if (err) showError(err.field === 'text' ? 'set' : err.field, err.message);
+    return !err;
   }
   export function flush(): boolean {
     evEditor?.flush();
     return commit();
+  }
+  function finishInput(blurOnSuccess = false): boolean {
+    if (closing) return true;
+    const ok = flush();
+    if (ok) {
+      if (blurOnSuccess) (document.activeElement as HTMLElement | null)?.blur();
+      return true;
+    }
+    focusError();
+    return false;
   }
   function keepFocus(event: PointerEvent) {
     const active = document.activeElement;
@@ -367,15 +382,8 @@
     event.preventDefault();
   }
   function commit(): boolean {
-    pokemonQuery = '';
-    itemQuery = '';
-    abilityQuery = '';
-    moveQueries = ['', '', '', ''];
-    visibleItemCount = 10;
-    visibleAbilityCount = 10;
-    visibleMoveCount = 10;
-    visiblePokemonCount = 10;
     if (!dirty) {
+      resetQueries();
       clearError();
       return true;
     }
@@ -386,6 +394,76 @@
         canonicalSnapshot(form) === canonicalSnapshot(fields(replacement))
       )
         return accept(structuredClone($state.snapshot(replacement)));
+      if (
+        !replacement &&
+        normalize(form.pokemon) !== normalize(acceptedFields.pokemon)
+      ) {
+        const targetKey = normalize(form.pokemon.trim());
+        const favMatch = favoriteSlotSets.find(
+          (fav) => !fav.reason && normalize(fav.member.pokemon) === targetKey
+        );
+        const match =
+          favMatch ??
+          pokemonMatches.find((opt) => normalize(opt.pokemon) === targetKey);
+        if (match) {
+          chooseSet(match.member, true);
+          return !error;
+        }
+        showError(
+          'pokemon',
+          !form.pokemon.trim()
+            ? 'Enter a Pokémon.'
+            : rosterError({ ...accepted, pokemon: form.pokemon.trim() }) ||
+                'Choose a known Pokémon.'
+        );
+        return false;
+      }
+      const matchChoice = (
+        raw: string,
+        prev: string,
+        opts: readonly CatalogSuggestion[],
+        field: EditableSetField,
+        msg: string
+      ): string | null => {
+        if (!normalize(raw) || normalize(raw) === normalize(prev)) return raw;
+        const hit = opts.find((opt) => normalize(opt.value) === normalize(raw));
+        if (!hit) {
+          showError(field, msg);
+          return null;
+        }
+        return hit.value;
+      };
+      for (const [k, opts, label] of [
+        ['item', suggestions.items, 'Choose a known item.'],
+        ['ability', suggestions.abilities, 'Choose a known ability.'],
+      ] as const) {
+        const v = matchChoice(form[k], acceptedFields[k], opts, k, label);
+        if (v === null) return false;
+        form[k] = v;
+      }
+      for (const [i, raw] of form.moves.entries()) {
+        const nextMove = matchChoice(
+          raw,
+          acceptedFields.moves[i],
+          suggestions.moves,
+          'moves',
+          'Choose a known move.'
+        );
+        if (nextMove === null) {
+          activeMoveSlot = i;
+          return false;
+        }
+        form.moves[i] = nextMove;
+      }
+      const nextNature = matchChoice(
+        form.nature,
+        acceptedFields.nature,
+        suggestions.natures,
+        'nature',
+        'Choose a standard nature.'
+      );
+      if (nextNature === null) return false;
+      form.nature = nextNature;
       const moves = form.moves.map((move) => move.trim()).filter(Boolean);
       if (
         moves.some(
@@ -403,7 +481,15 @@
         ...parseSetBlock(fieldText),
         pokemon: draftMember.pokemon,
       };
-      if (!validateMember(candidate)) return false;
+      if (
+        !validateMember(candidate, {
+          ...accepted,
+          item: candidate.item,
+          ability: candidate.ability,
+          moves: candidate.moves,
+        })
+      )
+        return false;
       return accept(
         {
           ...candidate,
@@ -427,6 +513,10 @@
   }
   function switchView(view: EditorView) {
     if (view === currentView) return;
+    if (!flush()) {
+      focusError();
+      return;
+    }
     currentView = view;
     requestAnimationFrame(() => {
       if (contentElement) contentElement.scrollTop = 0;
@@ -434,19 +524,43 @@
     });
   }
   function focusError() {
-    requestAnimationFrame(() => {
-      editorElement
-        ?.querySelector<HTMLElement>('[role="alert"][tabindex="-1"]')
-        ?.focus();
-    });
+    const focusTarget = () => {
+      if (closing) return;
+      const sel =
+        errorField &&
+        ['pokemon', 'item', 'ability', 'nature'].includes(errorField)
+          ? `#set-${errorField}-input`
+          : errorField === 'moves'
+            ? `#set-move-${activeMoveSlot + 1}`
+            : '';
+      const el =
+        (sel ? editorElement?.querySelector<HTMLElement>(sel) : null) ??
+        editorElement?.querySelector<HTMLElement>(
+          '[role="alert"][tabindex="-1"]'
+        );
+      el?.focus({ preventScroll: true });
+    };
+    queueMicrotask(focusTarget);
+    requestAnimationFrame(focusTarget);
   }
   function done() {
-    if (flush()) onclose();
-    else focusError();
+    if (flush()) {
+      closing = true;
+      onclose();
+    } else focusError();
   }
   export function requestClose(): boolean {
-    if (flush()) return true;
-    return confirm('Discard unsaved input?');
+    if (flush()) {
+      closing = true;
+      return true;
+    }
+    closing = true;
+    const discard = confirm('Discard unsaved input?');
+    if (!discard) {
+      closing = false;
+      focusError();
+    }
+    return discard;
   }
   export function focusInitialSection() {
     requestAnimationFrame(() => {
@@ -498,7 +612,7 @@
         class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
       >
         <SpeciesLabel
-          pokemon={form.pokemon || initialMember.pokemon}
+          pokemon={draftMember.pokemon || initialMember.pokemon}
           spriteSize={20}
           textClass="max-w-[120px] truncate text-xs font-medium"
         />
@@ -535,14 +649,21 @@
       <SetEditorMoves
         moves={form.moves}
         {activeMoveSlot}
-        moveOptions={visibleMoveOptions}
-        hasMore={hasMoreMoves}
+        moveOptions={movePage.visible}
+        hasMore={movePage.hasMore}
         onshowmore={() => (visibleMoveCount += 10)}
         {inGameMember}
         oningame={chooseInGame}
         {error}
         {errorField}
         onfocus={(index) => {
+          if (
+            index !== activeMoveSlot &&
+            normalize(form.moves[activeMoveSlot]) !==
+              normalize(acceptedFields.moves[activeMoveSlot])
+          ) {
+            if (!finishInput(false)) return;
+          }
           activeMoveSlot = index;
           resetQuery(`move-${index}`);
         }}
@@ -554,16 +675,16 @@
         }}
         onchoose={chooseMove}
         onclear={clearMove}
-        oncommit={commit}
+        oncommit={finishInput}
       />
     {:else if currentView === 'details'}
       <SetEditorDetails
         item={form.item}
         ability={form.ability}
-        {filteredItems}
-        {filteredAbilities}
-        {hasMoreItems}
-        {hasMoreAbilities}
+        filteredItems={itemPage.visible}
+        filteredAbilities={abilityPage.visible}
+        hasMoreItems={itemPage.hasMore}
+        hasMoreAbilities={abilityPage.hasMore}
         onshowmoreitems={() => (visibleItemCount += 10)}
         onshowmoreabilities={() => (visibleAbilityCount += 10)}
         {inGameMember}
@@ -581,7 +702,7 @@
           clearError();
         }}
         onresetquery={resetQuery}
-        oncommit={commit}
+        oncommit={finishInput}
       />
     {:else if currentView === 'spread'}
       <section aria-label="EV spread" class="grid gap-4">
@@ -619,90 +740,26 @@
         {/if}
       </section>
     {:else if currentView === 'pokemon'}
-      <section class="grid gap-4">
-        <label for="set-pokemon-input" class="sr-only">Pokémon</label>
-        <label class="field">
-          <PokemonSprite pokemon={form.pokemon} size={28} />
-          <input
-            id="set-pokemon-input"
-            aria-label="Pokémon"
-            class="grow bg-transparent text-sm focus:outline-none"
-            placeholder="Pokémon"
-            bind:value={form.pokemon}
-            onfocus={() => resetQuery('pokemon')}
-            onclick={() => resetQuery('pokemon')}
-            oninput={(event) => {
-              pokemonQuery = event.currentTarget.value;
-              form.pokemon = event.currentTarget.value;
-              visiblePokemonCount = 10;
-              clearError();
-            }}
-            onblur={() => flush()}
-            onkeydown={(event) => {
-              if (event.key === 'Enter' && !event.isComposing) {
-                event.preventDefault();
-                flush();
-              }
-            }}
-          />
-        </label>
-        <p class="provenance">
-          Choosing a suggested Pokémon replaces this set's fields.
-        </p>
-        {#if originalChanged && originalSlotMember}
-          <Button
-            variant="quiet"
-            disabled={!!originalReason}
-            onpointerdown={(event) => event.preventDefault()}
-            onclick={() => {
-              if (originalSlotMember) chooseSet(originalSlotMember, true);
-            }}>Use original set</Button
-          >
-          {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
-        {/if}
-        {#if favoriteSlotSets.length}
-          <SuggestionList
-            id="set-favorite-sets"
-            label="Favorite sets for this Pokémon"
-            count={favoriteSlotSets.length}
-          >
-            {#each favoriteSlotSets as fav (fav.key)}
-              <SuggestionRow
-                label={`Use favorite ${fav.member.pokemon} set from ${fav.teamName}`}
-                glyph={{ kind: 'pokemon', value: fav.member.pokemon }}
-                primary={fav.member.pokemon}
-                secondary={[
-                  'Favorite',
-                  fav.teamName,
-                  fav.member.item,
-                  fav.member.ability,
-                  fav.member.nature,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}
-                disabled={!!fav.reason}
-                onclick={() => chooseSet(fav.member, true)}
-              />
-            {/each}
-          </SuggestionList>
-        {/if}
-        <SetEditorPokemonSuggestions
-          options={visiblePokemon}
-          hasMore={hasMorePokemon}
-          onshowmore={() => (visiblePokemonCount += 10)}
-          onchoose={(next) => chooseSet(next, true)}
-        />
-        {#if error && errorField === 'pokemon'}
-          <p
-            role="alert"
-            tabindex="-1"
-            class="text-[0.9375rem] leading-relaxed"
-            style="color: var(--color-error-content)"
-          >
-            {error}
-          </p>
-        {/if}
-      </section>
+      <SetEditorPokemonSuggestions
+        bind:pokemon={form.pokemon}
+        options={visiblePokemon}
+        hasMore={hasMorePokemon}
+        {originalChanged}
+        {originalSlotMember}
+        {originalReason}
+        {favoriteSlotSets}
+        {error}
+        {errorField}
+        onshowmore={() => (visiblePokemonCount += 10)}
+        onchoose={(next) => chooseSet(next, true)}
+        onresetquery={() => resetQuery('pokemon')}
+        oninputchange={(value) => {
+          pokemonQuery = form.pokemon = value;
+          visiblePokemonCount = 10;
+          clearError();
+        }}
+        oncommit={finishInput}
+      />
     {/if}
   </div>
   <footer
