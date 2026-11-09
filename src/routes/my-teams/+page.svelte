@@ -57,7 +57,8 @@
     pasteText = $state(''),
     pasteError = $state(''),
     stale = $state(false),
-    teamControlsOpen = $state(false),
+    showDetails = $state(false),
+    showSwaps = $state(false),
     activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
     activeEditMoveSlot = $state(0),
@@ -101,7 +102,7 @@
           : activeOverride;
       const resolvedId = collections.resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
-      if (draft?.id !== entry?.id) teamControlsOpen = false;
+      if (draft?.id !== entry?.id) showDetails = showSwaps = false;
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
       pasteText = draft ? exportPaste(draft.members) : '';
       pasteError = '';
@@ -153,8 +154,8 @@
     teamActions.current = hasTeam
       ? {
           oncopy: copyPaste,
-          onmanage: openTeamControls,
-          onsuggest: () => openTeamControls(true),
+          onrename: () => revealSection('team-name'),
+          onsuggest: () => revealSection('swap-suggestions-toggle'),
           suggestDisabled: changed || editing,
           disabled: changed || editing || deleting,
         }
@@ -199,13 +200,15 @@
     await tick();
     return draft?.id === id;
   }
-  function openTeamControls(swap = false) {
+  function revealSection(id: 'team-name' | 'swap-suggestions-toggle') {
     if (changed) return;
-    teamControlsOpen = true;
-    const sel = swap
-      ? '[data-swap-suggestions] button, [data-swap-suggestions] input'
-      : '#team-name';
-    void tick().then(() => document.querySelector<HTMLElement>(sel)?.focus());
+    if (id === 'team-name') showDetails = true;
+    else showSwaps = true;
+    void tick().then(() => {
+      const target = document.getElementById(id);
+      target?.focus({ preventScroll: true });
+      target?.scrollIntoView({ block: 'start' });
+    });
   }
   function blurName(e: FocusEvent) {
     if (
@@ -540,85 +543,6 @@
           >
             {message}
           </p>{/if}
-        {#if draft && teamControlsOpen}
-          {@const match = collections.resolveCatalogTeam(draft.original, teams)}
-          <section aria-label="Manage team" class="plate min-w-0 p-3">
-            <div class="flex items-center justify-between gap-2">
-              <h2 class="text-sm font-bold">Manage team</h2>
-              <Button
-                variant="quiet"
-                class="min-h-11"
-                aria-label="Close team controls"
-                onclick={() => {
-                  teamControlsOpen = false;
-                  document
-                    .getElementById(
-                      changed ? 'team-text-toggle' : 'team-actions'
-                    )
-                    ?.focus();
-                }}>Close</Button
-              >
-            </div>
-            <div class="min-w-0 space-y-3 pt-2">
-              <div class="min-w-0">
-                <label class="term block"
-                  >Team name
-                  <input
-                    id="team-name"
-                    class="input mt-1.5 min-h-11 w-full text-base"
-                    maxlength="200"
-                    disabled={changed}
-                    aria-invalid={nameError ? 'true' : undefined}
-                    aria-describedby="team-name-error"
-                    bind:value={draft.name}
-                    oninput={() => (nameError = '')}
-                    onblur={blurName}
-                    onkeydown={(e) =>
-                      e.key === 'Enter' && e.currentTarget.blur()}
-                  />
-                </label>
-                <p id="team-name-error" class="mt-1 text-sm text-error-content">
-                  {nameError}
-                </p>
-              </div>
-              <MyTeamCollectionActions
-                placement="manage"
-                teamId={draft.id}
-                {baseline}
-                {dirty}
-                disabled={changed || editing || deleting || stale}
-              />
-              {#if match}<a
-                  class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
-                  href={resolve(`teams/${match.id}`)}>View catalog details</a
-                >{/if}
-              <div class="min-w-0 space-y-1">
-                <p class="provenance">
-                  {dirty ? 'Unsaved input.' : 'Saved on this device.'}
-                </p>
-                {#if draft.name !== draft.original.name}
-                  <p class="provenance max-w-full min-w-0 wrap-anywhere">
-                    Original: {draft.original.name}
-                  </p>
-                {/if}
-                <p class="provenance">
-                  Editing does not create a working rental code.
-                </p>
-              </div>
-              <div data-swap-suggestions>
-                <SwapSuggestions
-                  members={draft.members}
-                  {teams}
-                  currentRegulation={current}
-                  tags={catalogState.tags}
-                  favoriteTeams={favorites}
-                  disabled={changed || editing || deleting || stale}
-                  onapply={applySwap}
-                />
-              </div>
-            </div>
-          </section>
-        {/if}
       {/if}
     </div>
     {#if ready && !storageError && draft}
@@ -648,7 +572,6 @@
         {/key}
         {#key activeTeam.id}
           <MyTeamCollectionActions
-            placement="sheet"
             teamId={activeTeam.id}
             {baseline}
             {dirty}
@@ -663,9 +586,71 @@
             Save or reset team text before changing the team.
           </p>
         {/if}
+        <details bind:open={showDetails} class="min-w-0">
+          <summary
+            class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70"
+          >
+            Team details
+          </summary>
+          {#if showDetails}
+            {@const match = collections.resolveCatalogTeam(
+              draft.original,
+              teams
+            )}
+            <div class="min-w-0 space-y-3 pb-2">
+              <div class="min-w-0">
+                <label class="term block"
+                  >Team name
+                  <input
+                    id="team-name"
+                    class="input mt-1.5 min-h-11 w-full text-base"
+                    maxlength="200"
+                    disabled={changed}
+                    aria-invalid={nameError ? 'true' : undefined}
+                    aria-describedby="team-name-error"
+                    bind:value={draft.name}
+                    oninput={() => (nameError = '')}
+                    onblur={blurName}
+                    onkeydown={(e) =>
+                      e.key === 'Enter' && e.currentTarget.blur()}
+                  />
+                </label>
+                <p id="team-name-error" class="mt-1 text-sm text-error-content">
+                  {nameError}
+                </p>
+              </div>
+              {#if match}<a
+                  class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
+                  href={resolve(`teams/${match.id}`)}>View catalog details</a
+                >{/if}
+              <div class="min-w-0 space-y-1">
+                <p class="provenance">
+                  {dirty ? 'Unsaved input.' : 'Saved on this device.'}
+                </p>
+                {#if draft.name !== draft.original.name}
+                  <p class="provenance max-w-full min-w-0 wrap-anywhere">
+                    Original: {draft.original.name}
+                  </p>
+                {/if}
+                <p class="provenance">
+                  Editing does not create a working rental code.
+                </p>
+              </div>
+            </div>
+          {/if}
+        </details>
+        <SwapSuggestions
+          bind:open={showSwaps}
+          members={draft.members}
+          {teams}
+          currentRegulation={current}
+          tags={catalogState.tags}
+          favoriteTeams={favorites}
+          disabled={changed || editing || deleting || stale}
+          onapply={applySwap}
+        />
         <details bind:open={showExport} class="min-w-0">
           <summary
-            id="team-text-toggle"
             class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70"
           >
             Showdown team text

@@ -4,20 +4,20 @@
   import { DropdownMenu } from 'bits-ui';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import Copy from '@lucide/svelte/icons/copy';
-  import Settings2 from '@lucide/svelte/icons/settings-2';
+  import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
   import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import { Button } from '#lib/components/ui/button/index.js';
 
   interface Props {
     oncopy: () => void;
-    onmanage: () => void;
+    onrename: () => void;
     onsuggest: () => void;
     suggestDisabled: boolean;
     disabled: boolean;
   }
 
-  let { oncopy, onmanage, onsuggest, suggestDisabled, disabled }: Props =
+  let { oncopy, onrename, onsuggest, suggestDisabled, disabled }: Props =
     $props();
   let actionAfterClose: (() => void) | undefined;
 
@@ -38,7 +38,6 @@
         variant="quiet"
         size="icon-compact"
         class="min-h-11 min-w-11"
-        id="team-actions"
         aria-label="Team actions"
         data-team-action="menu"
         {disabled}
@@ -61,10 +60,10 @@
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row"
-        onSelect={() => (actionAfterClose = onmanage)}
+        onSelect={() => (actionAfterClose = onrename)}
       >
-        <Settings2 class="size-4" aria-hidden="true" />
-        Manage team
+        <Pencil class="size-4" aria-hidden="true" />
+        Rename team
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row"

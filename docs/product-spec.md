@@ -127,7 +127,7 @@ silently on startup, during sync, and when another device shares it. The removal
 is permanent and keeps no backup. A lone legacy slot keeps its member and only
 takes the canonical id. Malformed data remains unreadable and untouched.
 Record individual committed sets from each set's actions or **Record all
-in-game sets** from **Manage team**, never from the editor. These secondary
+in-game sets** below the team, never from the editor. These secondary
 actions use the Save icon and appear only when a snapshot would change.
 Recording is unavailable while editing and never flushes pending editor input or
 a pending team name. Individual replacements use native
@@ -221,7 +221,7 @@ it does not duplicate a Pokémon or exceed the replacement Mega limit.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
-**Suggest swaps** in **Manage team** lists up to four whole-set replacements
+**Suggested swaps** below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 slot, the current and suggested Pokémon, the set, its shared-teammate count, and
 either how many teams share that exact set or how many sets it was assembled
