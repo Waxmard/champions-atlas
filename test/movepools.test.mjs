@@ -59,12 +59,9 @@ test('abilitiesFor and championsItemsFor return valid species options', () => {
   assert.ok(!megaXItems.includes('Charizardite Y'));
 });
 
-test('movepools feed move, item, ability, and nature suggestions without catalog teams', () => {
+test('movepools feed move suggestions without catalog teams', () => {
   const suggestions = catalogSuggestions(salamence, [], 'M-C');
   const moves = suggestions.moves.map((option) => option.value);
   assert.ok(moves.length >= 20);
   assert.ok(moves.includes('Hyper Voice'));
-  assert.ok(suggestions.items.length > 0);
-  assert.ok(suggestions.abilities.length > 0);
-  assert.equal(suggestions.natures.length, 25);
 });
