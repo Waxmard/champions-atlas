@@ -376,12 +376,15 @@ test('readSavedTeams rejects oversized and duplicate-ID storage', () => {
   );
 });
 
-test('custom teams validate paste and preserve independent snapshots and empty source metadata through storage', () => {
-  const paste = Array.from(
+const pasteFor = (evs) =>
+  Array.from(
     { length: 6 },
     (_, i) =>
-      `Pokemon${i} @ Item\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- One\n- Two\n- Three\n- Four`
+      `Pokemon${i} @ Item\nAbility: Ability\nEVs: ${evs}\nAdamant Nature\n- One\n- Two\n- Three\n- Four`
   ).join('\n\n');
+
+test('custom teams validate paste and preserve independent snapshots and empty source metadata through storage', () => {
+  const paste = pasteFor('32 HP');
   const custom = newCustomTeam('  Mine  ', 'M-C', paste);
   assert.throws(() => newCustomTeam('  ', 'M-C', paste), /name/);
   assert.throws(
@@ -408,11 +411,7 @@ test('custom teams validate paste and preserve independent snapshots and empty s
 });
 
 test('savedTeamSchema and saveTeam validate and preserve favoriteOrder only within favorites', () => {
-  const paste = Array.from(
-    { length: 6 },
-    (_, i) =>
-      `Pokemon${i} @ Item\nAbility: Ability\nEVs: 32 HP / 32 Atk / 2 Spe\nAdamant Nature\n- One\n- Two\n- Three\n- Four`
-  ).join('\n\n');
+  const paste = pasteFor('32 HP / 32 Atk / 2 Spe');
   const base = {
     ...newCustomTeam('Fav', 'M-C', paste),
     collection: 'favorites',

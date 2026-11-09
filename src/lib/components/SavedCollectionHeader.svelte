@@ -19,6 +19,8 @@
     teamActions: ComponentProps<typeof TeamActionsMenu> | null;
   } = $props();
   let openImportAfterClose = false;
+  const navClass = (id: typeof collection) =>
+    `inline-flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold transition-colors outline-none max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm ${collection === id ? 'bg-info text-info-content' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}`;
 
   function focusAfterClose(event: Event) {
     if (!openImportAfterClose) return;
@@ -42,10 +44,7 @@
       href={resolve('my-teams')}
       aria-label="My Teams collection"
       aria-current={collection === 'my-teams' ? 'page' : undefined}
-      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold transition-colors outline-none max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm {collection ===
-      'my-teams'
-        ? 'bg-info text-info-content'
-        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
+      class={navClass('my-teams')}
     >
       <AtlasIcon />
       <span class="truncate">My Teams</span>
@@ -53,10 +52,7 @@
     <a
       href={resolve('favorites')}
       aria-current={collection === 'favorites' ? 'page' : undefined}
-      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold transition-colors outline-none max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm {collection ===
-      'favorites'
-        ? 'bg-info text-info-content'
-        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
+      class={navClass('favorites')}
     >
       <Star class="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
       <span class="truncate">Favorites</span>
@@ -64,10 +60,7 @@
     <a
       href={resolve('wishlist')}
       aria-current={collection === 'wishlist' ? 'page' : undefined}
-      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold transition-colors outline-none max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm {collection ===
-      'wishlist'
-        ? 'bg-info text-info-content'
-        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
+      class={navClass('wishlist')}
     >
       <Bookmark class="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
       <span class="truncate">Wishlist</span>

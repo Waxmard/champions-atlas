@@ -38,7 +38,7 @@
     onchoose: (index: number, value: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onclear: (index: number) => void;
-    oncommit: (blurOnSuccess?: boolean) => boolean;
+    oncommit: (blurOnSuccess?: boolean) => void;
   } = $props();
 </script>
 

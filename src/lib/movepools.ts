@@ -9,23 +9,19 @@ const table = movepools as {
 };
 const generation = Generations.get(0);
 
-export function movepoolFor(pokemon: string): string[] {
+function lookup(record: Record<string, string[]>, pokemon: string): string[] {
   return (
-    table.moves[normalize(pokemon)] ??
-    table.moves[pokemonId(pokemon)] ??
-    table.moves[normalize(battleSpecies(pokemon)?.name ?? '')] ??
+    record[normalize(pokemon)] ??
+    record[pokemonId(pokemon)] ??
+    record[normalize(battleSpecies(pokemon)?.name ?? '')] ??
     []
   );
 }
 
-export function abilitiesFor(pokemon: string): string[] {
-  return (
-    table.abilities[normalize(pokemon)] ??
-    table.abilities[pokemonId(pokemon)] ??
-    table.abilities[normalize(battleSpecies(pokemon)?.name ?? '')] ??
-    []
-  );
-}
+export const movepoolFor = (pokemon: string) => lookup(table.moves, pokemon);
+
+export const abilitiesFor = (pokemon: string) =>
+  lookup(table.abilities, pokemon);
 
 export function championsItemsFor(pokemon: string): string[] {
   const saved = battleSpecies(pokemon);

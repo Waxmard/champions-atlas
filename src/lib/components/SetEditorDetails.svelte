@@ -25,7 +25,7 @@
     onabilitychange: (val: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onresetquery: (field: string) => void;
-    oncommit: (blurOnSuccess?: boolean) => boolean;
+    oncommit: (blurOnSuccess?: boolean) => void;
   }
 
   let {

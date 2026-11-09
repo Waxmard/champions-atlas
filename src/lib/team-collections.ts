@@ -20,6 +20,20 @@ export const teamsInUse = (saved: SavedTeam[]): SavedTeam[] =>
 export const savedTeamHeading = (entry: SavedTeam) =>
   teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original);
 
+export const displaySavedTeam = (entry: SavedTeam): Team =>
+  ({
+    sheetIds: [],
+    creator: '',
+    publishedAt: '',
+    replicaCode: null,
+    replicaStatus: '',
+    reports: [],
+    pasteNotes: null,
+    ...entry.original,
+    name: entry.name,
+    members: entry.members,
+  }) as Team;
+
 export class SavedTeamError extends Error {}
 
 const compareIds = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);

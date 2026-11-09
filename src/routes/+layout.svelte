@@ -26,11 +26,12 @@
   }>({ current: null });
   setContext('team-actions', teamActions);
   const isHome = $derived(page.route.id === '/');
+  const collectionRoutes = ['/my-teams', '/favorites', '/wishlist'] as const;
+  const isCollectionPath = (path: string) =>
+    collectionRoutes.some((route) => path === resolve(route));
   const isMyTeams = $derived(
-    page.route.id === '/my-teams' ||
-      page.route.id === '/my-teams/new' ||
-      page.route.id === '/favorites' ||
-      page.route.id === '/wishlist'
+    page.route.id === '/my-teams/new' ||
+      collectionRoutes.some((route) => page.route.id === route)
   );
   const isBrowse = $derived(isHome || page.route.id === '/teams/[id]');
   const isLogin = $derived(page.url.pathname === resolve('login'));
@@ -91,9 +92,7 @@
 
       if (
         path !== resolve('/') &&
-        path !== resolve('my-teams') &&
-        path !== resolve('favorites') &&
-        path !== resolve('wishlist') &&
+        !isCollectionPath(path) &&
         path !== resolve('my-teams/new') &&
         !(
           path.startsWith(detailPrefix) &&
@@ -126,12 +125,7 @@
   function collectionDestination(
     url: Readonly<Pick<URL, 'pathname' | 'search'>>
   ): PathnameWithSearchOrHash | null {
-    if (
-      url.pathname !== resolve('my-teams') &&
-      url.pathname !== resolve('favorites') &&
-      url.pathname !== resolve('wishlist')
-    )
-      return null;
+    if (!isCollectionPath(url.pathname)) return null;
     return url.pathname as PathnameWithSearchOrHash;
   }
 

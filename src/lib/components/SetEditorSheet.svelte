@@ -146,23 +146,19 @@
   );
   const norm = (value: string, query: string) =>
     normalize(value).includes(normalize(query));
-  const extraFavorites = (options: readonly CatalogSuggestion[]) =>
+  type Flagged = { favorite?: true; original?: true; inGame?: true };
+  const extraFavorites = (options: readonly Flagged[]) =>
     options.filter((opt) => opt.favorite && !opt.original && !opt.inGame)
       .length;
-  const pageList = (options: readonly CatalogSuggestion[], limit: number) => {
+  const pageList = <T extends Flagged>(
+    options: readonly T[],
+    limit: number
+  ) => {
     const end = limit + extraFavorites(options);
     return { visible: options.slice(0, end), hasMore: options.length > end };
   };
   const pokemonMatches = $derived(suggestions.pokemon);
-  const extraFavoritePokemon = $derived(
-    pokemonMatches.filter((opt) => opt.favorite).length
-  );
-  const visiblePokemon = $derived(
-    pokemonMatches.slice(0, visiblePokemonCount + extraFavoritePokemon)
-  );
-  const hasMorePokemon = $derived(
-    pokemonMatches.length > visiblePokemonCount + extraFavoritePokemon
-  );
+  const pokemonPage = $derived(pageList(pokemonMatches, visiblePokemonCount));
   const itemPage = $derived(
     pageList(
       suggestions.items.filter((opt) => norm(opt.value, itemQuery)),
@@ -738,8 +734,8 @@
     {:else if currentView === 'pokemon'}
       <SetEditorPokemonSuggestions
         bind:pokemon={form.pokemon}
-        options={visiblePokemon}
-        hasMore={hasMorePokemon}
+        options={pokemonPage.visible}
+        hasMore={pokemonPage.hasMore}
         {originalChanged}
         {originalSlotMember}
         {originalReason}
