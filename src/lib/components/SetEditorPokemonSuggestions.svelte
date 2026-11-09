@@ -1,4 +1,5 @@
 <script lang="ts">
+  import X from '@lucide/svelte/icons/x';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
@@ -9,6 +10,7 @@
 
   let {
     pokemon = $bindable(),
+    accepted,
     options,
     hasMore = false,
     originalChanged = false,
@@ -24,6 +26,7 @@
     oncommit,
   }: {
     pokemon: string;
+    accepted: string;
     options: PokemonSuggestion[];
     hasMore?: boolean;
     originalChanged?: boolean;
@@ -68,6 +71,23 @@
         }
       }}
     />
+    {#if pokemon !== accepted}
+      <Button
+        variant="quiet"
+        size="icon-compact"
+        class="-me-2"
+        aria-label={`Revert Pokémon to ${accepted}`}
+        onpointerdown={(event) => event.preventDefault()}
+        onclick={(event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          oninputchange(accepted);
+          oncommit(true);
+        }}
+      >
+        <X class="size-4" />
+      </Button>
+    {/if}
   </label>
   <p class="provenance">
     Choosing a suggested Pokémon replaces this set's fields.

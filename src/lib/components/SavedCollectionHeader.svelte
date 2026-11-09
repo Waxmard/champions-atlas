@@ -54,7 +54,7 @@
       aria-current={collection === 'favorites' ? 'page' : undefined}
       class={navClass('favorites')}
     >
-      <Star class="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
+      <Star class="size-4 shrink-0" aria-hidden="true" />
       <span class="truncate">Favorites</span>
     </a>
     <a
@@ -62,7 +62,7 @@
       aria-current={collection === 'wishlist' ? 'page' : undefined}
       class={navClass('wishlist')}
     >
-      <Bookmark class="size-3.5 shrink-0 sm:size-4" aria-hidden="true" />
+      <Bookmark class="size-4 shrink-0" aria-hidden="true" />
       <span class="truncate">Wishlist</span>
     </a>
   </nav>

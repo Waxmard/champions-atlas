@@ -604,7 +604,7 @@
         class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
       >
         <SpeciesLabel
-          pokemon={draftMember.pokemon || initialMember.pokemon}
+          pokemon={form.pokemon || initialMember.pokemon}
           spriteSize={20}
           textClass="max-w-[120px] truncate text-xs font-medium"
         />
@@ -734,6 +734,7 @@
     {:else if currentView === 'pokemon'}
       <SetEditorPokemonSuggestions
         bind:pokemon={form.pokemon}
+        accepted={accepted.pokemon}
         options={pokemonPage.visible}
         hasMore={pokemonPage.hasMore}
         {originalChanged}
