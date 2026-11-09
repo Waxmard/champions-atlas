@@ -221,7 +221,7 @@ it does not duplicate a Pokémon or exceed the replacement Mega limit.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
-**Suggested swaps** below the team lists up to four whole-set replacements
+The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 slot, the current and suggested Pokémon, the set, its shared-teammate count, and
 either how many teams share that exact set or how many sets it was assembled

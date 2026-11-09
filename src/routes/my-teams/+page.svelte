@@ -42,6 +42,12 @@
   const teamActions = getContext<{
     current: ComponentProps<typeof TeamActionsMenu> | null;
   }>('team-actions');
+  type TeamPanel = 'details' | 'swaps' | 'text';
+  const panels = [
+    ['details', 'Details'],
+    ['swaps', 'Swaps'],
+    ['text', 'Team text'],
+  ] as const;
   let saved = $state<SavedTeam[]>([]),
     favorites = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
@@ -53,12 +59,10 @@
     nameError = $state(''),
     storageError = $state(''),
     deleting = $state(false),
-    showExport = $state(false),
     pasteText = $state(''),
     pasteError = $state(''),
     stale = $state(false),
-    showDetails = $state(false),
-    showSwaps = $state(false),
+    panel = $state<TeamPanel | null>(null),
     activeEditIndex = $state<number | null>(null),
     activeEditField = $state<EditableSetField>('set'),
     activeEditMoveSlot = $state(0),
@@ -102,7 +106,7 @@
           : activeOverride;
       const resolvedId = collections.resolveSavedTeamId(saved, id, activeId);
       const entry = saved.find((team) => team.id === resolvedId);
-      if (draft?.id !== entry?.id) showDetails = showSwaps = false;
+      if (draft?.id !== entry?.id) panel = null;
       draft = entry ? structuredClone($state.snapshot(entry)) : null;
       pasteText = draft ? exportPaste(draft.members) : '';
       pasteError = '';
@@ -122,8 +126,7 @@
         if (page.url.pathname + page.url.search !== dest)
           void goto(dest, { replace: true });
       }
-      const f = false;
-      showExport = editorPending = stale = f;
+      editorPending = stale = false;
       activeEditIndex = editorMember = null;
       message =
         id && !entry && !collections.resolveSavedTeamId(saved, null, activeId)
@@ -154,8 +157,8 @@
     teamActions.current = hasTeam
       ? {
           oncopy: copyPaste,
-          onrename: () => revealSection('team-name'),
-          onsuggest: () => revealSection('swap-suggestions-toggle'),
+          onrename: () => revealPanel('details'),
+          onsuggest: () => revealPanel('swaps'),
           suggestDisabled: changed || editing,
           disabled: changed || editing || deleting,
         }
@@ -200,14 +203,22 @@
     await tick();
     return draft?.id === id;
   }
-  function revealSection(id: 'team-name' | 'swap-suggestions-toggle') {
-    if (changed) return;
-    if (id === 'team-name') showDetails = true;
-    else showSwaps = true;
+  function setPanel(next: TeamPanel | null): boolean {
+    if (changed) return false;
+    if (panel === 'details' && next !== 'details') {
+      saveTeamName();
+      if (nameError) return false;
+    }
+    panel = next;
+    return true;
+  }
+  function revealPanel(next: 'details' | 'swaps') {
+    if (!setPanel(next)) return;
     void tick().then(() => {
-      const target = document.getElementById(id);
-      target?.focus({ preventScroll: true });
-      target?.scrollIntoView({ block: 'start' });
+      document
+        .getElementById(next === 'details' ? 'team-name' : 'team-tab-swaps')
+        ?.focus({ preventScroll: true });
+      document.getElementById('team-tabs')?.scrollIntoView({ block: 'start' });
     });
   }
   function blurName(e: FocusEvent) {
@@ -390,14 +401,21 @@
   }
   function applySwap(slot: number, member: Member): boolean {
     if (!draft || changed || editing || deleting || stale) return false;
-    return persistChange((team) => ({
+    const applied = persistChange((team) => ({
       ...team,
       members: replaceSlot(team.members, slot, $state.snapshot(member)),
     }));
+    if (applied)
+      void tick().then(() =>
+        document
+          .getElementById('team-tab-swaps')
+          ?.focus({ preventScroll: true })
+      );
+    return applied;
   }
   async function copyPaste() {
     if (!draft || changed || editing) return;
-    showExport = true;
+    setPanel('text');
     const ok = await copyText(exportPaste(draft.members));
     errorMessage = ok
       ? ''
@@ -437,7 +455,8 @@
     }
     draft = activeEditIndex = editorMember = null;
     baseline = pasteText = pasteError = '';
-    editorPending = showExport = false;
+    editorPending = false;
+    panel = null;
     const nextId = collections.resolveSavedTeamId(remaining, null, prevActive);
     let activeFailed = false;
     try {
@@ -586,107 +605,126 @@
             Save or reset team text before changing the team.
           </p>
         {/if}
-        <details bind:open={showDetails} class="min-w-0">
-          <summary
-            class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70"
+        <div
+          id="team-tabs"
+          role="group"
+          aria-label="Team tools"
+          class="plate mt-2 grid min-w-0 grid-cols-3 gap-1 p-1"
+        >
+          {#each panels as [id, label] (id)}
+            <Button
+              id={`team-tab-${id}`}
+              variant={panel === id ? 'primary' : 'quiet'}
+              class="h-auto min-h-11 px-1"
+              aria-expanded={panel === id}
+              aria-controls={panel === id ? 'team-panel' : undefined}
+              disabled={changed && id !== 'text'}
+              onclick={() => setPanel(panel === id ? null : id)}
+            >
+              {label}
+            </Button>
+          {/each}
+        </div>
+        {#if panel}
+          <div
+            id="team-panel"
+            role="region"
+            aria-labelledby={`team-tab-${panel}`}
+            class="plate mt-2 min-w-0 p-3"
           >
-            Team details
-          </summary>
-          {#if showDetails}
-            {@const match = collections.resolveCatalogTeam(
-              draft.original,
-              teams
-            )}
-            <div class="min-w-0 space-y-3 pb-2">
-              <div class="min-w-0">
-                <label class="term block"
-                  >Team name
-                  <input
-                    id="team-name"
-                    class="input mt-1.5 min-h-11 w-full text-base"
-                    maxlength="200"
-                    disabled={changed}
-                    aria-invalid={nameError ? 'true' : undefined}
-                    aria-describedby="team-name-error"
-                    bind:value={draft.name}
-                    oninput={() => (nameError = '')}
-                    onblur={blurName}
-                    onkeydown={(e) =>
-                      e.key === 'Enter' && e.currentTarget.blur()}
-                  />
-                </label>
-                <p id="team-name-error" class="mt-1 text-sm text-error-content">
-                  {nameError}
-                </p>
-              </div>
-              {#if match}<a
-                  class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
-                  href={resolve(`teams/${match.id}`)}>View catalog details</a
-                >{/if}
-              <div class="min-w-0 space-y-1">
-                <p class="provenance">
-                  {dirty ? 'Unsaved input.' : 'Saved on this device.'}
-                </p>
-                {#if draft.name !== draft.original.name}
-                  <p class="provenance max-w-full min-w-0 wrap-anywhere">
-                    Original: {draft.original.name}
+            {#if panel === 'details'}
+              {@const match = collections.resolveCatalogTeam(
+                draft.original,
+                teams
+              )}
+              <div class="min-w-0 space-y-3">
+                <div class="min-w-0">
+                  <label class="term block"
+                    >Team name
+                    <input
+                      id="team-name"
+                      class="input mt-1.5 min-h-11 w-full text-base"
+                      maxlength="200"
+                      disabled={changed}
+                      aria-invalid={nameError ? 'true' : undefined}
+                      aria-describedby="team-name-error"
+                      bind:value={draft.name}
+                      oninput={() => (nameError = '')}
+                      onblur={blurName}
+                      onkeydown={(e) =>
+                        e.key === 'Enter' && e.currentTarget.blur()}
+                    />
+                  </label>
+                  <p
+                    id="team-name-error"
+                    class="mt-1 text-sm text-error-content"
+                  >
+                    {nameError}
                   </p>
-                {/if}
-                <p class="provenance">
-                  Editing does not create a working rental code.
-                </p>
+                </div>
+                {#if match}<a
+                    class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
+                    href={resolve(`teams/${match.id}`)}>View catalog details</a
+                  >{/if}
+                <div class="min-w-0 space-y-1">
+                  <p class="provenance">
+                    {dirty ? 'Unsaved input.' : 'Saved on this device.'}
+                  </p>
+                  {#if draft.name !== draft.original.name}
+                    <p class="provenance max-w-full min-w-0 wrap-anywhere">
+                      Original: {draft.original.name}
+                    </p>
+                  {/if}
+                  <p class="provenance">
+                    Editing does not create a working rental code.
+                  </p>
+                </div>
               </div>
-            </div>
-          {/if}
-        </details>
-        <SwapSuggestions
-          bind:open={showSwaps}
-          members={draft.members}
-          {teams}
-          currentRegulation={current}
-          tags={catalogState.tags}
-          favoriteTeams={favorites}
-          disabled={changed || editing || deleting || stale}
-          onapply={applySwap}
-        />
-        <details bind:open={showExport} class="min-w-0">
-          <summary
-            class="min-h-11 cursor-pointer content-center text-sm font-medium text-base-content/70"
-          >
-            Showdown team text
-          </summary>
-          <p class="provenance mt-1 max-w-[68ch]">
-            Team text normalizes to Pokémon Champions format (EVs out of 32, no
-            IVs); unknown details stay omitted.
-          </p>
-          <textarea
-            aria-label="Showdown team text"
-            class="textarea mt-1 min-h-72 w-full p-2 font-mono text-xs leading-5"
-            bind:value={pasteText}
-            oninput={() => (pasteError = '')}
-            disabled={editing || deleting || stale}></textarea>
-          {#if pasteError}<p
-              role="alert"
-              class="mt-1 text-sm text-error-content"
-            >
-              {pasteError}
-            </p>{/if}
-          <div class="mt-1 flex flex-wrap gap-2">
-            <Button
-              variant="primary"
-              disabled={!changed || editing || deleting || stale}
-              onclick={saveTeamPaste}>Save team text</Button
-            >
-            <Button
-              variant="quiet"
-              disabled={!changed || editing || deleting}
-              onclick={() => {
-                if (draft) pasteText = exportPaste(draft.members);
-                pasteError = '';
-              }}>Reset text</Button
-            >
+            {:else if panel === 'swaps'}
+              <SwapSuggestions
+                members={draft.members}
+                {teams}
+                currentRegulation={current}
+                tags={catalogState.tags}
+                favoriteTeams={favorites}
+                disabled={changed || editing || deleting || stale}
+                onapply={applySwap}
+              />
+            {:else}
+              <p class="provenance max-w-[68ch]">
+                Team text normalizes to Pokémon Champions format (EVs out of 32,
+                no IVs); unknown details stay omitted.
+              </p>
+              <textarea
+                aria-label="Showdown team text"
+                class="textarea mt-1 min-h-72 w-full p-2 font-mono text-xs leading-5"
+                bind:value={pasteText}
+                oninput={() => (pasteError = '')}
+                disabled={editing || deleting || stale}></textarea>
+              {#if pasteError}<p
+                  role="alert"
+                  class="mt-1 text-sm text-error-content"
+                >
+                  {pasteError}
+                </p>{/if}
+              <div class="mt-1 flex flex-wrap gap-2">
+                <Button
+                  variant="primary"
+                  disabled={!changed || editing || deleting || stale}
+                  onclick={saveTeamPaste}>Save team text</Button
+                >
+                <Button
+                  variant="quiet"
+                  disabled={!changed || editing || deleting}
+                  onclick={() => {
+                    if (draft) pasteText = exportPaste(draft.members);
+                    pasteError = '';
+                  }}>Reset text</Button
+                >
+              </div>
+            {/if}
           </div>
-        </details>
+        {/if}
       </section>
     {/if}
   </div>

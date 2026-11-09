@@ -42,6 +42,8 @@
   const moveDisabled = $derived(
     disabled || dirty || pending || movedId === teamId
   );
+  const tile =
+    'h-auto min-h-11 flex-col justify-start gap-1 px-1 py-2 text-center leading-tight whitespace-normal';
 
   async function move(target: 'favorites' | 'wishlist') {
     if (disabled || dirty || pending || movedId === teamId) return;
@@ -95,12 +97,12 @@
 </script>
 
 <div
-  class="mt-3 flex min-w-0 flex-wrap items-center gap-1.5 [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:max-w-full [&>div>button]:text-start [&>div>button]:whitespace-normal"
+  class="plate mt-3 grid min-w-0 grid-cols-3 gap-1 p-1 [&>div>button]:col-span-full [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:max-w-full [&>div>button]:whitespace-normal [&>div>p]:col-span-full [&>div>p]:px-2"
 >
   <CurrentSetSaveButton {teamId} {baseline} {members} {disabled} />
   <Button
     variant="quiet"
-    class="h-auto min-h-11"
+    class={tile}
     data-move-favorites
     disabled={moveDisabled}
     onclick={() => move('favorites')}
@@ -110,7 +112,7 @@
   </Button>
   <Button
     variant="quiet"
-    class="h-auto min-h-11"
+    class={tile}
     disabled={moveDisabled}
     onclick={() => move('wishlist')}
   >
@@ -119,7 +121,7 @@
   </Button>
   <Button
     variant="quiet"
-    class="h-auto min-h-11"
+    class={tile}
     data-preserve-team-name
     disabled={deleteDisabled || pending || movedId === teamId}
     onclick={ondelete}
@@ -129,7 +131,9 @@
   </Button>
   <p
     role="alert"
-    class="order-last basis-full text-sm {errorMessage ? '' : 'sr-only'}"
+    class="order-last col-span-full px-2 text-sm {errorMessage
+      ? 'pb-1'
+      : 'sr-only'}"
     style="color: var(--color-error-content)"
   >
     {errorMessage}
