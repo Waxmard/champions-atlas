@@ -97,9 +97,9 @@ the replacement, stop and preserve your data before deciding how to proceed.
 
 Pair and trust the iPhone, enable Developer Mode and enable **Connect via network**
 in Xcode's **Devices and Simulators** window. Initial pairing may require USB.
-For routine updates, keep the Mac and unlocked iPhone online on the same Wi-Fi
-network and confirm the phone appears in `xcrun devicectl list devices --timeout 10`.
-Use the matching Firebase project configuration and the existing paid signing team.
+For routine updates, keep the Mac and paired iPhone online on the same Wi-Fi
+network. Use the matching Firebase project configuration and the existing paid
+signing team.
 
 1. Load the API key at build time. Keychain asks for approval; if it blocks, approve
    the prompt rather than copying the key to a file.
@@ -115,11 +115,14 @@ Use the matching Firebase project configuration and the existing paid signing te
    ```
 
    This builds the shared UI, syncs Capacitor assets, builds the native app
-   in Release configuration, then installs and launches it using Apple's CLI.
-   It does not open Xcode or attach a debugger. Rebuild and reinstall to package
-   UI updates; Firebase Hosting cannot update an installed native bundle. Replace
-   `Gengar Phone` with your device name or identifier. If the name is missing
-   or ambiguous, use the identifier from the device list.
+   in Release configuration, discovers paired devices with
+   `xcrun devicectl list devices --timeout 10`, then installs and launches the
+   app using Apple's CLI. Installation works while the iPhone screen is closed,
+   and launching prompts the phone to unlock. It does not open Xcode or attach a
+   debugger. Rebuild and reinstall to package UI updates; Firebase Hosting
+   cannot update an installed native bundle. Replace `Gengar Phone` with your
+   device name or identifier. If the name is missing or ambiguous, use the
+   identifier from the device list.
 
    The normal build reuses a valid catalog; UI changes do not require a full
    catalog or enrichment refresh. Do not use blank Firebase variables, the
