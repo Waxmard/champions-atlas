@@ -233,7 +233,8 @@ offered another.
 
 Changed item, ability, move, and Pokémon names must be known to the app. An
 unchanged legacy value stays accepted, and a committed value uses its canonical
-spelling. Custom team import and Wishlist import remain permissive.
+spelling. Each item can be held by only one team member. Custom team import and
+Wishlist import remain permissive.
 
 Catalog item, ability, and move suggestions show the value with provenance
 labels: **Original** for the original team's value, **In-game** for the recorded

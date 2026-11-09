@@ -1,4 +1,4 @@
-import { resolveBattleForm } from './battle-forms.ts';
+import { battleSpecies, resolveBattleForm } from './battle-forms.ts';
 import { knownName } from './canonical-names.ts';
 import {
   MAX_TEAM_MEGAS,
@@ -15,6 +15,9 @@ import {
   isCompleteSpread,
   parseChampionsSpread,
 } from './paste.ts';
+import rosterA from '../../scripts/data/champions-m-a.json' with { type: 'json' };
+import rosterB from '../../scripts/data/champions-m-b.json' with { type: 'json' };
+import rosterC from '../../scripts/data/champions-m-c.json' with { type: 'json' };
 import {
   missingRoles,
   postalRole,
@@ -28,7 +31,47 @@ export interface FavoriteTeamSource {
   id: string;
   name: string;
   members: Member[];
+  original?: Pick<Team, 'regulation'>;
 }
+
+const rosters: Record<string, { pokemon: Record<string, string[]> }> = {
+  'M-A': rosterA,
+  'M-B': rosterB,
+  'M-C': rosterC,
+};
+const rosterNames = new Map<string, string[]>();
+
+function rosterSpecies(regulation: string): string[] {
+  let names = rosterNames.get(regulation);
+  if (!names) {
+    names = Object.values(rosters[regulation]?.pokemon ?? {}).flatMap(
+      ([id]) => battleSpecies(id)?.name ?? []
+    );
+    rosterNames.set(regulation, names);
+  }
+  return names;
+}
+
+const sourceStub = (
+  id: string,
+  name: string,
+  regulation: string,
+  members: Member[]
+): Team => ({
+  id,
+  name,
+  regulation,
+  members,
+  pasteUrl: '',
+  paste: null,
+  sheetIds: [],
+  creator: '',
+  publishedAt: '',
+  replicaCode: null,
+  replicaStatus: '',
+  reports: [],
+  pasteNotes: null,
+});
 
 export interface PokemonSuggestion {
   pokemon: string;
@@ -386,21 +429,12 @@ function buildFavoriteSuggestions(
         support: 1,
         consensus: true,
         consensusSupport: 1,
-        source: {
-          id: favTeam.id,
-          name: favTeam.name,
-          regulation: currentRegulation,
-          members: favTeam.members,
-          pasteUrl: '',
-          paste: null,
-          sheetIds: [],
-          creator: '',
-          publishedAt: '',
-          replicaCode: null,
-          replicaStatus: '',
-          reports: [],
-          pasteNotes: null,
-        },
+        source: sourceStub(
+          favTeam.id,
+          favTeam.name,
+          favTeam.original?.regulation ?? currentRegulation,
+          favTeam.members
+        ),
         favorite: true,
         favoriteTeamName: favTeam.name,
       });
@@ -526,7 +560,44 @@ export function pokemonSuggestions(
     const key = `${normalize(resolveBattleForm(suggestion.member).pokemon)}|${signatureOf(suggestion.member)}`;
     if (!favoriteKeys.has(key)) catalogRows.push(suggestion);
   }
-  return [...favoriteRows, ...catalogRows];
+  const present = new Set(
+    [...favoriteRows, ...catalogRows].map((row) =>
+      normalize(resolveBattleForm(row.member).pokemon)
+    )
+  );
+  const rosterRows: PokemonSuggestion[] = queryKey
+    ? rosterSpecies(currentRegulation)
+        .filter((name) => {
+          const key = normalize(name);
+          return (
+            key.includes(queryKey) &&
+            !present.has(key) &&
+            !excluded.has(key) &&
+            !excluded.has(basePokemon(name))
+          );
+        })
+        .map((name) => ({
+          pokemon: name,
+          member: {
+            pokemon: name,
+            item: null,
+            ability: null,
+            nature: null,
+            spread: null,
+            moves: [],
+          },
+          sharedTeammates: 0,
+          matchingDetails: 0,
+          role: null,
+          roleFill: false,
+          archetype: null,
+          support: 0,
+          consensus: false,
+          consensusSupport: 0,
+          source: sourceStub('', '', currentRegulation, []),
+        }))
+    : [];
+  return [...favoriteRows, ...catalogRows, ...rosterRows];
 }
 
 export function swapTargets(
@@ -619,7 +690,8 @@ export function swapIdeas(
       seenFavoriteSets.add(key);
       favoriteSlotSets.add(`${idea.slot}|${key}`);
       return true;
-    });
+    })
+    .slice(0, limit);
   const seenCatalogSpecies = new Set<string>();
   const catalogIdeas = catalogPool
     .sort(

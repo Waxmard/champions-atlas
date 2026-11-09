@@ -232,6 +232,27 @@ export function useWishlistedTeam(
   return saveAndGet(storage, promoted);
 }
 
+function rejectCollectionCopy(
+  saved: SavedTeam[],
+  latest: SavedTeam,
+  collection: 'wishlist' | 'favorites',
+  label: string
+) {
+  if (
+    saved.some(
+      (team) =>
+        team.id !== latest.id &&
+        team.collection === collection &&
+        (team.original.id === latest.original.id ||
+          (latest.original.pasteUrl !== '' &&
+            team.original.pasteUrl === latest.original.pasteUrl))
+    )
+  )
+    throw new SavedTeamError(
+      `A copy of this team is already in ${label}. Move or remove that copy first.`
+    );
+}
+
 export function moveInUseTeamToWishlist(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   id: string,
@@ -248,19 +269,7 @@ export function moveInUseTeamToWishlist(
     throw new SavedTeamError(
       'This team changed elsewhere. Reopen My Teams before moving it.'
     );
-  if (
-    saved.some(
-      (team) =>
-        team.id !== id &&
-        team.collection === 'wishlist' &&
-        (team.original.id === latest.original.id ||
-          (latest.original.pasteUrl !== '' &&
-            team.original.pasteUrl === latest.original.pasteUrl))
-    )
-  )
-    throw new SavedTeamError(
-      'A copy of this team is already in Wishlist. Move or remove that copy first.'
-    );
+  rejectCollectionCopy(saved, latest, 'wishlist', 'Wishlist');
   return saveAndGet(storage, { ...latest, collection: 'wishlist' });
 }
 
@@ -280,6 +289,7 @@ export function moveInUseTeamToFavorites(
     throw new SavedTeamError(
       'This team changed elsewhere. Reopen My Teams before moving it.'
     );
+  rejectCollectionCopy(saved, latest, 'favorites', 'Favorites');
   return saveAndGet(storage, { ...latest, collection: 'favorites' });
 }
 

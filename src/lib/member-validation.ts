@@ -67,21 +67,29 @@ export function memberValidationError(
 
   const validSpecies = Boolean(battleSpecies(next.pokemon));
   const item = next.item ?? '';
+  const itemKey = normalize(item);
   if (
-    normalize(item) &&
-    normalize(item) !== normalize(accepted.item ?? '') &&
+    itemKey &&
+    itemKey !== normalize(accepted.item ?? '') &&
     (!knownName('item', item) ||
       (mode === 'structured' &&
         validSpecies &&
-        (teammates.some((t) => normalize(t.item ?? '') === normalize(item)) ||
-          !championsItemsFor(next.pokemon).some(
-            (opt) => normalize(opt) === normalize(item)
-          ))))
+        !championsItemsFor(next.pokemon).some(
+          (opt) => normalize(opt) === itemKey
+        )))
   )
     return {
       field: mode === 'text' ? 'text' : 'item',
       message: 'Choose a known item.',
     };
+  if (
+    itemKey &&
+    itemKey !== normalize(accepted.item ?? '') &&
+    mode === 'structured' &&
+    validSpecies &&
+    teammates.some((t) => normalize(t.item ?? '') === itemKey)
+  )
+    return { field: 'item', message: 'Each item can be used once per team.' };
   const ability = next.ability ?? '';
   if (
     normalize(ability) &&

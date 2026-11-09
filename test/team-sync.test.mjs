@@ -285,6 +285,13 @@ test('Favorites reorders sync, merge with opposite-side renames, and strip on pr
   const afterPromote = merge(base, reordered, promoted);
   assert.equal(afterPromote[0].collection, 'my-teams');
   assert.equal(Object.hasOwn(afterPromote[0], 'favoriteOrder'), false);
+  const promotedIn = [
+    { ...team('a'), collection: 'favorites', favoriteOrder: 4 },
+    fav('b', 1),
+  ];
+  const inUse = [team('a'), fav('b', 1)];
+  assert.deepEqual(merge(inUse, inUse, promotedIn), promotedIn);
+  assert.deepEqual(merge(inUse, promotedIn, inUse), promotedIn);
 });
 
 test('deletion and promotion win over an opposite-side Wishlist reorder', () => {

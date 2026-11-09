@@ -394,10 +394,7 @@
         canonicalSnapshot(form) === canonicalSnapshot(fields(replacement))
       )
         return accept(structuredClone($state.snapshot(replacement)));
-      if (
-        !replacement &&
-        normalize(form.pokemon) !== normalize(acceptedFields.pokemon)
-      ) {
+      if (normalize(form.pokemon) !== normalize(acceptedFields.pokemon)) {
         const targetKey = normalize(form.pokemon.trim());
         const favMatch = favoriteSlotSets.find(
           (fav) => !fav.reason && normalize(fav.member.pokemon) === targetKey
@@ -540,7 +537,6 @@
         );
       el?.focus({ preventScroll: true });
     };
-    queueMicrotask(focusTarget);
     requestAnimationFrame(focusTarget);
   }
   function done() {
@@ -755,6 +751,7 @@
         onresetquery={() => resetQuery('pokemon')}
         oninputchange={(value) => {
           pokemonQuery = form.pokemon = value;
+          replacement = null;
           visiblePokemonCount = 10;
           clearError();
         }}

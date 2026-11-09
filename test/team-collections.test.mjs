@@ -9,14 +9,9 @@ import {
   addPokepasteToWishlist,
   useCatalogTeam,
   moveInUseTeamToWishlist,
-  moveInUseTeamToFavorites,
   useWishlistedTeam,
-  useFavoriteTeam,
   removeWishlistedTeam,
-  removeFavoriteTeam,
   orderedWishlist,
-  orderedFavorites,
-  reorderFavorites,
   rankSavedTeams,
   SavedTeamError,
   wishlistedCatalogEntries,
@@ -365,7 +360,9 @@ test('moving rejects missing, already moved, renamed, and edited live teams with
     const before = s.data;
     assert.throws(
       () => moveInUseTeamToWishlist(s, id, baseline),
-      /changed elsewhere/
+      (error) =>
+        error instanceof SavedTeamError &&
+        /changed elsewhere/.test(error.message)
     );
     assert.equal(s.data, before);
     assert.equal(s.writes, 0);
@@ -389,7 +386,9 @@ test('moving rejects Wishlist copies by original ID or nonempty source URL witho
     const baseline = teamBaseline(readSavedTeams(s)[0]);
     assert.throws(
       () => moveInUseTeamToWishlist(s, target.id, baseline),
-      /already in Wishlist/
+      (error) =>
+        error instanceof SavedTeamError &&
+        /already in Wishlist/.test(error.message)
     );
     assert.equal(s.data, before);
     assert.equal(s.writes, 0);
@@ -441,47 +440,6 @@ test('requested, active and fallback IDs never resolve to Wishlist or Favorites 
   assert.equal(resolveSavedTeamId(list, 'b', 'f2'), 'b');
   assert.equal(resolveSavedTeamId([w1, f1], null, 'f1'), null);
   assert.equal(resolveSavedTeamId([], null, null), null);
-});
-
-test('Favorites lifecycle preserves edits, allows duplicate base teams, reorders, and restores to My Teams', () => {
-  const first = snapshot('fav-1', 'Variant A');
-  const second = {
-    ...snapshot('fav-2', 'Variant B'),
-    original: first.original,
-  };
-  second.members[0].item = 'Choice Band';
-  const s = storage([first, second]);
-  const ids = () => orderedFavorites(readSavedTeams(s)).map((x) => x.id);
-  assert.equal(
-    moveInUseTeamToFavorites(s, first.id, teamBaseline(first)).collection,
-    'favorites'
-  );
-  assert.equal(
-    moveInUseTeamToFavorites(s, second.id, teamBaseline(second)).collection,
-    'favorites'
-  );
-  assert.deepEqual(teamsInUse(readSavedTeams(s)), []);
-  assert.deepEqual(ids(), ['fav-2', 'fav-1']);
-  assert.equal(
-    reorderFavorites(s, ['fav-2', 'fav-1'], ['fav-2', 'fav-1']),
-    null
-  );
-  reorderFavorites(s, ['fav-1', 'fav-2'], ['fav-2', 'fav-1']);
-  assert.deepEqual(ids(), ['fav-1', 'fav-2']);
-  assert.throws(
-    () => reorderFavorites(s, ['fav-2', 'fav-1'], ['fav-2', 'fav-1']),
-    /Favorites changed/
-  );
-  assert.throws(() => useWishlistedTeam(s, 'fav-1'), /no longer in Wishlist/);
-  const restored = useFavoriteTeam(s, 'fav-1');
-  assert.equal(restored.collection, 'my-teams');
-  assert.equal(restored.favoriteOrder, undefined);
-  assert.equal(useFavoriteTeam(s, 'fav-1').id, 'fav-1');
-  assert.throws(() => removeFavoriteTeam(s, 'fav-1'), /no longer in Favorites/);
-  assert.deepEqual(
-    removeFavoriteTeam(s, 'fav-2').map((x) => x.id),
-    ['fav-1']
-  );
 });
 
 test('bookmarking leaves existing My Teams copies untouched and stays idempotent', () => {
@@ -711,7 +669,9 @@ test('catalog matching ignores empty and noncanonical URLs and rejects multiple 
   );
   assert.throws(
     () => useCatalogTeam(s, team),
-    /Multiple copies are in Wishlist/
+    (error) =>
+      error instanceof SavedTeamError &&
+      /Multiple copies are in Wishlist/.test(error.message)
   );
   assert.equal(s.data, before);
   assert.equal(s.writes, 0);

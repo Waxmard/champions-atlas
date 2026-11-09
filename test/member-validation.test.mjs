@@ -301,6 +301,20 @@ test('team text matches reordered sets by normalized Pokémon identity', () => {
   );
 });
 
+test('structured validation rejects an item a teammate already holds', () => {
+  const accepted = { ...member('Incineroar'), item: 'Sitrus Berry' };
+  const teammates = [{ ...member('Rillaboom'), item: 'Leftovers' }];
+  assert.deepEqual(
+    memberValidationError(
+      { ...accepted, item: 'Leftovers' },
+      accepted,
+      teammates,
+      'structured'
+    ),
+    { field: 'item', message: 'Each item can be used once per team.' }
+  );
+});
+
 test('structured validation enforces Champions items, species abilities, and movepools', () => {
   const accepted = member('Incineroar');
   const teammates = [member('Rillaboom')];
