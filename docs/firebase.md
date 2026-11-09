@@ -325,9 +325,10 @@ repository with **Contents: Read and write** and **Pull requests: Read and
 write**, then store it as a repository secret. The workflow needs a token other
 than `GITHUB_TOKEN` so release and merge events can trigger downstream workflows.
 
-- Release Please publishes a release, triggering `deploy-testflight.yml` to
-  import, build, and deploy that release's tag. Ordinary pushes to `main` do not
-  deploy. To run it manually, select **Actions** → **Deploy TestFlight** →
+- Merging the Release Please pull request pushes a `CHANGELOG.md` change to
+  `main`, which triggers `deploy-testflight.yml` to import, build, and deploy
+  that commit. Pushes that do not change `CHANGELOG.md` do not deploy. To run it
+  manually, select **Actions** → **Deploy TestFlight** →
   **Run workflow**, choose a branch or tag, and optionally select
   **Rebuild all historical regulations**.
 - The workflow publishes the catalog, builds the app, deploys Firebase Hosting

@@ -238,7 +238,9 @@ Wishlist import remain permissive.
 
 Catalog item, ability, and move suggestions show the value with provenance
 labels: **Original** for the original team's value, **In-game** for the recorded
-in-game set, and **Movepool** for a move no catalog team recorded. Items another
+in-game set, **Favorite** for a value from a matching set in a Favorites team,
+and **Movepool** for a move no catalog team recorded. Favorite values rank after
+Original and In-game values. Items another
 teammate already holds are not offered. Move suggestions include the species'
 newest available movepool, which ranks after catalog observations.
 
@@ -314,12 +316,14 @@ codes.
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.
 
-**Wishlist** is a bookmark collection over the same saved-team records: a record
-without a collection belongs to My teams, and a `wishlist` record is excluded
-from My teams selection and its active-team fallback. Move a record in either
-direction without changing its ID, original snapshot, edits, or sources. Moving
-from My teams is unavailable while edits are pending and rejects stale records
-or a conflicting Wishlist copy. Separate copies are never merged.
+**Wishlist** and **Favorites** are collections over the same saved-team
+records: a record without a collection belongs to My teams, and `wishlist` and
+`favorites` records are excluded from My teams selection and its active-team
+fallback. Each has its own page and tab beside My Teams, and the team sheet
+offers moving a team into either. Move a record in either direction without
+changing its ID, original snapshot, edits, or sources. Moving from My teams is
+unavailable while edits are pending and rejects stale records or a conflicting
+copy already in the target collection. Separate copies are never merged.
 
 Wishlist Pokémon search matches the saved roster, including edits, rather than
 the original catalog roster. All selected Pokémon must match, using the same
