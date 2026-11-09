@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.0](https://github.com/Waxmard/champions-atlas/compare/v0.5.0...v0.6.0) (2026-11-09)
+
+
+### Features
+
+* add Favorites collection and promote favorite set suggestions ([#89](https://github.com/Waxmard/champions-atlas/issues/89)) ([896ecf8](https://github.com/Waxmard/champions-atlas/commit/896ecf8abdfef43e3114e182b177010bf9f003fd))
+
 ## [0.5.0](https://github.com/Waxmard/champions-atlas/compare/v0.4.0...v0.5.0) (2026-11-07)
 
 
