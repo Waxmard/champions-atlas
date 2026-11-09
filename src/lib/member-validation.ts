@@ -6,6 +6,7 @@ import {
 } from './catalog.ts';
 import { battleSpecies } from './battle-forms.ts';
 import { knownName } from './canonical-names.ts';
+import { abilitiesFor, championsItemsFor, movepoolFor } from './movepools.ts';
 import {
   championsSpreadTotal,
   NATURES,
@@ -64,33 +65,58 @@ export function memberValidationError(
       message: 'Choose a known Pokémon.',
     };
 
+  const validSpecies = Boolean(battleSpecies(next.pokemon));
   const item = next.item ?? '';
+  const itemKey = normalize(item);
   if (
-    normalize(item) &&
-    normalize(item) !== normalize(accepted.item ?? '') &&
-    !knownName('item', item)
+    itemKey &&
+    itemKey !== normalize(accepted.item ?? '') &&
+    (!knownName('item', item) ||
+      (mode === 'structured' &&
+        validSpecies &&
+        !championsItemsFor(next.pokemon).some(
+          (opt) => normalize(opt) === itemKey
+        )))
   )
     return {
       field: mode === 'text' ? 'text' : 'item',
       message: 'Choose a known item.',
     };
+  if (
+    itemKey &&
+    itemKey !== normalize(accepted.item ?? '') &&
+    mode === 'structured' &&
+    validSpecies &&
+    teammates.some((t) => normalize(t.item ?? '') === itemKey)
+  )
+    return { field: 'item', message: 'Each item can be used once per team.' };
   const ability = next.ability ?? '';
   if (
     normalize(ability) &&
     normalize(ability) !== normalize(accepted.ability ?? '') &&
-    !knownName('ability', ability)
+    (!knownName('ability', ability) ||
+      (mode === 'structured' &&
+        validSpecies &&
+        !abilitiesFor(next.pokemon).some(
+          (opt) => normalize(opt) === normalize(ability)
+        )))
   )
     return {
       field: mode === 'text' ? 'text' : 'ability',
       message: 'Choose a known ability.',
     };
   const acceptedMoves = new Set(accepted.moves.map(normalize));
+  const speciesMoves =
+    mode === 'structured' && validSpecies
+      ? new Set(movepoolFor(next.pokemon).map(normalize))
+      : null;
   if (
     next.moves.some(
       (move) =>
         normalize(move) &&
         !acceptedMoves.has(normalize(move)) &&
-        !knownName('move', move)
+        (!knownName('move', move) ||
+          (speciesMoves !== null && !speciesMoves.has(normalize(move))))
     )
   )
     return {

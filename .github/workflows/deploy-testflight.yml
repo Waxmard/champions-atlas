@@ -1,8 +1,9 @@
 name: Deploy TestFlight
 
 on:
-  release:
-    types: [published]
+  push:
+    branches: [main]
+    paths: ['CHANGELOG.md']
   workflow_dispatch:
     inputs:
       refresh_history:
@@ -28,8 +29,6 @@ jobs:
       - id: meta
         run: echo "build_number=${{ github.run_number }}.${{ github.run_attempt }}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
       - uses: actions/cache@v6
         with:
           path: |
@@ -90,8 +89,6 @@ jobs:
     environment: preview
     steps:
       - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event_name == 'release' && github.event.release.tag_name || github.sha }}
       - uses: jdx/mise-action@v5
       - run: npm ci --ignore-scripts
       - uses: actions/download-artifact@v8

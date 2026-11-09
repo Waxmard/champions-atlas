@@ -1,4 +1,4 @@
-import { resolveBattleForm } from './battle-forms.ts';
+import { battleSpecies, resolveBattleForm } from './battle-forms.ts';
 import { knownName } from './canonical-names.ts';
 import {
   MAX_TEAM_MEGAS,
@@ -15,6 +15,9 @@ import {
   isCompleteSpread,
   parseChampionsSpread,
 } from './paste.ts';
+import rosterA from '../../scripts/data/champions-m-a.json' with { type: 'json' };
+import rosterB from '../../scripts/data/champions-m-b.json' with { type: 'json' };
+import rosterC from '../../scripts/data/champions-m-c.json' with { type: 'json' };
 import {
   missingRoles,
   postalRole,
@@ -23,6 +26,52 @@ import {
   type RoleFlag,
   type TeamTagsIndex,
 } from './tags.ts';
+
+export interface FavoriteTeamSource {
+  id: string;
+  name: string;
+  members: Member[];
+  original?: Pick<Team, 'regulation'>;
+}
+
+const rosters: Record<string, { pokemon: Record<string, string[]> }> = {
+  'M-A': rosterA,
+  'M-B': rosterB,
+  'M-C': rosterC,
+};
+const rosterNames = new Map<string, string[]>();
+
+function rosterSpecies(regulation: string): string[] {
+  let names = rosterNames.get(regulation);
+  if (!names) {
+    names = Object.values(rosters[regulation]?.pokemon ?? {}).flatMap(
+      ([id]) => battleSpecies(id)?.name ?? []
+    );
+    rosterNames.set(regulation, names);
+  }
+  return names;
+}
+
+const sourceStub = (
+  id: string,
+  name: string,
+  regulation: string,
+  members: Member[]
+): Team => ({
+  id,
+  name,
+  regulation,
+  members,
+  pasteUrl: '',
+  paste: null,
+  sheetIds: [],
+  creator: '',
+  publishedAt: '',
+  replicaCode: null,
+  replicaStatus: '',
+  reports: [],
+  pasteNotes: null,
+});
 
 export interface PokemonSuggestion {
   pokemon: string;
@@ -36,6 +85,8 @@ export interface PokemonSuggestion {
   consensus: boolean;
   consensusSupport: number;
   source: Team;
+  favorite?: true;
+  favoriteTeamName?: string;
 }
 
 export interface SwapSuggestion extends PokemonSuggestion {
@@ -70,6 +121,20 @@ export function sourceTeamFit(team: Team, teammates: Member[]): SourceTeamFit {
   return { shared, details };
 }
 
+export function rankFavoriteTeams<
+  T extends Pick<FavoriteTeamSource, 'members'>,
+>(
+  favorites: readonly T[],
+  teammates: Member[]
+): { team: T; shared: number; details: number }[] {
+  return favorites
+    .map((team) => ({
+      team,
+      ...sourceTeamFit({ members: team.members } as Team, teammates),
+    }))
+    .sort((a, b) => b.shared - a.shared || b.details - a.details);
+}
+
 function rankedSourceTeams(
   teammates: Member[],
   teams: Team[],
@@ -92,7 +157,6 @@ function rankedSourceTeams(
           : 0;
         return { team, shared, details, roleBonus };
       })
-      .filter(({ shared }) => shared > 0)
       .sort(
         (a, b) =>
           b.shared - a.shared ||
@@ -306,6 +370,79 @@ function synthesize(
   };
 }
 
+function buildFavoriteSuggestions(
+  teammates: Member[],
+  favoriteTeams: readonly FavoriteTeamSource[],
+  excluded: ReadonlySet<string>,
+  megas: number,
+  queryKey: string,
+  minShared: number,
+  teams: Team[],
+  currentRegulation: string,
+  tags: TeamTagsIndex | undefined,
+  missing: readonly RoleFlag[]
+): PokemonSuggestion[] {
+  if (!favoriteTeams.length) return [];
+  const teammateItems = new Set(
+    teammates.map((member) => normalize(member.item ?? '')).filter(Boolean)
+  );
+  const seen = new Set<string>();
+  const rows: PokemonSuggestion[] = [];
+  for (const { team: favTeam, shared, details } of rankFavoriteTeams(
+    favoriteTeams,
+    teammates
+  )) {
+    if (shared < minShared) continue;
+    for (const raw of favTeam.members) {
+      const resolved = resolveBattleForm(raw);
+      if (resolved.error || !isKnownMember(raw)) continue;
+      const { pokemon: form } = resolved;
+      if (excluded.has(normalize(form)) || excluded.has(basePokemon(form)))
+        continue;
+      if (isMegaSpecies(form) && megas >= MAX_TEAM_MEGAS) continue;
+      if (queryKey && !normalize(form).includes(queryKey)) continue;
+      const canonical = canonicalMember(raw);
+      if (
+        !empty(canonical.item) &&
+        teammateItems.has(normalize(canonical.item ?? ''))
+      )
+        continue;
+      const member: Member = {
+        pokemon: canonical.pokemon,
+        item: clean(canonical.item),
+        ability: clean(canonical.ability),
+        nature: clean(canonical.nature),
+        spread: clean(canonical.spread),
+        moves: canonical.moves.filter((move) => !empty(move)),
+      };
+      const key = `${normalize(form)}|${signatureOf(member)}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      rows.push({
+        pokemon: member.pokemon,
+        member,
+        sharedTeammates: shared,
+        matchingDetails: details,
+        role: postalRole(member.pokemon, teams, tags),
+        roleFill: missing.some((role) => roleFlags(member).includes(role)),
+        archetype: tagsForTeam(tags, favTeam.id)?.archetype ?? null,
+        support: 1,
+        consensus: true,
+        consensusSupport: 1,
+        source: sourceStub(
+          favTeam.id,
+          favTeam.name,
+          favTeam.original?.regulation ?? currentRegulation,
+          favTeam.members
+        ),
+        favorite: true,
+        favoriteTeamName: favTeam.name,
+      });
+    }
+  }
+  return rows;
+}
+
 export function pokemonSuggestions(
   teammates: Member[],
   teams: Team[],
@@ -313,7 +450,8 @@ export function pokemonSuggestions(
   excludePokemon?: string,
   tags?: TeamTagsIndex,
   query = '',
-  { minShared = 1, limit = 6 }: { minShared?: number; limit?: number } = {}
+  { minShared = 1, limit = 6 }: { minShared?: number; limit?: number } = {},
+  favoriteTeams: readonly FavoriteTeamSource[] = []
 ): PokemonSuggestion[] {
   const current = teams.filter((team) => team.regulation === currentRegulation);
   const { ranked, missing } = rankedSourceTeams(
@@ -336,9 +474,28 @@ export function pokemonSuggestions(
     isMegaSpecies(resolveBattleForm(member).pokemon || member.pokemon)
   ).length;
   const queryKey = normalize(query);
+  const favoriteRows = buildFavoriteSuggestions(
+    teammates,
+    favoriteTeams,
+    excluded,
+    megas,
+    queryKey,
+    queryKey ? 0 : minShared,
+    teams,
+    currentRegulation,
+    tags,
+    missing
+  );
+  const favoriteKeys = new Set(
+    favoriteRows.map(
+      (row) =>
+        `${normalize(resolveBattleForm(row.member).pokemon)}|${signatureOf(row.member)}`
+    )
+  );
   const candidates = new Map<string, Candidate>();
+  const effectiveMinShared = queryKey ? 0 : minShared;
   for (const { team, shared, details } of ranked) {
-    if (shared < minShared) break;
+    if (shared < effectiveMinShared) break;
     for (const member of team.members) {
       const resolved = resolveBattleForm(member);
       if (resolved.error) continue;
@@ -375,7 +532,7 @@ export function pokemonSuggestions(
         candidate.roleFill = true;
     }
   }
-  const suggestions: PokemonSuggestion[] = [];
+  const catalogRows: PokemonSuggestion[] = [];
   const ordered = [...candidates.values()].sort(
     (a, b) =>
       b.bestShared - a.bestShared ||
@@ -390,7 +547,7 @@ export function pokemonSuggestions(
       a.form.localeCompare(b.form)
   );
   for (const candidate of ordered) {
-    if (suggestions.length >= limit) break;
+    if (catalogRows.length >= limit) break;
     const suggestion = synthesize(
       candidate,
       teammates,
@@ -399,15 +556,55 @@ export function pokemonSuggestions(
       tags,
       missing
     );
-    if (suggestion) suggestions.push(suggestion);
+    if (!suggestion) continue;
+    const key = `${normalize(resolveBattleForm(suggestion.member).pokemon)}|${signatureOf(suggestion.member)}`;
+    if (!favoriteKeys.has(key)) catalogRows.push(suggestion);
   }
-  return suggestions;
+  const present = new Set(
+    [...favoriteRows, ...catalogRows].map((row) =>
+      normalize(resolveBattleForm(row.member).pokemon)
+    )
+  );
+  const rosterRows: PokemonSuggestion[] = queryKey
+    ? rosterSpecies(currentRegulation)
+        .filter((name) => {
+          const key = normalize(name);
+          return (
+            key.includes(queryKey) &&
+            !present.has(key) &&
+            !excluded.has(key) &&
+            !excluded.has(basePokemon(name))
+          );
+        })
+        .map((name) => ({
+          pokemon: name,
+          member: {
+            pokemon: name,
+            item: null,
+            ability: null,
+            nature: null,
+            spread: null,
+            moves: [],
+          },
+          sharedTeammates: 0,
+          matchingDetails: 0,
+          role: null,
+          roleFill: false,
+          archetype: null,
+          support: 0,
+          consensus: false,
+          consensusSupport: 0,
+          source: sourceStub('', '', currentRegulation, []),
+        }))
+    : [];
+  return [...favoriteRows, ...catalogRows, ...rosterRows];
 }
 
 export function swapTargets(
   members: Member[],
   teams: Team[],
-  currentRegulation: string
+  currentRegulation: string,
+  favoriteTeams: readonly FavoriteTeamSource[] = []
 ): string[] {
   const present = new Set<string>();
   let megas = 0;
@@ -419,19 +616,24 @@ export function swapTargets(
     if (isMegaSpecies(name)) megas++;
   }
   const names = new Set<string>();
+  const addMember = (member: Member, requireKnown: boolean) => {
+    if (requireKnown && !isKnownMember(member)) return;
+    const form = resolveBattleForm(member);
+    if (form.error) return;
+    if (
+      present.has(normalize(form.pokemon)) ||
+      present.has(basePokemon(form.pokemon)) ||
+      (isMegaSpecies(form.pokemon) && megas >= MAX_TEAM_MEGAS)
+    )
+      return;
+    names.add(form.pokemon);
+  };
   for (const team of teams) {
     if (team.regulation !== currentRegulation) continue;
-    for (const member of team.members) {
-      const form = resolveBattleForm(member);
-      if (form.error) continue;
-      if (
-        present.has(normalize(form.pokemon)) ||
-        present.has(basePokemon(form.pokemon)) ||
-        (isMegaSpecies(form.pokemon) && megas >= MAX_TEAM_MEGAS)
-      )
-        continue;
-      names.add(form.pokemon);
-    }
+    for (const member of team.members) addMember(member, false);
+  }
+  for (const favTeam of favoriteTeams) {
+    for (const member of favTeam.members) addMember(member, true);
   }
   return [...names].sort();
 }
@@ -441,11 +643,26 @@ export function swapIdeas(
   teams: Team[],
   currentRegulation: string,
   tags?: TeamTagsIndex,
-  limit = 4
+  limit = 4,
+  favoriteTeams: readonly FavoriteTeamSource[] = []
 ): SwapSuggestion[] {
-  const ideas: SwapSuggestion[] = [];
+  const favoritePool: SwapSuggestion[] = [];
+  const catalogPool: SwapSuggestion[] = [];
   for (const [slot, replaced] of members.entries()) {
     const teammates = members.filter((_, index) => index !== slot);
+    if (favoriteTeams.length) {
+      for (const fav of pokemonSuggestions(
+        teammates,
+        teams,
+        currentRegulation,
+        replaced.pokemon,
+        tags,
+        '',
+        { minShared: 1, limit: 0 },
+        favoriteTeams
+      ))
+        favoritePool.push({ ...fav, slot });
+    }
     const [best] = pokemonSuggestions(
       teammates,
       teams,
@@ -455,10 +672,28 @@ export function swapIdeas(
       '',
       { minShared: 3, limit: 1 }
     );
-    if (best) ideas.push({ ...best, slot });
+    if (best) catalogPool.push({ ...best, slot });
   }
-  const seen = new Set<string>();
-  return ideas
+  const seenFavoriteSets = new Set<string>();
+  const favoriteSlotSets = new Set<string>();
+  const favoriteIdeas = favoritePool
+    .sort(
+      (a, b) =>
+        b.sharedTeammates - a.sharedTeammates ||
+        b.matchingDetails - a.matchingDetails ||
+        a.slot - b.slot
+    )
+    .filter((idea) => {
+      const form = normalize(resolveBattleForm(idea.member).pokemon);
+      const key = `${form}|${signatureOf(idea.member)}`;
+      if (seenFavoriteSets.has(key)) return false;
+      seenFavoriteSets.add(key);
+      favoriteSlotSets.add(`${idea.slot}|${key}`);
+      return true;
+    })
+    .slice(0, limit);
+  const seenCatalogSpecies = new Set<string>();
+  const catalogIdeas = catalogPool
     .sort(
       (a, b) =>
         b.sharedTeammates - a.sharedTeammates ||
@@ -468,12 +703,15 @@ export function swapIdeas(
         a.slot - b.slot
     )
     .filter((idea) => {
-      const key = normalize(resolveBattleForm(idea.member).pokemon);
-      if (seen.has(key)) return false;
-      seen.add(key);
+      const form = normalize(resolveBattleForm(idea.member).pokemon);
+      const setKey = `${idea.slot}|${form}|${signatureOf(idea.member)}`;
+      if (favoriteSlotSets.has(setKey) || seenCatalogSpecies.has(form))
+        return false;
+      seenCatalogSpecies.add(form);
       return true;
     })
     .slice(0, limit);
+  return [...favoriteIdeas, ...catalogIdeas];
 }
 
 export function swapSuggestions(
@@ -481,7 +719,8 @@ export function swapSuggestions(
   teams: Team[],
   currentRegulation: string,
   pokemon: string,
-  tags?: TeamTagsIndex
+  tags?: TeamTagsIndex,
+  favoriteTeams: readonly FavoriteTeamSource[] = []
 ): SwapSuggestion[] {
   const wanted = normalize(pokemon);
   const candidates: SwapSuggestion[] = [];
@@ -494,17 +733,31 @@ export function swapSuggestions(
       replaced.pokemon,
       tags,
       pokemon,
-      { minShared: 1, limit: 6 }
+      { minShared: 1, limit: 6 },
+      favoriteTeams
     ))
-      if (normalize(resolveBattleForm(suggestion.member).pokemon) === wanted)
+      if (
+        (suggestion.favorite || suggestion.sharedTeammates > 0) &&
+        normalize(resolveBattleForm(suggestion.member).pokemon) === wanted
+      )
         candidates.push({ ...suggestion, slot });
   }
-  return candidates.sort(
-    (a, b) =>
+  return candidates.sort((a, b) => {
+    const favDiff = Number(Boolean(b.favorite)) - Number(Boolean(a.favorite));
+    if (favDiff) return favDiff;
+    if (a.favorite && b.favorite) {
+      return (
+        b.sharedTeammates - a.sharedTeammates ||
+        b.matchingDetails - a.matchingDetails ||
+        a.slot - b.slot
+      );
+    }
+    return (
       b.sharedTeammates - a.sharedTeammates ||
       b.support - a.support ||
       b.matchingDetails - a.matchingDetails ||
       compareTeams(a.source, b.source, currentRegulation) ||
       a.slot - b.slot
-  );
+    );
+  });
 }

@@ -6,6 +6,7 @@
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import Plus from '@lucide/svelte/icons/plus';
+  import Star from '@lucide/svelte/icons/star';
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
@@ -14,10 +15,12 @@
     collection,
     teamActions,
   }: {
-    collection: 'my-teams' | 'wishlist';
+    collection: 'my-teams' | 'favorites' | 'wishlist';
     teamActions: ComponentProps<typeof TeamActionsMenu> | null;
   } = $props();
   let openImportAfterClose = false;
+  const navClass = (id: typeof collection) =>
+    `inline-flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold transition-colors outline-none max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm ${collection === id ? 'bg-info text-info-content' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}`;
 
   function focusAfterClose(event: Event) {
     if (!openImportAfterClose) return;
@@ -35,30 +38,32 @@
 <header class="flex min-w-0 items-center gap-2">
   <nav
     aria-label="Team collections"
-    class="surface grid w-full min-w-0 flex-1 grid-cols-2 items-center p-1"
+    class="surface grid w-full min-w-0 flex-1 grid-cols-3 items-center p-1"
   >
     <a
       href={resolve('my-teams')}
       aria-label="My Teams collection"
       aria-current={collection === 'my-teams' ? 'page' : undefined}
-      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none max-md:min-h-11 {collection ===
-      'my-teams'
-        ? 'bg-info text-info-content'
-        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
+      class={navClass('my-teams')}
     >
       <AtlasIcon />
-      <span>My Teams</span>
+      <span class="truncate">My Teams</span>
+    </a>
+    <a
+      href={resolve('favorites')}
+      aria-current={collection === 'favorites' ? 'page' : undefined}
+      class={navClass('favorites')}
+    >
+      <Star class="size-4 shrink-0" aria-hidden="true" />
+      <span class="truncate">Favorites</span>
     </a>
     <a
       href={resolve('wishlist')}
       aria-current={collection === 'wishlist' ? 'page' : undefined}
-      class="inline-flex min-h-9 min-w-0 items-center justify-center gap-1.5 rounded-[calc(var(--radius-field)-4px)] px-3 text-sm font-bold transition-colors outline-none max-md:min-h-11 {collection ===
-      'wishlist'
-        ? 'bg-info text-info-content'
-        : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}"
+      class={navClass('wishlist')}
     >
-      <Bookmark class="size-4" aria-hidden="true" />
-      <span>Wishlist</span>
+      <Bookmark class="size-4 shrink-0" aria-hidden="true" />
+      <span class="truncate">Wishlist</span>
     </a>
   </nav>
   {#if collection === 'wishlist'}

@@ -10,8 +10,8 @@ import {
   type Member,
   type Team,
 } from './catalog.ts';
-import { resolveBattleForm } from './battle-forms.ts';
-import { movepoolFor } from './movepools.ts';
+import { battleSpecies, resolveBattleForm } from './battle-forms.ts';
+import { abilitiesFor, championsItemsFor, movepoolFor } from './movepools.ts';
 import {
   NATURES,
   canonicalMember,
@@ -29,7 +29,9 @@ import {
 import { speedFor } from './stats.ts';
 import {
   pokemonSuggestions,
+  rankFavoriteTeams,
   sourceTeamFit,
+  type FavoriteTeamSource,
   type SourceTeamFit,
 } from './swap-suggestions.ts';
 import type { TeamTagsIndex } from './tags.ts';
@@ -171,8 +173,9 @@ const savedTeamSchema = z.object({
   changeSlot: z.number().int().min(0).max(5).nullable().default(null),
   sources: z.array(sourceSchema).max(100),
   origin: z.enum(['catalog', 'custom']).optional(),
-  collection: z.enum(['my-teams', 'wishlist']).optional(),
+  collection: z.enum(['my-teams', 'wishlist', 'favorites']).optional(),
   wishlistOrder: z.number().int().safe().optional(),
+  favoriteOrder: z.number().int().safe().optional(),
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;
@@ -208,6 +211,13 @@ export function saveTeam(
   )
     candidate.wishlistOrder = previous.wishlistOrder;
   else delete candidate.wishlistOrder;
+  if (
+    previous?.collection === 'favorites' &&
+    candidate.collection === 'favorites' &&
+    previous.favoriteOrder !== undefined
+  )
+    candidate.favoriteOrder = previous.favoriteOrder;
+  else delete candidate.favoriteOrder;
   const nextTeam = previous
     ? { ...candidate, original: previous.original, origin: previous.origin }
     : candidate;
@@ -254,6 +264,24 @@ export interface CatalogSuggestion {
   score?: number;
   original?: true;
   inGame?: true;
+  favorite?: true;
+}
+
+export function favoriteMembersFor(
+  target: Pick<Member, 'pokemon'>,
+  favoriteTeams: readonly FavoriteTeamSource[],
+  teammates: Member[] = []
+): { member: Member; teamName: string }[] {
+  const id = pokemonId(target.pokemon);
+  if (!id) return [];
+  const matches: { member: Member; teamName: string }[] = [];
+  for (const { team } of rankFavoriteTeams(favoriteTeams, teammates)) {
+    for (const member of team.members) {
+      if (pokemonId(member.pokemon) === id)
+        matches.push({ member, teamName: team.name });
+    }
+  }
+  return matches;
 }
 
 export function originalMemberFor(
@@ -284,7 +312,8 @@ export function catalogSuggestions(
   pokemonQuery = '',
   originalPokemon = typeof target === 'string' ? target : target.pokemon,
   originalMember?: Member,
-  inGameMember?: Member
+  inGameMember?: Member,
+  favoriteTeams: readonly FavoriteTeamSource[] = []
 ) {
   const isSimple = typeof target === 'string';
   const targetMember: Member = isSimple
@@ -361,7 +390,15 @@ export function catalogSuggestions(
           member.moves.some((om) => normalize(mv) === normalize(om))
         ).length || 0) * 1.5;
 
-      if (!teammateItems.has(normalize(member.item ?? '')))
+      if (
+        !teammateItems.has(normalize(member.item ?? '')) &&
+        (!battleSpecies(targetMember.pokemon) ||
+          resolveBattleForm({
+            pokemon: targetMember.pokemon,
+            item: member.item,
+            ability: null,
+          }).error === null)
+      )
         add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
       add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
       add(natures, member.nature, baseScore + im + am + mm, isCurrent);
@@ -371,10 +408,27 @@ export function catalogSuggestions(
     }
   }
 
+  for (const item of championsItemsFor(targetMember.pokemon)) {
+    const key = normalize(item);
+    if (!teammateItems.has(key) && !items.has(key))
+      items.set(key, { value: item, currentCount: 0, totalCount: 0 });
+  }
+  for (const ability of abilitiesFor(targetMember.pokemon)) {
+    const key = normalize(ability);
+    if (!abilities.has(key))
+      abilities.set(key, { value: ability, currentCount: 0, totalCount: 0 });
+  }
   for (const move of movepoolFor(targetMember.pokemon)) {
     const key = normalize(move);
     if (!moves.has(key))
       moves.set(key, { value: move, currentCount: 0, totalCount: 0 });
+  }
+  if (battleSpecies(targetMember.pokemon)) {
+    for (const nature of NATURES) {
+      const key = normalize(nature);
+      if (!natures.has(key))
+        natures.set(key, { value: nature, currentCount: 0, totalCount: 0 });
+    }
   }
 
   const original =
@@ -384,29 +438,44 @@ export function catalogSuggestions(
     pokemonId(inGameMember.pokemon) === pokemonId(targetMember.pokemon)
       ? inGameMember
       : undefined;
+  const favorites = favoriteMembersFor(
+    targetMember,
+    favoriteTeams,
+    teammates
+  ).map(({ member }) => member);
   const rank = (
     values: Map<string, CatalogSuggestion>,
     originalValues: (string | null)[] = [],
-    inGameValues: (string | null)[] = []
+    inGameValues: (string | null)[] = [],
+    favoriteValues: (string | null)[] = []
   ) => {
     const promoted: CatalogSuggestion[] = [];
-    const promote = (value: string | null, source: 'original' | 'inGame') => {
+    const promote = (
+      value: string | null,
+      source: 'original' | 'inGame' | 'favorite'
+    ) => {
       const key = normalize(value ?? '');
       if (!value || !key || key === 'unknown') return;
       const existing = promoted.find((entry) => normalize(entry.value) === key);
       if (existing) {
         if (source === 'original') existing.original = true;
-        else existing.inGame = true;
+        else if (source === 'inGame') existing.inGame = true;
+        else existing.favorite = true;
         return;
       }
       promoted.push({
         ...(values.get(key) ?? { value, currentCount: 0, totalCount: 0 }),
-        ...(source === 'original' ? { original: true } : { inGame: true }),
+        ...(source === 'original'
+          ? { original: true }
+          : source === 'inGame'
+            ? { inGame: true }
+            : { favorite: true }),
       });
       values.delete(key);
     };
     originalValues.forEach((value) => promote(value, 'original'));
     inGameValues.forEach((value) => promote(value, 'inGame'));
+    favoriteValues.forEach((value) => promote(value, 'favorite'));
     return [
       ...promoted,
       ...[...values.values()].sort(
@@ -424,13 +493,26 @@ export function catalogSuggestions(
     ) ?? null;
 
   return {
-    items: rank(items, [original?.item ?? null], [inGame?.item ?? null]),
+    items: rank(
+      items,
+      [original?.item ?? null],
+      [inGame?.item ?? null],
+      favorites
+        .map((m) => m.item)
+        .filter((item) => !teammateItems.has(normalize(item ?? '')))
+    ),
     abilities: rank(
       abilities,
       [original?.ability ?? null],
-      [inGame?.ability ?? null]
+      [inGame?.ability ?? null],
+      favorites.map((m) => m.ability)
     ),
-    moves: rank(moves, original?.moves, inGame?.moves),
+    moves: rank(
+      moves,
+      original?.moves,
+      inGame?.moves,
+      favorites.flatMap((m) => m.moves)
+    ),
     natures: rank(
       natures,
       [
@@ -438,7 +520,8 @@ export function catalogSuggestions(
           (name) => normalize(name) === normalize(original?.nature ?? '')
         ) ?? null,
       ],
-      [inGameNature]
+      [inGameNature],
+      favorites.map((m) => canonicalNature(m.nature) ?? null)
     ),
     pokemon: pokemonSuggestions(
       teammates,
@@ -447,7 +530,8 @@ export function catalogSuggestions(
       originalPokemon,
       tags,
       pokemonQuery,
-      { limit: 30 }
+      { limit: 30 },
+      favoriteTeams
     ),
   };
 }
@@ -480,6 +564,7 @@ export interface SpreadSuggestion {
   speed: number | null;
   original?: true;
   inGame?: true;
+  favorite?: true;
 }
 
 export function originalSpreadSuggestion(

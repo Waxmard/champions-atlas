@@ -94,7 +94,10 @@
           .getElementById(`pokemon-slot-${memberIndex}`)
           ?.querySelector<HTMLElement>('[data-set-field="set"]') ?? null
       );
-    return document.querySelector<HTMLElement>('[data-team-action="menu"]');
+    return (
+      document.querySelector<HTMLElement>('[data-move-favorites]') ??
+      document.querySelector<HTMLElement>('[data-team-action="menu"]')
+    );
   }
 
   function restoreFocus(trigger: HTMLButtonElement, wasFocused: boolean) {
@@ -107,7 +110,7 @@
         document.activeElement !== document.documentElement
       )
         return;
-      focusFallback()?.focus();
+      focusFallback()?.focus({ preventScroll: true });
     });
   }
 
@@ -135,7 +138,7 @@
             if (restoreOpenerFocus && (active === opener || focusIsUnclaimed))
               opener.focus();
           } else if (restoreOpenerFocus && focusIsUnclaimed) {
-            focusFallback()?.focus();
+            focusFallback()?.focus({ preventScroll: true });
           }
         });
       },

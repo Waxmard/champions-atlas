@@ -18,7 +18,6 @@
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import SwapSuggestions from '#lib/components/SwapSuggestions.svelte';
   import Plus from '@lucide/svelte/icons/plus';
-  import Trash2 from '@lucide/svelte/icons/trash-2';
   import { Button } from '#lib/components/ui/button/index.js';
   import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
   import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
@@ -44,6 +43,7 @@
     current: ComponentProps<typeof TeamActionsMenu> | null;
   }>('team-actions');
   let saved = $state<SavedTeam[]>([]),
+    favorites = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
     baseline = $state(''),
     visitBaseline = $state<{ id: string; members: Member[] } | null>(null),
@@ -91,7 +91,9 @@
     navigate = true
   ) {
     try {
-      saved = collections.teamsInUse(readSavedTeams(localStorage));
+      const allSaved = readSavedTeams(localStorage);
+      saved = collections.teamsInUse(allSaved);
+      favorites = collections.orderedFavorites(allSaved);
       storageError = '';
       const activeId =
         activeOverride === undefined
@@ -233,7 +235,9 @@
       }
       const next = patch(latest);
       const pendingName = draft.name;
-      saved = collections.teamsInUse(saveTeam(localStorage, next));
+      const allSaved = saveTeam(localStorage, next);
+      saved = collections.teamsInUse(allSaved);
+      favorites = collections.orderedFavorites(allSaved);
       const persisted = saved.find(({ id }) => id === next.id);
       if (!persisted) throw new Error('saved team is missing after saving');
       baseline = contentSnapshot(persisted);
@@ -578,10 +582,10 @@
                 </p>
               </div>
               <MyTeamCollectionActions
+                placement="manage"
                 teamId={draft.id}
                 {baseline}
                 {dirty}
-                members={draft.members}
                 disabled={changed || editing || deleting || stale}
               />
               {#if match}<a
@@ -607,19 +611,11 @@
                   {teams}
                   currentRegulation={current}
                   tags={catalogState.tags}
+                  favoriteTeams={favorites}
                   disabled={changed || editing || deleting || stale}
                   onapply={applySwap}
                 />
               </div>
-              <Button
-                variant="destructive"
-                class="h-auto min-h-11 max-w-full text-start whitespace-normal"
-                disabled={editing || deleting}
-                onclick={removeSelectedTeam}
-              >
-                <Trash2 class="size-4" aria-hidden="true" />
-                <span>Delete team</span>
-              </Button>
             </div>
           </section>
         {/if}
@@ -649,6 +645,18 @@
               />
             {/snippet}
           </TeamSetGrid>
+        {/key}
+        {#key activeTeam.id}
+          <MyTeamCollectionActions
+            placement="sheet"
+            teamId={activeTeam.id}
+            {baseline}
+            {dirty}
+            members={activeTeam.members}
+            disabled={changed || editing || deleting || stale}
+            deleteDisabled={editing || deleting}
+            ondelete={removeSelectedTeam}
+          />
         {/key}
         {#if changed}
           <p role="status" class="provenance mt-1">
@@ -716,6 +724,7 @@
         initialMoveSlot={activeEditMoveSlot}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={catalogState.tags}
+        favoriteTeams={favorites}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}

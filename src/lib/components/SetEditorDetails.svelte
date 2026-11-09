@@ -25,7 +25,7 @@
     onabilitychange: (val: string) => void;
     oningame: (choice: CurrentSetChoice, displayed: Member) => void;
     onresetquery: (field: string) => void;
-    oncommit: () => void;
+    oncommit: (blurOnSuccess?: boolean) => void;
   }
 
   let {
@@ -73,11 +73,11 @@
       onfocus={() => onresetquery(field)}
       onclick={() => onresetquery(field)}
       oninput={(event) => onvaluechange(event.currentTarget.value)}
-      onblur={oncommit}
+      onblur={() => oncommit(false)}
       onkeydown={(event) => {
         if (event.key === 'Enter' && !event.isComposing) {
           event.preventDefault();
-          oncommit();
+          oncommit(true);
         }
       }}
     />
@@ -92,7 +92,7 @@
           event.preventDefault();
           event.stopPropagation();
           onvaluechange('');
-          oncommit();
+          oncommit(true);
         }}
       >
         <X class="size-4" />
@@ -109,12 +109,16 @@
   >
     {#each options as opt (opt.value)}
       <SuggestionRow
-        label={`Use ${opt.value}${opt.inGame ? ' in-game' : ''} ${field}`}
+        label={`Use ${opt.value}${opt.inGame ? ' in-game' : opt.favorite ? ' favorite' : ''} ${field}`}
         glyph={field === 'item'
           ? { kind: 'item', value: opt.value }
           : { kind: 'none' }}
         primary={opt.value}
-        secondary={[opt.original ? 'Original' : '', opt.inGame ? 'In-game' : '']
+        secondary={[
+          opt.original ? 'Original' : '',
+          opt.inGame ? 'In-game' : '',
+          opt.favorite ? 'Favorite' : '',
+        ]
           .filter(Boolean)
           .join(' · ')}
         onclick={() => {
@@ -123,7 +127,7 @@
             return;
           }
           onvaluechange(opt.value);
-          oncommit();
+          oncommit(true);
         }}
       />
     {/each}

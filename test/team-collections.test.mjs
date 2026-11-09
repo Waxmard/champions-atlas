@@ -3,6 +3,7 @@ import test from 'node:test';
 import {
   resolveCatalogTeam,
   resolveSavedTeamId,
+  isTeamInUse,
   teamsInUse,
   addCatalogToWishlist,
   addPokepasteToWishlist,
@@ -42,6 +43,8 @@ const catalogTeam = (id, name = id, roster = species) => ({
   replicaCode: null,
   replicaStatus: '',
   reports: [],
+  paste: null,
+  pasteNotes: null,
   members: roster.map((pokemon) => ({
     pokemon,
     item: null,
@@ -50,8 +53,6 @@ const catalogTeam = (id, name = id, roster = species) => ({
     nature: null,
     spread: null,
   })),
-  paste: null,
-  pasteNotes: null,
 });
 const snapshot = (id, name = id, roster = species) => ({
   ...newSavedTeam(catalogTeam(id, name, roster)),
@@ -76,8 +77,8 @@ const payload = {
   title: 'Poképaste team',
   paste: species
     .map(
-      (pokemon, i) =>
-        `${i ? pokemon : `Ace (${pokemon})`} @ Item\nAbility: Ability\nEVs: 252 HP / 252 Atk / 4 Spe\nAdamant Nature\nShiny: Yes\n- One\n- Two\n- Three\n- Four`
+      (p, i) =>
+        `${i ? p : `Ace (${p})`} @ Item\nAbility: Ability\nEVs: 252 HP / 252 Atk / 4 Spe\nAdamant Nature\nShiny: Yes\n- One\n- Two\n- Three\n- Four`
     )
     .join('\n\n'),
 };
@@ -98,59 +99,42 @@ test('catalog resolution uses original IDs or unique canonical paste URLs withou
   saved.name = 'Edited name';
   saved.members[0].item = 'Edited item';
   saved.original.pasteUrl = pasteUrl;
-  const catalog = [current, vrTeam];
-  const before = structuredClone({ saved, catalog });
-
-  assert.equal(resolveCatalogTeam(saved.original, catalog), current);
+  const cat = [current, vrTeam];
+  const before = structuredClone({ saved, cat });
+  assert.equal(resolveCatalogTeam(saved.original, cat), current);
   assert.equal(
-    resolveCatalogTeam({ id: 'current', pasteUrl: vrUrl }, catalog),
+    resolveCatalogTeam({ id: 'current', pasteUrl: vrUrl }, cat),
     current
   );
-  assert.equal(resolveCatalogTeam({ pasteUrl: vrUrl }, catalog), vrTeam);
-  assert.equal(
-    resolveCatalogTeam({ id: '', pasteUrl: vrUrl }, catalog),
-    vrTeam
-  );
-  assert.deepEqual({ saved, catalog }, before);
+  assert.equal(resolveCatalogTeam({ pasteUrl: vrUrl }, cat), vrTeam);
+  assert.equal(resolveCatalogTeam({ id: '', pasteUrl: vrUrl }, cat), vrTeam);
+  assert.deepEqual({ saved, cat }, before);
 });
 
 test('catalog resolution rejects missing, malformed, unmatched, and ambiguous URLs', () => {
   const current = { ...catalogTeam('current'), pasteUrl };
   const duplicate = { ...catalogTeam('duplicate'), pasteUrl };
-  const malformedUrl = 'https://pokepast.es/abcdef1234567890?source=other';
-  const malformed = { ...catalogTeam('malformed'), pasteUrl: malformedUrl };
-  const blankId = catalogTeam('');
-  const catalog = [current, duplicate, malformed, blankId];
-  const before = structuredClone(catalog);
-
-  assert.equal(resolveCatalogTeam({}, catalog), undefined);
-  assert.equal(
-    resolveCatalogTeam({ id: '', pasteUrl: '' }, catalog),
-    undefined
-  );
-  assert.equal(
-    resolveCatalogTeam({ pasteUrl: malformedUrl }, catalog),
-    undefined
-  );
-  assert.equal(
-    resolveCatalogTeam(
-      { pasteUrl: 'https://pokepast.es/1111111111111111' },
-      catalog
-    ),
-    undefined
-  );
-  assert.equal(
-    resolveCatalogTeam({ id: 'obsolete', pasteUrl }, catalog),
-    undefined
-  );
-  assert.equal(
-    resolveCatalogTeam({ id: 'current', pasteUrl }, catalog),
-    current
-  );
-  assert.deepEqual(catalog, before);
+  const badUrl = 'https://pokepast.es/abcdef1234567890?source=other';
+  const cat = [
+    current,
+    duplicate,
+    { ...catalogTeam('m'), pasteUrl: badUrl },
+    catalogTeam(''),
+  ];
+  const before = structuredClone(cat);
+  for (const q of [
+    {},
+    { id: '', pasteUrl: '' },
+    { pasteUrl: badUrl },
+    { pasteUrl: 'https://pokepast.es/1111111111111111' },
+    { id: 'obsolete', pasteUrl },
+  ])
+    assert.equal(resolveCatalogTeam(q, cat), undefined);
+  assert.equal(resolveCatalogTeam({ id: 'current', pasteUrl }, cat), current);
+  assert.deepEqual(cat, before);
 });
 
-test('legacy teams default to My Teams without rewriting; Wishlist is excluded from resolution', () => {
+test('legacy teams default to My Teams without rewriting; Wishlist and Favorites are excluded from resolution', () => {
   const legacy = snapshot('legacy');
   delete legacy.collection;
   const s = storage([legacy]);
@@ -159,12 +143,16 @@ test('legacy teams default to My Teams without rewriting; Wishlist is excluded f
   const list = [
     snapshot('a'),
     { ...snapshot('w'), collection: 'wishlist' },
+    { ...snapshot('f'), collection: 'favorites' },
     snapshot('b'),
   ];
   assert.deepEqual(
     teamsInUse(list).map((x) => x.id),
     ['a', 'b']
   );
+  assert.equal(isTeamInUse(list[0]), true);
+  assert.equal(isTeamInUse(list[1]), false);
+  assert.equal(isTeamInUse(list[2]), false);
 });
 
 test('Wishlist deduplicates catalog IDs and promotion preserves the exact saved snapshot', () => {
@@ -358,19 +346,14 @@ test('moving a changed team to Wishlist and back keeps its saved record and late
 test('moving rejects missing, already moved, renamed, and edited live teams without writing', () => {
   const initial = snapshot('team');
   const baseline = teamBaseline(readSavedTeams(storage([initial]))[0]);
+  const editedMembers = initial.members.map((m, i) =>
+    i ? m : { ...m, item: 'Changed elsewhere' }
+  );
   const cases = [
     { id: 'missing', team: initial },
     { id: initial.id, team: { ...initial, collection: 'wishlist' } },
     { id: initial.id, team: { ...initial, name: 'Changed elsewhere' } },
-    {
-      id: initial.id,
-      team: {
-        ...initial,
-        members: initial.members.map((member, index) =>
-          index ? member : { ...member, item: 'Changed elsewhere' }
-        ),
-      },
-    },
+    { id: initial.id, team: { ...initial, members: editedMembers } },
   ];
   for (const { id, team } of cases) {
     const s = storage([team]);
@@ -388,23 +371,16 @@ test('moving rejects missing, already moved, renamed, and edited live teams with
 
 test('moving rejects Wishlist copies by original ID or nonempty source URL without merging edits', () => {
   const initial = snapshot('team');
-  const target = {
-    ...initial,
-    original: { ...initial.original, pasteUrl },
+  const target = { ...initial, original: { ...initial.original, pasteUrl } };
+  const byId = {
+    ...wish('by-id'),
+    original: { ...wish('by-id').original, id: target.original.id },
   };
-  const conflicting = [
-    {
-      ...wish('by-id'),
-      name: 'Wishlist edits by ID',
-      original: { ...wish('by-id').original, id: target.original.id },
-    },
-    {
-      ...wish('by-url'),
-      name: 'Wishlist edits by URL',
-      original: { ...wish('by-url').original, pasteUrl },
-    },
-  ];
-  for (const duplicate of conflicting) {
+  const byUrl = {
+    ...wish('by-url'),
+    original: { ...wish('by-url').original, pasteUrl },
+  };
+  for (const duplicate of [byId, byUrl]) {
     const s = storage([target, duplicate]);
     const before = s.data;
     const baseline = teamBaseline(readSavedTeams(s)[0]);
@@ -417,21 +393,13 @@ test('moving rejects Wishlist copies by original ID or nonempty source URL witho
     assert.equal(s.data, before);
     assert.equal(s.writes, 0);
   }
-
   const unrelated = wish('unrelated');
   const inUseCopy = { ...snapshot('copy'), original: initial.original };
   const s = storage([initial, unrelated, inUseCopy]);
   const before = readSavedTeams(s);
   const moved = moveInUseTeamToWishlist(s, initial.id, teamBaseline(before[0]));
   assert.deepEqual(moved, { ...before[0], collection: 'wishlist' });
-  assert.deepEqual(
-    readSavedTeams(s).find((team) => team.id === inUseCopy.id),
-    before[2]
-  );
-  assert.deepEqual(
-    readSavedTeams(s).find((team) => team.id === unrelated.id),
-    before[1]
-  );
+  assert.deepEqual(readSavedTeams(s).slice(0, 2), [before[1], before[2]]);
 });
 
 test('moving at the record limit succeeds and quota failures keep existing bytes', () => {
@@ -458,14 +426,19 @@ test('moving at the record limit succeeds and quota failures keep existing bytes
   assert.equal(quota.data, before);
 });
 
-test('requested, active and fallback IDs never resolve to Wishlist entries', () => {
-  const list = [wish('w1'), snapshot('a'), wish('w2'), snapshot('b')];
+test('requested, active and fallback IDs never resolve to Wishlist or Favorites entries', () => {
+  const fav = (id) => ({ ...snapshot(id), collection: 'favorites' });
+  const w1 = wish('w1'),
+    w2 = wish('w2'),
+    f1 = fav('f1'),
+    f2 = fav('f2');
+  const list = [w1, f1, snapshot('a'), w2, f2, snapshot('b')];
   assert.equal(resolveSavedTeamId(list, 'w1', null), 'a');
-  assert.equal(resolveSavedTeamId(list, null, 'w2'), 'a');
-  assert.equal(resolveSavedTeamId(list, 'w1', 'w2'), 'a');
-  assert.equal(resolveSavedTeamId(list, 'b', 'w2'), 'b');
-  assert.equal(resolveSavedTeamId(list, 'w1', 'a'), 'a');
-  assert.equal(resolveSavedTeamId([wish('w1'), wish('w2')], null, 'w1'), null);
+  assert.equal(resolveSavedTeamId(list, 'f1', null), 'a');
+  assert.equal(resolveSavedTeamId(list, null, 'f2'), 'a');
+  assert.equal(resolveSavedTeamId(list, 'f1', 'w2'), 'a');
+  assert.equal(resolveSavedTeamId(list, 'b', 'f2'), 'b');
+  assert.equal(resolveSavedTeamId([w1, f1], null, 'f1'), null);
   assert.equal(resolveSavedTeamId([], null, null), null);
 });
 
@@ -490,11 +463,9 @@ test('bookmarking leaves existing My Teams copies untouched and stays idempotent
 });
 
 test('removing a bookmark deletes only it with one write; absent IDs write nothing', () => {
-  const keep = snapshot('keep');
-  const s = storage([keep, wish('w1'), wish('w2')]);
-  const remaining = removeWishlistedTeam(s, 'w1');
+  const s = storage([snapshot('keep'), wish('w1'), wish('w2')]);
   assert.deepEqual(
-    remaining.map((x) => x.id),
+    removeWishlistedTeam(s, 'w1').map((x) => x.id),
     ['keep', 'w2']
   );
   assert.equal(s.writes, 1);
@@ -678,20 +649,22 @@ test('catalog Use promotes an imported bookmark by source URL without replacing 
 test('catalog matching ignores empty and noncanonical URLs and rejects multiple Wishlist copies', () => {
   const team = { ...catalogTeam('catalog'), pasteUrl };
   const byId = {
-    ...snapshot('id-copy'),
-    collection: 'wishlist',
-    original: { ...snapshot('id-copy').original, id: team.id },
+    ...wish('id-copy'),
+    original: { ...wish('id-copy').original, id: team.id },
   };
   const byUrl = {
-    ...snapshot('url-copy'),
-    collection: 'wishlist',
-    original: { ...snapshot('url-copy').original, pasteUrl },
+    ...wish('url-copy'),
+    original: { ...wish('url-copy').original, pasteUrl },
   };
-  const inUse = { ...snapshot('in-use'), original: { ...byUrl.original } };
-  const s = storage([byId, byUrl, inUse]);
+  const s = storage([
+    byId,
+    byUrl,
+    { ...snapshot('in-use'), original: { ...byUrl.original } },
+  ]);
   const before = s.data;
+  const entries = (t) => wishlistedCatalogEntries(readSavedTeams(s), t);
   assert.deepEqual(
-    wishlistedCatalogEntries(readSavedTeams(s), team).map((entry) => entry.id),
+    entries(team).map((e) => e.id),
     ['id-copy', 'url-copy']
   );
   assert.throws(
@@ -703,26 +676,20 @@ test('catalog matching ignores empty and noncanonical URLs and rejects multiple 
   assert.equal(s.data, before);
   assert.equal(s.writes, 0);
   const other = { ...catalogTeam('other'), pasteUrl: '' };
-  assert.deepEqual(wishlistedCatalogEntries(readSavedTeams(s), other), []);
-  const malformed = { ...other, pasteUrl: 'not a canonical URL' };
-  assert.deepEqual(
-    wishlistedCatalogEntries(
-      [
-        {
-          ...byUrl,
-          original: { ...byUrl.original, pasteUrl: malformed.pasteUrl },
-        },
-      ],
-      malformed
-    ),
-    []
-  );
+  assert.deepEqual(entries(other), []);
+  const bad = { ...other, pasteUrl: 'not a canonical URL' };
+  const badEntry = {
+    ...byUrl,
+    original: { ...byUrl.original, pasteUrl: bad.pasteUrl },
+  };
+  assert.deepEqual(wishlistedCatalogEntries([badEntry], bad), []);
   const vrUrl = 'https://www.vrpastes.com/AbC12345';
+  const vrEntry = {
+    ...byUrl,
+    original: { ...byUrl.original, pasteUrl: vrUrl },
+  };
   assert.equal(
-    wishlistedCatalogEntries(
-      [{ ...byUrl, original: { ...byUrl.original, pasteUrl: vrUrl } }],
-      { ...other, pasteUrl: vrUrl }
-    )[0].id,
+    wishlistedCatalogEntries([vrEntry], { ...other, pasteUrl: vrUrl })[0].id,
     byUrl.id
   );
 });
@@ -731,11 +698,8 @@ test('Poképaste import failures leave saved bytes untouched', () => {
   const initial = [snapshot('keep')];
   const s = storage(initial);
   const before = s.data;
-  assert.throws(
-    () =>
-      addPokepasteToWishlist(s, { ...payload, paste: 'not a team' }, 'M-C', []),
-    /six sets/
-  );
+  const bad = { ...payload, paste: 'not a team' };
+  assert.throws(() => addPokepasteToWishlist(s, bad, 'M-C', []), /six sets/);
   assert.equal(s.data, before);
   assert.equal(s.writes, 0);
   const quota = failing(initial);
@@ -775,23 +739,11 @@ test('empty query keeps order and search ignores originals and items', () => {
   const teams = names('alpha', 'beta');
   assert.equal(rankSavedTeams(teams, ''), teams);
   assert.equal(rankSavedTeams(teams, '   '), teams);
-  const edited = {
-    ...teams[0],
-    original: {
-      ...teams[0].original,
-      name: 'Original Hidden',
-      members: teams[0].original.members.map((m) => ({
-        ...m,
-        pokemon: 'Garchomp',
-      })),
-    },
-    members: teams[0].members.map((m) => ({ ...m, item: 'Choice Scarf' })),
-  };
-  assert.deepEqual(rankSavedTeams([edited], 'garchomp'), []);
-  assert.deepEqual(rankSavedTeams([edited], 'hidden'), []);
-  assert.deepEqual(rankSavedTeams([edited], 'scarf'), []);
-  assert.deepEqual(
-    rankSavedTeams([edited], 'alpha').map((x) => x.id),
-    [edited.id]
-  );
+  const edited = structuredClone(teams[0]);
+  edited.original.name = 'Original Hidden';
+  for (const m of edited.original.members) m.pokemon = 'Garchomp';
+  for (const m of edited.members) m.item = 'Choice Scarf';
+  for (const q of ['garchomp', 'hidden', 'scarf'])
+    assert.deepEqual(rankSavedTeams([edited], q), []);
+  assert.equal(rankSavedTeams([edited], 'alpha')[0].id, edited.id);
 });

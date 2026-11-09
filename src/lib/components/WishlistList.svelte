@@ -11,6 +11,7 @@
   import { Button } from './ui/button/index.js';
 
   let {
+    collection = 'wishlist',
     entries,
     disabled,
     sortable,
@@ -19,6 +20,7 @@
     onremove,
     onreorder,
   }: {
+    collection?: 'wishlist' | 'favorites';
     entries: SavedTeam[];
     disabled: boolean;
     sortable: boolean;
@@ -27,6 +29,7 @@
     onremove: (entry: SavedTeam) => void;
     onreorder: (orderedIds: string[], expectedIds: string[]) => boolean;
   } = $props();
+  const label = $derived(collection === 'favorites' ? 'Favorites' : 'Wishlist');
 
   let list: HTMLUListElement;
 
@@ -107,7 +110,7 @@
         titleActions={sortable ? titleActions : undefined}
         showRegulation
         query=""
-        href={`wishlist?team=${encodeURIComponent(entry.id)}`}
+        href={`${collection}?team=${encodeURIComponent(entry.id)}`}
         fromCatalog={false}
       >
         {#snippet leadingActions()}
@@ -127,8 +130,8 @@
             variant="quiet"
             size="icon-compact"
             class="size-11"
-            aria-label="Remove from Wishlist"
-            title="Remove from Wishlist"
+            aria-label={`Remove from ${label}`}
+            title={`Remove from ${label}`}
             {disabled}
             onclick={() => onremove(entry)}
           >

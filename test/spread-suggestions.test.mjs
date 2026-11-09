@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   catalogSpreadSuggestions,
+  favoriteMembersFor,
   originalSpreadSuggestion,
 } from '../src/lib/workbench.ts';
 
@@ -490,4 +491,32 @@ test('catalog paging budget absorbs a duplicate source row at the batch boundary
   assert.equal(shortfall.length, visibleCatalogCount + rows.length);
   assert.equal(shown.length, visibleCatalogCount);
   assert.ok(shown.every(({ spread }) => spread !== revealed));
+});
+
+test('Favorite teams produce distinct spread suggestions in fit+order sequence', () => {
+  const fav1 = {
+    id: 'fav-1',
+    name: 'Fav 1',
+    members: [member('Rotom-Wash', 'Modest', modestSpreads[0])],
+  };
+  const fav2 = {
+    id: 'fav-2',
+    name: 'Fav 2',
+    members: [
+      member('Rotom-Wash', 'Modest', modestSpreads[1]),
+      member('Incineroar'),
+    ],
+  };
+  const entries = favoriteMembersFor(
+    self,
+    [fav1, fav2],
+    [member('Incineroar')]
+  );
+  const spreads = entries
+    .map(({ member: m }) => originalSpreadSuggestion(self, m))
+    .filter(Boolean);
+  assert.deepEqual(
+    spreads.map((s) => s.spread),
+    [modestSpreads[1], modestSpreads[0]]
+  );
 });

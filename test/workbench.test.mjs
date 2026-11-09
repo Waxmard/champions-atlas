@@ -376,12 +376,15 @@ test('readSavedTeams rejects oversized and duplicate-ID storage', () => {
   );
 });
 
-test('custom teams validate paste and preserve independent snapshots and empty source metadata through storage', () => {
-  const paste = Array.from(
+const pasteFor = (evs) =>
+  Array.from(
     { length: 6 },
     (_, i) =>
-      `Pokemon${i} @ Item\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- One\n- Two\n- Three\n- Four`
+      `Pokemon${i} @ Item\nAbility: Ability\nEVs: ${evs}\nAdamant Nature\n- One\n- Two\n- Three\n- Four`
   ).join('\n\n');
+
+test('custom teams validate paste and preserve independent snapshots and empty source metadata through storage', () => {
+  const paste = pasteFor('32 HP');
   const custom = newCustomTeam('  Mine  ', 'M-C', paste);
   assert.throws(() => newCustomTeam('  ', 'M-C', paste), /name/);
   assert.throws(
@@ -405,6 +408,26 @@ test('custom teams validate paste and preserve independent snapshots and empty s
   assert.deepEqual(readSavedTeams(storage), [custom]);
   const invalid = { ...custom, sources: [{ name: 'No URL', pasteUrl: '' }] };
   assert.throws(() => saveTeam(storage, invalid), /untouched/);
+});
+
+test('savedTeamSchema and saveTeam validate and preserve favoriteOrder only within favorites', () => {
+  const paste = pasteFor('32 HP / 32 Atk / 2 Spe');
+  const base = {
+    ...newCustomTeam('Fav', 'M-C', paste),
+    collection: 'favorites',
+  };
+  let raw = JSON.stringify([{ ...base, favoriteOrder: 2 }]);
+  const storage = { getItem: () => raw, setItem: (_, value) => (raw = value) };
+  assert.equal(readSavedTeams(storage)[0].favoriteOrder, 2);
+  const renamed = saveTeam(storage, {
+    ...base,
+    name: 'Renamed',
+    favoriteOrder: 99,
+  })[0];
+  assert.equal(renamed.favoriteOrder, 2);
+  const promoted = saveTeam(storage, { ...renamed, collection: 'my-teams' })[0];
+  assert.equal(promoted.favoriteOrder, undefined);
+  assert.equal(Object.hasOwn(promoted, 'favoriteOrder'), false);
 });
 
 test('generateUUID produces valid RFC4122 v4 UUID', () => {
