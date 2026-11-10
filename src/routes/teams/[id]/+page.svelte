@@ -9,7 +9,9 @@
   import Copy from '@lucide/svelte/icons/copy';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import ExternalLink from '@lucide/svelte/icons/external-link';
+  import FileText from '@lucide/svelte/icons/file-text';
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
+  import Modal from '#lib/components/Modal.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -76,6 +78,7 @@
   let actionError = $state('');
   let pending = $state(false);
   let selectedMember = $state.raw<Member | null>(null);
+  let pasteOpen = $state(false);
   const wishlisted = $derived(wishlistedCatalogEntries(saved, team).length > 0);
   onMount(() => {
     ready = true;
@@ -402,20 +405,30 @@
       {/if}
     </section>
     {#if paste}
-      <details class="plate mt-8 px-5 py-4">
-        <summary class="cursor-pointer text-[0.9375rem] font-semibold"
-          >Published paste text</summary
-        >
-        {#if team.pasteNotes}<p class="term mt-3">
-            Paste notes (may differ from the listed regulation): {team.pasteNotes}
-          </p>{/if}
-        {#if hasActiveEnrichment}<p class="provenance mt-3">
-            Copy and Save include linked creator additions; the original paste
-            text below does not.
-          </p>{/if}
-        <pre
-          class="mt-4 overflow-x-auto font-mono text-xs leading-6">{originalPaste}</pre>
-      </details>
+      <Button
+        variant="quiet"
+        class="-ms-3 mt-6"
+        aria-haspopup="dialog"
+        onclick={() => (pasteOpen = true)}
+      >
+        <FileText class="size-4" aria-hidden="true" />
+        Published paste text
+      </Button>
+      {#if pasteOpen}
+        <Modal title="Published paste text" onclose={() => (pasteOpen = false)}>
+          <div class="space-y-3">
+            {#if team.pasteNotes}<p class="term">
+                Paste notes (may differ from the listed regulation): {team.pasteNotes}
+              </p>{/if}
+            {#if hasActiveEnrichment}<p class="provenance">
+                Copy and Save include linked creator additions; the original
+                paste text below does not.
+              </p>{/if}
+            <pre
+              class="overflow-x-auto font-mono text-xs leading-6">{originalPaste}</pre>
+          </div>
+        </Modal>
+      {/if}
     {/if}
     {#if selectedMember}
       <FullSetDialog

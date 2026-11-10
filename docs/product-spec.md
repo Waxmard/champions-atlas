@@ -33,8 +33,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   calculations. Legacy filters canonicalize to the shared identity while
   retaining explicit constraints; duplicate aliases remain invalid.
 - Default Browse to the current regulation; make older regulations available
-  through All regulations. Selected Pokémon remain compact when **Filters** is
-  open, with item, ability, and move controls inside each selection.
+  through All regulations. Selected Pokémon stay compact on the page; **Filters**
+  opens a pop-up with the regulation choice and item, ability, and move controls
+  for each selection.
 - Prioritize relevant results with the ordering in [data sources](data-sources.md).
 - Saving or moving a team does not hide its catalog entry; Browse filters still
   apply.
@@ -87,9 +88,9 @@ restoration conflicts with the current roster.
 
 My Teams shows a **Record** row for the selected team, such as
 **3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
-number, and is omitted before the first game. The row is collapsed when a team
-opens; tapping it reveals **Win** and **Loss**, which log the last game, and
-**Edit**, which reveals buttons to add or remove a win or a loss and **Reset**.
+number, and is omitted before the first game. Tapping the row opens a pop-up.
+**Win** and **Loss** log the last game and close it. **Edit** reveals buttons to
+add or remove a win or a loss and **Reset**.
 Reset asks for confirmation and returns the record to 0W – 0L. The record never
 goes below zero and is unavailable while edits are pending or the team changed
 elsewhere. It is saved with the team, so it stays when the team moves between
@@ -113,7 +114,8 @@ supported lines; they never guess unknown values.
 **Reset text** discards its unsaved changes. While team text is unsaved, team
 selection and competing edits are unavailable. Reordered sets keep their
 Pokémon's metadata and unchanged legacy details. Deleting the team still confirms
-before discarding unsaved input.
+before discarding unsaved input. Closing the team text pop-up with unsaved
+changes asks before discarding them. Saving closes the pop-up.
 
 The EV slider keeps vertical page scrolling,
 with a 44-pixel touch target across its full height. **Fill** adds or removes
@@ -123,10 +125,9 @@ difference, the differing total stays uncommitted and the editor reports it when
 you finish.
 
 The nature field, its suggestion rows, the current allocation, and spread
-suggestions all live on the EV tab and remain visible while manual controls are
-closed. **Adjust EVs manually** is a native disclosure that starts closed
-whenever you open the EV editor. It contains the number fields, quick allocation
-buttons, and sliders. The app does not save its open state.
+suggestions all remain visible on the EV tab. **Adjust EVs manually** opens a
+pop-up over the set editor with the number fields, quick allocation buttons, and
+sliders. It starts closed whenever you open the EV editor.
 
 Record and reuse one explicit **my in-game set** per Browse identity,
 representing the set currently in your Pokémon Champions box. Recording changes
@@ -230,21 +231,21 @@ distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-The **Details** tab below the team holds the team name and the original team's
+The **Details** pop-up holds the team name and the original team's
 results, source links, paste link, and replica code. The original team stays
 stored with the saved team, but it cannot be restored from My Teams.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
-The **Swaps** tab below the team lists up to four whole-set replacements
+The **Swaps** pop-up lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 suggested Pokémon, the Pokémon it replaces, the set's item, ability, and nature,
 and its shared-teammate count. Rows rank by the form's weighted vote, then by
 shared teammates. Sets from
 Favorites teams rank in the same list, need the same three shared teammates,
 count as much as the best-placed supporting team, and are labelled
-**Favorite**. Applying a row replaces the whole set and
-leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
+**Favorite**. Applying a row replaces the whole set,
+leaves **Revert changes** available, and closes the pop-up. **Swap in a specific Pokémon** looks one
 resolved form up across every slot. Swaps stay unavailable while team text is
 unsaved or an editor is open, and a team already holding two Mega Pokémon is not
 offered another.

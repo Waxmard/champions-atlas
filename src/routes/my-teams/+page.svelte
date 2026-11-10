@@ -5,6 +5,7 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
+  import Modal from '#lib/components/Modal.svelte';
   import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
   import RecordPanel from '#lib/components/RecordPanel.svelte';
   import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
@@ -40,8 +41,6 @@
     ['swaps', 'Swaps'],
     ['text', 'Team text'],
   ] as const;
-  const segmentClass = (active: boolean) =>
-    `inline-flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold transition-colors outline-none max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm ${active ? 'bg-info text-info-content' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}`;
   let saved = $state<SavedTeam[]>([]),
     favorites = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
@@ -192,6 +191,14 @@
     panel = next;
     return true;
   }
+  function closePanel() {
+    if (changed) {
+      if (!confirm('Discard unsaved input?')) return;
+      pasteText = draft ? exportPaste(draft.members) : '';
+      pasteError = '';
+    }
+    setPanel(null);
+  }
   function blurName(e: FocusEvent) {
     if (
       pickerPress ||
@@ -276,8 +283,10 @@
     if (!draft || !changed || editing || deleting || stale) return;
     try {
       const members = parseTeamPaste(pasteText, draft.members);
-      if (persistChange((team) => ({ ...team, members }), false, true))
+      if (persistChange((team) => ({ ...team, members }), false, true)) {
+        panel = null;
         notify('Team text saved.');
+      }
     } catch (e) {
       pasteError =
         e instanceof Error ? e.message : 'Invalid Showdown team text.';
@@ -358,22 +367,20 @@
       ...team,
       members: replaceSlot(team.members, slot, $state.snapshot(member)),
     }));
-    if (applied)
-      void tick().then(() =>
-        document
-          .getElementById('team-tab-swaps')
-          ?.focus({ preventScroll: true })
-      );
+    if (applied) {
+      panel = null;
+      notify('Swap applied.');
+    }
     return applied;
   }
   async function copyPaste() {
     if (!draft || changed || editing) return;
-    if (!setPanel('text')) return;
-    const ok = await copyText(exportPaste(draft.members));
-    errorMessage = ok
-      ? ''
-      : 'Clipboard unavailable. Select and copy the export text below.';
-    if (ok) notify('Team text copied.');
+    if (await copyText(exportPaste(draft.members))) {
+      errorMessage = '';
+      notify('Team text copied.');
+    } else if (setPanel('text'))
+      pasteError =
+        'Clipboard unavailable. Select and copy the team text above.';
   }
   async function removeSelectedTeam() {
     if (!draft || editing || deleting) return;
@@ -561,13 +568,13 @@
     {/if}
   </div>
   {#if ready && !storageError && draft}
+    {@const team = draft}
     {#if changed}
       <p role="status" class="provenance mt-1">
         Save or reset team text before changing the team.
       </p>
     {/if}
     <div
-      id="team-tabs"
       role="group"
       aria-label="Team tools"
       class="surface mt-2 grid min-w-0 grid-cols-3 items-center p-1"
@@ -575,28 +582,31 @@
       {#each panels as [id, label] (id)}
         <button
           type="button"
-          id={`team-tab-${id}`}
-          class="{segmentClass(
-            panel === id
-          )} cursor-pointer disabled:pointer-events-none disabled:opacity-50"
-          aria-expanded={panel === id}
-          aria-controls={panel === id ? 'team-panel' : undefined}
+          class="inline-flex min-h-9 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold text-base-content/70 transition-colors outline-none hover:bg-base-200 hover:text-base-content disabled:pointer-events-none disabled:opacity-50 max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm"
+          aria-haspopup="dialog"
           disabled={changed && id !== 'text'}
-          onclick={() => setPanel(panel === id ? null : id)}
+          onclick={() => setPanel(id)}
         >
           {label}
         </button>
       {/each}
     </div>
     {#if panel}
-      <div
-        id="team-panel"
-        role="region"
-        aria-labelledby={`team-tab-${panel}`}
-        class="plate mt-2 min-w-0 p-3"
+      <Modal
+        title={panels.find(([id]) => id === panel)?.[1] ?? ''}
+        onclose={closePanel}
       >
+        {#if errorMessage}
+          <p
+            role="alert"
+            class="mb-3 text-sm"
+            style="color: var(--color-error-content)"
+          >
+            {errorMessage}
+          </p>
+        {/if}
         {#if panel === 'details'}
-          {@const match = collections.resolveCatalogTeam(draft.original, teams)}
+          {@const match = collections.resolveCatalogTeam(team.original, teams)}
           <div class="min-w-0 space-y-3">
             <div class="min-w-0">
               <label class="term block"
@@ -608,7 +618,7 @@
                   disabled={changed}
                   aria-invalid={nameError ? 'true' : undefined}
                   aria-describedby="team-name-error"
-                  bind:value={draft.name}
+                  bind:value={team.name}
                   oninput={() => (nameError = '')}
                   onblur={blurName}
                   onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
@@ -618,7 +628,7 @@
                 {nameError}
               </p>
             </div>
-            <TeamSources team={draft} currentRegulation={current} />
+            <TeamSources {team} currentRegulation={current} />
             {#if match}<a
                 class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
                 href={resolve(`teams/${match.id}`)}>View catalog details</a
@@ -627,9 +637,9 @@
               <p class="provenance">
                 {dirty ? 'Unsaved input.' : 'Saved on this device.'}
               </p>
-              {#if draft.name !== draft.original.name}
+              {#if team.name !== team.original.name}
                 <p class="provenance max-w-full min-w-0 wrap-anywhere">
-                  Original: {draft.original.name}
+                  Original: {team.original.name}
                 </p>
               {/if}
               <p class="provenance">
@@ -639,7 +649,7 @@
           </div>
         {:else if panel === 'swaps'}
           <SwapSuggestions
-            members={draft.members}
+            members={team.members}
             {teams}
             currentRegulation={current}
             tags={catalogState.tags}
@@ -680,7 +690,7 @@
             >
           </div>
         {/if}
-      </div>
+      </Modal>
     {/if}
   {/if}
   {#if activeEditIndex !== null && draft && editorMember}
@@ -689,7 +699,7 @@
       use:openSetDialog
       oncancel={handleDialogCancel}
       aria-label={`Edit ${editorMember.pokemon} set`}
-      class="set-editor-dialog fixed inset-0 z-50 m-0 flex h-[100dvh] max-h-none w-full max-w-none flex-col overflow-hidden border-0 bg-base-100 p-0 text-base-content shadow-xl sm:top-8 sm:bottom-auto sm:mx-auto sm:h-auto sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100%-4rem)] sm:max-w-2xl sm:rounded-box sm:border"
+      class="set-editor-dialog fixed inset-0 z-50 m-auto flex h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[46rem] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
     >
       <SetEditorSheet
         bind:this={editorRef}

@@ -198,12 +198,10 @@
   </section>
 
   {#if member.set?.trim()}
-    <details class="plate min-w-0 px-3.5 py-2 sm:px-4">
-      <summary class="min-h-11 cursor-pointer pt-3 text-sm font-semibold">
-        Set text
-      </summary>
+    <section class="plate min-w-0 p-3.5 sm:p-4">
+      <h3 class="term mb-2">Set text</h3>
       <pre
-        class="pb-2 text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">{member.set}</pre>
-    </details>
+        class="text-sm leading-relaxed wrap-anywhere whitespace-pre-wrap">{member.set}</pre>
+    </section>
   {/if}
 </div>
