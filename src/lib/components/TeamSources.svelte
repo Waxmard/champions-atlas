@@ -18,6 +18,20 @@
     replicaCopyFailed = !ok;
     if (ok) notify('Replica code copied.');
   }
+  const missingMetadata = $derived(
+    team.origin !== 'custom' &&
+      [
+        'sheetIds',
+        'creator',
+        'publishedAt',
+        'replicaCode',
+        'replicaStatus',
+        'reports',
+        'pasteNotes',
+      ].some(
+        (key) => team.original[key as keyof typeof team.original] === undefined
+      )
+  );
   function safeUrl(value: string): boolean {
     try {
       return ['http:', 'https:'].includes(new URL(value).protocol);
@@ -27,6 +41,27 @@
   }
 </script>
 
+{#if team.original.creator || team.original.publishedAt}
+  <dl class="grid gap-3 sm:grid-cols-2">
+    {#if team.original.creator}<div class="min-w-0">
+        <dt class="term">Creator</dt>
+        <dd class="wrap-anywhere">{team.original.creator}</dd>
+      </div>{/if}
+    {#if team.original.publishedAt}<div>
+        <dt class="term">Published</dt>
+        <dd>{team.original.publishedAt}</dd>
+      </div>{/if}
+  </dl>
+{/if}
+{#if team.original.regulationInference}<a
+    class="inline-flex min-h-11 link items-center"
+    href={team.original.regulationInference.sourceUrl}
+    target="_blank"
+    rel="external noreferrer">Regulation inferred from video date</a
+  >{/if}
+{#if missingMetadata}<p class="provenance">
+    Some original metadata was not retained when this team was saved.
+  </p>{/if}
 {#if team.original.reports?.length || team.origin !== 'custom'}
   <div class="min-w-0">
     <h3 class="term">Results & sources</h3>

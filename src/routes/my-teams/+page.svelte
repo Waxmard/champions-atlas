@@ -359,7 +359,7 @@
   }
   async function copyPaste() {
     if (!draft || changed || editing) return;
-    setPanel('text');
+    if (!setPanel('text')) return;
     const ok = await copyText(exportPaste(draft.members));
     errorMessage = ok
       ? ''
