@@ -433,7 +433,9 @@
   <div
     class="team-workspace grid min-w-0 items-start gap-2 {hasTeam
       ? 'team-band landscape:md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] landscape:md:[direction:ltr]'
-      : 'pt-2'}"
+      : ready
+        ? 'pt-2'
+        : 'team-band'}"
   >
     <div
       class="team-controls min-w-0 space-y-2 wrap-anywhere {hasTeam
