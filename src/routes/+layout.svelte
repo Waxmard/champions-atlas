@@ -544,15 +544,15 @@
     class="sticky top-0 z-40 border-b border-base-300 bg-base-100"
   >
     <div
-      class="app-container flex items-center justify-between gap-2 pt-[calc(0.25rem+env(safe-area-inset-top))] pb-1"
+      class="app-container flex items-center justify-between gap-2 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5"
     >
       <a
         href={brandHref}
         class="nav-pill -ms-3 justify-start text-base-content hover:bg-base-200"
       >
-        <img src="/favicon.svg" alt="" width="32" height="35" />
+        <img src="/favicon.svg" alt="" width="36" height="39" />
         <span
-          class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
+          class="text-xl leading-none font-extrabold tracking-tight whitespace-nowrap"
           >Champion's Atlas</span
         >
       </a>
@@ -641,7 +641,7 @@
     {@render children()}
   {/key}
   <footer
-    class="mx-auto mt-10 mb-[var(--app-tabbar-height)] max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
+    class="mx-auto mt-2 mb-[var(--app-tabbar-height)] max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
   >
     <p class="provenance max-w-4xl">
       An independent fan project. Pokémon belongs to its respective owners. Team
