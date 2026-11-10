@@ -109,9 +109,6 @@ test('catalogSuggestions hides items a teammate already holds', () => {
     [source],
     'M-C',
     [teammate],
-    undefined,
-    '',
-    'Rotom-Wash',
     original
   );
   assert.ok(!suggestions.items.some((entry) => entry.value === 'Leftovers'));
@@ -674,4 +671,40 @@ test('only current-regulation teams feed suggestions', () => {
     swapped.map(({ slot }) => slot),
     [0, 1, 2, 4, 5]
   );
+});
+
+test('swap ideas put the best-backed replacement ahead of the closest team', () => {
+  const draft = [
+    'Incineroar',
+    'Rillaboom',
+    'Sneasler',
+    'Kingambit',
+    'Gholdengo',
+    'Dragonite',
+  ].map((name) => set(name));
+  const champion = [
+    { event: 'Champions ranked battles', rank: 'Champion Tier', sourceUrl: '' },
+  ];
+  const close = team('close', [
+    ...draft.slice(0, 5),
+    set('Garchomp', { item: 'Life Orb' }),
+  ]);
+  const backed = ['backed-a', 'backed-b'].map((id) =>
+    team(id, [...draft.slice(0, 3), set('Gardevoir', { item: 'Life Orb' })], {
+      reports: champion,
+    })
+  );
+  const ideas = swapIdeas(draft, [close, ...backed], 'M-C');
+  assert.deepEqual(
+    ideas.map(({ pokemon, sharedTeammates, support }) => [
+      pokemon,
+      sharedTeammates,
+      support,
+    ]),
+    [
+      ['Gardevoir', 3, 2],
+      ['Garchomp', 5, 0.0078125],
+    ]
+  );
+  assert.equal(new Set(ideas.map(({ slot }) => slot)).size, 2);
 });

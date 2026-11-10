@@ -163,3 +163,25 @@ test('better-placed sets outvote a larger number of weaker ones', () => {
   assert.equal(row.consensusSupport, 2);
   assert.equal(row.support, 2.375);
 });
+
+test('teams of unknown regulation are counted but do not vote', () => {
+  const unknown = dated(
+    'unknown-',
+    2,
+    W,
+    [set('Incineroar', { item: 'Life Orb' })],
+    ranked('Champion Tier')
+  ).map((entry) => ({ ...entry, regulation: 'Unknown' }));
+  const { items } = catalogSuggestions(
+    set('Incineroar'),
+    [...unknown, ...dated('plain-', 1, W, [set('Incineroar')])],
+    'M-C'
+  );
+  assert.deepEqual(
+    items.slice(0, 2).map(({ value, totalCount }) => [value, totalCount]),
+    [
+      ['Leftovers', 1],
+      ['Life Orb', 2],
+    ]
+  );
+});

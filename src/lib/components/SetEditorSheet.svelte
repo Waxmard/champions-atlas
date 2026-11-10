@@ -16,6 +16,7 @@
     memberValidationError,
   } from '#lib/member-validation.js';
   import { memberSetSignature } from '#lib/spread-provenance.js';
+  import { pokemonSuggestions } from '#lib/swap-suggestions.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import {
@@ -134,9 +135,6 @@
       teams,
       currentRegulation,
       teammates,
-      tagIndex,
-      pokemonQuery,
-      accepted.pokemon,
       originalMember,
       inGameMember,
       favoriteTeams
@@ -155,7 +153,18 @@
     const end = limit + extraFavorites(options);
     return { visible: options.slice(0, end), hasMore: options.length > end };
   };
-  const pokemonMatches = $derived(suggestions.pokemon);
+  const pokemonMatches = $derived(
+    pokemonSuggestions(
+      teammates,
+      teams,
+      currentRegulation,
+      accepted.pokemon,
+      tagIndex,
+      pokemonQuery,
+      { limit: 30 },
+      favoriteTeams
+    )
+  );
   const pokemonPage = $derived(pageList(pokemonMatches, visiblePokemonCount));
   const itemPage = $derived(
     pageList(

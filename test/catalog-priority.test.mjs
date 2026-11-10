@@ -606,9 +606,6 @@ test('catalog and original member suggestions use available source teams', () =>
     [],
     'M-C',
     [pikachu],
-    undefined,
-    '',
-    rotom.pokemon,
     originalMember
   );
   assert.ok(

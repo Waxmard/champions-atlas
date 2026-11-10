@@ -367,7 +367,9 @@ epoch. Each window of age costs one achievement band, so a newer team can pass a
 older team with a better result. Popularity counts in suggestions (Pokémon
 support, assembled sets, item, ability, move, and Nature values, and spread
 frequency) halve a team's vote for each achievement band or window it trails the
-best team in the pool. A team without a valid share date ranks as oldest.
+best team in the pool. Teams of Unknown regulation carry no vote on item,
+ability, move, and Nature values. A team without a valid share date ranks as
+oldest.
 
 Browse orders known regulations ahead of Unknown, then ranks resource groups:
 complete EVs with a video, complete EVs without a video, a video without complete

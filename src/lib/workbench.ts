@@ -29,13 +29,11 @@ import {
 } from './paste.ts';
 import { speedFor } from './stats.ts';
 import {
-  pokemonSuggestions,
   rankFavoriteTeams,
   sourceTeamFit,
   type FavoriteTeamSource,
   type SourceTeamFit,
 } from './swap-suggestions.ts';
-import type { TeamTagsIndex } from './tags.ts';
 import {
   pasteUrlSchema,
   regulationInferenceSchema,
@@ -309,9 +307,6 @@ export function catalogSuggestions(
   teams: Team[],
   currentRegulation: string,
   teammates: Member[] = [],
-  tags?: TeamTagsIndex,
-  pokemonQuery = '',
-  originalPokemon = typeof target === 'string' ? target : target.pokemon,
   originalMember?: Member,
   inGameMember?: Member,
   favoriteTeams: readonly FavoriteTeamSource[] = []
@@ -363,7 +358,7 @@ export function catalogSuggestions(
     Boolean(a && b && normalize(a) === normalize(b));
   const weight = voteWeights(teams, currentRegulation);
   for (const team of teams) {
-    const teamWeight = weight(team);
+    const teamWeight = team.regulation === 'Unknown' ? 0 : weight(team);
     const isCurrent = team.regulation === currentRegulation;
     let teamSim = 0;
     if (teammates.length) {
@@ -546,16 +541,6 @@ export function catalogSuggestions(
       [inGameNature],
       favorites.map((m) => canonicalNature(m.nature) ?? null)
     ),
-    pokemon: pokemonSuggestions(
-      teammates,
-      teams,
-      currentRegulation,
-      originalPokemon,
-      tags,
-      pokemonQuery,
-      { limit: 30 },
-      favoriteTeams
-    ),
   };
 }
 
@@ -566,6 +551,7 @@ interface CatalogSpreadOption {
   currentCount: number;
   currentWeight: number;
   totalCount: number;
+  itemWeights: Map<string, number>;
   sources: Team[];
 }
 
@@ -646,23 +632,30 @@ function catalogSpreadIndex(
       }
       const spread = formatChampionsSpread(values);
       const key = `${normalize(nature)}|${normalize(spread)}`;
-      const option = options.get(key);
-      if (option) {
-        option.totalCount++;
-        if (isCurrent) option.currentCount++;
-        option.currentWeight += teamWeight;
-        option.sources.push(team);
-      } else {
-        options.set(key, {
+      let option = options.get(key);
+      if (!option) {
+        option = {
           spread,
           nature,
           values,
-          currentCount: isCurrent ? 1 : 0,
-          currentWeight: teamWeight,
-          totalCount: 1,
-          sources: [team],
-        });
+          currentCount: 0,
+          currentWeight: 0,
+          totalCount: 0,
+          itemWeights: new Map(),
+          sources: [],
+        };
+        options.set(key, option);
       }
+      option.totalCount++;
+      if (isCurrent) option.currentCount++;
+      option.currentWeight += teamWeight;
+      option.sources.push(team);
+      const item = normalize(member.item ?? '');
+      if (item)
+        option.itemWeights.set(
+          item,
+          (option.itemWeights.get(item) ?? 0) + teamWeight
+        );
     }
   }
   const indexed = new Map<string, CatalogSpreadOption[]>();
@@ -671,6 +664,8 @@ function catalogSpreadIndex(
   spreadCache.set(teams, { regulation, bySpecies: indexed });
   return indexed;
 }
+
+const NEAR_COPY_SHARED = 4;
 
 export function catalogSpreadSuggestions(
   self: Member,
@@ -699,6 +694,7 @@ export function catalogSpreadSuggestions(
     fitCache.set(team, fit);
     return fit;
   };
+  const itemKey = normalize(self.item ?? '');
   const ranked = eligible.map((option) => {
     let source = option.sources[0];
     let fit = fitFor(source);
@@ -716,18 +712,27 @@ export function catalogSpreadSuggestions(
         fit = candidateFit;
       }
     }
-    return { option, source, fit };
+    return {
+      option,
+      source,
+      fit,
+      near: fit.shared >= NEAR_COPY_SHARED ? fit.shared : 0,
+      itemWeight: option.itemWeights.get(itemKey) ?? 0,
+    };
   });
   ranked.sort(
     (a, b) =>
+      b.near - a.near ||
+      (a.near ? b.fit.details - a.fit.details : 0) ||
+      b.itemWeight - a.itemWeight ||
+      b.option.currentWeight - a.option.currentWeight ||
       b.fit.shared - a.fit.shared ||
       b.fit.details - a.fit.details ||
       compareTeams(
         a.source,
         b.source,
         currentRegulation,
-        b.option.currentWeight - a.option.currentWeight ||
-          b.option.totalCount - a.option.totalCount
+        b.option.totalCount - a.option.totalCount
       ) ||
       a.option.spread.localeCompare(b.option.spread)
   );

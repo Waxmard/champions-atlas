@@ -475,7 +475,11 @@ export function pokemonSuggestions(
   excludePokemon?: string,
   tags?: TeamTagsIndex,
   query = '',
-  { minShared = 1, limit = 6 }: { minShared?: number; limit?: number } = {},
+  {
+    minShared = 1,
+    limit = 6,
+    bySupport = false,
+  }: { minShared?: number; limit?: number; bySupport?: boolean } = {},
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): PokemonSuggestion[] {
   const current = teams.filter((team) => team.regulation === currentRegulation);
@@ -564,6 +568,7 @@ export function pokemonSuggestions(
   const catalogRows: PokemonSuggestion[] = [];
   const ordered = [...candidates.values()].sort(
     (a, b) =>
+      (bySupport ? b.support - a.support : 0) ||
       b.bestShared - a.bestShared ||
       b.support - a.support ||
       b.bestDetails - a.bestDetails ||
@@ -687,16 +692,16 @@ export function swapIdeas(
   const pool: SwapSuggestion[] = [];
   for (const [slot, replaced] of members.entries()) {
     const teammates = members.filter((_, index) => index !== slot);
-    const [best] = pokemonSuggestions(
+    for (const idea of pokemonSuggestions(
       teammates,
       teams,
       currentRegulation,
       replaced.pokemon,
       tags,
       '',
-      { minShared: 3, limit: 1 }
-    );
-    if (best) pool.push({ ...best, slot });
+      { minShared: 3, limit, bySupport: true }
+    ))
+      pool.push({ ...idea, slot });
     if (favoriteTeams.length) {
       for (const fav of pokemonSuggestions(
         teammates,
@@ -716,8 +721,8 @@ export function swapIdeas(
   return pool
     .sort(
       (a, b) =>
-        b.sharedTeammates - a.sharedTeammates ||
         b.support - a.support ||
+        b.sharedTeammates - a.sharedTeammates ||
         b.matchingDetails - a.matchingDetails ||
         Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)) ||
         compareTeams(a.source, b.source, currentRegulation) ||

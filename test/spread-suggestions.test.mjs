@@ -134,9 +134,9 @@ test('missing or invalid Nature, form, pair, and nonpositive limits return no ro
 });
 
 test('team overlap and matched details rank the actual source teams', () => {
-  const pikachu = member('Pikachu', 'Timid');
-  const gholdengo = member('Gholdengo', 'Modest');
-  const shared = [pikachu, gholdengo];
+  const mates = ['Pikachu', 'Gholdengo', 'Incineroar', 'Rillaboom'].map(
+    (name) => member(name, 'Bold')
+  );
   const champion = source('champion-zero-overlap', modestSpreads[0], {
     reports: [
       {
@@ -146,18 +146,21 @@ test('team overlap and matched details rank the actual source teams', () => {
       },
     ],
   });
-  const twoShared = source('two-shared', modestSpreads[1], {
-    teammates: [member('Pikachu', 'Bold'), member('Gholdengo', 'Bold')],
-  });
-  assert.deepEqual(
-    spreadList(
-      catalogSpreadSuggestions(self, [champion, twoShared], 'M-C', 5, shared)
-    ),
-    [
-      ['Modest', modestSpreads[1]],
-      ['Modest', modestSpreads[0]],
-    ]
-  );
+  const order = (shared) =>
+    catalogSpreadSuggestions(
+      self,
+      [
+        champion,
+        source('overlap', modestSpreads[1], {
+          teammates: mates.slice(0, shared),
+        }),
+      ],
+      'M-C',
+      5,
+      mates
+    ).map(({ spread }) => spread);
+  assert.deepEqual(order(4), [modestSpreads[1], modestSpreads[0]]);
+  assert.deepEqual(order(3), [modestSpreads[0], modestSpreads[1]]);
 
   const detailed = member('Pikachu', 'Timid', '31 HP / 31 Atk / 4 Spe', {
     item: 'Light Ball',
@@ -250,45 +253,6 @@ test('result evidence outranks pair frequency when team fit is equal', () => {
   );
 });
 
-test('one spread uses one best source rather than combining fit and credentials', () => {
-  const pikachu = member('Pikachu', null, null, {
-    ability: null,
-    moves: [],
-  });
-  const championReport = [
-    {
-      event: 'Champions ranked battles',
-      rank: 'Champion Tier',
-      sourceUrl: '',
-    },
-  ];
-  const splitSources = [
-    source('a-split-champion', modestSpreads[0], {
-      reports: championReport,
-    }),
-    source('z-split-match', modestSpreads[0], {
-      teammates: [
-        member('Pikachu', 'Hardy', null, { ability: null, moves: [] }),
-      ],
-    }),
-    source('b-peer-champion-match', modestSpreads[1], {
-      reports: championReport,
-      teammates: [
-        member('Pikachu', 'Hardy', null, { ability: null, moves: [] }),
-      ],
-    }),
-  ];
-  assert.deepEqual(
-    spreadList(
-      catalogSpreadSuggestions(self, splitSources, 'M-C', 5, [pikachu])
-    ),
-    [
-      ['Modest', modestSpreads[1]],
-      ['Modest', modestSpreads[0]],
-    ]
-  );
-});
-
 test('roster-specific ordering does not contaminate the shared catalog cache', () => {
   const pikachu = member('Pikachu', null);
   const gholdengo = member('Gholdengo', null);
@@ -369,6 +333,21 @@ test('result-weighted frequency breaks ties between equally placed sources', () 
     ['Modest', modestSpreads[1]],
     ['Modest', modestSpreads[0]],
   ]);
+});
+
+test('sets holding the same item vote before the overall count', () => {
+  const holding = (id, spread, item) =>
+    team(id, 'M-C', [member('Rotom-Wash', 'Modest', spread, { item })]);
+  const catalog = [
+    holding('specs', modestSpreads[0], 'Choice Specs'),
+    holding('berry-1', modestSpreads[1], 'Sitrus Berry'),
+    holding('berry-2', modestSpreads[1], 'Sitrus Berry'),
+  ];
+  const top = (item) =>
+    catalogSpreadSuggestions({ ...self, item }, catalog, 'M-C')[0].spread;
+  assert.equal(top('choice specs'), modestSpreads[0]);
+  assert.equal(top('Sitrus Berry'), modestSpreads[1]);
+  assert.equal(top(null), modestSpreads[1]);
 });
 
 test('catalog spreads aggregate current-regulation observations for the selected nature', () => {

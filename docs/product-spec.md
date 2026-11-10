@@ -227,10 +227,11 @@ The two-Mega limit applies to Pokémon replacement suggestions.
 The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 suggested Pokémon, the Pokémon it replaces, the set's item, ability, and nature,
-and its shared-teammate count. Sets from Favorites teams rank in the same
-list, need the same three shared teammates, count as much as the best-placed
-supporting team, and
-are labelled **Favorite**. Applying a row replaces the whole set and
+and its shared-teammate count. Rows rank by how many qualifying teams use the
+form (weighted by result and recency), then by shared teammates. Sets from
+Favorites teams rank in the same list, need the same three shared teammates,
+count as much as the best-placed supporting team, and are labelled
+**Favorite**. Applying a row replaces the whole set and
 leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
 resolved form up across every slot. Swaps stay unavailable while team text is
 unsaved or an editor is open, and a team already holding two Mega Pokémon is not
@@ -249,7 +250,9 @@ Original and In-game values. Items another
 teammate already holds are not offered. Move suggestions include the species'
 newest available movepool, which ranks after catalog observations. In the set
 editor's Pokémon suggestions, Favorites sets rank among catalog suggestions by
-shared teammates until a name is typed, then they list first.
+shared teammates until a name is typed, then they list first. Teams of Unknown
+regulation count toward item, ability, move, and Nature totals but carry no
+vote, so their values rank after every voted value.
 
 Every suggestion surface renders as full-width rows with an icon cell, the name,
 and one muted detail line. Item, ability, move, Pokémon, and spread lists start
@@ -271,10 +274,13 @@ the source, moved points, and unmodified Speed without team counts. Expansion
 does not change saved teams. Selecting a spread, adjusting EVs, or selecting the
 same Nature preserves the expanded depth. Selecting a different Nature or
 reopening the EV editor resets the catalog allowance to ten.
-Fewer rows appear when eligible recorded data is insufficient. Matching catalog
-pairs rank by the best actual source team's shared teammates and matching set
-details for those teammates, then by recency-adjusted results, regulation, and
-credentials. Recency-weighted catalog frequency breaks ties before publication
+Fewer rows appear when eligible recorded data is insufficient. A catalog pair
+whose best source team shares four or more teammates ranks first, more shared
+teammates first, then by that team's matching set details. Remaining pairs rank
+by the result- and recency-weighted vote of current-regulation sets holding the
+edited set's item, then by the overall vote, then by the best source team's
+shared teammates and matching details, then by recency-adjusted results,
+regulation, and credentials. Total observations break ties before publication
 date or ID. Catalog counts use
 catalog observations only. Original and in-game suggestions retain their source
 labels and do not fill in unpublished original EVs.
