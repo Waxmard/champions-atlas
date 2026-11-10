@@ -21,7 +21,6 @@
   import { canonicalSnapshot } from '#lib/team-history.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import { Button } from '#lib/components/ui/button/index.js';
-  import type { ButtonVariant } from '#lib/components/ui/button/button.svelte';
 
   interface Props {
     teamId: string;
@@ -30,7 +29,6 @@
     pokemon?: string;
     memberIndex?: number;
     disabled?: boolean;
-    variant?: ButtonVariant;
   }
 
   let {
@@ -40,7 +38,6 @@
     pokemon,
     memberIndex,
     disabled = false,
-    variant = 'quiet',
   }: Props = $props();
   let alertMessage = $state('');
   let pendingPlan = $state.raw<CurrentSetSavePlan | null>(null);
@@ -305,7 +302,7 @@
 <div class={memberIndex === undefined ? 'contents' : 'px-2.5'}>
   {#if memberIndex === undefined && canRecord()}
     <Button
-      {variant}
+      variant="quiet"
       {disabled}
       aria-describedby={`in-game-sets-description-${teamId}`}
       onpointerdown={keepFocus}

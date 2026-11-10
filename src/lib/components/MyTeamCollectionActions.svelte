@@ -100,7 +100,7 @@
 >
   <span class="provenance ps-2" aria-hidden="true">Move to</span>
   <Button
-    variant="danger-quiet"
+    variant="quiet"
     class={action}
     aria-label="Move to Favorites"
     data-move-favorites
@@ -111,7 +111,7 @@
     <span>Favorites</span>
   </Button>
   <Button
-    variant="danger-quiet"
+    variant="quiet"
     class={action}
     aria-label="Move to Wishlist"
     disabled={moveDisabled}
@@ -131,13 +131,7 @@
     <Trash2 class="size-4" aria-hidden="true" />
     <span>Delete</span>
   </Button>
-  <CurrentSetSaveButton
-    {teamId}
-    {baseline}
-    {members}
-    {disabled}
-    variant="danger-quiet"
-  />
+  <CurrentSetSaveButton {teamId} {baseline} {members} {disabled} />
   <p
     role="alert"
     class="order-last basis-full px-2 text-sm {errorMessage
