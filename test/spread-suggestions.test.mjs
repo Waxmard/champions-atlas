@@ -354,6 +354,23 @@ test('recency-weighted frequency breaks ties between equally recent sources', ()
   ]);
 });
 
+test('result-weighted frequency breaks ties between equally placed sources', () => {
+  const ranked = (rank) => [
+    { event: 'Champions ranked battles', rank, sourceUrl: '' },
+  ];
+  const catalog = [
+    source('x-tier', modestSpreads[0], { reports: ranked('Champion Tier') }),
+    source('x-none-1', modestSpreads[0]),
+    source('x-none-2', modestSpreads[0]),
+    source('y-tier', modestSpreads[1], { reports: ranked('Champion Tier') }),
+    source('y-mb2', modestSpreads[1], { reports: ranked('Master Ball 2') }),
+  ];
+  assert.deepEqual(spreadList(catalogSpreadSuggestions(self, catalog, 'M-C')), [
+    ['Modest', modestSpreads[1]],
+    ['Modest', modestSpreads[0]],
+  ]);
+});
+
 test('catalog spreads aggregate current-regulation observations for the selected nature', () => {
   const catalog = [
     team('cur-1', 'M-C', [

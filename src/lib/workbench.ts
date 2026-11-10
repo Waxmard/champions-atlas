@@ -7,6 +7,7 @@ import {
   isPasteUrl,
   normalize,
   pokemonId,
+  voteWeights,
   type Member,
   type Team,
 } from './catalog.ts';
@@ -34,7 +35,6 @@ import {
   type FavoriteTeamSource,
   type SourceTeamFit,
 } from './swap-suggestions.ts';
-import { recencyWeights } from './recency.ts';
 import type { TeamTagsIndex } from './tags.ts';
 import {
   pasteUrlSchema,
@@ -361,7 +361,7 @@ export function catalogSuggestions(
   };
   const eq = (a: string | null, b: string | null) =>
     Boolean(a && b && normalize(a) === normalize(b));
-  const weight = recencyWeights(teams);
+  const weight = voteWeights(teams, currentRegulation);
   for (const team of teams) {
     const teamWeight = weight(team);
     const isCurrent = team.regulation === currentRegulation;
@@ -627,7 +627,7 @@ function catalogSpreadIndex(
   const cached = spreadCache.get(teams);
   if (cached && cached.regulation === regulation) return cached.bySpecies;
   const bySpecies = new Map<string, Map<string, CatalogSpreadOption>>();
-  const weight = recencyWeights(teams);
+  const weight = voteWeights(teams, regulation);
   for (const team of teams) {
     const isCurrent = team.regulation === regulation;
     const teamWeight = isCurrent ? weight(team) : 0;

@@ -366,8 +366,8 @@ Recency uses each team's share date in fixed 28-day windows counted from the Uni
 epoch. Each window of age costs one achievement band, so a newer team can pass an
 older team with a better result. Popularity counts in suggestions (Pokémon
 support, assembled sets, item, ability, move, and Nature values, and spread
-frequency) halve a team's vote for each window it trails the newest team. A team
-without a valid share date ranks as oldest.
+frequency) halve a team's vote for each achievement band or window it trails the
+best team in the pool. A team without a valid share date ranks as oldest.
 
 Browse orders known regulations ahead of Unknown, then ranks resource groups:
 complete EVs with a video, complete EVs without a video, a video without complete

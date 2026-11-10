@@ -202,10 +202,11 @@ current regulation are considered. A suggestion whose resolved form appears with
 one complete set in several teams keeps that set; otherwise the app assembles the
 most common item, the most common ability among sets holding that item, the most
 common Nature and EV pair for those, and the four most frequent moves. Counts
-favor recent teams: a team's vote halves for each 28-day window of age. An item
+favor better-placed and recent teams: a team's vote halves for each achievement
+band and each 28-day window of age it trails the best team. An item
 another teammate holds is never reused, and a suggested Mega keeps its own Mega
 Stone. Candidates rank by shared teammates, then by how many qualifying teams use
-the form (recency-weighted), then by matching details for those teammates, then by
+the form (weighted by result and recency), then by matching details for those teammates, then by
 recency-adjusted results, regulation, and credentials. Inferred archetype and role
 tags break only
 equally proven ties. Sources need not match the fixed five members exactly. Source
@@ -227,7 +228,8 @@ The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 suggested Pokémon, the Pokémon it replaces, the set's item, ability, and nature,
 and its shared-teammate count. Sets from Favorites teams rank in the same
-list, need the same three shared teammates, count as one supporting team, and
+list, need the same three shared teammates, count as much as the best-placed
+supporting team, and
 are labelled **Favorite**. Applying a row replaces the whole set and
 leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
 resolved form up across every slot. Swaps stay unavailable while team text is

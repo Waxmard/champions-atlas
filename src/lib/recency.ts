@@ -13,12 +13,3 @@ export function recencyPeriod(publishedAt: string): number {
   }
   return period;
 }
-
-export function recencyWeights(
-  teams: readonly { publishedAt: string }[]
-): (team: { publishedAt: string }) => number {
-  let newest = 0;
-  for (const team of teams)
-    newest = Math.max(newest, recencyPeriod(team.publishedAt));
-  return (team) => 0.5 ** (newest - recencyPeriod(team.publishedAt));
-}

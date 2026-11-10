@@ -638,6 +638,14 @@ export function compareTeams(
   );
 }
 
+export function voteWeights(teams: readonly Team[], current: string) {
+  const key = (team: Team) =>
+    evidenceOf(team, current).priority[0] - recencyPeriod(team.publishedAt);
+  let best = Infinity;
+  for (const team of teams) best = Math.min(best, key(team));
+  return (team: Team) => 0.5 ** (key(team) - best);
+}
+
 const browseBand = (priority: Priority): number => {
   const [level, division] = priority;
   if (level === 0) return 0;

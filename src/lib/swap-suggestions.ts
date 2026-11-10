@@ -7,6 +7,7 @@ import {
   isMegaSpecies,
   megaStoneTargets,
   normalize,
+  voteWeights,
   type Member,
   type Team,
 } from './catalog.ts';
@@ -18,7 +19,6 @@ import {
 import rosterA from '../../scripts/data/champions-m-a.json' with { type: 'json' };
 import rosterB from '../../scripts/data/champions-m-b.json' with { type: 'json' };
 import rosterC from '../../scripts/data/champions-m-c.json' with { type: 'json' };
-import { recencyWeights } from './recency.ts';
 import {
   missingRoles,
   postalRole,
@@ -479,7 +479,7 @@ export function pokemonSuggestions(
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): PokemonSuggestion[] {
   const current = teams.filter((team) => team.regulation === currentRegulation);
-  const weight = recencyWeights(current);
+  const weight = voteWeights(current, currentRegulation);
   const { ranked, missing } = rankedSourceTeams(
     teammates,
     current,

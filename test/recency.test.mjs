@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { compareBrowseTeams, compareTeams } from '../src/lib/catalog.ts';
+import {
+  compareBrowseTeams,
+  compareTeams,
+  voteWeights,
+} from '../src/lib/catalog.ts';
 import { RECENCY_WINDOW_DAYS, recencyPeriod } from '../src/lib/recency.ts';
 import { pokemonSuggestions } from '../src/lib/swap-suggestions.ts';
 import { catalogSuggestions } from '../src/lib/workbench.ts';
@@ -12,21 +16,31 @@ const dayIn = (window, offset = 0) =>
     .slice(0, 10);
 const W = 740;
 
+const ranked = (rank) => [
+  { event: 'Champions ranked battles', rank, sourceUrl: '' },
+];
 const ladder = (id, rank, window) => ({
   id,
   regulation: 'M-C',
   publishedAt: dayIn(window),
-  reports: [{ event: 'Champions ranked battles', rank, sourceUrl: '' }],
+  reports: ranked(rank),
   members: [],
 });
 const tier = ladder('tier', 'Champion Tier', W);
 const mb2 = (n) => ladder('mb2', 'Master Ball 2', W + n);
+const plain = {
+  id: 'plain',
+  regulation: 'M-C',
+  publishedAt: dayIn(W),
+  reports: [],
+  members: [],
+};
 const first = (compare, a, b) => (compare(a, b, 'M-C') < 0 ? a.id : b.id);
 
 const teammates = [set('Sneasler'), set('Kingambit'), set('Gholdengo')];
-const dated = (prefix, count, window, members) =>
+const dated = (prefix, count, window, members, reports = []) =>
   Array.from({ length: count }, (_, i) =>
-    team(prefix + i, members, { publishedAt: dayIn(window) })
+    team(prefix + i, members, { publishedAt: dayIn(window), reports })
   );
 
 test('recencyPeriod maps share dates to fixed windows and unknown dates to zero', () => {
@@ -48,13 +62,6 @@ test('each window of age costs one achievement band in both comparators', () => 
 
 test('a team without a share date ranks as oldest', () => {
   const undated = { ...tier, publishedAt: '' };
-  const plain = {
-    id: 'plain',
-    regulation: 'M-C',
-    publishedAt: dayIn(W),
-    reports: [],
-    members: [],
-  };
   assert.equal(first(compareTeams, undated, plain), 'plain');
   assert.equal(first(compareBrowseTeams, undated, plain), 'plain');
 });
@@ -100,4 +107,59 @@ test('field suggestions weight each team by recency', () => {
       .map(({ value }) => value),
     ['Leftovers', 'Life Orb']
   );
+});
+
+test('a vote halves for each band or window behind the best team', () => {
+  const weigh = (...teams) => teams.map(voteWeights(teams, 'M-C'));
+  assert.deepEqual(weigh(tier, mb2(0), plain), [1, 0.125, 0.0078125]);
+  assert.deepEqual(weigh(tier, mb2(3)), [1, 1]);
+  assert.deepEqual(weigh(tier, mb2(4)), [0.5, 1]);
+  assert.deepEqual(weigh(plain), [1]);
+});
+
+test('field suggestions weight each team by its result', () => {
+  const topItem = (count) =>
+    catalogSuggestions(
+      set('Incineroar'),
+      [
+        ...dated(
+          'mb2-',
+          count,
+          W,
+          [set('Incineroar', { item: 'Life Orb' })],
+          ranked('Master Ball 2')
+        ),
+        ...dated('tier-', 1, W, [set('Incineroar')], ranked('Champion Tier')),
+      ],
+      'M-C'
+    ).items[0].value;
+  assert.equal(topItem(7), 'Leftovers');
+  assert.equal(topItem(9), 'Life Orb');
+});
+
+test('better-placed sets outvote a larger number of weaker ones', () => {
+  const rillaboom = (item) =>
+    set('Rillaboom', { item, ability: 'Grassy Surge' });
+  const all = [
+    ...dated(
+      'mb2-',
+      3,
+      W,
+      [...teammates, rillaboom('Miracle Seed')],
+      ranked('Master Ball 2')
+    ),
+    ...dated(
+      'tier-',
+      2,
+      W,
+      [...teammates, rillaboom('Life Orb')],
+      ranked('Champion Tier')
+    ),
+  ];
+  const [row] = pokemonSuggestions(teammates, all, 'M-C');
+  assert.equal(row.pokemon, 'Rillaboom');
+  assert.equal(row.member.item, 'Life Orb');
+  assert.equal(row.consensus, true);
+  assert.equal(row.consensusSupport, 2);
+  assert.equal(row.support, 2.375);
 });
