@@ -20,8 +20,8 @@
   import Plus from '@lucide/svelte/icons/plus';
   import { Button } from '#lib/components/ui/button/index.js';
   import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
-  import TeamHistoryPanel from '#lib/components/TeamHistoryPanel.svelte';
-  import { canonicalSnapshot, restoreTeam } from '#lib/team-history.js';
+  import TeamSources from '#lib/components/TeamSources.svelte';
+  import { canonicalSnapshot } from '#lib/team-history.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
   import { type Member } from '#lib/catalog.js';
@@ -304,32 +304,6 @@
         e instanceof Error ? e.message : 'Invalid Showdown team text.';
     }
   }
-  function restoreOriginal() {
-    if (
-      !draft ||
-      changed ||
-      editing ||
-      deleting ||
-      !confirm('Restore the original team? Your current sets will be replaced.')
-    )
-      return;
-    if (persistChange((team) => restoreTeam(team), true))
-      notify('Original team restored.');
-  }
-  function restoreSlot(index: number) {
-    if (!draft || changed || editing || deleting) return;
-    const member = $state.snapshot(draft.original.members[index]);
-    if (!member) return;
-    const restored = persistChange((team) => {
-      const conflict = rosterConflict(member, team.members, index);
-      if (conflict === 'duplicate')
-        throw new Error('This Pokémon is already in another slot.');
-      if (conflict === 'mega')
-        throw new Error('This team already has two Mega Pokémon.');
-      return { ...team, members: replaceSlot(team.members, index, member) };
-    });
-    if (restored) notify('Original set restored.');
-  }
   function slotRevertReason(index: number): string {
     const target = visitBaseline?.members[index];
     if (!draft || !target) return '';
@@ -543,19 +517,19 @@
             </Button>
           </div>
         {/if}
-        {#if draft}<div
-            class="min-w-0 [&_button]:h-auto [&_button]:min-h-11 [&_button]:max-w-full [&_button]:text-start [&_button]:whitespace-normal landscape:md:[&_dl]:grid-cols-1"
-          >
-            {#key draft.id}
-              <TeamHistoryPanel
-                team={draft}
-                currentRegulation={current}
-                disabled={changed || editing || deleting}
-                onrestore={restoreOriginal}
-                onrestoreslot={restoreSlot}
-              />
-            {/key}
-          </div>{/if}
+        {#if draft}
+          {#key draft.id}
+            <MyTeamCollectionActions
+              teamId={draft.id}
+              {baseline}
+              {dirty}
+              members={draft.members}
+              disabled={changed || editing || deleting || stale}
+              deleteDisabled={editing || deleting}
+              ondelete={removeSelectedTeam}
+            />
+          {/key}
+        {/if}
         {#if message}<p
             role="status"
             class="text-[0.9375rem] text-base-content/70"
@@ -588,17 +562,6 @@
               />
             {/snippet}
           </TeamSetGrid>
-        {/key}
-        {#key activeTeam.id}
-          <MyTeamCollectionActions
-            teamId={activeTeam.id}
-            {baseline}
-            {dirty}
-            members={activeTeam.members}
-            disabled={changed || editing || deleting || stale}
-            deleteDisabled={editing || deleting}
-            ondelete={removeSelectedTeam}
-          />
         {/key}
         {#if changed}
           <p role="status" class="provenance mt-1">
@@ -662,6 +625,7 @@
                     {nameError}
                   </p>
                 </div>
+                <TeamSources team={draft} currentRegulation={current} />
                 {#if match}<a
                     class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
                     href={resolve(`teams/${match.id}`)}>View catalog details</a

@@ -43,7 +43,7 @@
     disabled || dirty || pending || movedId === teamId
   );
   const tile =
-    'h-auto min-h-11 flex-col justify-start gap-1 px-1 py-2 text-center leading-tight whitespace-normal';
+    'h-auto min-h-11 flex-col justify-start gap-1 px-1 py-2 text-center leading-tight whitespace-normal landscape:md:flex-row landscape:md:justify-start landscape:md:gap-1.5 landscape:md:px-3 landscape:md:text-start';
 
   async function move(target: 'favorites' | 'wishlist') {
     if (disabled || dirty || pending || movedId === teamId) return;
@@ -97,7 +97,7 @@
 </script>
 
 <div
-  class="plate mt-3 grid min-w-0 grid-cols-3 gap-1 p-1 [&>div>button]:col-span-full [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:max-w-full [&>div>button]:whitespace-normal [&>div>p]:col-span-full [&>div>p]:px-2"
+  class="plate grid min-w-0 grid-cols-3 gap-1 p-1 landscape:md:grid-cols-1 [&>div>button]:col-span-full [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:max-w-full [&>div>button]:whitespace-normal [&>div>p]:col-span-full [&>div>p]:px-2"
 >
   <CurrentSetSaveButton {teamId} {baseline} {members} {disabled} />
   <Button

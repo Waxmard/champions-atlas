@@ -214,10 +214,9 @@ distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-In **Original & history**, compare the current team with the immutable original.
-Restore the original team with its name, sets, and roster order without changing
-its saved ID or source history. **Restore original set** is available only when
-it does not duplicate a Pokémon or exceed the replacement Mega limit.
+The **Details** tab below the team holds the team name and the original team's
+results, source links, paste link, and replica code. The original team stays
+stored with the saved team, but it cannot be restored from My Teams.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
