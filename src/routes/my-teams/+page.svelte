@@ -6,11 +6,11 @@
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
+  import RecordPanel from '#lib/components/RecordPanel.svelte';
   import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
-  import Minus from '@lucide/svelte/icons/minus';
   import SwapSuggestions from '#lib/components/SwapSuggestions.svelte';
   import Plus from '@lucide/svelte/icons/plus';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -246,6 +246,8 @@
       const count = Math.min(9999, Math.max(0, record[key] + step));
       return { ...team, record: { ...record, [key]: count } };
     });
+  const resetRecord = () =>
+    persistChange((team) => ({ ...team, record: { wins: 0, losses: 0 } }));
   function saveTeamName() {
     if (!draft || changed) return;
     const name = draft.name.trim();
@@ -503,55 +505,13 @@
           </div>
         {/if}
         {#if draft}
-          {@const record = draft.record ?? { wins: 0, losses: 0 }}
-          <div
-            role="group"
-            aria-label="Win/loss record"
-            class="plate flex min-w-0 flex-wrap items-center justify-between gap-x-3 px-3 py-1 tabular-nums"
-          >
-            <span class="term" aria-hidden="true">Record</span>
-            <div class="flex items-center gap-3">
-              {#each [['wins', 'win', 'W'], ['losses', 'loss', 'L']] as const as [key, noun, mark] (key)}
-                <div class="flex items-center">
-                  <Button
-                    variant="quiet"
-                    size="icon-compact"
-                    aria-label={`Remove a ${noun}`}
-                    disabled={changed ||
-                      editing ||
-                      deleting ||
-                      stale ||
-                      record[key] === 0}
-                    onclick={() => changeRecord(key, -1)}
-                  >
-                    <Minus class="size-4" aria-hidden="true" />
-                  </Button>
-                  <span
-                    class="min-w-10 text-center text-[0.9375rem] font-medium"
-                  >
-                    <span aria-hidden="true">{record[key]}{mark}</span>
-                    <span class="sr-only"
-                      >{record[key]} {record[key] === 1 ? noun : key}</span
-                    >
-                  </span>
-                  <Button
-                    variant="quiet"
-                    size="icon-compact"
-                    aria-label={`Add a ${noun}`}
-                    disabled={changed ||
-                      editing ||
-                      deleting ||
-                      stale ||
-                      record[key] === 9999}
-                    onclick={() => changeRecord(key, 1)}
-                  >
-                    <Plus class="size-4" aria-hidden="true" />
-                  </Button>
-                </div>
-              {/each}
-            </div>
-          </div>
           {#key draft.id}
+            <RecordPanel
+              record={draft.record ?? { wins: 0, losses: 0 }}
+              disabled={changed || editing || deleting || stale}
+              onstep={changeRecord}
+              onreset={resetRecord}
+            />
             <MyTeamCollectionActions
               teamId={draft.id}
               name={draft.name}

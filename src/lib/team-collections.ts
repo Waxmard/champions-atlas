@@ -20,6 +20,20 @@ export const teamsInUse = (saved: SavedTeam[]): SavedTeam[] =>
 export const savedTeamHeading = (entry: SavedTeam) =>
   teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original);
 
+export type WinLossRecord = NonNullable<SavedTeam['record']>;
+
+export function recordSummary({ wins, losses }: WinLossRecord): {
+  text: string;
+  label: string;
+} {
+  const games = wins + losses;
+  const rate = games ? Math.round((wins / games) * 100) : null;
+  return {
+    text: `${wins}W – ${losses}L${rate === null ? '' : ` · ${rate}%`}`,
+    label: `${wins} ${wins === 1 ? 'win' : 'wins'}, ${losses} ${losses === 1 ? 'loss' : 'losses'}${rate === null ? '' : `, ${rate}% win rate`}`,
+  };
+}
+
 export const displaySavedTeam = (entry: SavedTeam): Team =>
   ({
     sheetIds: [],

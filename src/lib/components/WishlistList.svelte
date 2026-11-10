@@ -4,7 +4,7 @@
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { type Team } from '#lib/catalog.js';
-  import { savedTeamHeading } from '#lib/team-collections.js';
+  import { recordSummary, savedTeamHeading } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import AtlasIcon from './AtlasIcon.svelte';
   import TeamCard from './TeamCard.svelte';
@@ -128,12 +128,11 @@
         {#snippet trailingActions()}
           <div class="flex items-center gap-2">
             {#if entry.record}
-              {@const { wins, losses } = entry.record}
+              {@const summary = recordSummary(entry.record)}
               <span
                 class="provenance"
                 role="img"
-                aria-label={`Record: ${wins} ${wins === 1 ? 'win' : 'wins'}, ${losses} ${losses === 1 ? 'loss' : 'losses'}`}
-                >{wins}W – {losses}L</span
+                aria-label={`Record: ${summary.label}`}>{summary.text}</span
               >
             {/if}
             <Button
