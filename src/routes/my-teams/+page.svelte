@@ -679,7 +679,6 @@
         bind:this={editorRef}
         member={editorMember}
         originalMembers={draft.original.members}
-        originalSlotMember={draft.original.members[editIndex]}
         {teams}
         currentRegulation={current}
         initialField={activeEditField}

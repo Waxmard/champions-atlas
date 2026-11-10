@@ -279,16 +279,7 @@ test('original field choices lead in published order without inflating catalog c
     },
   ];
   const ordinary = catalogSuggestions(self, catalog, 'M-C');
-  const promoted = catalogSuggestions(
-    self,
-    catalog,
-    'M-C',
-    [],
-    undefined,
-    '',
-    self.pokemon,
-    original
-  );
+  const promoted = catalogSuggestions(self, catalog, 'M-C', [], original);
   assert.deepEqual(promoted.items[0], {
     value: 'Rare original item',
     currentCount: 0,
@@ -368,9 +359,6 @@ test('in-game field choices follow originals and preserve catalog evidence', () 
     catalog,
     'M-C',
     [],
-    undefined,
-    '',
-    self.pokemon,
     original,
     inGame
   );
@@ -425,17 +413,7 @@ test('in-game field choices follow originals and preserve catalog evidence', () 
 
 test('in-game promotion filters blank values and uses Browse identity', () => {
   const choices = (target, saved) =>
-    catalogSuggestions(
-      target,
-      [],
-      'M-C',
-      [],
-      undefined,
-      '',
-      target.pokemon,
-      undefined,
-      saved
-    );
+    catalogSuggestions(target, [], 'M-C', [], undefined, saved);
   const fields = ['items', 'abilities', 'moves', 'natures'];
   const blank = choices(
     member('Weavile'),
@@ -480,16 +458,7 @@ test('original field recommendations reject unrelated forms, unknown values, and
     moves: ['Overheat'],
   });
   const choices = (target, original) =>
-    catalogSuggestions(
-      target,
-      [],
-      'M-C',
-      [],
-      undefined,
-      '',
-      target.pokemon,
-      original
-    );
+    catalogSuggestions(target, [], 'M-C', [], original);
   for (const field of ['items', 'abilities', 'moves', 'natures'])
     assert.deepEqual(recorded(choices(self, unrelated)[field]), []);
   const unknown = member('Unlisted-Species', {
@@ -592,9 +561,6 @@ test('Favorite teams promote all distinct field values in fit+order sequence and
     [catTeam],
     'M-C',
     teammates,
-    undefined,
-    '',
-    'Weavile',
     orig,
     inGame,
     [favLowFit, favHighFit, favBlocked]

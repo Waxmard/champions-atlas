@@ -14,33 +14,8 @@ import {
   swapSuggestions,
   swapTargets,
 } from '../src/lib/swap-suggestions.ts';
+import { SPREAD, set, team } from './fixtures/swap.mjs';
 
-const SPREAD = '32 HP / 32 Atk / 1 Def / 1 SpD';
-const set = (pokemon, overrides = {}) => ({
-  pokemon,
-  item: 'Leftovers',
-  ability: 'Intimidate',
-  nature: 'Adamant',
-  spread: SPREAD,
-  moves: ['Fake Out', 'Flare Blitz', 'Knock Off', 'Parting Shot'],
-  ...overrides,
-});
-const team = (id, members, overrides = {}) => ({
-  id,
-  name: id,
-  regulation: 'M-C',
-  publishedAt: '2026-09-01',
-  paste: null,
-  pasteUrl: '',
-  reports: [],
-  sheetIds: [],
-  creator: '',
-  replicaCode: null,
-  replicaStatus: '',
-  pasteNotes: null,
-  members,
-  ...overrides,
-});
 const core = () => [set('Sneasler'), set('Kingambit'), set('Gholdengo')];
 
 test('knownName resolves real names and rejects changed unknown ones', () => {
@@ -134,9 +109,6 @@ test('catalogSuggestions hides items a teammate already holds', () => {
     [source],
     'M-C',
     [teammate],
-    undefined,
-    '',
-    'Rotom-Wash',
     original
   );
   assert.ok(!suggestions.items.some((entry) => entry.value === 'Leftovers'));
@@ -240,8 +212,6 @@ test('suggested sets resolve a Mega stone onto its own form', () => {
   const [suggestion] = pokemonSuggestions([set('Sneasler')], [source], 'M-C');
   assert.equal(suggestion.pokemon, 'Froslass');
   assert.equal(suggestion.member.item, 'Froslassite');
-  assert.equal(suggestion.consensus, true);
-  assert.equal(suggestion.consensusSupport, 2);
   assert.equal(resolveBattleForm(suggestion.member).pokemon, 'Froslass-Mega');
 });
 
@@ -311,8 +281,6 @@ test('teams sharing one complete set produce a consensus suggestion', () => {
   ];
   const [suggestion] = pokemonSuggestions(core(), teams, 'M-C');
   assert.equal(suggestion.pokemon, 'Rillaboom');
-  assert.equal(suggestion.consensus, true);
-  assert.equal(suggestion.consensusSupport, 2);
   assert.equal(suggestion.support, 2);
   assert.equal(suggestion.sharedTeammates, 3);
   assert.deepEqual(suggestion.member, rillaboom);
@@ -344,8 +312,6 @@ test('differing sets assemble the modal item, ability, spread, and moves', () =>
     ]),
   ];
   const [suggestion] = pokemonSuggestions(core(), teams, 'M-C');
-  assert.equal(suggestion.consensus, false);
-  assert.equal(suggestion.consensusSupport, 0);
   assert.equal(suggestion.member.item, 'Miracle Seed');
   assert.equal(suggestion.member.ability, 'Grassy Surge');
   assert.equal(suggestion.member.nature, 'Adamant');
@@ -379,7 +345,6 @@ test('assembly steps past an item another teammate already holds', () => {
   ];
   const [suggestion] = pokemonSuggestions(teammates, teams, 'M-C');
   assert.equal(suggestion.member.item, 'Life Orb');
-  assert.equal(suggestion.consensus, false);
 
   const held = [...teammates, set('Pikachu', { item: 'Life Orb' })];
   assert.deepEqual(pokemonSuggestions(held, teams, 'M-C'), []);
@@ -701,98 +666,72 @@ test('only current-regulation teams feed suggestions', () => {
   );
 });
 
-test('Favorite teams surface all distinct sets ahead of catalog without averaging and preserve catalog limit', () => {
-  const sn = set('Sneasler', { item: 'Focus Sash' });
-  const kg = set('Kingambit');
-  const teammates = [sn, kg];
-  const mvs = ['Protect', 'Tackle', 'Rest', 'Sleep Talk'];
-  const favA = {
-    id: 'fav-a',
-    name: 'Fav Alpha',
-    members: [
-      sn,
-      set('Weavile', { item: 'Choice Band', ability: 'Pressure', moves: mvs }),
-    ],
-  };
-  const favB = {
-    id: 'fav-b',
-    name: 'Fav Beta',
-    members: [
-      sn,
-      kg,
-      set('Weavile', {
-        item: 'Clear Amulet',
-        ability: 'Pickpocket',
-        moves: mvs,
-      }),
-    ],
-  };
-  const favZero = {
-    id: 'fav-zero',
-    name: 'Fav Zero',
-    members: [
-      set('Pelipper', { item: 'Damp Rock', ability: 'Drizzle', moves: mvs }),
-    ],
-  };
-  const species = ['Gholdengo', 'Incineroar', 'Rillaboom', 'Rotom-Wash'];
-  const catTeams = species.map((sp, i) =>
-    team(`cat-${i}`, [
-      sn,
-      set(sp, { item: 'Life Orb', ability: 'Pressure', moves: mvs }),
-      set('Weavile', { item: 'Life Orb', ability: 'Pressure', moves: mvs }),
-    ])
+test('swap ideas put the best-backed replacement ahead of the closest team', () => {
+  const draft = [
+    'Incineroar',
+    'Rillaboom',
+    'Sneasler',
+    'Kingambit',
+    'Gholdengo',
+    'Dragonite',
+  ].map((name) => set(name));
+  const champion = [
+    { event: 'Champions ranked battles', rank: 'Champion Tier', sourceUrl: '' },
+  ];
+  const close = team('close', [
+    ...draft.slice(0, 5),
+    set('Garchomp', { item: 'Life Orb' }),
+  ]);
+  const backed = ['backed-a', 'backed-b'].map((id) =>
+    team(id, [...draft.slice(0, 3), set('Gardevoir', { item: 'Life Orb' })], {
+      reports: champion,
+    })
   );
-  const res = pokemonSuggestions(
-    teammates,
-    catTeams,
-    'M-C',
-    undefined,
-    undefined,
-    '',
-    { minShared: 1, limit: 3 },
-    [favA, favB, favZero]
-  );
-  assert.equal(res.length, 5);
+  const ideas = swapIdeas(draft, [close, ...backed], 'M-C');
   assert.deepEqual(
-    res.slice(0, 2).map((r) => [r.pokemon, r.favoriteTeamName, r.member.item]),
+    ideas.map(({ pokemon, sharedTeammates, support }) => [
+      pokemon,
+      sharedTeammates,
+      support,
+    ]),
     [
-      ['Weavile', 'Fav Beta', 'Clear Amulet'],
-      ['Weavile', 'Fav Alpha', 'Choice Band'],
+      ['Gardevoir', 3, 2],
+      ['Garchomp', 5, 0.0078125],
     ]
   );
-  assert.equal(res.filter((r) => !r.favorite).length, 3);
+  assert.equal(new Set(ideas.map(({ slot }) => slot)).size, 2);
+});
 
-  const queried = pokemonSuggestions(
-    teammates,
-    catTeams,
-    'M-C',
-    undefined,
-    undefined,
-    'pelip',
-    { minShared: 1, limit: 3 },
-    [favZero]
+test('swap ideas keep the best-backed replacement through the per-slot limit', () => {
+  const draft = [
+    'Incineroar',
+    'Rillaboom',
+    'Sneasler',
+    'Kingambit',
+    'Gholdengo',
+    'Dragonite',
+  ].map((name) => set(name));
+  const champion = [
+    { event: 'Champions ranked battles', rank: 'Champion Tier', sourceUrl: '' },
+  ];
+  const closest = [
+    ['Garchomp', 5],
+    ['Hydreigon', 4],
+    ['Amoonguss', 3],
+  ].map(([name, slot]) =>
+    team(name, [
+      ...draft.filter((_, index) => index !== slot),
+      set(name, { item: 'Life Orb' }),
+    ])
   );
-  assert.equal(queried.length, 1);
-  assert.equal(queried[0].pokemon, 'Pelipper');
-  assert.equal(queried[0].favorite, true);
-  assert.deepEqual(swapTargets(teammates, [], 'M-C', [favZero]), ['Pelipper']);
-
-  const roster = [sn, kg, set('Garchomp', { item: 'Rocky Helmet' })];
-  const ideas = swapIdeas(roster, catTeams, 'M-C', undefined, 2, [favA, favB]);
+  const backed = ['backed-a', 'backed-b'].map((id) =>
+    team(id, [...draft.slice(0, 3), set('Gardevoir', { item: 'Life Orb' })], {
+      reports: champion,
+    })
+  );
+  const ideas = swapIdeas(draft, [...closest, ...backed], 'M-C', undefined, 1);
   assert.deepEqual(
-    ideas.slice(0, 2).map((x) => x.favoriteTeamName),
-    ['Fav Beta', 'Fav Alpha']
-  );
-  const specific = swapSuggestions(
-    roster,
-    catTeams,
-    'M-C',
-    'Pelipper',
-    undefined,
-    [favZero]
-  );
-  assert.equal(specific.length, 3);
-  assert.ok(
-    specific.every((s) => s.favorite && s.favoriteTeamName === 'Fav Zero')
+    ideas.map(({ pokemon }) => pokemon),
+    ['Gardevoir']
   );
 });

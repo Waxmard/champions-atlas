@@ -201,11 +201,14 @@ fields and moves next, then uses result ordering for ties. Only teams in the
 current regulation are considered. A suggestion whose resolved form appears with
 one complete set in several teams keeps that set; otherwise the app assembles the
 most common item, the most common ability among sets holding that item, the most
-common Nature and EV pair for those, and the four most frequent moves. An item
+common Nature and EV pair for those, and the four most frequent moves. Counts
+favor better-placed and recent teams through a weighted vote (see
+[Ranking and discovery](data-sources.md#ranking-and-discovery)). An item
 another teammate holds is never reused, and a suggested Mega keeps its own Mega
-Stone. Candidates rank by shared teammates, then by how many qualifying teams use
-the form, then by matching details for those teammates, then by published
-results, regulation, and credentials. Inferred archetype and role tags break only
+Stone. Candidates rank by shared teammates, then by the form's weighted vote,
+then by matching details for those teammates, then by
+recency-adjusted results, regulation, and credentials. Inferred archetype and role
+tags break only
 equally proven ties. Sources need not match the fixed five members exactly. Source
 result claims are not attributed to the user's edited team. Exact forms remain
 distinct.
@@ -223,9 +226,12 @@ The two-Mega limit applies to Pokémon replacement suggestions.
 
 The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
-slot, the current and suggested Pokémon, the set, its shared-teammate count, and
-either how many teams share that exact set or how many sets it was assembled
-from, with its best supporting result. Applying a row replaces the whole set and
+suggested Pokémon, the Pokémon it replaces, the set's item, ability, and nature,
+and its shared-teammate count. Rows rank by the form's weighted vote, then by
+shared teammates. Sets from
+Favorites teams rank in the same list, need the same three shared teammates,
+count as much as the best-placed supporting team, and are labelled
+**Favorite**. Applying a row replaces the whole set and
 leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
 resolved form up across every slot. Swaps stay unavailable while team text is
 unsaved or an editor is open, and a team already holding two Mega Pokémon is not
@@ -242,7 +248,11 @@ in-game set, **Favorite** for a value from a matching set in a Favorites team,
 and **Movepool** for a move no catalog team recorded. Favorite values rank after
 Original and In-game values. Items another
 teammate already holds are not offered. Move suggestions include the species'
-newest available movepool, which ranks after catalog observations.
+newest available movepool, which ranks after catalog observations. In the set
+editor's Pokémon suggestions, Favorites sets rank among catalog suggestions by
+shared teammates until a name is typed, then they list first. Teams of Unknown
+regulation count toward item, ability, move, and Nature totals but carry no
+vote, so their values rank after every voted value.
 
 Every suggestion surface renders as full-width rows with an icon cell, the name,
 and one muted detail line. Item, ability, move, Pokémon, and spread lists start
@@ -264,10 +274,14 @@ the source, moved points, and unmodified Speed without team counts. Expansion
 does not change saved teams. Selecting a spread, adjusting EVs, or selecting the
 same Nature preserves the expanded depth. Selecting a different Nature or
 reopening the EV editor resets the catalog allowance to ten.
-Fewer rows appear when eligible recorded data is insufficient. Matching catalog
-pairs rank by the best actual source team's shared teammates and matching set
-details for those teammates, then by published results, regulation, and credentials.
-Catalog frequency breaks ties before publication date or ID. Catalog counts use
+Fewer rows appear when eligible recorded data is insufficient. A catalog pair
+whose best source team shares four or more teammates ranks first, more shared
+teammates first, then by that team's matching set details. Remaining pairs rank
+by the weighted vote of current-regulation sets holding the
+edited set's item, then by the overall vote, then by the best source team's
+shared teammates and matching details, then by recency-adjusted results,
+regulation, and credentials. Total observations break ties before publication
+date or ID. Catalog counts use
 catalog observations only. Original and in-game suggestions retain their source
 labels and do not fill in unpublished original EVs.
 

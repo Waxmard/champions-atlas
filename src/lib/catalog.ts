@@ -1,6 +1,7 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
 import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
+import { recencyPeriod } from './recency.ts';
 import { splitTeamName, videoHeading, withoutDivision } from './team-name.ts';
 
 export interface SpreadSource {
@@ -621,7 +622,10 @@ export function compareTeams(
   if (unknownOrder) return unknownOrder;
   const ea = evidenceOf(a, current);
   const eb = evidenceOf(b, current);
-  const band = scalarCompare(ea.priority[0], eb.priority[0]);
+  const band = scalarCompare(
+    ea.priority[0] - recencyPeriod(a.publishedAt),
+    eb.priority[0] - recencyPeriod(b.publishedAt)
+  );
   if (band) return band;
   const currentOrder =
     Number(b.regulation === current) - Number(a.regulation === current);
@@ -632,6 +636,14 @@ export function compareTeams(
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)
   );
+}
+
+export function voteWeights(teams: readonly Team[], current: string) {
+  const key = (team: Team) =>
+    evidenceOf(team, current).priority[0] - recencyPeriod(team.publishedAt);
+  let best = Infinity;
+  for (const team of teams) best = Math.min(best, key(team));
+  return (team: Team) => 0.5 ** (key(team) - best);
 }
 
 const browseBand = (priority: Priority): number => {
@@ -722,7 +734,10 @@ export function compareBrowseTeams(a: Team, b: Team, current: string): number {
   const rb = browseRankingOf(b, current);
   return (
     scalarCompare(ra.resource, rb.resource) ||
-    scalarCompare(ra.priority[0], rb.priority[0]) ||
+    scalarCompare(
+      ra.priority[0] - recencyPeriod(a.publishedAt),
+      rb.priority[0] - recencyPeriod(b.publishedAt)
+    ) ||
     Number(b.regulation === current) - Number(a.regulation === current) ||
     priorityCompare(ra.priority, rb.priority) ||
     b.publishedAt.localeCompare(a.publishedAt) ||

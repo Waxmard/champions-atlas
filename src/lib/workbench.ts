@@ -7,6 +7,7 @@ import {
   isPasteUrl,
   normalize,
   pokemonId,
+  voteWeights,
   type Member,
   type Team,
 } from './catalog.ts';
@@ -28,13 +29,11 @@ import {
 } from './paste.ts';
 import { speedFor } from './stats.ts';
 import {
-  pokemonSuggestions,
   rankFavoriteTeams,
   sourceTeamFit,
   type FavoriteTeamSource,
   type SourceTeamFit,
 } from './swap-suggestions.ts';
-import type { TeamTagsIndex } from './tags.ts';
 import {
   pasteUrlSchema,
   regulationInferenceSchema,
@@ -308,9 +307,6 @@ export function catalogSuggestions(
   teams: Team[],
   currentRegulation: string,
   teammates: Member[] = [],
-  tags?: TeamTagsIndex,
-  pokemonQuery = '',
-  originalPokemon = typeof target === 'string' ? target : target.pokemon,
   originalMember?: Member,
   inGameMember?: Member,
   favoriteTeams: readonly FavoriteTeamSource[] = []
@@ -360,7 +356,9 @@ export function catalogSuggestions(
   };
   const eq = (a: string | null, b: string | null) =>
     Boolean(a && b && normalize(a) === normalize(b));
+  const weight = voteWeights(teams, currentRegulation);
   for (const team of teams) {
+    const teamWeight = team.regulation === 'Unknown' ? 0 : weight(team);
     const isCurrent = team.regulation === currentRegulation;
     let teamSim = 0;
     if (teammates.length) {
@@ -399,11 +397,31 @@ export function catalogSuggestions(
             ability: null,
           }).error === null)
       )
-        add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
-      add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
-      add(natures, member.nature, baseScore + im + am + mm, isCurrent);
+        add(
+          items,
+          member.item,
+          (baseScore + am + nm + sm + mm) * teamWeight,
+          isCurrent
+        );
+      add(
+        abilities,
+        member.ability,
+        (baseScore + im + nm + sm + mm) * teamWeight,
+        isCurrent
+      );
+      add(
+        natures,
+        member.nature,
+        (baseScore + im + am + mm) * teamWeight,
+        isCurrent
+      );
       for (const move of member.moves) {
-        add(moves, move, baseScore + im + am + nm + sm, isCurrent);
+        add(
+          moves,
+          move,
+          (baseScore + im + am + nm + sm) * teamWeight,
+          isCurrent
+        );
       }
     }
   }
@@ -523,16 +541,6 @@ export function catalogSuggestions(
       [inGameNature],
       favorites.map((m) => canonicalNature(m.nature) ?? null)
     ),
-    pokemon: pokemonSuggestions(
-      teammates,
-      teams,
-      currentRegulation,
-      originalPokemon,
-      tags,
-      pokemonQuery,
-      { limit: 30 },
-      favoriteTeams
-    ),
   };
 }
 
@@ -541,7 +549,9 @@ interface CatalogSpreadOption {
   nature: string;
   values: ChampionsSpread;
   currentCount: number;
+  currentWeight: number;
   totalCount: number;
+  itemWeights: Map<string, number>;
   sources: Team[];
 }
 
@@ -603,8 +613,10 @@ function catalogSpreadIndex(
   const cached = spreadCache.get(teams);
   if (cached && cached.regulation === regulation) return cached.bySpecies;
   const bySpecies = new Map<string, Map<string, CatalogSpreadOption>>();
+  const weight = voteWeights(teams, regulation);
   for (const team of teams) {
     const isCurrent = team.regulation === regulation;
+    const teamWeight = isCurrent ? weight(team) : 0;
     for (const member of team.members) {
       const values = parseChampionsSpread(member.spread);
       if (!isCompleteSpread(values)) continue;
@@ -620,21 +632,30 @@ function catalogSpreadIndex(
       }
       const spread = formatChampionsSpread(values);
       const key = `${normalize(nature)}|${normalize(spread)}`;
-      const option = options.get(key);
-      if (option) {
-        option.totalCount++;
-        if (isCurrent) option.currentCount++;
-        option.sources.push(team);
-      } else {
-        options.set(key, {
+      let option = options.get(key);
+      if (!option) {
+        option = {
           spread,
           nature,
           values,
-          currentCount: isCurrent ? 1 : 0,
-          totalCount: 1,
-          sources: [team],
-        });
+          currentCount: 0,
+          currentWeight: 0,
+          totalCount: 0,
+          itemWeights: new Map(),
+          sources: [],
+        };
+        options.set(key, option);
       }
+      option.totalCount++;
+      if (isCurrent) option.currentCount++;
+      option.currentWeight += teamWeight;
+      option.sources.push(team);
+      const item = normalize(member.item ?? '');
+      if (item)
+        option.itemWeights.set(
+          item,
+          (option.itemWeights.get(item) ?? 0) + teamWeight
+        );
     }
   }
   const indexed = new Map<string, CatalogSpreadOption[]>();
@@ -643,6 +664,8 @@ function catalogSpreadIndex(
   spreadCache.set(teams, { regulation, bySpecies: indexed });
   return indexed;
 }
+
+const NEAR_COPY_SHARED = 4;
 
 export function catalogSpreadSuggestions(
   self: Member,
@@ -671,6 +694,7 @@ export function catalogSpreadSuggestions(
     fitCache.set(team, fit);
     return fit;
   };
+  const itemKey = normalize(self.item ?? '');
   const ranked = eligible.map((option) => {
     let source = option.sources[0];
     let fit = fitFor(source);
@@ -688,18 +712,27 @@ export function catalogSpreadSuggestions(
         fit = candidateFit;
       }
     }
-    return { option, source, fit };
+    return {
+      option,
+      source,
+      fit,
+      near: fit.shared >= NEAR_COPY_SHARED ? fit.shared : 0,
+      itemWeight: option.itemWeights.get(itemKey) ?? 0,
+    };
   });
   ranked.sort(
     (a, b) =>
+      b.near - a.near ||
+      (a.near ? b.fit.details - a.fit.details : 0) ||
+      b.itemWeight - a.itemWeight ||
+      b.option.currentWeight - a.option.currentWeight ||
       b.fit.shared - a.fit.shared ||
       b.fit.details - a.fit.details ||
       compareTeams(
         a.source,
         b.source,
         currentRegulation,
-        b.option.currentCount - a.option.currentCount ||
-          b.option.totalCount - a.option.totalCount
+        b.option.totalCount - a.option.totalCount
       ) ||
       a.option.spread.localeCompare(b.option.spread)
   );

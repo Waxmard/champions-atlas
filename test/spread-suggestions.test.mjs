@@ -5,6 +5,7 @@ import {
   favoriteMembersFor,
   originalSpreadSuggestion,
 } from '../src/lib/workbench.ts';
+import { RECENCY_WINDOW_DAYS } from '../src/lib/recency.ts';
 
 const team = (
   id,
@@ -77,6 +78,11 @@ const selected = (nature, teams = natureCatalog, limit = 5, teammates = []) =>
   catalogSpreadSuggestions({ ...self, nature }, teams, 'M-C', limit, teammates);
 const spreadList = (suggestions) =>
   suggestions.map(({ nature, spread }) => [nature, spread]);
+const dayIn = (window, offset = 0) =>
+  new Date((window * RECENCY_WINDOW_DAYS + offset) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+const W = 740;
 
 test('catalog suggestions are limited to the canonical current Nature', () => {
   const modest = selected('Modest');
@@ -128,9 +134,9 @@ test('missing or invalid Nature, form, pair, and nonpositive limits return no ro
 });
 
 test('team overlap and matched details rank the actual source teams', () => {
-  const pikachu = member('Pikachu', 'Timid');
-  const gholdengo = member('Gholdengo', 'Modest');
-  const shared = [pikachu, gholdengo];
+  const mates = ['Pikachu', 'Gholdengo', 'Incineroar', 'Rillaboom'].map(
+    (name) => member(name, 'Bold')
+  );
   const champion = source('champion-zero-overlap', modestSpreads[0], {
     reports: [
       {
@@ -140,18 +146,21 @@ test('team overlap and matched details rank the actual source teams', () => {
       },
     ],
   });
-  const twoShared = source('two-shared', modestSpreads[1], {
-    teammates: [member('Pikachu', 'Bold'), member('Gholdengo', 'Bold')],
-  });
-  assert.deepEqual(
-    spreadList(
-      catalogSpreadSuggestions(self, [champion, twoShared], 'M-C', 5, shared)
-    ),
-    [
-      ['Modest', modestSpreads[1]],
-      ['Modest', modestSpreads[0]],
-    ]
-  );
+  const order = (shared) =>
+    catalogSpreadSuggestions(
+      self,
+      [
+        champion,
+        source('overlap', modestSpreads[1], {
+          teammates: mates.slice(0, shared),
+        }),
+      ],
+      'M-C',
+      5,
+      mates
+    ).map(({ spread }) => spread);
+  assert.deepEqual(order(4), [modestSpreads[1], modestSpreads[0]]);
+  assert.deepEqual(order(3), [modestSpreads[0], modestSpreads[1]]);
 
   const detailed = member('Pikachu', 'Timid', '31 HP / 31 Atk / 4 Spe', {
     item: 'Light Ball',
@@ -244,45 +253,6 @@ test('result evidence outranks pair frequency when team fit is equal', () => {
   );
 });
 
-test('one spread uses one best source rather than combining fit and credentials', () => {
-  const pikachu = member('Pikachu', null, null, {
-    ability: null,
-    moves: [],
-  });
-  const championReport = [
-    {
-      event: 'Champions ranked battles',
-      rank: 'Champion Tier',
-      sourceUrl: '',
-    },
-  ];
-  const splitSources = [
-    source('a-split-champion', modestSpreads[0], {
-      reports: championReport,
-    }),
-    source('z-split-match', modestSpreads[0], {
-      teammates: [
-        member('Pikachu', 'Hardy', null, { ability: null, moves: [] }),
-      ],
-    }),
-    source('b-peer-champion-match', modestSpreads[1], {
-      reports: championReport,
-      teammates: [
-        member('Pikachu', 'Hardy', null, { ability: null, moves: [] }),
-      ],
-    }),
-  ];
-  assert.deepEqual(
-    spreadList(
-      catalogSpreadSuggestions(self, splitSources, 'M-C', 5, [pikachu])
-    ),
-    [
-      ['Modest', modestSpreads[1]],
-      ['Modest', modestSpreads[0]],
-    ]
-  );
-});
-
 test('roster-specific ordering does not contaminate the shared catalog cache', () => {
   const pikachu = member('Pikachu', null);
   const gholdengo = member('Gholdengo', null);
@@ -306,17 +276,17 @@ test('roster-specific ordering does not contaminate the shared catalog cache', (
 
 test('current and total observations break ties before source date and ID', () => {
   const catalog = [
-    source('b-total-rich', modestSpreads[0], { publishedAt: '2026-01-01' }),
+    source('b-total-rich', modestSpreads[0], { publishedAt: '2026-01-02' }),
     ...Array.from({ length: 3 }, (_, i) =>
       source('old-total-rich-' + i, modestSpreads[0], { regulation: 'M-B' })
     ),
     source('c-current-rich-1', modestSpreads[1], {
-      publishedAt: '2025-01-01',
+      publishedAt: '2026-01-01',
     }),
     source('c-current-rich-2', modestSpreads[1], {
-      publishedAt: '2025-01-01',
+      publishedAt: '2026-01-01',
     }),
-    source('a-total-poor', modestSpreads[2], { publishedAt: '2027-01-01' }),
+    source('a-total-poor', modestSpreads[2], { publishedAt: '2026-01-03' }),
     source('old-total-poor', modestSpreads[2], { regulation: 'M-B' }),
   ];
   const results = catalogSpreadSuggestions(self, catalog, 'M-C');
@@ -332,6 +302,52 @@ test('current and total observations break ties before source date and ID', () =
       { spread: modestSpreads[2], currentCount: 1, totalCount: 2 },
     ]
   );
+});
+
+test('recency-weighted frequency breaks ties between equally recent sources', () => {
+  const catalog = [
+    source('x-new', modestSpreads[0], { publishedAt: dayIn(W) }),
+    source('x-old-1', modestSpreads[0], { publishedAt: dayIn(W - 2) }),
+    source('x-old-2', modestSpreads[0], { publishedAt: dayIn(W - 2) }),
+    source('y-new-1', modestSpreads[1], { publishedAt: dayIn(W) }),
+    source('y-new-2', modestSpreads[1], { publishedAt: dayIn(W) }),
+  ];
+  assert.deepEqual(spreadList(catalogSpreadSuggestions(self, catalog, 'M-C')), [
+    ['Modest', modestSpreads[1]],
+    ['Modest', modestSpreads[0]],
+  ]);
+});
+
+test('result-weighted frequency breaks ties between equally placed sources', () => {
+  const ranked = (rank) => [
+    { event: 'Champions ranked battles', rank, sourceUrl: '' },
+  ];
+  const catalog = [
+    source('x-tier', modestSpreads[0], { reports: ranked('Champion Tier') }),
+    source('x-none-1', modestSpreads[0]),
+    source('x-none-2', modestSpreads[0]),
+    source('y-tier', modestSpreads[1], { reports: ranked('Champion Tier') }),
+    source('y-mb2', modestSpreads[1], { reports: ranked('Master Ball 2') }),
+  ];
+  assert.deepEqual(spreadList(catalogSpreadSuggestions(self, catalog, 'M-C')), [
+    ['Modest', modestSpreads[1]],
+    ['Modest', modestSpreads[0]],
+  ]);
+});
+
+test('sets holding the same item vote before the overall count', () => {
+  const holding = (id, spread, item) =>
+    team(id, 'M-C', [member('Rotom-Wash', 'Modest', spread, { item })]);
+  const catalog = [
+    holding('specs', modestSpreads[0], 'Choice Specs'),
+    holding('berry-1', modestSpreads[1], 'Sitrus Berry'),
+    holding('berry-2', modestSpreads[1], 'Sitrus Berry'),
+  ];
+  const top = (item) =>
+    catalogSpreadSuggestions({ ...self, item }, catalog, 'M-C')[0].spread;
+  assert.equal(top('choice specs'), modestSpreads[0]);
+  assert.equal(top('Sitrus Berry'), modestSpreads[1]);
+  assert.equal(top(null), modestSpreads[1]);
 });
 
 test('catalog spreads aggregate current-regulation observations for the selected nature', () => {

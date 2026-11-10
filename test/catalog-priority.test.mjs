@@ -441,23 +441,6 @@ test('major, community, and ladder merit boundaries order lexicographically', ()
     'Tournament'
   );
   assert.ok(
-    compareTeams(
-      tournamentTeam(
-        'old-worlds',
-        report('Worlds 2026', '9th'),
-        'M-C',
-        '2020-01-01'
-      ),
-      tournamentTeam(
-        'new-ordinary',
-        report('Event', 'Champion'),
-        'M-C',
-        '2026-12-31'
-      ),
-      'M-C'
-    ) < 0
-  );
-  assert.ok(
     compareTeams(ladderTeam('tier', 'Champion Tier'), showdown1, 'M-C') < 0
   );
 });
@@ -623,9 +606,6 @@ test('catalog and original member suggestions use available source teams', () =>
     [],
     'M-C',
     [pikachu],
-    undefined,
-    '',
-    rotom.pokemon,
     originalMember
   );
   assert.ok(

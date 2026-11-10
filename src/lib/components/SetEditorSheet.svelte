@@ -16,6 +16,7 @@
     memberValidationError,
   } from '#lib/member-validation.js';
   import { memberSetSignature } from '#lib/spread-provenance.js';
+  import { pokemonSuggestions } from '#lib/swap-suggestions.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import {
@@ -35,7 +36,6 @@
     teammates?: Member[];
     tagIndex?: TeamTagsIndex;
     originalMembers?: Member[];
-    originalSlotMember?: Member;
     favoriteTeams?: SavedTeam[];
     onchange: (member: Member) => boolean;
     onclose: () => void;
@@ -50,7 +50,6 @@
     teammates = [],
     tagIndex,
     originalMembers = [],
-    originalSlotMember,
     favoriteTeams = [],
     onchange,
     onclose,
@@ -136,9 +135,6 @@
       teams,
       currentRegulation,
       teammates,
-      tagIndex,
-      pokemonQuery,
-      accepted.pokemon,
       originalMember,
       inGameMember,
       favoriteTeams
@@ -157,7 +153,18 @@
     const end = limit + extraFavorites(options);
     return { visible: options.slice(0, end), hasMore: options.length > end };
   };
-  const pokemonMatches = $derived(suggestions.pokemon);
+  const pokemonMatches = $derived(
+    pokemonSuggestions(
+      teammates,
+      teams,
+      currentRegulation,
+      accepted.pokemon,
+      tagIndex,
+      pokemonQuery,
+      { limit: 30 },
+      favoriteTeams
+    )
+  );
   const pokemonPage = $derived(pageList(pokemonMatches, visiblePokemonCount));
   const itemPage = $derived(
     pageList(
@@ -181,13 +188,6 @@
       moves: 'Moves',
       spread: 'EV spread',
     }[currentView]
-  );
-  const originalReason = $derived(
-    originalSlotMember ? rosterError(originalSlotMember) : ''
-  );
-  const originalChanged = $derived(
-    !!originalSlotMember &&
-      canonicalSnapshot(originalSlotMember) !== canonicalSnapshot(accepted)
   );
   const setSignature = (candidate: Member) =>
     memberSetSignature(candidate) ?? canonicalSnapshot(fields(candidate));
@@ -737,9 +737,6 @@
         accepted={accepted.pokemon}
         options={pokemonPage.visible}
         hasMore={pokemonPage.hasMore}
-        {originalChanged}
-        {originalSlotMember}
-        {originalReason}
         {favoriteSlotSets}
         {error}
         {errorField}

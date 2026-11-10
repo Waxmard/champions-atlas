@@ -1,17 +1,9 @@
 <script lang="ts">
-  import ItemIcon from '#lib/components/ItemIcon.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import {
-    bestEvidence,
-    regulationLabel,
-    sourceName,
-    type Member,
-    type Team,
-  } from '#lib/catalog.js';
+  import { regulationLabel, type Member, type Team } from '#lib/catalog.js';
   import {
     swapIdeas,
     swapSuggestions,
@@ -62,10 +54,18 @@
   );
   const swapRowKey = (row: SwapSuggestion) =>
     `${row.slot}:${row.favorite ? 'fav:' + (row.favoriteTeamName ?? '') : 'cat'}:${row.pokemon}:${row.member.item ?? ''}:${row.member.ability ?? ''}:${row.member.nature ?? ''}:${row.member.spread ?? ''}:${row.member.moves.join(',')}`;
-  const evidence = (item: SwapSuggestion) =>
+  const detail = (row: SwapSuggestion) =>
     [
-      sourceName(item.source, currentRegulation),
-      bestEvidence(item.source, currentRegulation).label,
+      `Replaces ${members[row.slot]?.pokemon ?? `slot ${row.slot + 1}`}`,
+      row.favorite
+        ? row.favoriteTeamName
+          ? `Favorite (${row.favoriteTeamName})`
+          : 'Favorite'
+        : '',
+      row.member.item,
+      row.member.ability,
+      row.member.nature,
+      `${row.sharedTeammates} shared`,
     ]
       .filter(Boolean)
       .join(' · ');
@@ -73,45 +73,6 @@
     if (onapply(slot, $state.snapshot(member))) query = '';
   }
 </script>
-
-{#snippet swapContent(item: SwapSuggestion)}
-  {@const supporting = evidence(item)}
-  <span class="flex min-w-0 flex-1 flex-col gap-1">
-    <span class="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span class="term shrink-0">Slot {item.slot + 1}</span>
-      <span class="truncate text-base-content/70"
-        >{members[item.slot]?.pokemon}</span
-      >
-      <span aria-hidden="true">→</span>
-      <SpeciesLabel pokemon={item.member.pokemon} spriteSize={28} />
-    </span>
-    <span class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-      {#if item.member.item}
-        <span class="term inline-flex min-w-0 items-center gap-1">
-          <ItemIcon item={item.member.item} size={16} />
-          <span class="truncate">{item.member.item}</span>
-        </span>
-      {/if}
-      {#each [item.member.ability, item.member.nature] as detail, index (index)}
-        {#if detail}<span class="term truncate">{detail}</span>{/if}
-      {/each}
-      {#if item.member.moves.length}<span class="term truncate"
-          >{item.member.moves.join(' · ')}</span
-        >{/if}
-      <span class="term shrink-0">{item.sharedTeammates} shared</span>
-    </span>
-    <span class="provenance">
-      {#if item.favorite}
-        Favorite{item.favoriteTeamName ? ` — ${item.favoriteTeamName}` : ''}
-      {:else}
-        {item.consensus
-          ? `${item.consensusSupport} teams share this set`
-          : `Assembled from ${item.support} team${item.support === 1 ? '' : 's'}`}
-        {supporting ? `— best supporting: ${supporting}` : ''}
-      {/if}
-    </span>
-  </span>
-{/snippet}
 
 <div class="min-w-0 space-y-2">
   {#if ideas.length || searched.length}
@@ -132,11 +93,12 @@
     {#each ideas as idea (swapRowKey(idea))}
       <SuggestionRow
         label={`Use ${idea.member.pokemon} set for slot ${idea.slot + 1}`}
+        glyph={{ kind: 'pokemon', value: idea.member.pokemon }}
+        primary={idea.member.pokemon}
+        secondary={detail(idea)}
         {disabled}
         onclick={() => apply(idea.slot, idea.member)}
-      >
-        {@render swapContent(idea)}
-      </SuggestionRow>
+      />
     {/each}
   </SuggestionList>
   <details class="min-w-0">
@@ -170,11 +132,12 @@
           {#each searched as row (swapRowKey(row))}
             <SuggestionRow
               label={`Use ${row.member.pokemon} set for slot ${row.slot + 1}`}
+              glyph={{ kind: 'pokemon', value: row.member.pokemon }}
+              primary={row.member.pokemon}
+              secondary={detail(row)}
               {disabled}
               onclick={() => apply(row.slot, row.member)}
-            >
-              {@render swapContent(row)}
-            </SuggestionRow>
+            />
           {/each}
         </SuggestionList>
       {/if}
