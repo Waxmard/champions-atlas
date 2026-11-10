@@ -4,6 +4,7 @@
   import { resolve } from '$app/paths';
   import { page } from '$app/state';
   import CollectionPage from '#lib/components/CollectionPage.svelte';
+  import Plus from '@lucide/svelte/icons/plus';
   import { Button } from '#lib/components/ui/button/index.js';
   import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
@@ -420,6 +421,19 @@
         </div>
       </form>
     </section>
+  {:else}
+    <div>
+      <Button
+        id="wishlist-actions"
+        variant="quiet"
+        class="-ms-2 gap-1 px-2"
+        onclick={() =>
+          void goto(resolve('wishlist#import-pokepaste'), { reset: false })}
+      >
+        <Plus class="size-4" aria-hidden="true" />
+        Add a Poképaste
+      </Button>
+    </div>
   {/if}
 {/snippet}
 <CollectionPage

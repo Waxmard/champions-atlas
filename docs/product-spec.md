@@ -184,7 +184,8 @@ remembers the last successfully visited URL and scroll position on this device
 for a bare-root reopen and returns to that page after sign-in. With no remembered
 page, it opens Browse. Explicit links take precedence, and a missing remembered
 detail falls back to browsing. Editors and dialogs reopen closed. The main
-navigation remains visible while scrolling, and selecting a Pokémon clears its
+navigation is a bottom tab bar (Browse, My Teams, Favorites, Wishlist) that
+remains visible while scrolling, and selecting a Pokémon clears its
 search input for the next choice.
 
 An explicit saved-team link with no saved teams keeps its URL and shows a
@@ -297,7 +298,8 @@ no published result claims.
 
 From a Poképaste page, the iOS share extension accepts one direct link or paste
 ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
-The manual fallback accepts a `pokepast.es` link or 16-character paste ID.
+The manual fallback, **Add a Poképaste** on the Wishlist list, accepts a
+`pokepast.es` link or 16-character paste ID.
 Imports do not change the active team. An existing bookmark for the link is
 returned unchanged, even if multiple catalog teams share that link. A unique
 catalog match is bookmarked with its source metadata without a network request.
@@ -351,11 +353,10 @@ After a successful sign-in, it can open saved data offline; sync resumes when
 connected. A first sign-in may require connectivity. Native setup and signing
 are described in [iOS installation and Firebase sync](firebase.md).
 
-The My teams picker shows only in-use teams and displays the selected team's
-name. Its search covers the current team name and each member's species, with
-exact, prefix, substring, and character-subsequence tiers, requiring every
-whitespace-separated term to match. Arrow keys and Enter select a result;
-Escape restores the current team without renaming it.
+The My teams title opens a list of in-use teams with the selected team checked.
+The list's search box takes focus only when tapped. Search covers the current
+team name and each member's species, with exact, prefix, substring, and
+character-subsequence tiers, requiring every whitespace-separated term to match.
 
 ## Future scope
 

@@ -175,63 +175,60 @@
   </span>
 {/snippet}
 
-<div class="flex min-w-0 flex-col gap-1 leading-[1.4] text-base-content">
-  <div class="flex min-h-7 min-w-0 items-center justify-between gap-1.5 px-1">
-    {#if onedit}
-      <button
-        bind:this={openButton}
-        type="button"
-        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content disabled:pointer-events-none disabled:opacity-50"
-        aria-label={`Change ${member.pokemon}`}
-        data-set-field="pokemon"
-        title={member.pokemon}
-        {disabled}
-        onclick={() => onedit('pokemon')}
-      >
-        {member.pokemon}
-      </button>
-    {:else if onopen}
-      <button
-        bind:this={openButton}
-        type="button"
-        class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-xs font-bold text-[color:var(--color-muted)] hover:text-base-content disabled:pointer-events-none disabled:opacity-50"
-        aria-label={`View full set for ${member.pokemon}`}
-        data-set-field="set"
-        title={member.pokemon}
-        {disabled}
-        onclick={(event) => {
-          event.currentTarget.focus({ preventScroll: true });
-          onopen();
-        }}
-      >
-        {member.pokemon}
-      </button>
-    {:else}
-      <p
-        class="min-w-0 flex-1 truncate text-xs font-bold text-[color:var(--color-muted)]"
-        title={member.pokemon}
-      >
-        {member.pokemon}
-      </p>
-    {/if}
-    {#if actions}
-      <div class="shrink-0">
-        {@render actions()}
-      </div>
-    {/if}
-  </div>
-
+<div
+  use:clickablePlate
+  class="plate flex h-[21rem] min-h-max min-w-0 flex-col leading-[1.4] text-base-content {!onedit &&
+  onopen &&
+  !disabled
+    ? 'cursor-pointer'
+    : ''}"
+>
   <div
-    use:clickablePlate
-    class="plate flex h-[19.5rem] min-h-max min-w-0 flex-col leading-[1.4] text-base-content {!onedit &&
-    onopen &&
-    !disabled
-      ? 'cursor-pointer'
-      : ''}"
+    class="min-w-0 rounded-t-[var(--radius-box)] px-2.5 pt-1 pb-2"
+    style:background={band}
   >
+    <div class="flex min-h-7 min-w-0 items-center justify-between gap-1.5">
+      {#if onedit}
+        <button
+          bind:this={openButton}
+          type="button"
+          class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-[0.8125rem] font-bold text-base-content disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`Change ${member.pokemon}`}
+          data-set-field="pokemon"
+          title={member.pokemon}
+          {disabled}
+          onclick={() => onedit('pokemon')}
+        >
+          {member.pokemon}
+        </button>
+      {:else if onopen}
+        <button
+          bind:this={openButton}
+          type="button"
+          class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-[0.8125rem] font-bold text-base-content disabled:pointer-events-none disabled:opacity-50"
+          aria-label={`View full set for ${member.pokemon}`}
+          data-set-field="set"
+          title={member.pokemon}
+          {disabled}
+        >
+          {member.pokemon}
+        </button>
+      {:else}
+        <p
+          class="min-w-0 flex-1 truncate text-[0.8125rem] font-bold text-base-content"
+          title={member.pokemon}
+        >
+          {member.pokemon}
+        </p>
+      {/if}
+      {#if actions}
+        <div class="shrink-0">
+          {@render actions()}
+        </div>
+      {/if}
+    </div>
     <div
-      class="grid min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_1.75rem] items-center gap-2 rounded-t-[var(--radius-box)] px-2.5 py-2"
-      style:background={band}
+      class="grid min-w-0 grid-cols-[3.5rem_minmax(0,1fr)_1.75rem] items-center gap-2"
     >
       {#if onedit}
         <button
@@ -277,54 +274,54 @@
         </span>
       {/if}
     </div>
+  </div>
 
-    <div class="flex min-w-0 flex-1 flex-col gap-1.5 px-2.5 py-2">
-      {#if onedit}
-        <button
-          type="button"
-          data-set-field="spread"
-          class="flex min-h-9 w-full min-w-0 flex-col justify-center gap-0.5 rounded-[var(--radius-field)] px-1 py-1 text-start hover:bg-base-200/70 disabled:pointer-events-none disabled:opacity-50"
-          aria-label={`Edit ${member.pokemon} EV spread and nature`}
-          {disabled}
-          onclick={() => onedit('spread')}
-        >
-          {@render spreadContent()}
-        </button>
-      {:else}
-        <div class="flex min-h-9 min-w-0 flex-col justify-center gap-0.5 py-1">
-          {@render spreadContent()}
-        </div>
-      {/if}
+  <div class="flex min-w-0 flex-1 flex-col gap-1.5 px-2.5 py-2">
+    {#if onedit}
+      <button
+        type="button"
+        data-set-field="spread"
+        class="flex min-h-9 w-full min-w-0 flex-col justify-center gap-0.5 rounded-[var(--radius-field)] px-1 py-1 text-start hover:bg-base-200/70 disabled:pointer-events-none disabled:opacity-50"
+        aria-label={`Edit ${member.pokemon} EV spread and nature`}
+        {disabled}
+        onclick={() => onedit('spread')}
+      >
+        {@render spreadContent()}
+      </button>
+    {:else}
+      <div class="flex min-h-9 min-w-0 flex-col justify-center gap-0.5 py-1">
+        {@render spreadContent()}
+      </div>
+    {/if}
 
-      <ol role="list" class="mt-auto grid min-w-0 gap-1 text-sm leading-[1.2]">
-        {#each [0, 1, 2, 3] as index (index)}
-          {@const move = member.moves[index]?.trim() ?? ''}
-          {@const type = move ? getMoveType(move) : null}
-          <li class="min-w-0">
-            {#if onedit}
-              <button
-                type="button"
-                data-set-field={index === 0 ? 'moves' : undefined}
-                data-move-slot={index}
-                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content disabled:pointer-events-none disabled:opacity-50"
-                style={typeFill(type)}
-                aria-label={`Edit ${member.pokemon} move ${index + 1}: ${move || (member.moves.length ? 'Empty' : 'Unknown')}`}
-                {disabled}
-                onclick={() => onedit('moves', index)}
-              >
-                {@render moveContent(move, type)}
-              </button>
-            {:else}
-              <div
-                class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
-                style={typeFill(type)}
-              >
-                {@render moveContent(move, type)}
-              </div>
-            {/if}
-          </li>
-        {/each}
-      </ol>
-    </div>
+    <ol role="list" class="mt-auto grid min-w-0 gap-1 text-sm leading-[1.2]">
+      {#each [0, 1, 2, 3] as index (index)}
+        {@const move = member.moves[index]?.trim() ?? ''}
+        {@const type = move ? getMoveType(move) : null}
+        <li class="min-w-0">
+          {#if onedit}
+            <button
+              type="button"
+              data-set-field={index === 0 ? 'moves' : undefined}
+              data-move-slot={index}
+              class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content disabled:pointer-events-none disabled:opacity-50"
+              style={typeFill(type)}
+              aria-label={`Edit ${member.pokemon} move ${index + 1}: ${move || (member.moves.length ? 'Empty' : 'Unknown')}`}
+              {disabled}
+              onclick={() => onedit('moves', index)}
+            >
+              {@render moveContent(move, type)}
+            </button>
+          {:else}
+            <div
+              class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
+              style={typeFill(type)}
+            >
+              {@render moveContent(move, type)}
+            </div>
+          {/if}
+        </li>
+      {/each}
+    </ol>
   </div>
 </div>

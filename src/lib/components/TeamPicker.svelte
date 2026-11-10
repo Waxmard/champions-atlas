@@ -1,8 +1,7 @@
 <script lang="ts">
-  import { Combobox } from 'bits-ui';
+  import { Popover } from 'bits-ui';
   import Check from '@lucide/svelte/icons/check';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import { Button } from '#lib/components/ui/button/index.js';
   import { rankSavedTeams, savedTeamHeading } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import PokemonSprite from './PokemonSprite.svelte';
@@ -18,67 +17,20 @@
     onselect: (id: string) => Promise<boolean>;
     disabled?: boolean;
   } = $props();
-  const id = $props.id();
   let open = $state(false),
-    field = $state(''),
+    query = $state(''),
     busy = $state(false);
-  let selectedId = $derived(value);
-  let inputEl = $state<HTMLInputElement | null>(null),
-    fieldEl = $state<HTMLElement | null>(null),
-    contentEl = $state<HTMLElement | null>(null);
+  let trigger = $state<HTMLElement | null>(null);
   const selected = $derived(teams.find((team) => team.id === value));
-  const selectedHeading = $derived(
-    selected ? savedTeamHeading(selected) : null
-  );
-  const selectedLabel = $derived(
-    selectedHeading
-      ? [selectedHeading.title, selectedHeading.context]
-          .filter(Boolean)
-          .join(' · ')
-      : 'Choose saved team'
-  );
-  const options = $derived(open ? rankSavedTeams(teams, field) : teams);
+  const heading = $derived(selected ? savedTeamHeading(selected) : null);
+  const options = $derived(rankSavedTeams(teams, query));
   const roster = (team: SavedTeam) =>
     team.members.map((member) => member.pokemon);
 
-  $effect(() => {
-    if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
-      const target = event.target as Node | null;
-      if (!target || fieldEl?.contains(target) || contentEl?.contains(target))
-        return;
-      closeMenu();
-    };
-    window.addEventListener('pointerdown', onPointerDown, true);
-    return () => window.removeEventListener('pointerdown', onPointerDown, true);
-  });
-
-  function openMenu() {
-    open = true;
-    field = '';
-  }
-
-  function closeMenu() {
-    open = false;
-    field = '';
-  }
-
-  function toggleTrigger() {
-    if (disabled) return;
-    if (open) closeMenu();
-    else openMenu();
-  }
-
-  function closeOnEscape(event: KeyboardEvent) {
-    if (event.key === 'Escape' && open) {
-      event.preventDefault();
-      closeMenu();
-    }
-  }
-
   async function choose(next: string) {
-    if (!next || next === value || busy) {
-      selectedId = value;
+    if (busy) return;
+    if (next === value) {
+      open = false;
       return;
     }
     busy = true;
@@ -86,113 +38,102 @@
       await onselect(next);
     } finally {
       busy = false;
-      selectedId = value;
-      closeMenu();
+      open = false;
     }
   }
 
   export function focus() {
-    inputEl?.focus();
+    trigger?.focus();
   }
 </script>
 
-<div class="w-full min-w-0">
-  <label class="sr-only" for={id}>
-    {selectedHeading ? `Saved team, currently ${selectedLabel}` : 'Saved team'}
-  </label>
-  <Combobox.Root
-    type="single"
-    bind:open
-    onOpenChange={(isOpen) => {
-      if (!isOpen) field = '';
-    }}
-    bind:value={selectedId}
-    inputValue={field}
-    onValueChange={choose}
-    allowDeselect={false}
-    {disabled}
-  >
-    <div bind:this={fieldEl} class="field relative w-full pe-12">
-      <Combobox.Input
-        {id}
-        bind:ref={inputEl}
-        placeholder={open ? 'Search saved teams' : selectedLabel}
+<Popover.Root
+  bind:open
+  onOpenChange={(isOpen) => {
+    if (!isOpen) query = '';
+  }}
+>
+  <h2 class="min-w-0">
+    <Popover.Trigger
+      bind:ref={trigger}
+      {disabled}
+      aria-label={heading
+        ? `Switch team, currently ${heading.title}`
+        : 'Choose saved team'}
+      class="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-[var(--radius-field)] text-start disabled:pointer-events-none disabled:opacity-50"
+    >
+      <span class="min-w-0">
+        <span
+          class="line-clamp-2 text-xl leading-tight font-extrabold wrap-anywhere landscape:md:text-base"
+          >{heading?.title ?? 'Choose saved team'}</span
+        >
+        {#if heading?.context}<span
+            class="provenance line-clamp-1 wrap-anywhere"
+            >{heading.context}</span
+          >{/if}
+      </span>
+      <ChevronDown
+        class="size-5 shrink-0 text-[color:var(--color-muted)]"
+        aria-hidden="true"
+      />
+    </Popover.Trigger>
+  </h2>
+  <Popover.Portal>
+    <Popover.Content
+      role="dialog"
+      aria-label="Saved teams"
+      align="start"
+      sideOffset={6}
+      trapFocus={false}
+      onOpenAutoFocus={(event) => event.preventDefault()}
+      class="surface picker-popover-enter z-50 flex max-h-[min(26rem,calc(100dvh-12rem))] w-[calc(100vw-2rem)] max-w-sm flex-col p-1 text-base-content shadow-lg outline-none"
+    >
+      <input
+        type="search"
+        aria-label="Search saved teams"
+        placeholder="Search saved teams"
         autocomplete="off"
-        onclick={() => {
-          if (!open) openMenu();
-        }}
-        oninput={(event) => {
-          field = event.currentTarget.value;
-          if (!open) open = true;
-        }}
-        onkeydown={closeOnEscape}
-        class="min-h-11 w-full min-w-0 bg-transparent text-base outline-none {open
-          ? ''
-          : 'placeholder:font-semibold placeholder:text-base-content placeholder:opacity-100'}"
-      >
-        {#snippet child({ props })}
-          <input {...props} value={field} />
-        {/snippet}
-      </Combobox.Input>
-      <Button
-        variant="quiet"
-        size="icon-compact"
-        class="absolute end-0.5 top-1/2 size-11 -translate-y-1/2"
-        aria-label="Show saved teams"
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        {disabled}
-        onpointerdown={(event) => event.stopPropagation()}
-        onclick={toggleTrigger}
-        onkeydown={closeOnEscape}
-      >
-        <ChevronDown class="size-5" aria-hidden="true" />
-      </Button>
-    </div>
-    <Combobox.Portal>
-      <Combobox.Content
-        bind:ref={contentEl}
-        customAnchor={fieldEl}
-        sideOffset={6}
-        onpointerdown={(event) => event.preventDefault()}
-        class="surface picker-popover-enter z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto p-1 shadow-lg"
-      >
-        <Combobox.Viewport>
-          {#each options as team (team.id)}
-            {@const heading = savedTeamHeading(team)}
-            <Combobox.Item
-              value={team.id}
-              label={heading.title}
-              aria-label={`${heading.title}${heading.context ? `, ${heading.context}` : ''}: ${roster(team).join(', ')}`}
-              class="option-row border-b border-base-300 last:border-b-0"
+        class="input mb-1 min-h-11 w-full shrink-0 text-base"
+        bind:value={query}
+      />
+      <ul role="list" class="min-h-0 overflow-y-auto overscroll-contain">
+        {#each options as team (team.id)}
+          {@const option = savedTeamHeading(team)}
+          <li class="border-b border-base-300 last:border-b-0">
+            <button
+              type="button"
+              class="option-row w-full py-1.5"
+              aria-current={team.id === value ? 'true' : undefined}
+              aria-label={`${option.title}${option.context ? `, ${option.context}` : ''}: ${roster(team).join(', ')}`}
+              disabled={busy}
+              onclick={() => choose(team.id)}
             >
-              {#snippet children({ selected: isSelected })}
-                <span class="flex min-w-0 flex-1 flex-col gap-1">
-                  <span class="flex flex-wrap gap-1" aria-hidden="true">
-                    {#each roster(team) as pokemon, slot (slot)}
-                      <PokemonSprite {pokemon} size={32} />
-                    {/each}
-                  </span>
-                  <span
-                    class="text-[0.8125rem] leading-tight wrap-break-word {isSelected
-                      ? 'font-bold'
-                      : 'text-base-content/70'}">{heading.title}</span
-                  >
-                  {#if heading.context}<span class="provenance wrap-anywhere">
-                      {heading.context}
-                    </span>{/if}
+              <span class="flex min-w-0 flex-1 flex-col gap-1">
+                <span class="flex flex-wrap gap-1" aria-hidden="true">
+                  {#each roster(team) as pokemon, slot (slot)}
+                    <PokemonSprite {pokemon} size={32} />
+                  {/each}
                 </span>
-                {#if isSelected}<Check
-                    class="size-4 shrink-0"
-                    aria-hidden="true"
-                  />{/if}
-              {/snippet}
-            </Combobox.Item>
-          {:else}
-            <p class="p-3 text-sm text-base-content/70">No matching teams.</p>
-          {/each}
-        </Combobox.Viewport>
-      </Combobox.Content>
-    </Combobox.Portal>
-  </Combobox.Root>
-</div>
+                <span
+                  class="text-[0.8125rem] leading-tight wrap-break-word {team.id ===
+                  value
+                    ? 'font-bold'
+                    : 'text-base-content/70'}">{option.title}</span
+                >
+                {#if option.context}<span class="provenance wrap-anywhere"
+                    >{option.context}</span
+                  >{/if}
+              </span>
+              {#if team.id === value}<Check
+                  class="size-4 shrink-0"
+                  aria-hidden="true"
+                />{/if}
+            </button>
+          </li>
+        {:else}
+          <li class="p-3 text-sm text-base-content/70">No matching teams.</li>
+        {/each}
+      </ul>
+    </Popover.Content>
+  </Popover.Portal>
+</Popover.Root>

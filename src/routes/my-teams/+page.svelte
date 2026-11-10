@@ -1,19 +1,12 @@
 <script lang="ts">
-  import {
-    getContext,
-    onMount,
-    tick,
-    untrack,
-    type ComponentProps,
-  } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { beforeNavigate, goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
-  import { segmentClass } from '#lib/components/SavedCollectionHeader.svelte';
-  import type TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
+  import TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import TeamPicker from '#lib/components/TeamPicker.svelte';
@@ -40,15 +33,14 @@
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
   import * as collections from '#lib/team-collections.js';
-  const teamActions = getContext<{
-    current: ComponentProps<typeof TeamActionsMenu> | null;
-  }>('team-actions');
   type TeamPanel = 'details' | 'swaps' | 'text';
   const panels = [
     ['details', 'Details'],
     ['swaps', 'Swaps'],
     ['text', 'Team text'],
   ] as const;
+  const segmentClass = (active: boolean) =>
+    `inline-flex min-h-9 min-w-0 items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold transition-colors outline-none max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm ${active ? 'bg-info text-info-content' : 'text-base-content/70 hover:bg-base-200 hover:text-base-content'}`;
   let saved = $state<SavedTeam[]>([]),
     favorites = $state<SavedTeam[]>([]),
     draft = $state<SavedTeam | null>(null),
@@ -152,14 +144,6 @@
       window.removeEventListener('beforeunload', warn);
       window.removeEventListener('pagehide', persistDraft);
       document.removeEventListener('visibilitychange', onVis);
-    };
-  });
-  $effect(() => {
-    teamActions.current = hasTeam
-      ? { oncopy: copyPaste, disabled: changed || editing || deleting }
-      : null;
-    return () => {
-      teamActions.current = null;
     };
   });
   $effect(() => {
@@ -444,15 +428,12 @@
 </script>
 
 <svelte:head><title>My Teams — Champion's Atlas</title></svelte:head>
-<main
-  id="main"
-  class="app-container pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]"
->
+<main id="main" class="app-container pb-2">
   <h1 class="sr-only">My Teams</h1>
   <div
     class="team-workspace grid min-w-0 items-start gap-2 {hasTeam
-      ? 'landscape:md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] landscape:md:[direction:ltr]'
-      : ''}"
+      ? 'team-band landscape:md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] landscape:md:[direction:ltr]'
+      : 'pt-2'}"
   >
     <div
       class="team-controls min-w-0 space-y-2 wrap-anywhere {hasTeam
@@ -472,20 +453,29 @@
         </p>
       {:else if !storageError}
         {#if saved.length}
-          <div
-            data-team-picker
-            onpointerdowncapture={() => {
-              pickerPress = true;
-              setTimeout(() => (pickerPress = false));
-            }}
-          >
-            <TeamPicker
-              bind:this={picker}
-              teams={saved}
-              value={draft?.id ?? ''}
-              onselect={selectTeam}
-              disabled={changed || editing || deleting}
-            />
+          <div class="flex min-w-0 items-start gap-1">
+            <div
+              data-team-picker
+              class="min-w-0 flex-1"
+              onpointerdowncapture={() => {
+                pickerPress = true;
+                setTimeout(() => (pickerPress = false));
+              }}
+            >
+              <TeamPicker
+                bind:this={picker}
+                teams={saved}
+                value={draft?.id ?? ''}
+                onselect={selectTeam}
+                disabled={changed || editing || deleting}
+              />
+            </div>
+            {#if draft}
+              <TeamActionsMenu
+                oncopy={copyPaste}
+                disabled={changed || editing || deleting}
+              />
+            {/if}
           </div>
         {:else}
           <div class="plate max-w-xl px-4 py-3">
@@ -549,137 +539,132 @@
             {/snippet}
           </TeamSetGrid>
         {/key}
-        {#if changed}
-          <p role="status" class="provenance mt-1">
-            Save or reset team text before changing the team.
-          </p>
-        {/if}
-        <div
-          id="team-tabs"
-          role="group"
-          aria-label="Team tools"
-          class="surface mt-2 grid min-w-0 grid-cols-3 items-center p-1"
-        >
-          {#each panels as [id, label] (id)}
-            <button
-              type="button"
-              id={`team-tab-${id}`}
-              class="{segmentClass(
-                panel === id
-              )} cursor-pointer disabled:pointer-events-none disabled:opacity-50"
-              aria-expanded={panel === id}
-              aria-controls={panel === id ? 'team-panel' : undefined}
-              disabled={changed && id !== 'text'}
-              onclick={() => setPanel(panel === id ? null : id)}
-            >
-              {label}
-            </button>
-          {/each}
-        </div>
-        {#if panel}
-          <div
-            id="team-panel"
-            role="region"
-            aria-labelledby={`team-tab-${panel}`}
-            class="plate mt-2 min-w-0 p-3"
-          >
-            {#if panel === 'details'}
-              {@const match = collections.resolveCatalogTeam(
-                draft.original,
-                teams
-              )}
-              <div class="min-w-0 space-y-3">
-                <div class="min-w-0">
-                  <label class="term block"
-                    >Team name
-                    <input
-                      id="team-name"
-                      class="input mt-1.5 min-h-11 w-full text-base"
-                      maxlength="200"
-                      disabled={changed}
-                      aria-invalid={nameError ? 'true' : undefined}
-                      aria-describedby="team-name-error"
-                      bind:value={draft.name}
-                      oninput={() => (nameError = '')}
-                      onblur={blurName}
-                      onkeydown={(e) =>
-                        e.key === 'Enter' && e.currentTarget.blur()}
-                    />
-                  </label>
-                  <p
-                    id="team-name-error"
-                    class="mt-1 text-sm text-error-content"
-                  >
-                    {nameError}
-                  </p>
-                </div>
-                <TeamSources team={draft} currentRegulation={current} />
-                {#if match}<a
-                    class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
-                    href={resolve(`teams/${match.id}`)}>View catalog details</a
-                  >{/if}
-                <div class="min-w-0 space-y-1">
-                  <p class="provenance">
-                    {dirty ? 'Unsaved input.' : 'Saved on this device.'}
-                  </p>
-                  {#if draft.name !== draft.original.name}
-                    <p class="provenance max-w-full min-w-0 wrap-anywhere">
-                      Original: {draft.original.name}
-                    </p>
-                  {/if}
-                  <p class="provenance">
-                    Editing does not create a working rental code.
-                  </p>
-                </div>
-              </div>
-            {:else if panel === 'swaps'}
-              <SwapSuggestions
-                members={draft.members}
-                {teams}
-                currentRegulation={current}
-                tags={catalogState.tags}
-                favoriteTeams={favorites}
-                disabled={changed || editing || deleting || stale}
-                onapply={applySwap}
-              />
-            {:else}
-              <p class="provenance max-w-[68ch]">
-                Team text normalizes to Pokémon Champions format (EVs out of 32,
-                no IVs); unknown details stay omitted.
-              </p>
-              <textarea
-                aria-label="Showdown team text"
-                class="textarea mt-1 min-h-72 w-full p-2 font-mono text-xs leading-5"
-                bind:value={pasteText}
-                oninput={() => (pasteError = '')}
-                disabled={editing || deleting || stale}></textarea>
-              {#if pasteError}<p
-                  role="alert"
-                  class="mt-1 text-sm text-error-content"
-                >
-                  {pasteError}
-                </p>{/if}
-              <div class="mt-1 flex flex-wrap gap-2">
-                <Button
-                  variant="primary"
-                  disabled={!changed || editing || deleting || stale}
-                  onclick={saveTeamPaste}>Save team text</Button
-                >
-                <Button
-                  variant="quiet"
-                  disabled={!changed || editing || deleting}
-                  onclick={() => {
-                    if (draft) pasteText = exportPaste(draft.members);
-                    pasteError = '';
-                  }}>Reset text</Button
-                >
-              </div>
-            {/if}
-          </div>
-        {/if}
       </section>
     {/if}
   </div>
+  {#if ready && !storageError && draft}
+    {#if changed}
+      <p role="status" class="provenance mt-1">
+        Save or reset team text before changing the team.
+      </p>
+    {/if}
+    <div
+      id="team-tabs"
+      role="group"
+      aria-label="Team tools"
+      class="surface mt-2 grid min-w-0 grid-cols-3 items-center p-1"
+    >
+      {#each panels as [id, label] (id)}
+        <button
+          type="button"
+          id={`team-tab-${id}`}
+          class="{segmentClass(
+            panel === id
+          )} cursor-pointer disabled:pointer-events-none disabled:opacity-50"
+          aria-expanded={panel === id}
+          aria-controls={panel === id ? 'team-panel' : undefined}
+          disabled={changed && id !== 'text'}
+          onclick={() => setPanel(panel === id ? null : id)}
+        >
+          {label}
+        </button>
+      {/each}
+    </div>
+    {#if panel}
+      <div
+        id="team-panel"
+        role="region"
+        aria-labelledby={`team-tab-${panel}`}
+        class="plate mt-2 min-w-0 p-3"
+      >
+        {#if panel === 'details'}
+          {@const match = collections.resolveCatalogTeam(draft.original, teams)}
+          <div class="min-w-0 space-y-3">
+            <div class="min-w-0">
+              <label class="term block"
+                >Team name
+                <input
+                  id="team-name"
+                  class="input mt-1.5 min-h-11 w-full text-base"
+                  maxlength="200"
+                  disabled={changed}
+                  aria-invalid={nameError ? 'true' : undefined}
+                  aria-describedby="team-name-error"
+                  bind:value={draft.name}
+                  oninput={() => (nameError = '')}
+                  onblur={blurName}
+                  onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+                />
+              </label>
+              <p id="team-name-error" class="mt-1 text-sm text-error-content">
+                {nameError}
+              </p>
+            </div>
+            <TeamSources team={draft} currentRegulation={current} />
+            {#if match}<a
+                class="inline-flex min-h-11 min-w-0 link items-center text-sm wrap-anywhere"
+                href={resolve(`teams/${match.id}`)}>View catalog details</a
+              >{/if}
+            <div class="min-w-0 space-y-1">
+              <p class="provenance">
+                {dirty ? 'Unsaved input.' : 'Saved on this device.'}
+              </p>
+              {#if draft.name !== draft.original.name}
+                <p class="provenance max-w-full min-w-0 wrap-anywhere">
+                  Original: {draft.original.name}
+                </p>
+              {/if}
+              <p class="provenance">
+                Editing does not create a working rental code.
+              </p>
+            </div>
+          </div>
+        {:else if panel === 'swaps'}
+          <SwapSuggestions
+            members={draft.members}
+            {teams}
+            currentRegulation={current}
+            tags={catalogState.tags}
+            favoriteTeams={favorites}
+            disabled={changed || editing || deleting || stale}
+            onapply={applySwap}
+          />
+        {:else}
+          <p class="provenance max-w-[68ch]">
+            Team text normalizes to Pokémon Champions format (EVs out of 32, no
+            IVs); unknown details stay omitted.
+          </p>
+          <textarea
+            aria-label="Showdown team text"
+            class="textarea mt-1 min-h-72 w-full p-2 font-mono text-xs leading-5"
+            bind:value={pasteText}
+            oninput={() => (pasteError = '')}
+            disabled={editing || deleting || stale}></textarea>
+          {#if pasteError}<p
+              role="alert"
+              class="mt-1 text-sm text-error-content"
+            >
+              {pasteError}
+            </p>{/if}
+          <div class="mt-1 flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              disabled={!changed || editing || deleting || stale}
+              onclick={saveTeamPaste}>Save team text</Button
+            >
+            <Button
+              variant="quiet"
+              disabled={!changed || editing || deleting}
+              onclick={() => {
+                if (draft) pasteText = exportPaste(draft.members);
+                pasteError = '';
+              }}>Reset text</Button
+            >
+          </div>
+        {/if}
+      </div>
+    {/if}
+  {/if}
   {#if activeEditIndex !== null && draft && editorMember}
     {@const editIndex = activeEditIndex}
     <dialog
