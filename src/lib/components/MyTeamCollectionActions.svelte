@@ -45,7 +45,7 @@
   const action = 'gap-1 px-2 landscape:md:justify-start';
 
   async function move(target: 'favorites' | 'wishlist') {
-    if (disabled || dirty || pending || movedId === teamId) return;
+    if (moveDisabled) return;
     const id = teamId;
     const label = target === 'favorites' ? 'Favorites' : 'Wishlist';
     pending = true;

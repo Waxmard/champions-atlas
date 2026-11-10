@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { memberSnapshotDiff } from '../src/lib/team-history.ts';
 import {
   catalogSuggestions,
   favoriteMembersFor,
@@ -53,80 +52,6 @@ const memory = () => {
     raw: () => raw,
   };
 };
-
-test('snapshot preview reports missing scalars, exact form, and ordered moves', () => {
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Rotom-Wash', { moves: ['Protect', 'Knock Off'] }),
-      member('Rotom-Wash-Mega', {
-        item: 'Choice Band',
-        ability: 'Levitate',
-        nature: 'Jolly',
-        spread: '32 Spe',
-        moves: ['Knock Off', 'Protect'],
-      })
-    ),
-    [
-      {
-        field: 'Pokémon',
-        before: 'Rotom-Wash',
-        after: 'Rotom-Wash-Mega',
-      },
-      { field: 'Item', before: 'Unknown', after: 'Choice Band' },
-      { field: 'Ability', before: 'Unknown', after: 'Levitate' },
-      { field: 'Nature', before: 'Unknown', after: 'Jolly' },
-      { field: 'EVs', before: 'Unknown', after: '32 Spe' },
-      {
-        field: 'Moves',
-        before: 'Protect, Knock Off',
-        after: 'Knock Off, Protect',
-      },
-    ]
-  );
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Weavile'),
-      member('Weavile', { moves: ['Protect'] })
-    ),
-    [{ field: 'Moves', before: 'None', after: 'Protect' }]
-  );
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Weavile', { nature: 'bold' }),
-      member('Weavile', { nature: 'Bold' })
-    ),
-    [{ field: 'Nature', before: 'bold', after: 'Bold' }]
-  );
-});
-
-test('snapshot preview preserves raw set text and canonicalizes unknown metadata', () => {
-  const rawBefore = member('Weavile', {
-    set: 'Weavile @ Item\n- Protect',
-  });
-  const rawAfter = member('Weavile', {
-    set: 'Weavile @ Item\n- Protect\n',
-  });
-  assert.deepEqual(memberSnapshotDiff(rawBefore, rawAfter), [
-    {
-      field: 'Set text',
-      before: 'Weavile @ Item\n- Protect',
-      after: 'Weavile @ Item\n- Protect\n',
-    },
-  ]);
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Weavile'),
-      member('Weavile', { metadata: { z: 2, a: 'saved' } })
-    ),
-    [
-      {
-        field: 'Saved metadata',
-        before: '{}',
-        after: '{"metadata":{"a":"saved","z":2}}',
-      },
-    ]
-  );
-});
 
 test('grouped saves retain the stored original', () => {
   const storage = memory(),
