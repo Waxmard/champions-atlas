@@ -19,7 +19,9 @@
 </script>
 
 <div class="mt-1.5 min-w-0 {reserveTitleActions ? 'min-h-11 pe-24' : ''}">
-  <h2 class="text-lg leading-[1.4] font-extrabold wrap-anywhere">
+  <h2
+    class="font-display text-lg leading-[1.4] font-bold tracking-tight wrap-anywhere"
+  >
     {name}
   </h2>
   {#if context}<p class="provenance mt-1 wrap-anywhere">{context}</p>{/if}

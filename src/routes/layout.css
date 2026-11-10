@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@fontsource-variable/nunito/index.css';
+@import '@fontsource-variable/unbounded/index.css';
 
 @plugin 'daisyui' {
   themes:
@@ -91,6 +92,7 @@
 
 @theme inline {
   --font-sans: 'Nunito Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Unbounded Variable', ui-sans-serif, system-ui, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 

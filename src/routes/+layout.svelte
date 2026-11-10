@@ -552,7 +552,7 @@
       >
         <img src="/favicon.svg" alt="" width="36" height="39" />
         <span
-          class="text-xl leading-none font-extrabold tracking-tight whitespace-nowrap"
+          class="font-display text-xl leading-none font-bold tracking-tight whitespace-nowrap"
           >Champion's Atlas</span
         >
       </a>

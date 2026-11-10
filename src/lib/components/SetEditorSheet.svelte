@@ -590,7 +590,7 @@
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h2
         bind:this={editorHeading}
-        class="min-w-[min(6rem,100%)] flex-1 text-lg leading-tight font-semibold wrap-anywhere sm:text-[1.375rem]"
+        class="min-w-[min(6rem,100%)] flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere sm:text-[1.375rem]"
         tabindex="-1"
         data-editor-section={currentView === 'details'
           ? initialField === 'ability'

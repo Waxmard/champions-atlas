@@ -156,7 +156,7 @@
   <div class="mt-4">
     <div class="min-w-0">
       <h1
-        class="max-w-3xl text-[1.75rem] leading-tight font-extrabold tracking-tight wrap-anywhere sm:text-3xl"
+        class="max-w-3xl font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-anywhere sm:text-3xl"
       >
         {heading.title}
       </h1>

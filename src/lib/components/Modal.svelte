@@ -64,7 +64,7 @@
       {id}
       bind:this={heading}
       tabindex="-1"
-      class="min-w-0 flex-1 text-lg leading-tight font-semibold wrap-anywhere"
+      class="min-w-0 flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere"
     >
       {title}
     </h2>

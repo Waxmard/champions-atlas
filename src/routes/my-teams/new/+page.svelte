@@ -35,7 +35,7 @@
   <header class="border-b pb-4">
     <div>
       <h1
-        class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+        class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
       >
         Add custom team
       </h1>

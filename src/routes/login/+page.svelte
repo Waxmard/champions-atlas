@@ -20,7 +20,7 @@
     </div>
     <div class="plate p-6">
       <h1
-        class="text-center text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+        class="text-center font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
       >
         Champion's Atlas
       </h1>

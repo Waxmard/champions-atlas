@@ -3,7 +3,7 @@
 Champion's Atlas is an iOS app for browsing and editing Pokémon Champions doubles
 teams from multiple published sources, without claiming legality validation. Its
 packaged UI uses SvelteKit and TypeScript, daisyUI with Tailwind CSS, bits-ui
-primitives, and locally bundled Nunito Variable.
+primitives, and locally bundled Nunito Variable and Unbounded Variable.
 
 ## Development
 

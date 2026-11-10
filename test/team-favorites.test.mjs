@@ -198,10 +198,12 @@ test('Record summary adds a rounded win rate once a game is logged', () => {
   assert.deepEqual(recordSummary({ wins: 3, losses: 1 }), {
     text: '3W – 1L · 75%',
     label: '3 wins, 1 loss, 75% win rate',
+    rate: 75,
   });
   assert.equal(recordSummary({ wins: 2, losses: 1 }).text, '2W – 1L · 67%');
   assert.deepEqual(recordSummary({ wins: 0, losses: 0 }), {
     text: '0W – 0L',
     label: '0 wins, 0 losses',
+    rate: null,
   });
 });

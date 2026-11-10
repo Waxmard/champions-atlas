@@ -204,7 +204,7 @@
 <main id="main" class="app-container py-6 sm:py-8">
   <header>
     <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+      class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
     >
       Explore teams
     </h1>
