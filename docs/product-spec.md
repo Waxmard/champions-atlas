@@ -202,11 +202,11 @@ current regulation are considered. A suggestion whose resolved form appears with
 one complete set in several teams keeps that set; otherwise the app assembles the
 most common item, the most common ability among sets holding that item, the most
 common Nature and EV pair for those, and the four most frequent moves. Counts
-favor better-placed and recent teams: a team's vote halves for each achievement
-band and each 28-day window of age it trails the best team. An item
+favor better-placed and recent teams through a weighted vote (see
+[Ranking and discovery](data-sources.md#ranking-and-discovery)). An item
 another teammate holds is never reused, and a suggested Mega keeps its own Mega
-Stone. Candidates rank by shared teammates, then by how many qualifying teams use
-the form (weighted by result and recency), then by matching details for those teammates, then by
+Stone. Candidates rank by shared teammates, then by the form's weighted vote,
+then by matching details for those teammates, then by
 recency-adjusted results, regulation, and credentials. Inferred archetype and role
 tags break only
 equally proven ties. Sources need not match the fixed five members exactly. Source
@@ -227,8 +227,8 @@ The two-Mega limit applies to Pokémon replacement suggestions.
 The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 suggested Pokémon, the Pokémon it replaces, the set's item, ability, and nature,
-and its shared-teammate count. Rows rank by how many qualifying teams use the
-form (weighted by result and recency), then by shared teammates. Sets from
+and its shared-teammate count. Rows rank by the form's weighted vote, then by
+shared teammates. Sets from
 Favorites teams rank in the same list, need the same three shared teammates,
 count as much as the best-placed supporting team, and are labelled
 **Favorite**. Applying a row replaces the whole set and
@@ -277,7 +277,7 @@ reopening the EV editor resets the catalog allowance to ten.
 Fewer rows appear when eligible recorded data is insufficient. A catalog pair
 whose best source team shares four or more teammates ranks first, more shared
 teammates first, then by that team's matching set details. Remaining pairs rank
-by the result- and recency-weighted vote of current-regulation sets holding the
+by the weighted vote of current-regulation sets holding the
 edited set's item, then by the overall vote, then by the best source team's
 shared teammates and matching details, then by recency-adjusted results,
 regulation, and credentials. Total observations break ties before publication
