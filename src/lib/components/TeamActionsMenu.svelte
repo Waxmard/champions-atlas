@@ -4,30 +4,15 @@
   import { DropdownMenu } from 'bits-ui';
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import Copy from '@lucide/svelte/icons/copy';
-  import Pencil from '@lucide/svelte/icons/pencil';
   import Plus from '@lucide/svelte/icons/plus';
-  import ArrowLeftRight from '@lucide/svelte/icons/arrow-left-right';
   import { Button } from '#lib/components/ui/button/index.js';
 
   interface Props {
     oncopy: () => void;
-    onrename: () => void;
-    onsuggest: () => void;
-    suggestDisabled: boolean;
     disabled: boolean;
   }
 
-  let { oncopy, onrename, onsuggest, suggestDisabled, disabled }: Props =
-    $props();
-  let actionAfterClose: (() => void) | undefined;
-
-  function focusAfterClose(event: Event) {
-    if (!actionAfterClose) return;
-    event.preventDefault();
-    const action = actionAfterClose;
-    actionAfterClose = undefined;
-    action();
-  }
+  let { oncopy, disabled }: Props = $props();
 </script>
 
 <DropdownMenu.Root>
@@ -51,7 +36,6 @@
       side="bottom"
       align="end"
       sideOffset={8}
-      onCloseAutoFocus={focusAfterClose}
       class="surface picker-popover-enter z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
     >
       <DropdownMenu.Item class="option-row" onSelect={oncopy}>
@@ -60,25 +44,10 @@
       </DropdownMenu.Item>
       <DropdownMenu.Item
         class="option-row"
-        onSelect={() => (actionAfterClose = onrename)}
-      >
-        <Pencil class="size-4" aria-hidden="true" />
-        Rename team
-      </DropdownMenu.Item>
-      <DropdownMenu.Item
-        class="option-row"
         onSelect={() => void goto(resolve('my-teams/new'))}
       >
         <Plus class="size-4" aria-hidden="true" />
         Add custom team
-      </DropdownMenu.Item>
-      <DropdownMenu.Item
-        class="option-row"
-        disabled={suggestDisabled}
-        onSelect={() => (actionAfterClose = onsuggest)}
-      >
-        <ArrowLeftRight class="size-4" aria-hidden="true" />
-        Suggest swaps
       </DropdownMenu.Item>
     </DropdownMenu.Content>
   </DropdownMenu.Portal>

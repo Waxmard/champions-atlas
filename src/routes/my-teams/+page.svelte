@@ -12,6 +12,7 @@
   import { page } from '$app/state';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import MyTeamCollectionActions from '#lib/components/MyTeamCollectionActions.svelte';
+  import { segmentClass } from '#lib/components/SavedCollectionHeader.svelte';
   import type TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
@@ -155,13 +156,7 @@
   });
   $effect(() => {
     teamActions.current = hasTeam
-      ? {
-          oncopy: copyPaste,
-          onrename: () => revealPanel('details'),
-          onsuggest: () => revealPanel('swaps'),
-          suggestDisabled: changed || editing,
-          disabled: changed || editing || deleting,
-        }
+      ? { oncopy: copyPaste, disabled: changed || editing || deleting }
       : null;
     return () => {
       teamActions.current = null;
@@ -211,15 +206,6 @@
     }
     panel = next;
     return true;
-  }
-  function revealPanel(next: 'details' | 'swaps') {
-    if (!setPanel(next)) return;
-    void tick().then(() => {
-      document
-        .getElementById(next === 'details' ? 'team-name' : 'team-tab-swaps')
-        ?.focus({ preventScroll: true });
-      document.getElementById('team-tabs')?.scrollIntoView({ block: 'start' });
-    });
   }
   function blurName(e: FocusEvent) {
     if (
@@ -572,20 +558,22 @@
           id="team-tabs"
           role="group"
           aria-label="Team tools"
-          class="plate mt-2 grid min-w-0 grid-cols-3 gap-1 p-1"
+          class="surface mt-2 grid min-w-0 grid-cols-3 items-center p-1"
         >
           {#each panels as [id, label] (id)}
-            <Button
+            <button
+              type="button"
               id={`team-tab-${id}`}
-              variant={panel === id ? 'primary' : 'quiet'}
-              class="h-auto min-h-11 px-1"
+              class="{segmentClass(
+                panel === id
+              )} cursor-pointer disabled:pointer-events-none disabled:opacity-50"
               aria-expanded={panel === id}
               aria-controls={panel === id ? 'team-panel' : undefined}
               disabled={changed && id !== 'text'}
               onclick={() => setPanel(panel === id ? null : id)}
             >
               {label}
-            </Button>
+            </button>
           {/each}
         </div>
         {#if panel}

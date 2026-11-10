@@ -42,8 +42,7 @@
   const moveDisabled = $derived(
     disabled || dirty || pending || movedId === teamId
   );
-  const tile =
-    'h-auto min-h-11 flex-col justify-start gap-1 px-1 py-2 text-center leading-tight whitespace-normal landscape:md:flex-row landscape:md:justify-start landscape:md:gap-1.5 landscape:md:px-3 landscape:md:text-start';
+  const action = 'gap-1 px-2 landscape:md:justify-start';
 
   async function move(target: 'favorites' | 'wishlist') {
     if (disabled || dirty || pending || movedId === teamId) return;
@@ -97,41 +96,45 @@
 </script>
 
 <div
-  class="plate grid min-w-0 grid-cols-3 gap-1 p-1 landscape:md:grid-cols-1 [&>div>button]:col-span-full [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:max-w-full [&>div>button]:whitespace-normal [&>div>p]:col-span-full [&>div>p]:px-2"
+  class="flex min-w-0 flex-wrap items-center gap-x-1 landscape:md:flex-col landscape:md:items-stretch [&>div>button]:order-1 [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:w-full [&>div>button]:max-w-full [&>div>button]:justify-start [&>div>button]:gap-1 [&>div>button]:px-2 [&>div>button]:text-start [&>div>button]:whitespace-normal [&>div>p]:px-2"
 >
-  <CurrentSetSaveButton {teamId} {baseline} {members} {disabled} />
+  <span class="provenance ps-2" aria-hidden="true">Move to</span>
   <Button
     variant="quiet"
-    class={tile}
+    class={action}
+    aria-label="Move to Favorites"
     data-move-favorites
     disabled={moveDisabled}
     onclick={() => move('favorites')}
   >
     <Star class="size-4" aria-hidden="true" />
-    <span>Move to Favorites</span>
+    <span>Favorites</span>
   </Button>
   <Button
     variant="quiet"
-    class={tile}
+    class={action}
+    aria-label="Move to Wishlist"
     disabled={moveDisabled}
     onclick={() => move('wishlist')}
   >
     <Bookmark class="size-4" aria-hidden="true" />
-    <span>Move to Wishlist</span>
+    <span>Wishlist</span>
   </Button>
   <Button
-    variant="quiet"
-    class={tile}
+    variant="danger-quiet"
+    class="{action} ms-auto landscape:md:ms-0"
+    aria-label="Delete team"
     data-preserve-team-name
     disabled={deleteDisabled || pending || movedId === teamId}
     onclick={ondelete}
   >
     <Trash2 class="size-4" aria-hidden="true" />
-    <span>Delete team</span>
+    <span>Delete</span>
   </Button>
+  <CurrentSetSaveButton {teamId} {baseline} {members} {disabled} />
   <p
     role="alert"
-    class="order-last col-span-full px-2 text-sm {errorMessage
+    class="order-last basis-full px-2 text-sm {errorMessage
       ? 'pb-1'
       : 'sr-only'}"
     style="color: var(--color-error-content)"

@@ -14,5 +14,5 @@
   reorderTeams={reorderFavorites}
   useTeam={useFavoriteTeam}
   removeTeam={removeFavoriteTeam}
-  empty="No favorite teams yet. Choose “Move to Favorites” below a team in My Teams."
+  empty="No favorite teams yet. Open a team in My Teams and move it to Favorites."
 />
