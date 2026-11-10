@@ -708,3 +708,37 @@ test('swap ideas put the best-backed replacement ahead of the closest team', () 
   );
   assert.equal(new Set(ideas.map(({ slot }) => slot)).size, 2);
 });
+
+test('swap ideas keep the best-backed replacement through the per-slot limit', () => {
+  const draft = [
+    'Incineroar',
+    'Rillaboom',
+    'Sneasler',
+    'Kingambit',
+    'Gholdengo',
+    'Dragonite',
+  ].map((name) => set(name));
+  const champion = [
+    { event: 'Champions ranked battles', rank: 'Champion Tier', sourceUrl: '' },
+  ];
+  const closest = [
+    ['Garchomp', 5],
+    ['Hydreigon', 4],
+    ['Amoonguss', 3],
+  ].map(([name, slot]) =>
+    team(name, [
+      ...draft.filter((_, index) => index !== slot),
+      set(name, { item: 'Life Orb' }),
+    ])
+  );
+  const backed = ['backed-a', 'backed-b'].map((id) =>
+    team(id, [...draft.slice(0, 3), set('Gardevoir', { item: 'Life Orb' })], {
+      reports: champion,
+    })
+  );
+  const ideas = swapIdeas(draft, [...closest, ...backed], 'M-C', undefined, 1);
+  assert.deepEqual(
+    ideas.map(({ pokemon }) => pokemon),
+    ['Gardevoir']
+  );
+});
