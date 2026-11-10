@@ -358,9 +358,16 @@ entry and their move suggestions rely on catalog observations alone.
 ## Ranking and discovery
 
 Automatic team and set suggestions consider only teams in the current regulation,
-then order by achievement band, current-regulation status, and credential merit.
-A supplied recommendation tiebreak follows merit; publication time and team ID
-settle remaining ties.
+then order by recency-adjusted achievement band, current-regulation status, and
+credential merit. A supplied recommendation tiebreak follows merit; publication
+time and team ID settle remaining ties.
+
+Recency uses each team's share date in fixed 28-day windows counted from the Unix
+epoch. Each window of age costs one achievement band, so a newer team can pass an
+older team with a better result. Popularity counts in suggestions (Pokémon
+support, assembled sets, item, ability, move, and Nature values, and spread
+frequency) halve a team's vote for each window it trails the newest team. A team
+without a valid share date ranks as oldest.
 
 Browse orders known regulations ahead of Unknown, then ranks resource groups:
 complete EVs with a video, complete EVs without a video, a video without complete
@@ -375,9 +382,10 @@ Within each resource group, Browse ranks Global Challenge positions 1–100,
 Champion Tier or Champions positions 1–100, Master Ball 1, qualifying major
 finishes, qualifying community finishes, Global Challenge positions 101–1,000,
 Master Ball 2, Champions positions 101–1,000, Showdown positions 1–100, eligible
-lower Master Ball results, other reported results, then no result. Current
-regulation comes before credential merit within each band, followed by
-publication time and team ID. Every report can supply the team's best Browse
+lower Master Ball results, other reported results, then no result. Each window of
+age costs one band, as above. Current regulation comes before credential merit
+within each recency-adjusted band, followed by publication time and team ID.
+Every report can supply the team's best Browse
 band. Showdown Bo1, Bo3, and unspecified labels receive the same qualification;
 none implies closed team sheets. These Browse rules do not change evidence
 labels or automatic suggestions.
@@ -412,8 +420,8 @@ event names containing World or Regional do not receive major priority.
 After current-regulation status, major results sort Worlds before listed regional
 events, then better finish bounds and larger known fields. Community results sort by finish-to-field ratio,
 then larger field and finish. Other reported results and no-result teams have no
-inferred credential merit. Publication time cannot promote a lower achievement
-band above a higher one.
+inferred credential merit. Publication time promotes a team only through the
+recency adjustment above.
 
 The catalog excludes Mudkip's Marsh Pit #6 by normalized event name or its
 published Poch record IDs. This applies to imports and catalog views, including

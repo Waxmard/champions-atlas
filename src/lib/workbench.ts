@@ -34,6 +34,7 @@ import {
   type FavoriteTeamSource,
   type SourceTeamFit,
 } from './swap-suggestions.ts';
+import { recencyWeights } from './recency.ts';
 import type { TeamTagsIndex } from './tags.ts';
 import {
   pasteUrlSchema,
@@ -360,7 +361,9 @@ export function catalogSuggestions(
   };
   const eq = (a: string | null, b: string | null) =>
     Boolean(a && b && normalize(a) === normalize(b));
+  const weight = recencyWeights(teams);
   for (const team of teams) {
+    const teamWeight = weight(team);
     const isCurrent = team.regulation === currentRegulation;
     let teamSim = 0;
     if (teammates.length) {
@@ -399,11 +402,31 @@ export function catalogSuggestions(
             ability: null,
           }).error === null)
       )
-        add(items, member.item, baseScore + am + nm + sm + mm, isCurrent);
-      add(abilities, member.ability, baseScore + im + nm + sm + mm, isCurrent);
-      add(natures, member.nature, baseScore + im + am + mm, isCurrent);
+        add(
+          items,
+          member.item,
+          (baseScore + am + nm + sm + mm) * teamWeight,
+          isCurrent
+        );
+      add(
+        abilities,
+        member.ability,
+        (baseScore + im + nm + sm + mm) * teamWeight,
+        isCurrent
+      );
+      add(
+        natures,
+        member.nature,
+        (baseScore + im + am + mm) * teamWeight,
+        isCurrent
+      );
       for (const move of member.moves) {
-        add(moves, move, baseScore + im + am + nm + sm, isCurrent);
+        add(
+          moves,
+          move,
+          (baseScore + im + am + nm + sm) * teamWeight,
+          isCurrent
+        );
       }
     }
   }
@@ -541,6 +564,7 @@ interface CatalogSpreadOption {
   nature: string;
   values: ChampionsSpread;
   currentCount: number;
+  currentWeight: number;
   totalCount: number;
   sources: Team[];
 }
@@ -603,8 +627,10 @@ function catalogSpreadIndex(
   const cached = spreadCache.get(teams);
   if (cached && cached.regulation === regulation) return cached.bySpecies;
   const bySpecies = new Map<string, Map<string, CatalogSpreadOption>>();
+  const weight = recencyWeights(teams);
   for (const team of teams) {
     const isCurrent = team.regulation === regulation;
+    const teamWeight = isCurrent ? weight(team) : 0;
     for (const member of team.members) {
       const values = parseChampionsSpread(member.spread);
       if (!isCompleteSpread(values)) continue;
@@ -624,6 +650,7 @@ function catalogSpreadIndex(
       if (option) {
         option.totalCount++;
         if (isCurrent) option.currentCount++;
+        option.currentWeight += teamWeight;
         option.sources.push(team);
       } else {
         options.set(key, {
@@ -631,6 +658,7 @@ function catalogSpreadIndex(
           nature,
           values,
           currentCount: isCurrent ? 1 : 0,
+          currentWeight: teamWeight,
           totalCount: 1,
           sources: [team],
         });
@@ -698,7 +726,7 @@ export function catalogSpreadSuggestions(
         a.source,
         b.source,
         currentRegulation,
-        b.option.currentCount - a.option.currentCount ||
+        b.option.currentWeight - a.option.currentWeight ||
           b.option.totalCount - a.option.totalCount
       ) ||
       a.option.spread.localeCompare(b.option.spread)

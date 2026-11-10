@@ -5,6 +5,7 @@ import {
   favoriteMembersFor,
   originalSpreadSuggestion,
 } from '../src/lib/workbench.ts';
+import { RECENCY_WINDOW_DAYS } from '../src/lib/recency.ts';
 
 const team = (
   id,
@@ -77,6 +78,11 @@ const selected = (nature, teams = natureCatalog, limit = 5, teammates = []) =>
   catalogSpreadSuggestions({ ...self, nature }, teams, 'M-C', limit, teammates);
 const spreadList = (suggestions) =>
   suggestions.map(({ nature, spread }) => [nature, spread]);
+const dayIn = (window, offset = 0) =>
+  new Date((window * RECENCY_WINDOW_DAYS + offset) * 86_400_000)
+    .toISOString()
+    .slice(0, 10);
+const W = 740;
 
 test('catalog suggestions are limited to the canonical current Nature', () => {
   const modest = selected('Modest');
@@ -306,17 +312,17 @@ test('roster-specific ordering does not contaminate the shared catalog cache', (
 
 test('current and total observations break ties before source date and ID', () => {
   const catalog = [
-    source('b-total-rich', modestSpreads[0], { publishedAt: '2026-01-01' }),
+    source('b-total-rich', modestSpreads[0], { publishedAt: '2026-01-02' }),
     ...Array.from({ length: 3 }, (_, i) =>
       source('old-total-rich-' + i, modestSpreads[0], { regulation: 'M-B' })
     ),
     source('c-current-rich-1', modestSpreads[1], {
-      publishedAt: '2025-01-01',
+      publishedAt: '2026-01-01',
     }),
     source('c-current-rich-2', modestSpreads[1], {
-      publishedAt: '2025-01-01',
+      publishedAt: '2026-01-01',
     }),
-    source('a-total-poor', modestSpreads[2], { publishedAt: '2027-01-01' }),
+    source('a-total-poor', modestSpreads[2], { publishedAt: '2026-01-03' }),
     source('old-total-poor', modestSpreads[2], { regulation: 'M-B' }),
   ];
   const results = catalogSpreadSuggestions(self, catalog, 'M-C');
@@ -332,6 +338,20 @@ test('current and total observations break ties before source date and ID', () =
       { spread: modestSpreads[2], currentCount: 1, totalCount: 2 },
     ]
   );
+});
+
+test('recency-weighted frequency breaks ties between equally recent sources', () => {
+  const catalog = [
+    source('x-new', modestSpreads[0], { publishedAt: dayIn(W) }),
+    source('x-old-1', modestSpreads[0], { publishedAt: dayIn(W - 2) }),
+    source('x-old-2', modestSpreads[0], { publishedAt: dayIn(W - 2) }),
+    source('y-new-1', modestSpreads[1], { publishedAt: dayIn(W) }),
+    source('y-new-2', modestSpreads[1], { publishedAt: dayIn(W) }),
+  ];
+  assert.deepEqual(spreadList(catalogSpreadSuggestions(self, catalog, 'M-C')), [
+    ['Modest', modestSpreads[1]],
+    ['Modest', modestSpreads[0]],
+  ]);
 });
 
 test('catalog spreads aggregate current-regulation observations for the selected nature', () => {

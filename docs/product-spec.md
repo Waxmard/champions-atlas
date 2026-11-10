@@ -201,11 +201,13 @@ fields and moves next, then uses result ordering for ties. Only teams in the
 current regulation are considered. A suggestion whose resolved form appears with
 one complete set in several teams keeps that set; otherwise the app assembles the
 most common item, the most common ability among sets holding that item, the most
-common Nature and EV pair for those, and the four most frequent moves. An item
+common Nature and EV pair for those, and the four most frequent moves. Counts
+favor recent teams: a team's vote halves for each 28-day window of age. An item
 another teammate holds is never reused, and a suggested Mega keeps its own Mega
 Stone. Candidates rank by shared teammates, then by how many qualifying teams use
-the form, then by matching details for those teammates, then by published
-results, regulation, and credentials. Inferred archetype and role tags break only
+the form (recency-weighted), then by matching details for those teammates, then by
+recency-adjusted results, regulation, and credentials. Inferred archetype and role
+tags break only
 equally proven ties. Sources need not match the fixed five members exactly. Source
 result claims are not attributed to the user's edited team. Exact forms remain
 distinct.
@@ -269,8 +271,9 @@ same Nature preserves the expanded depth. Selecting a different Nature or
 reopening the EV editor resets the catalog allowance to ten.
 Fewer rows appear when eligible recorded data is insufficient. Matching catalog
 pairs rank by the best actual source team's shared teammates and matching set
-details for those teammates, then by published results, regulation, and credentials.
-Catalog frequency breaks ties before publication date or ID. Catalog counts use
+details for those teammates, then by recency-adjusted results, regulation, and
+credentials. Recency-weighted catalog frequency breaks ties before publication
+date or ID. Catalog counts use
 catalog observations only. Original and in-game suggestions retain their source
 labels and do not fill in unpublished original EVs.
 

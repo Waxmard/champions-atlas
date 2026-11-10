@@ -18,6 +18,7 @@ import {
 import rosterA from '../../scripts/data/champions-m-a.json' with { type: 'json' };
 import rosterB from '../../scripts/data/champions-m-b.json' with { type: 'json' };
 import rosterC from '../../scripts/data/champions-m-c.json' with { type: 'json' };
+import { recencyWeights } from './recency.ts';
 import {
   missingRoles,
   postalRole,
@@ -175,6 +176,7 @@ interface Candidate {
   form: string;
   names: Map<string, number>;
   members: Member[];
+  weights: Map<Member, number>;
   teamIds: Set<string>;
   support: number;
   bestShared: number;
@@ -198,12 +200,16 @@ function isKnownMember(member: Member): boolean {
   );
 }
 
-function mostCommon<T>(values: readonly T[], key: (value: T) => string) {
+function mostCommon<T>(
+  values: readonly T[],
+  key: (value: T) => string,
+  weight: (value: T) => number
+) {
   const counts = new Map<string, { value: T; count: number }>();
   for (const value of values) {
     const entry = counts.get(key(value));
-    if (entry) entry.count++;
-    else counts.set(key(value), { value, count: 1 });
+    if (entry) entry.count += weight(value);
+    else counts.set(key(value), { value, count: weight(value) });
   }
   let best: { value: T; count: number } | null = null;
   for (const entry of counts.values())
@@ -211,14 +217,17 @@ function mostCommon<T>(values: readonly T[], key: (value: T) => string) {
   return best?.value ?? null;
 }
 
-function topMoves(members: readonly Member[]) {
+function topMoves(
+  members: readonly Member[],
+  weight: (member: Member) => number
+) {
   const counts = new Map<string, { value: string; count: number }>();
   for (const member of members)
     for (const move of member.moves) {
       if (empty(move)) continue;
       const entry = counts.get(normalize(move));
-      if (entry) entry.count++;
-      else counts.set(normalize(move), { value: move, count: 1 });
+      if (entry) entry.count += weight(member);
+      else counts.set(normalize(move), { value: move, count: weight(member) });
     }
   return [...counts.values()]
     .sort((a, b) => b.count - a.count)
@@ -253,18 +262,28 @@ function synthesize(
 ): PokemonSuggestion | null {
   const valid = candidate.members.filter(isKnownMember);
   if (!valid.length) return null;
-  const canonical = valid.map(canonicalMember);
+  const weights = new Map<Member, number>();
+  const canonical = valid.map((member) => {
+    const entry = canonicalMember(member);
+    weights.set(entry, candidate.weights.get(member) ?? 0);
+    return entry;
+  });
+  const weightOf = (member: Member) => weights.get(member) ?? 0;
+  const totalWeight = (members: Member[]) =>
+    members.reduce((sum, member) => sum + weightOf(member), 0);
   const teammateItems = new Set(
     teammates.map((member) => normalize(member.item ?? '')).filter(Boolean)
   );
   const representative = canonical[0];
-  const signature = mostCommon(canonical, signatureOf) ?? representative;
-  const topCount = canonical.filter(
+  const signature =
+    mostCommon(canonical, signatureOf, weightOf) ?? representative;
+  const matching = canonical.filter(
     (member) => signatureOf(member) === signatureOf(signature)
-  ).length;
+  );
+  const topCount = matching.length;
   const consensus =
     topCount >= 2 &&
-    topCount * 2 >= canonical.length &&
+    totalWeight(matching) * 2 >= totalWeight(canonical) &&
     !teammateItems.has(normalize(signature.item ?? ''));
 
   let item: string | null;
@@ -288,7 +307,11 @@ function synthesize(
             .map(normalize)
             .includes(normalize(candidate.form)))
     );
-    const chosen = mostCommon(items, (member) => normalize(member.item ?? ''));
+    const chosen = mostCommon(
+      items,
+      (member) => normalize(member.item ?? ''),
+      weightOf
+    );
     if (!chosen) return null;
     item = chosen.item;
 
@@ -301,11 +324,13 @@ function synthesize(
       (stone && resolved.ability ? resolved.ability : null) ??
       mostCommon(
         withItem.filter((member) => !empty(member.ability)),
-        (member) => normalize(member.ability ?? '')
+        (member) => normalize(member.ability ?? ''),
+        weightOf
       )?.ability ??
       mostCommon(
         canonical.filter((member) => !empty(member.ability)),
-        (member) => normalize(member.ability ?? '')
+        (member) => normalize(member.ability ?? ''),
+        weightOf
       )?.ability ??
       null;
 
@@ -318,7 +343,7 @@ function synthesize(
       const complete = pairs.filter((member) =>
         isCompleteSpread(parseChampionsSpread(member.spread))
       );
-      return mostCommon(complete.length ? complete : pairs, pair);
+      return mostCommon(complete.length ? complete : pairs, pair, weightOf);
     };
     const withAbility = withItem.filter(
       (member) => normalize(member.ability ?? '') === normalize(ability ?? '')
@@ -334,9 +359,9 @@ function synthesize(
     const narrowest = withAbility.filter(
       (member) => !pairKey || pair(member) === pairKey
     );
-    moves = topMoves(narrowest);
-    if (moves.length < 4) moves = topMoves(withAbility);
-    if (moves.length < 4) moves = topMoves(canonical);
+    moves = topMoves(narrowest, weightOf);
+    if (moves.length < 4) moves = topMoves(withAbility, weightOf);
+    if (moves.length < 4) moves = topMoves(canonical, weightOf);
   }
 
   const member: Member = {
@@ -454,6 +479,7 @@ export function pokemonSuggestions(
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): PokemonSuggestion[] {
   const current = teams.filter((team) => team.regulation === currentRegulation);
+  const weight = recencyWeights(current);
   const { ranked, missing } = rankedSourceTeams(
     teammates,
     current,
@@ -496,6 +522,7 @@ export function pokemonSuggestions(
   const effectiveMinShared = queryKey ? 0 : minShared;
   for (const { team, shared, details } of ranked) {
     if (shared < effectiveMinShared) break;
+    const teamWeight = weight(team);
     for (const member of team.members) {
       const resolved = resolveBattleForm(member);
       if (resolved.error) continue;
@@ -510,6 +537,7 @@ export function pokemonSuggestions(
           form,
           names: new Map(),
           members: [],
+          weights: new Map(),
           teamIds: new Set(),
           support: 0,
           bestShared: shared,
@@ -524,9 +552,10 @@ export function pokemonSuggestions(
         (candidate.names.get(member.pokemon) ?? 0) + 1
       );
       candidate.members.push(member);
+      candidate.weights.set(member, teamWeight);
       if (!candidate.teamIds.has(team.id)) {
         candidate.teamIds.add(team.id);
-        candidate.support++;
+        candidate.support += teamWeight;
       }
       if (missing.some((role) => roleFlags(member).includes(role)))
         candidate.roleFill = true;
