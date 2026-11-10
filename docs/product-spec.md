@@ -85,8 +85,9 @@ opens the matching catalog team from My teams or a selected Wishlist team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
 restoration conflicts with the current roster.
 
-My Teams shows an always-visible win/loss record for the selected team, such as
-**3W – 1L**, with buttons to add or remove a win or a loss. The record starts
+My Teams shows an always-visible **Record** panel with the win/loss record for
+the selected team, such as **3W – 1L**, with buttons to add or remove a win or a
+loss. The record starts
 at 0W – 0L, never goes below zero, and is unavailable while edits are pending or
 the team changed elsewhere. It is saved with the team, so it stays when the team
 moves between My Teams, Favorites, and Wishlist and syncs like other team

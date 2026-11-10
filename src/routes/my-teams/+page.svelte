@@ -507,44 +507,49 @@
           <div
             role="group"
             aria-label="Win/loss record"
-            class="flex flex-wrap items-center gap-3 tabular-nums"
+            class="plate flex min-w-0 flex-wrap items-center justify-between gap-x-3 px-3 py-1 tabular-nums"
           >
-            {#each [['wins', 'win', 'W'], ['losses', 'loss', 'L']] as const as [key, noun, mark] (key)}
-              <div class="flex items-center">
-                <Button
-                  variant="quiet"
-                  size="icon-compact"
-                  aria-label={`Remove a ${noun}`}
-                  disabled={changed ||
-                    editing ||
-                    deleting ||
-                    stale ||
-                    record[key] === 0}
-                  onclick={() => changeRecord(key, -1)}
-                >
-                  <Minus class="size-4" aria-hidden="true" />
-                </Button>
-                <span class="min-w-10 text-center text-[0.9375rem] font-medium">
-                  <span aria-hidden="true">{record[key]}{mark}</span>
-                  <span class="sr-only"
-                    >{record[key]} {record[key] === 1 ? noun : key}</span
+            <span class="term" aria-hidden="true">Record</span>
+            <div class="flex items-center gap-3">
+              {#each [['wins', 'win', 'W'], ['losses', 'loss', 'L']] as const as [key, noun, mark] (key)}
+                <div class="flex items-center">
+                  <Button
+                    variant="quiet"
+                    size="icon-compact"
+                    aria-label={`Remove a ${noun}`}
+                    disabled={changed ||
+                      editing ||
+                      deleting ||
+                      stale ||
+                      record[key] === 0}
+                    onclick={() => changeRecord(key, -1)}
                   >
-                </span>
-                <Button
-                  variant="quiet"
-                  size="icon-compact"
-                  aria-label={`Add a ${noun}`}
-                  disabled={changed ||
-                    editing ||
-                    deleting ||
-                    stale ||
-                    record[key] === 9999}
-                  onclick={() => changeRecord(key, 1)}
-                >
-                  <Plus class="size-4" aria-hidden="true" />
-                </Button>
-              </div>
-            {/each}
+                    <Minus class="size-4" aria-hidden="true" />
+                  </Button>
+                  <span
+                    class="min-w-10 text-center text-[0.9375rem] font-medium"
+                  >
+                    <span aria-hidden="true">{record[key]}{mark}</span>
+                    <span class="sr-only"
+                      >{record[key]} {record[key] === 1 ? noun : key}</span
+                    >
+                  </span>
+                  <Button
+                    variant="quiet"
+                    size="icon-compact"
+                    aria-label={`Add a ${noun}`}
+                    disabled={changed ||
+                      editing ||
+                      deleting ||
+                      stale ||
+                      record[key] === 9999}
+                    onclick={() => changeRecord(key, 1)}
+                  >
+                    <Plus class="size-4" aria-hidden="true" />
+                  </Button>
+                </div>
+              {/each}
+            </div>
           </div>
           {#key draft.id}
             <MyTeamCollectionActions

@@ -558,19 +558,13 @@
       </a>
       <div class="flex min-w-0 items-center justify-end gap-1">
         {#if sync.configured}
-          {#if sync.status === 'syncing' || sync.status === 'error'}
+          {#if sync.status === 'error'}
             <span
               role="status"
               aria-live="polite"
               title={sync.error}
-              class="provenance max-w-16 text-center leading-tight wrap-break-word {sync.status ===
-              'error'
-                ? 'font-semibold'
-                : ''}"
-              style={sync.status === 'error'
-                ? 'color: var(--color-error-content)'
-                : ''}
-              >{sync.status === 'error' ? 'Sync failed' : 'Syncing…'}</span
+              class="provenance max-w-16 text-center leading-tight font-semibold wrap-break-word"
+              style="color: var(--color-error-content)">Sync failed</span
             >
           {/if}
           {#if sync.user}
