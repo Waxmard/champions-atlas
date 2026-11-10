@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/Waxmard/champions-atlas/compare/v0.7.0...v0.8.0) (2026-11-10)
+
+
+### Features
+
+* rank team suggestions by share recency and competitive results ([#95](https://github.com/Waxmard/champions-atlas/issues/95)) ([1f62e6f](https://github.com/Waxmard/champions-atlas/commit/1f62e6fc72eeb9e660a1725d94ade78e2103727c))
+
 ## [0.7.0](https://github.com/Waxmard/champions-atlas/compare/v0.6.0...v0.7.0) (2026-11-10)
 
 
