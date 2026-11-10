@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.7.0](https://github.com/Waxmard/champions-atlas/compare/v0.6.0...v0.7.0) (2026-11-10)
+
+
+### ⚠ BREAKING CHANGES
+
+* add bottom navigation and tabbed tools on My Teams ([#92](https://github.com/Waxmard/champions-atlas/issues/92))
+
+### Features
+
+* add bottom navigation and tabbed tools on My Teams ([#92](https://github.com/Waxmard/champions-atlas/issues/92)) ([e21114d](https://github.com/Waxmard/champions-atlas/commit/e21114db729e55ebf26d27d66caea04dfd505d3e))
+
 ## [0.6.0](https://github.com/Waxmard/champions-atlas/compare/v0.5.0...v0.6.0) (2026-11-09)
 
 
