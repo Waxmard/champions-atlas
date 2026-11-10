@@ -212,8 +212,6 @@ test('suggested sets resolve a Mega stone onto its own form', () => {
   const [suggestion] = pokemonSuggestions([set('Sneasler')], [source], 'M-C');
   assert.equal(suggestion.pokemon, 'Froslass');
   assert.equal(suggestion.member.item, 'Froslassite');
-  assert.equal(suggestion.consensus, true);
-  assert.equal(suggestion.consensusSupport, 2);
   assert.equal(resolveBattleForm(suggestion.member).pokemon, 'Froslass-Mega');
 });
 
@@ -283,8 +281,6 @@ test('teams sharing one complete set produce a consensus suggestion', () => {
   ];
   const [suggestion] = pokemonSuggestions(core(), teams, 'M-C');
   assert.equal(suggestion.pokemon, 'Rillaboom');
-  assert.equal(suggestion.consensus, true);
-  assert.equal(suggestion.consensusSupport, 2);
   assert.equal(suggestion.support, 2);
   assert.equal(suggestion.sharedTeammates, 3);
   assert.deepEqual(suggestion.member, rillaboom);
@@ -316,8 +312,6 @@ test('differing sets assemble the modal item, ability, spread, and moves', () =>
     ]),
   ];
   const [suggestion] = pokemonSuggestions(core(), teams, 'M-C');
-  assert.equal(suggestion.consensus, false);
-  assert.equal(suggestion.consensusSupport, 0);
   assert.equal(suggestion.member.item, 'Miracle Seed');
   assert.equal(suggestion.member.ability, 'Grassy Surge');
   assert.equal(suggestion.member.nature, 'Adamant');
@@ -351,7 +345,6 @@ test('assembly steps past an item another teammate already holds', () => {
   ];
   const [suggestion] = pokemonSuggestions(teammates, teams, 'M-C');
   assert.equal(suggestion.member.item, 'Life Orb');
-  assert.equal(suggestion.consensus, false);
 
   const held = [...teammates, set('Pikachu', { item: 'Life Orb' })];
   assert.deepEqual(pokemonSuggestions(held, teams, 'M-C'), []);

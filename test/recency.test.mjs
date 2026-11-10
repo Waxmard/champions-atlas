@@ -91,8 +91,6 @@ test('recent sets outvote a larger number of older sets', () => {
   const [row] = pokemonSuggestions(teammates, all, 'M-C');
   assert.equal(row.pokemon, 'Rillaboom');
   assert.equal(row.member.item, 'Life Orb');
-  assert.equal(row.consensus, true);
-  assert.equal(row.consensusSupport, 2);
   assert.equal(row.support, 2.75);
 });
 
@@ -159,8 +157,6 @@ test('better-placed sets outvote a larger number of weaker ones', () => {
   const [row] = pokemonSuggestions(teammates, all, 'M-C');
   assert.equal(row.pokemon, 'Rillaboom');
   assert.equal(row.member.item, 'Life Orb');
-  assert.equal(row.consensus, true);
-  assert.equal(row.consensusSupport, 2);
   assert.equal(row.support, 2.375);
 });
 

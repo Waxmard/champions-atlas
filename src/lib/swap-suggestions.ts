@@ -83,8 +83,6 @@ export interface PokemonSuggestion {
   roleFill: boolean;
   archetype: string | null;
   support: number;
-  consensus: boolean;
-  consensusSupport: number;
   source: Team;
   favorite?: true;
   favoriteTeamName?: string;
@@ -291,11 +289,9 @@ function synthesize(
   let nature: string | null;
   let spread: string | null;
   let moves: string[];
-  let consensusSupport = 0;
 
   if (consensus) {
     ({ item, ability, nature, spread, moves } = signature);
-    consensusSupport = topCount;
   } else {
     const stone = isMegaSpecies(candidate.form);
     const items = canonical.filter(
@@ -389,8 +385,6 @@ function synthesize(
     roleFill: missing.some((role) => roleFlags(member).includes(role)),
     archetype: tagsForTeam(tags, candidate.bestSource.id)?.archetype ?? null,
     support: candidate.support,
-    consensus,
-    consensusSupport,
     source: candidate.bestSource,
   };
 }
@@ -452,8 +446,6 @@ function buildFavoriteSuggestions(
         roleFill: missing.some((role) => roleFlags(member).includes(role)),
         archetype: tagsForTeam(tags, favTeam.id)?.archetype ?? null,
         support: 1,
-        consensus: true,
-        consensusSupport: 1,
         source: sourceStub(
           favTeam.id,
           favTeam.name,
@@ -626,8 +618,6 @@ export function pokemonSuggestions(
           roleFill: false,
           archetype: null,
           support: 0,
-          consensus: false,
-          consensusSupport: 0,
           source: sourceStub('', '', currentRegulation, []),
         }))
     : [];
