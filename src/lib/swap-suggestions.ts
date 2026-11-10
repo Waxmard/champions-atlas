@@ -597,7 +597,16 @@ export function pokemonSuggestions(
           source: sourceStub('', '', currentRegulation, []),
         }))
     : [];
-  return [...favoriteRows, ...catalogRows, ...rosterRows];
+  const sourced = [...favoriteRows, ...catalogRows];
+  if (!queryKey)
+    sourced.sort(
+      (a, b) =>
+        b.sharedTeammates - a.sharedTeammates ||
+        b.support - a.support ||
+        b.matchingDetails - a.matchingDetails ||
+        Number(Boolean(b.favorite)) - Number(Boolean(a.favorite))
+    );
+  return [...sourced, ...rosterRows];
 }
 
 export function swapTargets(

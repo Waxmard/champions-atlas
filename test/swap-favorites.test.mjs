@@ -79,7 +79,7 @@ test('swap ideas rank Favorites with catalog suggestions on the same three-share
   );
 });
 
-test('Favorite teams surface all distinct sets ahead of catalog without averaging and preserve catalog limit', () => {
+test('Favorite sets rank with catalog rows without averaging and preserve catalog limit', () => {
   const sn = set('Sneasler', { item: 'Focus Sash' });
   const kg = set('Kingambit');
   const teammates = [sn, kg];
@@ -132,9 +132,10 @@ test('Favorite teams surface all distinct sets ahead of catalog without averagin
   );
   assert.equal(res.length, 5);
   assert.deepEqual(
-    res.slice(0, 2).map((r) => [r.pokemon, r.favoriteTeamName, r.member.item]),
+    res.slice(0, 3).map((r) => [r.pokemon, r.favoriteTeamName, r.member.item]),
     [
       ['Weavile', 'Fav Beta', 'Clear Amulet'],
+      ['Weavile', undefined, 'Life Orb'],
       ['Weavile', 'Fav Alpha', 'Choice Band'],
     ]
   );

@@ -223,9 +223,8 @@ The two-Mega limit applies to Pokémon replacement suggestions.
 
 The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
-slot, the current and suggested Pokémon, the set, its shared-teammate count, and
-either how many teams share that exact set or how many sets it was assembled
-from, with its best supporting result. Sets from Favorites teams rank in the same
+suggested Pokémon, the Pokémon it replaces, the set's item, ability, and nature,
+and its shared-teammate count. Sets from Favorites teams rank in the same
 list, need the same three shared teammates, count as one supporting team, and
 are labelled **Favorite**. Applying a row replaces the whole set and
 leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
@@ -244,7 +243,9 @@ in-game set, **Favorite** for a value from a matching set in a Favorites team,
 and **Movepool** for a move no catalog team recorded. Favorite values rank after
 Original and In-game values. Items another
 teammate already holds are not offered. Move suggestions include the species'
-newest available movepool, which ranks after catalog observations.
+newest available movepool, which ranks after catalog observations. In the set
+editor's Pokémon suggestions, Favorites sets rank among catalog suggestions by
+shared teammates until a name is typed, then they list first.
 
 Every suggestion surface renders as full-width rows with an icon cell, the name,
 and one muted detail line. Item, ability, move, Pokémon, and spread lists start
