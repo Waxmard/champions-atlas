@@ -127,7 +127,7 @@ silently on startup, during sync, and when another device shares it. The removal
 is permanent and keeps no backup. A lone legacy slot keeps its member and only
 takes the canonical id. Malformed data remains unreadable and untouched.
 Record individual committed sets from each set's actions or **Record all
-in-game sets** from **Manage team**, never from the editor. These secondary
+in-game sets** below the team, never from the editor. These secondary
 actions use the Save icon and appear only when a snapshot would change.
 Recording is unavailable while editing and never flushes pending editor input or
 a pending team name. Individual replacements use native
@@ -184,7 +184,8 @@ remembers the last successfully visited URL and scroll position on this device
 for a bare-root reopen and returns to that page after sign-in. With no remembered
 page, it opens Browse. Explicit links take precedence, and a missing remembered
 detail falls back to browsing. Editors and dialogs reopen closed. The main
-navigation remains visible while scrolling, and selecting a Pokémon clears its
+navigation is a bottom tab bar (Browse, My Teams, Favorites, Wishlist) that
+remains visible while scrolling, and selecting a Pokémon clears its
 search input for the next choice.
 
 An explicit saved-team link with no saved teams keeps its URL and shows a
@@ -214,14 +215,13 @@ distinct.
 - Retain published set text and source history on edits.
 - Preserve the original imported team when creating an edited draft.
 
-In **Original & history**, compare the current team with the immutable original.
-Restore the original team with its name, sets, and roster order without changing
-its saved ID or source history. **Restore original set** is available only when
-it does not duplicate a Pokémon or exceed the replacement Mega limit.
+The **Details** tab below the team holds the team name and the original team's
+results, source links, paste link, and replica code. The original team stays
+stored with the saved team, but it cannot be restored from My Teams.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
-**Suggest swaps** in **Manage team** lists up to four whole-set replacements
+The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 slot, the current and suggested Pokémon, the set, its shared-teammate count, and
 either how many teams share that exact set or how many sets it was assembled
@@ -298,7 +298,8 @@ no published result claims.
 
 From a Poképaste page, the iOS share extension accepts one direct link or paste
 ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
-The manual fallback accepts a `pokepast.es` link or 16-character paste ID.
+The manual fallback, **Add a Poképaste** on the Wishlist list, accepts a
+`pokepast.es` link or 16-character paste ID.
 Imports do not change the active team. An existing bookmark for the link is
 returned unchanged, even if multiple catalog teams share that link. A unique
 catalog match is bookmarked with its source metadata without a network request.
@@ -352,11 +353,10 @@ After a successful sign-in, it can open saved data offline; sync resumes when
 connected. A first sign-in may require connectivity. Native setup and signing
 are described in [iOS installation and Firebase sync](firebase.md).
 
-The My teams picker shows only in-use teams and displays the selected team's
-name. Its search covers the current team name and each member's species, with
-exact, prefix, substring, and character-subsequence tiers, requiring every
-whitespace-separated term to match. Arrow keys and Enter select a result;
-Escape restores the current team without renaming it.
+The My teams title opens a list of in-use teams with the selected team checked.
+The list's search box takes focus only when tapped. Search covers the current
+team name and each member's species, with exact, prefix, substring, and
+character-subsequence tiers, requiring every whitespace-separated term to match.
 
 ## Future scope
 

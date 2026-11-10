@@ -1,11 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  differences,
-  memberSnapshotDiff,
-  restoreTeam,
-} from '../src/lib/team-history.ts';
-import {
   catalogSuggestions,
   favoriteMembersFor,
   originalMemberFor,
@@ -58,146 +53,7 @@ const memory = () => {
   };
 };
 
-test('diff is identity aligned, needs a known selected value, and reports no full-set or roster rows', () => {
-  const before = Array.from({ length: 6 }, (_, i) => member('Pokemon' + i));
-  assert.deepEqual(differences(before, structuredClone(before).reverse()), []);
-  const after = structuredClone(before);
-  after[0].item = 'Item';
-  before[1].item = 'Leftovers';
-  after[1].item = 'Choice Band';
-  before[2].item = 'Focus Sash';
-  after[2].item = null;
-  before[3].moves = ['Protect'];
-  after[3].moves = [];
-  before[4].moves = [];
-  after[4].moves = ['Protect'];
-  after[5] = member('Replacement');
-  assert.deepEqual(differences(before, after), [
-    {
-      pokemon: 'Pokemon1',
-      field: 'Item',
-      before: 'Leftovers',
-      after: 'Choice Band',
-    },
-    {
-      pokemon: 'Pokemon2',
-      field: 'Item',
-      before: 'Focus Sash',
-      after: 'Unknown',
-    },
-    {
-      pokemon: 'Pokemon3',
-      field: 'Moves',
-      before: 'Protect',
-      after: 'Unknown',
-    },
-  ]);
-  assert.deepEqual(
-    differences(
-      [{ ...before[0], set: 'Pokemon0 @ Item' }],
-      [{ ...structuredClone(before[0]), set: 'Pokemon0 @ Other Item' }]
-    ),
-    []
-  );
-
-  const swap = (beforeMoves, afterMoves) =>
-    differences(
-      [member('Weavile', { moves: beforeMoves })],
-      [member('Weavile', { moves: afterMoves })]
-    );
-  assert.deepEqual(swap(['Knock Off', 'Taunt'], ['Knock Off', 'Sludge Bomb']), [
-    {
-      pokemon: 'Weavile',
-      field: 'Moves',
-      before: 'Taunt',
-      after: 'Sludge Bomb',
-    },
-  ]);
-  assert.deepEqual(swap(['Protect'], ['Protect', 'Fake Out']), [
-    { pokemon: 'Weavile', field: 'Moves', before: 'None', after: 'Fake Out' },
-  ]);
-  assert.deepEqual(swap(['Protect', 'Fake Out'], ['Protect']), [
-    { pokemon: 'Weavile', field: 'Moves', before: 'Fake Out', after: 'None' },
-  ]);
-  assert.deepEqual(swap(['Protect', 'Fake Out'], ['fakeout', 'Protect']), []);
-  assert.deepEqual(swap([], ['Protect']), []);
-});
-
-test('snapshot preview reports missing scalars, exact form, and ordered moves', () => {
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Rotom-Wash', { moves: ['Protect', 'Knock Off'] }),
-      member('Rotom-Wash-Mega', {
-        item: 'Choice Band',
-        ability: 'Levitate',
-        nature: 'Jolly',
-        spread: '32 Spe',
-        moves: ['Knock Off', 'Protect'],
-      })
-    ),
-    [
-      {
-        field: 'Pokémon',
-        before: 'Rotom-Wash',
-        after: 'Rotom-Wash-Mega',
-      },
-      { field: 'Item', before: 'Unknown', after: 'Choice Band' },
-      { field: 'Ability', before: 'Unknown', after: 'Levitate' },
-      { field: 'Nature', before: 'Unknown', after: 'Jolly' },
-      { field: 'EVs', before: 'Unknown', after: '32 Spe' },
-      {
-        field: 'Moves',
-        before: 'Protect, Knock Off',
-        after: 'Knock Off, Protect',
-      },
-    ]
-  );
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Weavile'),
-      member('Weavile', { moves: ['Protect'] })
-    ),
-    [{ field: 'Moves', before: 'None', after: 'Protect' }]
-  );
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Weavile', { nature: 'bold' }),
-      member('Weavile', { nature: 'Bold' })
-    ),
-    [{ field: 'Nature', before: 'bold', after: 'Bold' }]
-  );
-});
-
-test('snapshot preview preserves raw set text and canonicalizes unknown metadata', () => {
-  const rawBefore = member('Weavile', {
-    set: 'Weavile @ Item\n- Protect',
-  });
-  const rawAfter = member('Weavile', {
-    set: 'Weavile @ Item\n- Protect\n',
-  });
-  assert.deepEqual(memberSnapshotDiff(rawBefore, rawAfter), [
-    {
-      field: 'Set text',
-      before: 'Weavile @ Item\n- Protect',
-      after: 'Weavile @ Item\n- Protect\n',
-    },
-  ]);
-  assert.deepEqual(
-    memberSnapshotDiff(
-      member('Weavile'),
-      member('Weavile', { metadata: { z: 2, a: 'saved' } })
-    ),
-    [
-      {
-        field: 'Saved metadata',
-        before: '{}',
-        after: '{"metadata":{"a":"saved","z":2}}',
-      },
-    ]
-  );
-});
-
-test('grouped saves retain the stored original and restore without mutation', () => {
+test('grouped saves retain the stored original', () => {
   const storage = memory(),
     initial = newSavedTeam(sourceTeam());
   initial.members[0].mystery = 'keep';
@@ -212,13 +68,11 @@ test('grouped saves retain the stored original and restore without mutation', ()
   candidate = structuredClone(saved);
   candidate.name = 'Renamed';
   saved = saveTeam(storage, candidate)[0];
-  const restored = restoreTeam(saved);
-  assert.equal(restored.name, 'Published');
-  assert.equal(restored.members[0].item, null);
-  assert.equal(restored.original.creator, 'author');
-  assert.equal(restored.id, initial.id);
-  const roundTrip = saveTeam(storage, restored)[0];
-  assert.equal(roundTrip.members[0].item, null);
+  assert.equal(saved.name, 'Renamed');
+  assert.equal(saved.original.name, 'Published');
+  assert.equal(saved.original.members[0].item, null);
+  assert.equal(saved.original.creator, 'author');
+  assert.equal(saved.id, initial.id);
 });
 
 test('no-op, invalid candidate, corrupt storage, and failed writes preserve data', () => {
@@ -310,7 +164,7 @@ test('stale metadata copies cannot replace stored provenance', () => {
   assert.deepEqual(next.original, initial.original);
 });
 
-test('full detached provenance survives reload and restore returns the original state', () => {
+test('full detached provenance survives reload and edits', () => {
   const source = sourceTeam();
   Object.assign(source, {
     pasteUrl: 'https://pokepast.es/1234567890abcdef',
@@ -339,11 +193,9 @@ test('full detached provenance survives reload and restore returns the original 
   candidate.members[0].mystery = { edited: true };
   candidate.members[0].set += '\nShiny: Yes';
   const edited = saveTeam(storage, candidate)[0];
-  const restored = saveTeam(storage, restoreTeam(edited))[0];
-  assert.deepEqual(restored.members, baseline.members);
-  assert.deepEqual(restored.original, baseline);
-  assert.deepEqual(restored.sources, loaded.sources);
-  assert.equal(restored.id, loaded.id);
+  assert.deepEqual(edited.original, baseline);
+  assert.deepEqual(edited.sources, loaded.sources);
+  assert.equal(edited.id, loaded.id);
 });
 
 test('custom and legacy starting originals survive edits without inferred origin', () => {

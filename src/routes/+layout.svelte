@@ -5,11 +5,13 @@
   import { resolve } from '$app/paths';
   import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount, setContext, tick, type ComponentProps } from 'svelte';
-  import type { PathnameWithSearchOrHash, ResolvedPathname } from '$app/types';
+  import { onMount, tick } from 'svelte';
+  import type { ResolvedPathname } from '$app/types';
+  import Bookmark from '@lucide/svelte/icons/bookmark';
+  import Search from '@lucide/svelte/icons/search';
+  import Star from '@lucide/svelte/icons/star';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
-  import SavedCollectionHeader from '#lib/components/SavedCollectionHeader.svelte';
-  import type TeamActionsMenu from '#lib/components/TeamActionsMenu.svelte';
+  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
@@ -21,17 +23,12 @@
   import { clearNotification } from '#lib/notifications.js';
 
   let { children } = $props();
-  const teamActions = $state<{
-    current: ComponentProps<typeof TeamActionsMenu> | null;
-  }>({ current: null });
-  setContext('team-actions', teamActions);
   const isHome = $derived(page.route.id === '/');
   const collectionRoutes = ['/my-teams', '/favorites', '/wishlist'] as const;
   const isCollectionPath = (path: string) =>
     collectionRoutes.some((route) => path === resolve(route));
   const isMyTeams = $derived(
-    page.route.id === '/my-teams/new' ||
-      collectionRoutes.some((route) => page.route.id === route)
+    page.route.id === '/my-teams' || page.route.id === '/my-teams/new'
   );
   const isBrowse = $derived(isHome || page.route.id === '/teams/[id]');
   const isLogin = $derived(page.url.pathname === resolve('login'));
@@ -39,6 +36,8 @@
   const brandHref = $derived(
     isBrowse ? resolve(`?${page.url.searchParams}`) : resolve('?browse=all')
   );
+  const tabClass = (active: boolean) =>
+    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none landscape:md:flex-row landscape:md:gap-1.5 landscape:md:text-xs [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
 
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
   const userInitials = $derived(
@@ -51,10 +50,8 @@
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
   const lastScrollKey = 'champions-atlas:last-scroll:v1';
-  const lastCollectionKey = 'champions-atlas:last-collection:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   const authReturnSourceKey = 'champions-atlas:auth-return-source:v1';
-  let lastCollection = $state<PathnameWithSearchOrHash | null>(null);
   let initialUrl = $state<URL | null>(null);
   let startupReady = $state(false);
   let startupSettled = $state(false);
@@ -72,10 +69,6 @@
   let shareReadError = $state(false);
   let checkingShares = false;
   let notificationAccount: string | undefined;
-
-  const teamsHref = $derived(
-    lastCollection ? resolve(lastCollection) : resolve('my-teams')
-  );
 
   function validDestination(value: string | null): string | null {
     if (
@@ -120,20 +113,6 @@
     } catch {
       return null;
     }
-  }
-
-  function collectionDestination(
-    url: Readonly<Pick<URL, 'pathname' | 'search'>>
-  ): PathnameWithSearchOrHash | null {
-    if (!isCollectionPath(url.pathname)) return null;
-    return url.pathname as PathnameWithSearchOrHash;
-  }
-
-  function storedCollection(): PathnameWithSearchOrHash | null {
-    const value = storedDestination('local', lastCollectionKey);
-    return value
-      ? collectionDestination(new URL(value, page.url.origin))
-      : null;
   }
 
   function updateStorage(
@@ -280,11 +259,6 @@
     navigationGeneration++;
     if (!to) return;
     settledUrl = urlString(to.url);
-    const collection = collectionDestination(to.url);
-    if (collection) {
-      lastCollection = collection;
-      updateStorage('local', lastCollectionKey, collection);
-    }
     if (!startupReady) return;
     if (pendingScroll && settledUrl !== pendingScroll.url) {
       if (
@@ -448,7 +422,6 @@
 
   onMount(() => {
     initialScroll = readScroll();
-    lastCollection = storedCollection();
     try {
       migrateStoredData(localStorage);
     } catch {
@@ -571,40 +544,19 @@
     class="sticky top-0 z-40 border-b border-base-300 bg-base-100"
   >
     <div
-      class="app-container grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-2 gap-y-1 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5 sm:flex sm:justify-between sm:gap-4"
+      class="app-container flex items-center justify-between gap-2 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5"
     >
       <a
         href={brandHref}
-        class="nav-pill justify-start text-base-content hover:bg-base-200 sm:justify-center"
+        class="nav-pill -ms-3 justify-start text-base-content hover:bg-base-200"
       >
-        <img src="/favicon.svg" alt="" width="32" height="35" />
+        <img src="/favicon.svg" alt="" width="36" height="39" />
         <span
-          class="text-[1.0625rem] leading-none font-extrabold tracking-tight"
+          class="text-xl leading-none font-extrabold tracking-tight whitespace-nowrap"
           >Champion's Atlas</span
         >
       </a>
-      <nav
-        aria-label="Main"
-        class="col-span-2 row-start-2 grid grid-cols-2 gap-1 sm:order-2 sm:flex sm:items-center"
-      >
-        <a
-          href={brandHref}
-          aria-current={isBrowse ? 'page' : undefined}
-          class="nav-pill {isBrowse
-            ? 'bg-info text-info-content'
-            : 'text-primary hover:bg-info'}">Browse</a
-        >
-        <a
-          href={teamsHref}
-          aria-current={isMyTeams ? 'page' : undefined}
-          class="nav-pill {isMyTeams
-            ? 'bg-info text-info-content'
-            : 'text-primary hover:bg-info'}">Saved</a
-        >
-      </nav>
-      <div
-        class="col-start-2 row-start-1 flex min-w-0 items-center justify-end gap-1 sm:order-3"
-      >
+      <div class="flex min-w-0 items-center justify-end gap-1">
         {#if sync.configured}
           {#if sync.status === 'syncing' || sync.status === 'error'}
             <span
@@ -684,28 +636,12 @@
       </div>
     </div>
   </header>
-  {#if isMyTeams}
-    <div class="w-full">
-      <div class="app-container py-2">
-        <SavedCollectionHeader
-          collection={page.route.id === '/wishlist'
-            ? 'wishlist'
-            : page.route.id === '/favorites'
-              ? 'favorites'
-              : 'my-teams'}
-          teamActions={page.route.id === '/my-teams'
-            ? teamActions.current
-            : null}
-        />
-      </div>
-    </div>
-  {/if}
   <ActionNotification />
   {#key sync.user?.uid}
     {@render children()}
   {/key}
   <footer
-    class="mx-auto mt-10 max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
+    class="mx-auto mt-2 mb-[var(--app-tabbar-height)] max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
   >
     <p class="provenance max-w-4xl">
       An independent fan project. Pokémon belongs to its respective owners. Team
@@ -732,4 +668,43 @@
       Company.
     </p>
   </footer>
+  <nav
+    aria-label="Main"
+    class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)]"
+  >
+    <div class="app-container grid h-full grid-cols-4 items-center gap-1">
+      <a
+        href={brandHref}
+        aria-current={isBrowse ? 'page' : undefined}
+        class={tabClass(isBrowse)}
+      >
+        <Search aria-hidden="true" />
+        <span class="truncate">Browse</span>
+      </a>
+      <a
+        href={resolve('my-teams')}
+        aria-current={isMyTeams ? 'page' : undefined}
+        class={tabClass(isMyTeams)}
+      >
+        <AtlasIcon />
+        <span class="truncate">My Teams</span>
+      </a>
+      <a
+        href={resolve('favorites')}
+        aria-current={page.route.id === '/favorites' ? 'page' : undefined}
+        class={tabClass(page.route.id === '/favorites')}
+      >
+        <Star aria-hidden="true" />
+        <span class="truncate">Favorites</span>
+      </a>
+      <a
+        href={resolve('wishlist')}
+        aria-current={page.route.id === '/wishlist' ? 'page' : undefined}
+        class={tabClass(page.route.id === '/wishlist')}
+      >
+        <Bookmark aria-hidden="true" />
+        <span class="truncate">Wishlist</span>
+      </a>
+    </div>
+  </nav>
 {/if}

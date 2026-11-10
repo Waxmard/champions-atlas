@@ -6,18 +6,15 @@
     HTMLButtonAttributes,
   } from 'svelte/elements';
 
-  export type ButtonVariant =
-    'primary' | 'quiet' | 'destructive' | 'danger-quiet';
+  export type ButtonVariant = 'primary' | 'quiet' | 'danger-quiet';
   export type ButtonSize = 'compact' | 'dense' | 'icon-compact';
 
   const variants: Record<ButtonVariant, string> = {
     primary: 'btn-primary',
     quiet:
       'btn-ghost text-base-content/70 hover:text-base-content disabled:text-base-content/40',
-    destructive:
-      'btn-soft [--btn-color:var(--color-destructive)] [--btn-border:transparent]',
     'danger-quiet':
-      'btn-ghost text-base-content/60 hover:bg-error hover:text-error-content focus-visible:bg-error focus-visible:text-error-content',
+      'btn-ghost text-error-content hover:bg-error focus-visible:bg-error disabled:text-base-content/40',
   };
 
   const sizes: Record<ButtonSize, string> = {

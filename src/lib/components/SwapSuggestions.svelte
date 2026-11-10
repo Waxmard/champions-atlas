@@ -1,5 +1,4 @@
 <script lang="ts">
-  import { tick } from 'svelte';
   import ItemIcon from '#lib/components/ItemIcon.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
@@ -42,7 +41,6 @@
     onapply,
   }: Props = $props();
   let query = $state('');
-  let heading = $state<HTMLElement>();
   const regulation = $derived(regulationLabel(currentRegulation));
   const ideas = $derived(
     swapIdeas(members, teams, currentRegulation, tags, 4, favoriteTeams)
@@ -71,11 +69,8 @@
     ]
       .filter(Boolean)
       .join(' · ');
-  async function apply(slot: number, member: Member) {
-    if (!onapply(slot, $state.snapshot(member))) return;
-    query = '';
-    await tick();
-    heading?.focus();
+  function apply(slot: number, member: Member) {
+    if (onapply(slot, $state.snapshot(member))) query = '';
   }
 </script>
 
@@ -118,10 +113,7 @@
   </span>
 {/snippet}
 
-<section aria-label="Swap suggestions" class="min-w-0 space-y-2">
-  <h2 bind:this={heading} tabindex="-1" class="text-sm font-bold">
-    Suggested swaps
-  </h2>
+<div class="min-w-0 space-y-2">
   {#if ideas.length || searched.length}
     <p class="provenance max-w-[68ch]">
       Suggestions are built from current {regulation} teams. Applying one replaces
@@ -188,4 +180,4 @@
       {/if}
     </div>
   </details>
-</section>
+</div>

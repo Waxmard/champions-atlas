@@ -121,7 +121,7 @@ New bookmarks appear first. Your order persists across reloads and syncs with
 your account.
 From a Poképaste page, share the link to **Champion’s Atlas**, select
 **Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
-open **Wishlist actions** and choose **Add a Poképaste**, then enter a
+choose **Add a Poképaste** on **Wishlist**, then enter a
 `pokepast.es` link or 16-character paste ID. Existing bookmarks and catalog
 matches do not require a fetch; other links require a connection. Importing the
 same link again keeps the existing bookmark and its edits.
@@ -133,7 +133,7 @@ its Wishlist card. Import a complete six-member
 [Showdown team](https://play.pokemonshowdown.com/teambuilder) through
 **Add custom team** in **My teams**.
 
-Edit saved sets, compare them with their immutable original, restore changes, and
+Edit saved sets, revert a set to how it was when you opened the team, and
 export current team text. On catalog team details, **Published paste text** preserves
 the published text, while **Copy team** and **Copy published sets** use the enriched
 set export. If clipboard access is unavailable, the actual copied text appears in
