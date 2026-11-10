@@ -174,3 +174,21 @@ test('Favorites moves and restores reject missing or changed teams without writi
   assert.equal(s.data, before);
   assert.equal(s.writes, 0);
 });
+
+test('Win/loss record survives Favorites moves and invalid records are rejected', () => {
+  const record = { wins: 3, losses: 1 };
+  const team = { ...snapshot('rec'), record };
+  const s = storage([team]);
+  moveInUseTeamToFavorites(s, team.id, teamBaseline(team));
+  assert.deepEqual(readSavedTeams(s)[0].record, record);
+  assert.deepEqual(useFavoriteTeam(s, team.id).record, record);
+  for (const bad of [
+    { wins: -1, losses: 0 },
+    { wins: 1.5, losses: 0 },
+    { wins: 0, losses: 10000 },
+  ])
+    assert.throws(
+      () => readSavedTeams(storage([{ ...team, record: bad }])),
+      /could not be read/
+    );
+});

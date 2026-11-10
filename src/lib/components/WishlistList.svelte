@@ -126,17 +126,28 @@
           </Button>
         {/snippet}
         {#snippet trailingActions()}
-          <Button
-            variant="quiet"
-            size="icon-compact"
-            class="size-11"
-            aria-label={`Remove from ${label}`}
-            title={`Remove from ${label}`}
-            {disabled}
-            onclick={() => onremove(entry)}
-          >
-            <Trash2 class="size-4" aria-hidden="true" />
-          </Button>
+          <div class="flex items-center gap-2">
+            {#if entry.record}
+              {@const { wins, losses } = entry.record}
+              <span
+                class="provenance"
+                role="img"
+                aria-label={`Record: ${wins} ${wins === 1 ? 'win' : 'wins'}, ${losses} ${losses === 1 ? 'loss' : 'losses'}`}
+                >{wins}W – {losses}L</span
+              >
+            {/if}
+            <Button
+              variant="quiet"
+              size="icon-compact"
+              class="size-11"
+              aria-label={`Remove from ${label}`}
+              title={`Remove from ${label}`}
+              {disabled}
+              onclick={() => onremove(entry)}
+            >
+              <Trash2 class="size-4" aria-hidden="true" />
+            </Button>
+          </div>
         {/snippet}
       </TeamCard>
     </li>

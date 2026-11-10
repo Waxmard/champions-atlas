@@ -175,6 +175,12 @@ const savedTeamSchema = z.object({
   collection: z.enum(['my-teams', 'wishlist', 'favorites']).optional(),
   wishlistOrder: z.number().int().safe().optional(),
   favoriteOrder: z.number().int().safe().optional(),
+  record: z
+    .object({
+      wins: z.number().int().min(0).max(9999),
+      losses: z.number().int().min(0).max(9999),
+    })
+    .optional(),
 });
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
 export type SavedTeam = z.infer<typeof savedTeamSchema>;
