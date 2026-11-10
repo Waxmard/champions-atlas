@@ -225,7 +225,9 @@ The **Swaps** tab below the team lists up to four whole-set replacements
 built from current-regulation teams, at most one per slot. Each row names the
 slot, the current and suggested Pokémon, the set, its shared-teammate count, and
 either how many teams share that exact set or how many sets it was assembled
-from, with its best supporting result. Applying a row replaces the whole set and
+from, with its best supporting result. Sets from Favorites teams rank in the same
+list, need the same three shared teammates, count as one supporting team, and
+are labelled **Favorite**. Applying a row replaces the whole set and
 leaves **Revert changes** available. **Swap in a specific Pokémon** looks one
 resolved form up across every slot. Swaps stay unavailable while team text is
 unsaved or an editor is open, and a team already holding two Mega Pokémon is not

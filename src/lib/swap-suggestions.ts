@@ -646,23 +646,9 @@ export function swapIdeas(
   limit = 4,
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): SwapSuggestion[] {
-  const favoritePool: SwapSuggestion[] = [];
-  const catalogPool: SwapSuggestion[] = [];
+  const pool: SwapSuggestion[] = [];
   for (const [slot, replaced] of members.entries()) {
     const teammates = members.filter((_, index) => index !== slot);
-    if (favoriteTeams.length) {
-      for (const fav of pokemonSuggestions(
-        teammates,
-        teams,
-        currentRegulation,
-        replaced.pokemon,
-        tags,
-        '',
-        { minShared: 1, limit: 0 },
-        favoriteTeams
-      ))
-        favoritePool.push({ ...fav, slot });
-    }
     const [best] = pokemonSuggestions(
       teammates,
       teams,
@@ -672,46 +658,41 @@ export function swapIdeas(
       '',
       { minShared: 3, limit: 1 }
     );
-    if (best) catalogPool.push({ ...best, slot });
+    if (best) pool.push({ ...best, slot });
+    if (favoriteTeams.length) {
+      for (const fav of pokemonSuggestions(
+        teammates,
+        teams,
+        currentRegulation,
+        replaced.pokemon,
+        tags,
+        '',
+        { minShared: 3, limit: 0 },
+        favoriteTeams
+      ))
+        pool.push({ ...fav, slot });
+    }
   }
-  const seenFavoriteSets = new Set<string>();
-  const favoriteSlotSets = new Set<string>();
-  const favoriteIdeas = favoritePool
-    .sort(
-      (a, b) =>
-        b.sharedTeammates - a.sharedTeammates ||
-        b.matchingDetails - a.matchingDetails ||
-        a.slot - b.slot
-    )
-    .filter((idea) => {
-      const form = normalize(resolveBattleForm(idea.member).pokemon);
-      const key = `${form}|${signatureOf(idea.member)}`;
-      if (seenFavoriteSets.has(key)) return false;
-      seenFavoriteSets.add(key);
-      favoriteSlotSets.add(`${idea.slot}|${key}`);
-      return true;
-    })
-    .slice(0, limit);
-  const seenCatalogSpecies = new Set<string>();
-  const catalogIdeas = catalogPool
+  const seenSlots = new Set<number>();
+  const seenSpecies = new Set<string>();
+  return pool
     .sort(
       (a, b) =>
         b.sharedTeammates - a.sharedTeammates ||
         b.support - a.support ||
         b.matchingDetails - a.matchingDetails ||
+        Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)) ||
         compareTeams(a.source, b.source, currentRegulation) ||
         a.slot - b.slot
     )
     .filter((idea) => {
       const form = normalize(resolveBattleForm(idea.member).pokemon);
-      const setKey = `${idea.slot}|${form}|${signatureOf(idea.member)}`;
-      if (favoriteSlotSets.has(setKey) || seenCatalogSpecies.has(form))
-        return false;
-      seenCatalogSpecies.add(form);
+      if (seenSlots.has(idea.slot) || seenSpecies.has(form)) return false;
+      seenSlots.add(idea.slot);
+      seenSpecies.add(form);
       return true;
     })
     .slice(0, limit);
-  return [...favoriteIdeas, ...catalogIdeas];
 }
 
 export function swapSuggestions(
