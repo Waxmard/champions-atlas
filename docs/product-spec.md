@@ -336,9 +336,10 @@ records: a record without a collection belongs to My teams, and `wishlist` and
 `favorites` records are excluded from My teams selection and its active-team
 fallback. Each has its own page and tab beside My Teams, and the team sheet
 offers moving a team into either. Move a record in either direction without
-changing its ID, original snapshot, edits, or sources. Moving from My teams is
-unavailable while edits are pending and rejects stale records or a conflicting
-copy already in the target collection. Separate copies are never merged.
+changing its ID, original snapshot, edits, or sources. Moving from My teams asks
+for confirmation first, is unavailable while edits are pending, and rejects
+stale records or a conflicting copy already in the target collection. Separate
+copies are never merged.
 
 Wishlist Pokémon search matches the saved roster, including edits, rather than
 the original catalog roster. All selected Pokémon must match, using the same

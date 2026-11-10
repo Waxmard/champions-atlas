@@ -19,6 +19,7 @@
 
   interface Props {
     teamId: string;
+    name: string;
     baseline: string;
     members: Member[];
     disabled: boolean;
@@ -29,6 +30,7 @@
 
   let {
     teamId,
+    name,
     baseline,
     members,
     disabled,
@@ -48,6 +50,7 @@
     if (moveDisabled) return;
     const id = teamId;
     const label = target === 'favorites' ? 'Favorites' : 'Wishlist';
+    if (!confirm(`Move “${name}” to ${label}?`)) return;
     pending = true;
     errorMessage = '';
     let previousActiveId: string | null;

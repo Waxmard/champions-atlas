@@ -499,6 +499,7 @@
           {#key draft.id}
             <MyTeamCollectionActions
               teamId={draft.id}
+              name={draft.name}
               {baseline}
               {dirty}
               members={draft.members}
