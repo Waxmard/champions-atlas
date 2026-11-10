@@ -13,9 +13,6 @@
     accepted,
     options,
     hasMore = false,
-    originalChanged = false,
-    originalSlotMember,
-    originalReason = '',
     favoriteSlotSets = [],
     error = '',
     errorField = null,
@@ -29,9 +26,6 @@
     accepted: string;
     options: PokemonSuggestion[];
     hasMore?: boolean;
-    originalChanged?: boolean;
-    originalSlotMember?: Member;
-    originalReason?: string;
     favoriteSlotSets?: {
       member: Member;
       teamName: string;
@@ -92,17 +86,6 @@
   <p class="provenance">
     Choosing a suggested Pokémon replaces this set's fields.
   </p>
-  {#if originalChanged && originalSlotMember}
-    <Button
-      variant="quiet"
-      disabled={!!originalReason}
-      onpointerdown={(event) => event.preventDefault()}
-      onclick={() => {
-        if (originalSlotMember) onchoose(originalSlotMember);
-      }}>Use original set</Button
-    >
-    {#if originalReason}<p class="provenance">{originalReason}</p>{/if}
-  {/if}
   {#if favoriteSlotSets.length}
     <SuggestionList
       id="set-favorite-sets"

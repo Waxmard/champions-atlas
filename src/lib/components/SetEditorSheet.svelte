@@ -35,7 +35,6 @@
     teammates?: Member[];
     tagIndex?: TeamTagsIndex;
     originalMembers?: Member[];
-    originalSlotMember?: Member;
     favoriteTeams?: SavedTeam[];
     onchange: (member: Member) => boolean;
     onclose: () => void;
@@ -50,7 +49,6 @@
     teammates = [],
     tagIndex,
     originalMembers = [],
-    originalSlotMember,
     favoriteTeams = [],
     onchange,
     onclose,
@@ -181,13 +179,6 @@
       moves: 'Moves',
       spread: 'EV spread',
     }[currentView]
-  );
-  const originalReason = $derived(
-    originalSlotMember ? rosterError(originalSlotMember) : ''
-  );
-  const originalChanged = $derived(
-    !!originalSlotMember &&
-      canonicalSnapshot(originalSlotMember) !== canonicalSnapshot(accepted)
   );
   const setSignature = (candidate: Member) =>
     memberSetSignature(candidate) ?? canonicalSnapshot(fields(candidate));
@@ -737,9 +728,6 @@
         accepted={accepted.pokemon}
         options={pokemonPage.visible}
         hasMore={pokemonPage.hasMore}
-        {originalChanged}
-        {originalSlotMember}
-        {originalReason}
         {favoriteSlotSets}
         {error}
         {errorField}
