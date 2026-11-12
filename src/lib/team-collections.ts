@@ -2,6 +2,7 @@ import { isPasteUrl, normalize, teamHeading, type Team } from './catalog.ts';
 import type { PokepastePayload } from './pokepaste.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
+  activeTeamKey,
   deleteTeam,
   newCustomTeam,
   newSavedTeam,
@@ -34,6 +35,61 @@ export function recordSummary({ wins, losses }: WinLossRecord): {
     label: `${wins} ${wins === 1 ? 'win' : 'wins'}, ${losses} ${losses === 1 ? 'loss' : 'losses'}${rate === null ? '' : `, ${rate}% win rate`}`,
     rate,
   };
+}
+
+export interface GameTally {
+  teamId: string;
+  wins: number;
+  losses: number;
+}
+
+export interface ShortcutTeam {
+  id: string;
+  name: string;
+  wins: number;
+  losses: number;
+}
+
+export function applyGameResults(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  results: GameTally[]
+): boolean {
+  const tallies = new Map(results.map((result) => [result.teamId, result]));
+  let changed = false;
+  const raw = JSON.stringify(
+    readSavedTeams(storage).map((team) => {
+      const tally = tallies.get(team.id);
+      if (!tally || !(tally.wins || tally.losses)) return team;
+      changed = true;
+      const record = team.record ?? { wins: 0, losses: 0 };
+      return {
+        ...team,
+        record: {
+          wins: Math.min(9999, record.wins + tally.wins),
+          losses: Math.min(9999, record.losses + tally.losses),
+        },
+      };
+    })
+  );
+  if (!changed) return false;
+  readSavedTeams({ getItem: () => raw });
+  storage.setItem(storageKey, raw);
+  return true;
+}
+
+export function shortcutTeam(
+  storage: Pick<Storage, 'getItem'>
+): ShortcutTeam | null {
+  const saved = readSavedTeams(storage);
+  const id = resolveSavedTeamId(saved, null, storage.getItem(activeTeamKey));
+  const team = saved.find((entry) => entry.id === id);
+  return team
+    ? {
+        id: team.id,
+        name: savedTeamHeading(team).title,
+        ...(team.record ?? { wins: 0, losses: 0 }),
+      }
+    : null;
 }
 
 export const displaySavedTeam = (entry: SavedTeam): Team =>

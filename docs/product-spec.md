@@ -89,14 +89,18 @@ restoration conflicts with the current roster.
 My Teams shows a **Record** row for the selected team, such as
 **3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
 number, and is omitted before the first game. Tapping the row opens a pop-up.
-**Win** and **Loss** log the last game and close it. **Edit** reveals buttons to
-add or remove a win or a loss and **Reset**.
+**Win** and **Loss** each log one game and the pop-up stays open, so several
+games can be logged in a row. **Edit** reveals buttons to add or remove a win or
+a loss and **Reset**.
 Reset asks for confirmation and returns the record to 0W – 0L. The record never
 goes below zero and is unavailable while edits are pending or the team changed
 elsewhere. It is saved with the team, so it stays when the team moves between
 My Teams, Favorites, and Wishlist and syncs like other team content. Favorites
 and Wishlist cards show it read-only, with the percentage, once a team has a
-record.
+record. On iPhone, the **Log Game Result** shortcut action names the team
+selected in My Teams, asks for **Win** or **Loss**, and logs it without opening
+the app. Results logged this way join the record the next time the app is
+opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain

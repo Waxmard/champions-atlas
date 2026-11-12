@@ -10,6 +10,8 @@ import {
   teamsInUse,
   SavedTeamError,
   recordSummary,
+  applyGameResults,
+  shortcutTeam,
 } from '../src/lib/team-collections.ts';
 import {
   activeTeamKey,
@@ -206,4 +208,36 @@ test('Record summary adds a rounded win rate once a game is logged', () => {
     label: '0 wins, 0 losses',
     rate: null,
   });
+});
+
+test('Shortcut results add to saved records once and name the active team', () => {
+  const rain = { ...snapshot('a', 'Rain'), record: { wins: 9998, losses: 1 } };
+  const s = storage([rain, snapshot('b', 'Sun')]);
+  const record = (id) =>
+    readSavedTeams(s).find((team) => team.id === id).record;
+  assert.equal(
+    applyGameResults(s, [
+      { teamId: 'a', wins: 3, losses: 2 },
+      { teamId: 'gone', wins: 1, losses: 0 },
+    ]),
+    true
+  );
+  assert.deepEqual(record('a'), { wins: 9999, losses: 3 });
+  assert.equal(record('b'), undefined);
+  assert.equal(s.writes, 1);
+  assert.equal(
+    applyGameResults(s, [{ teamId: 'gone', wins: 1, losses: 0 }]),
+    false
+  );
+  assert.equal(s.writes, 1);
+  s.active = 'b';
+  assert.deepEqual(shortcutTeam(s), {
+    id: 'b',
+    name: 'Sun',
+    wins: 0,
+    losses: 0,
+  });
+  s.active = 'missing';
+  assert.equal(shortcutTeam(s).id, 'a');
+  assert.equal(shortcutTeam(storage()), null);
 });

@@ -18,6 +18,7 @@
 		9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9582B6822FE993A50072D4E8 /* SceneDelegate.swift */; };
 		A10000000000000000000001 /* AtlasNativePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* AtlasNativePlugin.swift */; };
 		A10000000000000000000002 /* AtlasBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* AtlasBridgeViewController.swift */; };
+		A10000000000000000000008 /* GameResultIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* GameResultIntent.swift */; };
 		A10000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000007 /* GoogleSignIn */; };
 		B10000000000000000000001 /* ShareQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* ShareQueue.swift */; };
 		B10000000000000000000002 /* ShareQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* ShareQueue.swift */; };
@@ -55,6 +56,7 @@
 		958DCC722DB07C7200EA8C5F /* debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = debug.xcconfig; path = ../debug.xcconfig; sourceTree = SOURCE_ROOT; };
 		A10000000000000000000004 /* AtlasNativePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasNativePlugin.swift; sourceTree = "<group>"; };
 		A10000000000000000000005 /* AtlasBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasBridgeViewController.swift; sourceTree = "<group>"; };
+		A10000000000000000000009 /* GameResultIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameResultIntent.swift; sourceTree = "<group>"; };
 		B10000000000000000000004 /* ShareQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/ShareQueue.swift; sourceTree = "<group>"; };
 		B10000000000000000000005 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtension/ShareViewController.swift; sourceTree = "<group>"; };
 		B10000000000000000000007 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -106,6 +108,7 @@
 				504EC3071FED79650016851F /* AppDelegate.swift */,
 				A10000000000000000000004 /* AtlasNativePlugin.swift */,
 				A10000000000000000000005 /* AtlasBridgeViewController.swift */,
+				A10000000000000000000009 /* GameResultIntent.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -219,6 +222,7 @@
 				9582B6832FE993A70072D4E8 /* SceneDelegate.swift in Sources */,
 				A10000000000000000000001 /* AtlasNativePlugin.swift in Sources */,
 				A10000000000000000000002 /* AtlasBridgeViewController.swift in Sources */,
+				A10000000000000000000008 /* GameResultIntent.swift in Sources */,
 				B10000000000000000000001 /* ShareQueue.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

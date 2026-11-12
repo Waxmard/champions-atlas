@@ -25,10 +25,6 @@
   function close() {
     open = editing = false;
   }
-  function log(key: keyof WinLossRecord) {
-    onstep(key, 1);
-    close();
-  }
   function step(key: keyof WinLossRecord, by: number) {
     if (!onstep(key, by)) close();
   }
@@ -66,7 +62,7 @@
           ></span
         >
       </p>
-      <p class="sr-only">{summary.label}</p>
+      <p class="sr-only" role="status">{summary.label}</p>
       <div
         aria-hidden="true"
         class="mt-4 h-2 overflow-hidden rounded-full {games
@@ -96,7 +92,7 @@
             type="button"
             class="inline-flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-field text-[0.9375rem] font-bold transition-[filter] hover:brightness-95 focus-visible:brightness-95 disabled:cursor-not-allowed disabled:bg-base-200 disabled:text-base-content/40 {tone}"
             disabled={disabled || record[key] === 9999}
-            onclick={() => log(key)}
+            onclick={() => step(key, 1)}
           >
             <Plus class="size-4" aria-hidden="true" />
             {label}

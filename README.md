@@ -141,7 +141,10 @@ a selectable field. A source video can establish a team's sharing date, but not
 a tournament result. Edited teams never gain new rental codes, and legality
 remains unverified. **Record in-game set** and **Record all in-game sets**
 explicitly record committed sets as snapshots: they change Atlas only, never
-Pokémon Champions. Team edits do not update those snapshots.
+Pokémon Champions. Team edits do not update those snapshots. The **Log Game
+Result** action appears under Champion's Atlas in the Shortcuts app; run it from
+Back Tap, the Action Button, or Siri ("Log a game in Champion's Atlas") to log a
+win or a loss for the team selected in My Teams without leaving your game.
 
 Saving requires app-local storage; clearing it removes local saved data. With
 Firebase configured, native Google sign-in is required and syncs saved teams, their

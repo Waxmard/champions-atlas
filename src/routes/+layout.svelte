@@ -17,7 +17,11 @@
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
-  import { teamsInUse } from '#lib/team-collections.js';
+  import {
+    applyGameResults,
+    shortcutTeam,
+    teamsInUse,
+  } from '#lib/team-collections.js';
   import { normalizeInitialUrl } from '#lib/initial-url.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { clearNotification } from '#lib/notifications.js';
@@ -68,6 +72,7 @@
   let scrollTimer: ReturnType<typeof setTimeout> | undefined;
   let shareReadError = $state(false);
   let checkingShares = false;
+  let syncingResults = false;
   let notificationAccount: string | undefined;
 
   function validDestination(value: string | null): string | null {
@@ -420,6 +425,35 @@
     }
   }
 
+  async function publishShortcutTeam() {
+    if (isNativeApp)
+      await AtlasNative.setActiveTeam({ team: shortcutTeam(localStorage) });
+  }
+
+  async function syncGameResults() {
+    if (
+      !isNativeApp ||
+      !startupSettled ||
+      syncingResults ||
+      (sync.configured && !sync.user)
+    )
+      return;
+    syncingResults = true;
+    try {
+      const { results } = await AtlasNative.getPendingResults();
+      if (results.length) {
+        if (applyGameResults(localStorage, results)) {
+          sync.revision++;
+          void pushNow();
+        }
+        await AtlasNative.acknowledgeResults({ results });
+      }
+      await publishShortcutTeam();
+    } finally {
+      syncingResults = false;
+    }
+  }
+
   onMount(() => {
     initialScroll = readScroll();
     try {
@@ -431,8 +465,13 @@
     void initCatalogRuntime();
     initSync();
     const onVisibility = () => {
-      if (document.visibilityState === 'hidden') flushPosition();
-      else void checkSharedLinks();
+      if (document.visibilityState === 'hidden') {
+        flushPosition();
+        void publishShortcutTeam().catch(() => {});
+      } else {
+        void checkSharedLinks();
+        void syncGameResults().catch(() => {});
+      }
     };
     const onHashChange = () => {
       navigationGeneration++;
@@ -471,6 +510,7 @@
     if (startupSettled && (!sync.configured || sync.authResolved)) {
       void sync.user;
       void checkSharedLinks();
+      void syncGameResults().catch(() => {});
     }
   });
 
