@@ -274,7 +274,10 @@ Original and In-game values. Items another
 teammate already holds are not offered. Move suggestions include the species'
 newest available movepool, which ranks after catalog observations. In the set
 editor's Pokémon suggestions, Favorites sets rank among catalog suggestions by
-shared teammates until a name is typed, then they list first. Teams of Unknown
+shared teammates until a name is typed, then they list first. Tapping a row
+there shows the same full-set preview as Swaps, with **Back** and **Apply
+swap**; nothing changes until Apply swap, and applying returns to the Pokémon
+section. Teams of Unknown
 regulation count toward item, ability, move, and Nature totals but carry no
 vote, so their values rank after every voted value.
 

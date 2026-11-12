@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import X from '@lucide/svelte/icons/x';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import SetPreview from '#lib/components/SetPreview.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
@@ -42,9 +44,52 @@
   } = $props();
   const optionKey = (option: PokemonSuggestion) =>
     `${option.favorite ? 'fav:' + (option.favoriteTeamName ?? '') : 'cat'}:${option.pokemon}:${option.member.item ?? ''}:${option.member.ability ?? ''}:${option.member.nature ?? ''}:${option.member.spread ?? ''}:${option.member.moves.join(',')}`;
+  const favoriteLabel = (option: PokemonSuggestion) =>
+    option.favorite
+      ? option.favoriteTeamName
+        ? `Favorite (${option.favoriteTeamName})`
+        : 'Favorite'
+      : '';
+  let preview = $state.raw<{ member: Member; title: string } | null>(null);
+  let section = $state<HTMLElement>();
+  let listScroll = 0;
+  let typed = '';
+
+  function openPreview(member: Member, note: string) {
+    listScroll = section?.parentElement?.scrollTop ?? 0;
+    typed = pokemon;
+    pokemon = accepted;
+    preview = {
+      member,
+      title: [`Replaces ${accepted}`, note].filter(Boolean).join(' · '),
+    };
+  }
+  function closePreview(restore: boolean) {
+    const scroller = section?.parentElement;
+    const top = restore ? listScroll : 0;
+    if (restore) pokemon = typed;
+    preview = null;
+    void tick().then(() => {
+      if (scroller) scroller.scrollTop = top;
+    });
+  }
+  function applyPreview() {
+    if (!preview) return;
+    onchoose(preview.member);
+    closePreview(false);
+  }
 </script>
 
-<section class="grid gap-4">
+{#if preview}
+  <SetPreview
+    title={preview.title}
+    member={preview.member}
+    onback={() => closePreview(true)}
+    onapply={applyPreview}
+  />
+{/if}
+
+<section bind:this={section} hidden={!!preview} class="grid gap-4">
   <label for="set-pokemon-input" class="sr-only">Pokémon</label>
   <label class="field">
     <PokemonSprite {pokemon} size={28} />
@@ -57,7 +102,9 @@
       onfocus={onresetquery}
       onclick={onresetquery}
       oninput={(event) => oninputchange(event.currentTarget.value)}
-      onblur={() => oncommit(false)}
+      onblur={() => {
+        if (!preview) oncommit(false);
+      }}
       onkeydown={(event) => {
         if (event.key === 'Enter' && !event.isComposing) {
           event.preventDefault();
@@ -84,7 +131,7 @@
     {/if}
   </label>
   <p class="provenance">
-    Choosing a suggested Pokémon replaces this set's fields.
+    Tap a suggested Pokémon to preview its set before applying it.
   </p>
   {#if favoriteSlotSets.length}
     <SuggestionList
@@ -94,7 +141,7 @@
     >
       {#each favoriteSlotSets as fav (fav.key)}
         <SuggestionRow
-          label={`Use favorite ${fav.member.pokemon} set from ${fav.teamName}`}
+          label={`Preview favorite ${fav.member.pokemon} set from ${fav.teamName}`}
           glyph={{ kind: 'pokemon', value: fav.member.pokemon }}
           primary={fav.member.pokemon}
           secondary={[
@@ -107,7 +154,7 @@
             .filter(Boolean)
             .join(' · ')}
           disabled={!!fav.reason}
-          onclick={() => onchoose(fav.member)}
+          onclick={() => openPreview(fav.member, `Favorite (${fav.teamName})`)}
         />
       {/each}
     </SuggestionList>
@@ -121,22 +168,18 @@
   >
     {#each options as option (optionKey(option))}
       <SuggestionRow
-        label={`Use ${option.pokemon} set`}
+        label={`Preview ${option.pokemon} set`}
         glyph={{ kind: 'pokemon', value: option.pokemon }}
         primary={option.pokemon}
         secondary={[
-          option.favorite
-            ? option.favoriteTeamName
-              ? `Favorite (${option.favoriteTeamName})`
-              : 'Favorite'
-            : '',
+          favoriteLabel(option),
           option.member.item,
           option.member.ability,
           option.member.nature,
         ]
           .filter(Boolean)
           .join(' · ')}
-        onclick={() => onchoose(option.member)}
+        onclick={() => openPreview(option.member, favoriteLabel(option))}
       />
     {/each}
   </SuggestionList>

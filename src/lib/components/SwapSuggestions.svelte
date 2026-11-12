@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
-  import SetDetails from '#lib/components/SetDetails.svelte';
+  import SetPreview from '#lib/components/SetPreview.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -39,7 +39,6 @@
   let visibleCount = $state(4);
   let preview = $state.raw<SwapSuggestion | null>(null);
   let list = $state<HTMLDivElement>();
-  let previewHeading = $state<HTMLHeadingElement>();
   let listScroll = 0;
   const regulation = $derived(regulationLabel(currentRegulation));
   const ideas = $derived(
@@ -83,13 +82,8 @@
       .filter(Boolean)
       .join(' · ');
   function openPreview(row: SwapSuggestion) {
-    const scroller = list?.parentElement;
-    listScroll = scroller?.scrollTop ?? 0;
+    listScroll = list?.parentElement?.scrollTop ?? 0;
     preview = row;
-    void tick().then(() => {
-      if (scroller) scroller.scrollTop = 0;
-      previewHeading?.focus({ preventScroll: true });
-    });
   }
   function closePreview() {
     const scroller = list?.parentElement;
@@ -118,24 +112,13 @@
 {/snippet}
 
 {#if preview}
-  <div class="min-w-0 space-y-3">
-    <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
-      <h3
-        bind:this={previewHeading}
-        tabindex="-1"
-        class="term min-w-0 wrap-anywhere"
-      >
-        {headline(preview)}
-      </h3>
-      <div class="flex gap-2">
-        <Button variant="quiet" onclick={closePreview}>Back</Button>
-        <Button variant="primary" {disabled} onclick={applyPreview}
-          >Apply swap</Button
-        >
-      </div>
-    </div>
-    <SetDetails member={preview.member} />
-  </div>
+  <SetPreview
+    title={headline(preview)}
+    member={preview.member}
+    {disabled}
+    onback={closePreview}
+    onapply={applyPreview}
+  />
 {/if}
 
 <div bind:this={list} hidden={!!preview} class="min-w-0 space-y-2">
