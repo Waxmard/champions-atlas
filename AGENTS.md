@@ -9,6 +9,11 @@ See [Development in README](README.md#development) for setup, development,
 catalog, and verification commands. Start the development server only when
 requested.
 
+Scale verification to the change. For a small edit confined to one file (a
+constant, a class string, copy), run `npm run check && npm run typecheck` and
+stop. Run `make ci` once before handoff when the change touches logic, data
+scripts, tests, build configuration, or more than one file.
+
 ## Layout and conventions
 
 - Routes and global styles live in `src/routes`.
