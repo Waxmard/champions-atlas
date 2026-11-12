@@ -109,10 +109,12 @@ cleared. Item suggestions include all valid Pokémon Champions items for the
 Pokémon, ability suggestions include all legal species abilities, and nature
 suggestions include all 25 standard natures. There is no separate Apply step.
 
-**Done** commits valid pending input. **Close** offers to discard invalid or
-failed-write input without undoing earlier autosaves. **Advanced set text**
-explicitly replaces a set. Structured edits preserve nicknames and untouched
-supported lines; they never guess unknown values.
+**Done** commits valid pending input. **Cancel** discards pending input and
+restores the set to how it was when the editor opened, undoing changes saved
+while it was open, without asking. If the set cannot be restored, the editor
+stays open and says so, and **Done** then closes it with the saved changes kept.
+**Advanced set text** explicitly replaces a set. Structured edits preserve
+nicknames and untouched supported lines; they never guess unknown values.
 
 **Save team text** replaces the current sets with the edited Showdown text;
 **Reset text** discards its unsaved changes. While team text is unsaved, team

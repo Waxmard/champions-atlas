@@ -100,6 +100,7 @@
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
   let closing = false;
+  let undoFailed = false;
   let editorElement = $state<HTMLElement>();
   let contentElement = $state<HTMLElement>();
   let editorHeading = $state<HTMLElement>();
@@ -536,23 +537,28 @@
     requestAnimationFrame(focusTarget);
   }
   function done() {
-    if (flush()) {
+    if (flush() || undoFailed) {
       closing = true;
       onclose();
     } else focusError();
   }
   export function requestClose(): boolean {
-    if (flush()) {
-      closing = true;
-      return true;
-    }
     closing = true;
-    const discard = confirm('Discard unsaved input?');
-    if (!discard) {
-      closing = false;
-      focusError();
-    }
-    return discard;
+    const opened = structuredClone($state.snapshot(initialMember));
+    if (
+      canonicalSnapshot($state.snapshot(accepted)) ===
+        canonicalSnapshot(opened) ||
+      onchange(opened)
+    )
+      return true;
+    closing = false;
+    undoFailed = true;
+    showError(
+      'set',
+      'Could not undo the changes already saved to this set. Choose Done to keep them.'
+    );
+    focusError();
+    return false;
   }
   export function focusInitialSection() {
     requestAnimationFrame(() => {
@@ -773,7 +779,7 @@
         onpointerdown={keepFocus}
         onclick={() => {
           if (requestClose()) onclose();
-        }}>Close</Button
+        }}>Cancel</Button
       >
       <Button variant="primary" onpointerdown={keepFocus} onclick={done}
         >Done</Button
