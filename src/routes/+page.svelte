@@ -83,7 +83,7 @@
           )
           .sort((a, b) => compareBrowseTeams(a, b, current))
   );
-  const pageSize = 12;
+  const pageSize = 8;
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / pageSize)));
   const pageNumber = $derived(
     Math.min(
