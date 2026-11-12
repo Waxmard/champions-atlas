@@ -573,9 +573,11 @@ test('sprite resolution uses numeric PokéAPI sprites and exact aliases', () => 
     ['morpeko-full-belly', 877],
     ['gourgeist-average', 711],
     ['lycanroc-midday', 745],
+    ['polteageist', 855],
     ['pyroar-male', 668],
     ['squawkabilly-green-plumage', 931],
     ['tauros-paldea-blaze-breed', 10251],
+    ['tauros-paldea-combat-breed', 10250],
     ['vivillon', 666],
   ]);
   const index = {
@@ -603,6 +605,8 @@ test('sprite resolution uses numeric PokéAPI sprites and exact aliases', () => 
     ['Gourgeist', 'gourgeist-average'],
     ['Lycanroc', 'lycanroc-midday'],
     ['Tauros-Paldea-Blaze', 'tauros-paldea-blaze-breed'],
+    ['Tauros-Paldea-Combat', 'tauros-paldea-combat-breed'],
+    ['Polteageist-Antique', 'polteageist'],
   ])
     assert.equal(resolveSprite(name, index), `${root}/${ids.get(target)}.png`);
   const pokeball = `${root}/666-poke-ball.png`;
@@ -652,6 +656,7 @@ test('sprite sync deduplicates names, retains cached PNGs, and never falls back'
       },
       { name: 'meowstic-male', url: 'https://pokeapi.co/api/v2/pokemon/678/' },
       { name: 'lucario', url: 'https://pokeapi.co/api/v2/pokemon/448/' },
+      { name: 'garchomp', url: 'https://pokeapi.co/api/v2/pokemon/445/' },
     ],
   };
   try {
@@ -661,6 +666,7 @@ test('sprite sync deduplicates names, retains cached PNGs, and never falls back'
     await writeFile(output, JSON.stringify(catalog));
     const stats = await syncSprites(teams, index, {
       directory: sprites,
+      extra: ['Lucario', 'odd bird', 'Garchomp', 'garchomp'],
       load: async (address) => {
         requests.push(address);
         if (address.endsWith('/678.png')) return png;
@@ -670,15 +676,16 @@ test('sprite sync deduplicates names, retains cached PNGs, and never falls back'
       warn: (message) => warnings.push(message),
     });
     assert.deepEqual(stats, {
-      wanted: 5,
+      wanted: 6,
       downloaded: 1,
-      failed: 2,
+      failed: 3,
       removed: 0,
     });
     assert.deepEqual(
       requests.sort(),
       [
         `${root}/10314.png`,
+        `${root}/445.png`,
         `${root}/678.png`,
         `${root}/666-poke-ball.png`,
       ].sort()
@@ -748,6 +755,7 @@ test('item icons resolve source aliases, preserve local names, and fail safely',
     await writeFile(output, JSON.stringify(catalog));
     const stats = await syncItems(teams, {
       directory: items,
+      extra: ['Leftovers', "King's Rock"],
       load: async (address) => {
         requests.push(address);
         if (
@@ -762,9 +770,9 @@ test('item icons resolve source aliases, preserve local names, and fail safely',
       warn: (message) => warnings.push(message),
     });
     assert.deepEqual(stats, {
-      wanted: 5,
+      wanted: 6,
       downloaded: 3,
-      failed: 2,
+      failed: 3,
       removed: 1,
     });
     assert.equal(
