@@ -206,7 +206,8 @@
         </div>
       {:else}
         <p class="provenance">
-          Choose a Pokémon first to filter by its item, ability, or move.
+          Close this pop-up and choose a Pokémon to filter by its item, ability,
+          or move.
         </p>
       {/each}
     </div>
