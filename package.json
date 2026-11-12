@@ -27,6 +27,7 @@
     "import:catalog": "node scripts/import-catalog.mjs",
     "prepublish:catalog": "node scripts/sync-movepools.mjs --if-missing",
     "sync:stats": "node scripts/sync-stats.mjs",
+    "sync:ladder": "node scripts/sync-ladder.mjs",
     "enrich:tags": "node scripts/jev-enrich.mjs",
     "eval:tags": "node scripts/jev-eval.mjs",
     "publish:catalog": "node scripts/publish-catalog.mjs",

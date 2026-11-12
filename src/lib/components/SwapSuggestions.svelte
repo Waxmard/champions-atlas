@@ -4,6 +4,7 @@
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { regulationLabel, type Member, type Team } from '#lib/catalog.js';
+  import { ladderShares } from '#lib/ladder.js';
   import {
     swapIdeas,
     swapSuggestions,
@@ -35,7 +36,15 @@
   let query = $state('');
   const regulation = $derived(regulationLabel(currentRegulation));
   const ideas = $derived(
-    swapIdeas(members, teams, currentRegulation, tags, 4, favoriteTeams)
+    swapIdeas(
+      members,
+      teams,
+      currentRegulation,
+      tags,
+      4,
+      favoriteTeams,
+      ladderShares(currentRegulation)
+    )
   );
   const searched = $derived(
     query
@@ -65,7 +74,7 @@
       row.member.item,
       row.member.ability,
       row.member.nature,
-      `${row.sharedTeammates} shared`,
+      row.sharedTeammates ? `${row.sharedTeammates} shared` : 'Ladder pairing',
     ]
       .filter(Boolean)
       .join(' · ');
@@ -77,8 +86,8 @@
 <div class="min-w-0 space-y-2">
   {#if ideas.length || searched.length}
     <p class="provenance max-w-[68ch]">
-      Suggestions are built from current {regulation} teams. Applying one replaces
-      the whole set.
+      Suggestions are built from catalog teams and {regulation} ladder pairings. Applying
+      one replaces the whole set.
     </p>
   {/if}
   {#if disabled}
@@ -88,7 +97,7 @@
     id="swap-suggestions"
     label="Suggested swaps"
     count={ideas.length}
-    empty={`No current ${regulation} team shares a Pokémon with this team yet. Pick a specific Pokémon below.`}
+    empty="No catalog team or ladder pairing fits this team yet. Pick a specific Pokémon below."
   >
     {#each ideas as idea (swapRowKey(idea))}
       <SuggestionRow

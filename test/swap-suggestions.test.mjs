@@ -636,7 +636,7 @@ test('swap targets list current-regulation forms the team is missing', () => {
   assert.deepEqual(twoMegas, ['Gardevoir', 'Sneasler']);
 });
 
-test('only current-regulation teams feed suggestions', () => {
+test('earlier-regulation teams feed suggestions when the form is legal now', () => {
   const s = (p, item, ability, mv) =>
     set(p, { item, ability, ...(mv ? { moves: [mv] } : {}) });
   const control = team(
@@ -653,21 +653,39 @@ test('only current-regulation teams feed suggestions', () => {
   );
   const old = team(
     'old',
-    [set('Pikachu'), set('Tyranitar', { item: 'Life Orb' })],
+    [
+      set('Pikachu'),
+      set('Tyranitar', { item: 'Life Orb' }),
+      set('Maushold', { item: 'Focus Sash' }),
+    ],
     { regulation: 'M-B' }
+  );
+  const unknown = team(
+    'unknown',
+    [set('Pikachu'), set('Garchomp', { item: 'Life Orb' })],
+    { regulation: 'Unknown' }
   );
   const suggestions = pokemonSuggestions(
     [control.members[0]],
-    [control, old],
+    [control, old, unknown],
     'M-C'
   );
   assert.deepEqual(
     suggestions.map(({ pokemon }) => pokemon),
-    ['Archaludon', 'Gholdengo', 'Incineroar', 'Rillaboom', 'Rotom-Wash']
+    [
+      'Archaludon',
+      'Gholdengo',
+      'Incineroar',
+      'Rillaboom',
+      'Rotom-Wash',
+      'Tyranitar',
+    ]
   );
-  const sources = new Map(control.members.map((e) => [e.pokemon, e]));
-  for (const { pokemon, member } of suggestions)
-    assert.deepEqual(member, sources.get(pokemon));
+  for (const entry of control.members.slice(1))
+    assert.deepEqual(
+      suggestions.find(({ pokemon }) => pokemon === entry.pokemon)?.member,
+      entry
+    );
 
   const swapTeam = team('swap', [
     set('Incineroar', { item: 'Life Orb' }),

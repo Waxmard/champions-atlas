@@ -15,6 +15,7 @@
     memberRosterError,
     memberValidationError,
   } from '#lib/member-validation.js';
+  import { ladderShares } from '#lib/ladder.js';
   import { memberSetSignature } from '#lib/spread-provenance.js';
   import {
     pokemonSuggestions,
@@ -165,7 +166,7 @@
       accepted.pokemon,
       tagIndex,
       pokemonQuery,
-      { limit: SLOT_SUGGESTION_LIMIT },
+      { limit: SLOT_SUGGESTION_LIMIT, ladder: ladderShares(currentRegulation) },
       favoriteTeams
     )
   );
