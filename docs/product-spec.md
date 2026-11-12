@@ -216,8 +216,9 @@ Only unsaved input prompts before navigation. Browse filters and
 position remain device-local.
 
 Similarity counts shared Pokémon first, matching known item/ability/nature/EV
-fields and moves next, then uses result ordering for ties. Only teams in the
-current regulation are considered. A suggestion whose resolved form appears with
+fields and moves next, then uses result ordering for ties. Teams in the current
+regulation count, and so do earlier-regulation teams whose suggested form is
+legal in the current regulation. A suggestion whose resolved form appears with
 one complete set in several teams keeps that set; otherwise the app assembles the
 most common item, the most common ability among sets holding that item, the most
 common Nature and EV pair for those, and the four most frequent moves. Counts
@@ -243,14 +244,21 @@ stored with the saved team, but it cannot be restored from My Teams.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
-The **Swaps** pop-up lists up to four whole-set replacements
-built from current-regulation teams, at most one per slot. Each row names the
-suggested Pokémon, the Pokémon it replaces, the set's item, ability, and nature,
-and its shared-teammate count. Rows rank by the form's weighted vote, then by
-shared teammates. Sets from
-Favorites teams rank in the same list, need the same three shared teammates,
-count as much as the best-placed supporting team, and are labelled
-**Favorite**. Applying a row replaces the whole set,
+The **Swaps** pop-up opens with up to four whole-set replacements, at most one per
+slot, each taken from that slot's Pokémon suggestions in the set editor. Each
+row names the suggested Pokémon, the Pokémon it replaces on a second line, and
+the set's item, ability, and nature on a third; long lines are cut off rather
+than wrapped. **Show 5 more** reveals further rows in ranked order, each Pokémon once on the slot where it ranks best; a slot can repeat. Rows backed by a team
+sharing three or more teammates come first, ranked by the weighted vote of
+those teams. The remaining rows follow by shared teammates, then by how often
+the suggested Pokémon is paired with the rest of the team on the current
+regulation's Smogon ladder, so a team that few catalog teams resemble still gets
+suggestions. A row that would lower the team's ladder pairing is dropped unless
+it is that slot's only idea. Sets from Favorites teams rank in the same list, count as much as
+the best-placed supporting team once they share three teammates, and are
+labelled **Favorite**. Tapping a row in either list shows the full set inside
+the pop-up with **Back** and **Apply swap**; Back returns to the list where it
+was. Applying replaces the whole set,
 leaves **Revert changes** available, and closes the pop-up. **Swap in a specific Pokémon** looks one
 resolved form up across every slot. Swaps stay unavailable while team text is
 unsaved or an editor is open, and a team already holding two Mega Pokémon is not
@@ -269,13 +277,16 @@ Original and In-game values. Items another
 teammate already holds are not offered. Move suggestions include the species'
 newest available movepool, which ranks after catalog observations. In the set
 editor's Pokémon suggestions, Favorites sets rank among catalog suggestions by
-shared teammates until a name is typed, then they list first. Teams of Unknown
+shared teammates until a name is typed, then they list first. Tapping a row
+there shows the same full-set preview as Swaps, with **Back** and **Apply
+swap**; nothing changes until Apply swap, and applying returns to the Pokémon
+section. Teams of Unknown
 regulation count toward item, ability, move, and Nature totals but carry no
 vote, so their values rank after every voted value.
 
 Every suggestion surface renders as full-width rows with an icon cell, the name,
-and one muted detail line. Item, ability, move, Pokémon, and spread lists start
-with ten rows; natures start with six. **Show more** appends ten rows as a muted
+and one muted detail line (two in Swaps). Item, ability, move, Pokémon, and spread lists start
+with ten rows; natures start with six. **Show 5 more** appends five rows as a muted
 dashed footer that is not a selectable row. It disappears when the list is
 complete. A check mark marks the
 selected nature and spread. Changing a field's query or committing input
@@ -286,7 +297,7 @@ the selected Nature and whose spread resolves to the current battle form.
 Matching immutable original and in-game pairs come first. Exact duplicate pairs
 appear once with their source labels combined. The initial list contains up to
 ten additional unique catalog pairs after up to two matching saved-source pairs.
-**Show more** appends ten additional catalog pairs in the same ranked order. It
+**Show 5 more** appends five additional catalog pairs in the same ranked order. It
 disappears when no eligible pairs remain. Each row shows its Nature and
 allocation, and its muted detail line carries
 the source, moved points, and unmodified Speed without team counts. Expansion

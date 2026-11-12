@@ -1,15 +1,17 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import SetPreview from '#lib/components/SetPreview.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { regulationLabel, type Member, type Team } from '#lib/catalog.js';
+  import { ladderShares } from '#lib/ladder.js';
   import {
-    swapIdeas,
     swapSuggestions,
-    swapTargets,
     type SwapSuggestion,
   } from '#lib/swap-suggestions.js';
+  import { swapIdeas, swapTargets } from '#lib/swap-ideas.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import type { SavedTeam } from '#lib/workbench.js';
 
@@ -33,9 +35,22 @@
     onapply,
   }: Props = $props();
   let query = $state('');
+  let visibleCount = $state(4);
+  let preview = $state.raw<SwapSuggestion | null>(null);
+  let list = $state<HTMLDivElement>();
+  let listScroll = 0;
   const regulation = $derived(regulationLabel(currentRegulation));
   const ideas = $derived(
-    swapIdeas(members, teams, currentRegulation, tags, 4, favoriteTeams)
+    swapIdeas(
+      members,
+      teams,
+      currentRegulation,
+      tags,
+      4,
+      favoriteTeams,
+      ladderShares(currentRegulation),
+      true
+    )
   );
   const searched = $derived(
     query
@@ -54,7 +69,7 @@
   );
   const swapRowKey = (row: SwapSuggestion) =>
     `${row.slot}:${row.favorite ? 'fav:' + (row.favoriteTeamName ?? '') : 'cat'}:${row.pokemon}:${row.member.item ?? ''}:${row.member.ability ?? ''}:${row.member.nature ?? ''}:${row.member.spread ?? ''}:${row.member.moves.join(',')}`;
-  const detail = (row: SwapSuggestion) =>
+  const headline = (row: SwapSuggestion) =>
     [
       `Replaces ${members[row.slot]?.pokemon ?? `slot ${row.slot + 1}`}`,
       row.favorite
@@ -62,23 +77,57 @@
           ? `Favorite (${row.favoriteTeamName})`
           : 'Favorite'
         : '',
-      row.member.item,
-      row.member.ability,
-      row.member.nature,
-      `${row.sharedTeammates} shared`,
     ]
       .filter(Boolean)
       .join(' · ');
-  function apply(slot: number, member: Member) {
-    if (onapply(slot, $state.snapshot(member))) query = '';
+  let opener: HTMLElement | null = null;
+  function openPreview(event: MouseEvent, row: SwapSuggestion) {
+    opener = event.currentTarget as HTMLElement;
+    listScroll = list?.parentElement?.scrollTop ?? 0;
+    preview = row;
+  }
+  function closePreview() {
+    const scroller = list?.parentElement;
+    preview = null;
+    void tick().then(() => {
+      if (scroller) scroller.scrollTop = listScroll;
+      opener?.focus({ preventScroll: true });
+    });
+  }
+  function applyPreview() {
+    if (preview) onapply(preview.slot, $state.snapshot(preview.member));
   }
 </script>
 
-<div class="min-w-0 space-y-2">
+{#snippet swapRow(row: SwapSuggestion)}
+  <SuggestionRow
+    label={`Preview ${row.member.pokemon} set for slot ${row.slot + 1}`}
+    glyph={{ kind: 'pokemon', value: row.member.pokemon }}
+    primary={row.member.pokemon}
+    secondary={headline(row)}
+    tertiary={[row.member.item, row.member.ability, row.member.nature]
+      .filter(Boolean)
+      .join(' · ') || 'No item, ability, or nature listed'}
+    {disabled}
+    onclick={(event) => openPreview(event, row)}
+  />
+{/snippet}
+
+{#if preview}
+  <SetPreview
+    title={headline(preview)}
+    member={preview.member}
+    {disabled}
+    onback={closePreview}
+    onapply={applyPreview}
+  />
+{/if}
+
+<div bind:this={list} hidden={!!preview} class="min-w-0 space-y-2">
   {#if ideas.length || searched.length}
     <p class="provenance max-w-[68ch]">
-      Suggestions are built from current {regulation} teams. Applying one replaces
-      the whole set.
+      Suggestions are built from catalog teams and {regulation} ladder pairings. Tap
+      one to preview the whole set before applying it.
     </p>
   {/if}
   {#if disabled}
@@ -88,17 +137,12 @@
     id="swap-suggestions"
     label="Suggested swaps"
     count={ideas.length}
-    empty={`No strong current ${regulation} swap fits this team yet. Pick a specific Pokémon below.`}
+    empty="No catalog team or ladder pairing fits this team yet. Pick a specific Pokémon below."
+    hasMore={ideas.length > visibleCount}
+    onshowmore={() => (visibleCount += 5)}
   >
-    {#each ideas as idea (swapRowKey(idea))}
-      <SuggestionRow
-        label={`Use ${idea.member.pokemon} set for slot ${idea.slot + 1}`}
-        glyph={{ kind: 'pokemon', value: idea.member.pokemon }}
-        primary={idea.member.pokemon}
-        secondary={detail(idea)}
-        {disabled}
-        onclick={() => apply(idea.slot, idea.member)}
-      />
+    {#each ideas.slice(0, visibleCount) as idea (swapRowKey(idea))}
+      {@render swapRow(idea)}
     {/each}
   </SuggestionList>
   <div class="min-w-0 space-y-2 pt-2">
@@ -126,14 +170,7 @@
         empty={`No usable current ${regulation} set with ${query} for this team.`}
       >
         {#each searched as row (swapRowKey(row))}
-          <SuggestionRow
-            label={`Use ${row.member.pokemon} set for slot ${row.slot + 1}`}
-            glyph={{ kind: 'pokemon', value: row.member.pokemon }}
-            primary={row.member.pokemon}
-            secondary={detail(row)}
-            {disabled}
-            onclick={() => apply(row.slot, row.member)}
-          />
+          {@render swapRow(row)}
         {/each}
       </SuggestionList>
     {/if}

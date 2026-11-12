@@ -10,10 +10,10 @@ import {
 import { catalogSuggestions } from '../src/lib/workbench.ts';
 import {
   pokemonSuggestions,
-  swapIdeas,
+  SLOT_SUGGESTION_LIMIT,
   swapSuggestions,
-  swapTargets,
 } from '../src/lib/swap-suggestions.ts';
+import { swapIdeas, swapTargets } from '../src/lib/swap-ideas.ts';
 import { SPREAD, set, team } from './fixtures/swap.mjs';
 
 const core = () => [set('Sneasler'), set('Kingambit'), set('Gholdengo')];
@@ -470,7 +470,7 @@ test('specific search matches the resolved form and keeps every slot', () => {
   );
 });
 
-test('swap ideas need three shared teammates and keep one row per slot', () => {
+test("swap ideas come from each slot's Pokémon suggestions, close fits first", () => {
   const draft = [
     set('Incineroar'),
     set('Rillaboom'),
@@ -487,17 +487,37 @@ test('swap ideas need three shared teammates and keep one row per slot', () => {
   ]);
   const weak = team('weak', [
     set('Gholdengo', { item: 'Life Orb' }),
-    set('Gardevoir'),
+    set('Gardevoir', { item: 'Life Orb' }),
   ]);
+  const rows = (ideas) =>
+    ideas.map(({ pokemon, slot, sharedTeammates }) => [
+      pokemon,
+      slot,
+      sharedTeammates,
+    ]);
   const ideas = swapIdeas(draft, [strong, weak], 'M-C');
-  assert.ok(ideas.length > 0);
-  assert.ok(ideas.every((idea) => idea.sharedTeammates >= 3));
-  assert.equal(new Set(ideas.map(({ slot }) => slot)).size, ideas.length);
-  assert.ok(ideas.length <= 4);
-  assert.deepEqual(
-    ideas.map(({ pokemon }) => pokemon),
-    ['Garchomp']
-  );
+  assert.deepEqual(rows(ideas), [
+    ['Garchomp', 3, 3],
+    ['Gardevoir', 0, 1],
+  ]);
+  for (const idea of ideas) {
+    const slotRows = pokemonSuggestions(
+      draft.filter((_, index) => index !== idea.slot),
+      [strong, weak],
+      'M-C',
+      draft[idea.slot].pokemon,
+      undefined,
+      '',
+      { limit: SLOT_SUGGESTION_LIMIT }
+    );
+    assert.deepEqual(
+      slotRows.find((row) => row.pokemon === idea.pokemon)?.member,
+      idea.member
+    );
+  }
+  assert.deepEqual(rows(swapIdeas(draft, [weak], 'M-C')), [
+    ['Gardevoir', 0, 1],
+  ]);
 
   const crowded = [0, 1, 2, 3, 4].map((index) =>
     team(`crowded-${index}`, [
@@ -615,7 +635,7 @@ test('swap targets list current-regulation forms the team is missing', () => {
   assert.deepEqual(twoMegas, ['Gardevoir', 'Sneasler']);
 });
 
-test('only current-regulation teams feed suggestions', () => {
+test('earlier-regulation teams feed suggestions when the form is legal now', () => {
   const s = (p, item, ability, mv) =>
     set(p, { item, ability, ...(mv ? { moves: [mv] } : {}) });
   const control = team(
@@ -632,21 +652,39 @@ test('only current-regulation teams feed suggestions', () => {
   );
   const old = team(
     'old',
-    [set('Pikachu'), set('Tyranitar', { item: 'Life Orb' })],
+    [
+      set('Pikachu'),
+      set('Tyranitar', { item: 'Life Orb' }),
+      set('Maushold', { item: 'Focus Sash' }),
+    ],
     { regulation: 'M-B' }
+  );
+  const unknown = team(
+    'unknown',
+    [set('Pikachu'), set('Garchomp', { item: 'Life Orb' })],
+    { regulation: 'Unknown' }
   );
   const suggestions = pokemonSuggestions(
     [control.members[0]],
-    [control, old],
+    [control, old, unknown],
     'M-C'
   );
   assert.deepEqual(
     suggestions.map(({ pokemon }) => pokemon),
-    ['Archaludon', 'Gholdengo', 'Incineroar', 'Rillaboom', 'Rotom-Wash']
+    [
+      'Archaludon',
+      'Gholdengo',
+      'Incineroar',
+      'Rillaboom',
+      'Rotom-Wash',
+      'Tyranitar',
+    ]
   );
-  const sources = new Map(control.members.map((e) => [e.pokemon, e]));
-  for (const { pokemon, member } of suggestions)
-    assert.deepEqual(member, sources.get(pokemon));
+  for (const entry of control.members.slice(1))
+    assert.deepEqual(
+      suggestions.find(({ pokemon }) => pokemon === entry.pokemon)?.member,
+      entry
+    );
 
   const swapTeam = team('swap', [
     set('Incineroar', { item: 'Life Orb' }),

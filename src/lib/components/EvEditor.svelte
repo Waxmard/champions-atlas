@@ -327,7 +327,7 @@
       count={visibleNatures.length}
       empty="No catalog nature suggestions for this Pokémon."
       hasMore={hasMoreNatures}
-      onshowmore={() => (visibleNatureCount += 10)}
+      onshowmore={() => (visibleNatureCount += 5)}
     >
       {#each visibleNatures as option (option.value)}
         {@const modifier = natureEffect(option.value)}
@@ -496,7 +496,7 @@
   class="mt-4"
   empty="No recorded spreads match this Nature. Try another Nature or adjust EVs manually."
   hasMore={spreadSuggestions.hasMore}
-  onshowmore={() => (visibleCatalogCount += 10)}
+  onshowmore={() => (visibleCatalogCount += 5)}
 >
   {#each spreadSuggestions.rows as option (option.spread + option.nature)}
     <SuggestionRow

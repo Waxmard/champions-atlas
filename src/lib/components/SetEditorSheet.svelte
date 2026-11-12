@@ -15,8 +15,12 @@
     memberRosterError,
     memberValidationError,
   } from '#lib/member-validation.js';
+  import { ladderShares } from '#lib/ladder.js';
   import { memberSetSignature } from '#lib/spread-provenance.js';
-  import { pokemonSuggestions } from '#lib/swap-suggestions.js';
+  import {
+    pokemonSuggestions,
+    SLOT_SUGGESTION_LIMIT,
+  } from '#lib/swap-suggestions.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import {
@@ -97,6 +101,7 @@
   let visibleAbilityCount = $state(10);
   let visibleMoveCount = $state(10);
   let visiblePokemonCount = $state(10);
+  let previewing = $state(false);
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
   let closing = false;
@@ -162,7 +167,7 @@
       accepted.pokemon,
       tagIndex,
       pokemonQuery,
-      { limit: 30 },
+      { limit: SLOT_SUGGESTION_LIMIT, ladder: ladderShares(currentRegulation) },
       favoriteTeams
     )
   );
@@ -649,7 +654,7 @@
         {activeMoveSlot}
         moveOptions={movePage.visible}
         hasMore={movePage.hasMore}
-        onshowmore={() => (visibleMoveCount += 10)}
+        onshowmore={() => (visibleMoveCount += 5)}
         {inGameMember}
         oningame={chooseInGame}
         {error}
@@ -683,8 +688,8 @@
         filteredAbilities={abilityPage.visible}
         hasMoreItems={itemPage.hasMore}
         hasMoreAbilities={abilityPage.hasMore}
-        onshowmoreitems={() => (visibleItemCount += 10)}
-        onshowmoreabilities={() => (visibleAbilityCount += 10)}
+        onshowmoreitems={() => (visibleItemCount += 5)}
+        onshowmoreabilities={() => (visibleAbilityCount += 5)}
         {inGameMember}
         oningame={chooseInGame}
         {error}
@@ -740,13 +745,14 @@
     {:else if currentView === 'pokemon'}
       <SetEditorPokemonSuggestions
         bind:pokemon={form.pokemon}
+        bind:previewing
         accepted={accepted.pokemon}
         options={pokemonPage.visible}
         hasMore={pokemonPage.hasMore}
         {favoriteSlotSets}
         {error}
         {errorField}
-        onshowmore={() => (visiblePokemonCount += 10)}
+        onshowmore={() => (visiblePokemonCount += 5)}
         onchoose={(next) => chooseSet(next, true)}
         onresetquery={() => resetQuery('pokemon')}
         oninputchange={(value) => {
@@ -760,6 +766,7 @@
     {/if}
   </div>
   <footer
+    hidden={currentView === 'pokemon' && previewing}
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-3 sm:px-6 sm:pb-4"
   >
     {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability'].includes(errorField || '')) || (currentView === 'spread' && (errorField === 'spread' || errorField === 'nature')) || (currentView === 'pokemon' && errorField === 'pokemon'))}<p

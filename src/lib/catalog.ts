@@ -63,12 +63,15 @@ export interface MemberFilter {
   ability: string;
   move: string;
 }
-export const normalize = (text: string) =>
-  text
-    .toLowerCase()
-    .replace(/♀/g, 'f')
-    .replace(/♂/g, 'm')
-    .replace(/[^a-z0-9]/g, '');
+const normalized = new Map<string, string>();
+export function normalize(text: string): string {
+  let key = normalized.get(text);
+  if (key !== undefined) return key;
+  key = text.toLowerCase().replace(/♀/g, 'f').replace(/♂/g, 'm');
+  key = key.replace(/[^a-z0-9]/g, '');
+  normalized.set(text, key);
+  return key;
+}
 
 export const megaStoneTargets = (item: string) =>
   Generations.get(0).items.get(normalize(item) as ID)?.megaStone;

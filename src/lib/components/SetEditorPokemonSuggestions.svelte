@@ -1,6 +1,8 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import X from '@lucide/svelte/icons/x';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import SetPreview from '#lib/components/SetPreview.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
@@ -10,6 +12,7 @@
 
   let {
     pokemon = $bindable(),
+    previewing = $bindable(false),
     accepted,
     options,
     hasMore = false,
@@ -23,6 +26,7 @@
     oncommit,
   }: {
     pokemon: string;
+    previewing?: boolean;
     accepted: string;
     options: PokemonSuggestion[];
     hasMore?: boolean;
@@ -42,9 +46,59 @@
   } = $props();
   const optionKey = (option: PokemonSuggestion) =>
     `${option.favorite ? 'fav:' + (option.favoriteTeamName ?? '') : 'cat'}:${option.pokemon}:${option.member.item ?? ''}:${option.member.ability ?? ''}:${option.member.nature ?? ''}:${option.member.spread ?? ''}:${option.member.moves.join(',')}`;
+  const favoriteLabel = (option: PokemonSuggestion) =>
+    option.favorite
+      ? option.favoriteTeamName
+        ? `Favorite (${option.favoriteTeamName})`
+        : 'Favorite'
+      : '';
+  let preview = $state.raw<{ member: Member; title: string } | null>(null);
+  let section = $state<HTMLElement>();
+  let listScroll = 0;
+  let typed = '';
+  let opener: HTMLElement | null = null;
+
+  $effect(() => {
+    previewing = !!preview;
+  });
+
+  function openPreview(event: MouseEvent, member: Member, note: string) {
+    opener = event.currentTarget as HTMLElement;
+    listScroll = section?.parentElement?.scrollTop ?? 0;
+    typed = pokemon;
+    pokemon = accepted;
+    preview = {
+      member,
+      title: [`Replaces ${accepted}`, note].filter(Boolean).join(' · '),
+    };
+  }
+  function closePreview(restore: boolean) {
+    const scroller = section?.parentElement;
+    const top = restore ? listScroll : 0;
+    if (restore) pokemon = typed;
+    preview = null;
+    void tick().then(() => {
+      if (scroller) scroller.scrollTop = top;
+      if (restore) opener?.focus({ preventScroll: true });
+    });
+  }
+  function applyPreview() {
+    if (!preview) return;
+    onchoose(preview.member);
+    closePreview(false);
+  }
 </script>
 
-<section class="grid gap-4">
+{#if preview}
+  <SetPreview
+    title={preview.title}
+    member={preview.member}
+    onback={() => closePreview(true)}
+    onapply={applyPreview}
+  />
+{/if}
+
+<section bind:this={section} hidden={!!preview} class="grid gap-4">
   <label for="set-pokemon-input" class="sr-only">Pokémon</label>
   <label class="field">
     <PokemonSprite {pokemon} size={28} />
@@ -57,7 +111,9 @@
       onfocus={onresetquery}
       onclick={onresetquery}
       oninput={(event) => oninputchange(event.currentTarget.value)}
-      onblur={() => oncommit(false)}
+      onblur={() => {
+        if (!preview) oncommit(false);
+      }}
       onkeydown={(event) => {
         if (event.key === 'Enter' && !event.isComposing) {
           event.preventDefault();
@@ -84,7 +140,7 @@
     {/if}
   </label>
   <p class="provenance">
-    Choosing a suggested Pokémon replaces this set's fields.
+    Tap a suggested Pokémon to preview its set before applying it.
   </p>
   {#if favoriteSlotSets.length}
     <SuggestionList
@@ -94,7 +150,7 @@
     >
       {#each favoriteSlotSets as fav (fav.key)}
         <SuggestionRow
-          label={`Use favorite ${fav.member.pokemon} set from ${fav.teamName}`}
+          label={`Preview favorite ${fav.member.pokemon} set from ${fav.teamName}`}
           glyph={{ kind: 'pokemon', value: fav.member.pokemon }}
           primary={fav.member.pokemon}
           secondary={[
@@ -107,7 +163,8 @@
             .filter(Boolean)
             .join(' · ')}
           disabled={!!fav.reason}
-          onclick={() => onchoose(fav.member)}
+          onclick={(event) =>
+            openPreview(event, fav.member, `Favorite (${fav.teamName})`)}
         />
       {/each}
     </SuggestionList>
@@ -116,28 +173,24 @@
     id="set-pokemon-suggestions"
     label="Pokémon suggestions"
     count={options.length}
-    moreLabel="Show 10 more"
     {hasMore}
     {onshowmore}
   >
     {#each options as option (optionKey(option))}
       <SuggestionRow
-        label={`Use ${option.pokemon} set`}
+        label={`Preview ${option.pokemon} set`}
         glyph={{ kind: 'pokemon', value: option.pokemon }}
         primary={option.pokemon}
         secondary={[
-          option.favorite
-            ? option.favoriteTeamName
-              ? `Favorite (${option.favoriteTeamName})`
-              : 'Favorite'
-            : '',
+          favoriteLabel(option),
           option.member.item,
           option.member.ability,
           option.member.nature,
         ]
           .filter(Boolean)
           .join(' · ')}
-        onclick={() => onchoose(option.member)}
+        onclick={(event) =>
+          openPreview(event, option.member, favoriteLabel(option))}
       />
     {/each}
   </SuggestionList>

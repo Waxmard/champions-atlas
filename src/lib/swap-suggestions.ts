@@ -1,4 +1,4 @@
-import { battleSpecies, resolveBattleForm } from './battle-forms.ts';
+import { resolveBattleForm } from './battle-forms.ts';
 import { knownName } from './canonical-names.ts';
 import {
   MAX_TEAM_MEGAS,
@@ -16,9 +16,8 @@ import {
   isCompleteSpread,
   parseChampionsSpread,
 } from './paste.ts';
-import rosterA from '../../scripts/data/champions-m-a.json' with { type: 'json' };
-import rosterB from '../../scripts/data/champions-m-b.json' with { type: 'json' };
-import rosterC from '../../scripts/data/champions-m-c.json' with { type: 'json' };
+import { ladderScore, type LadderShares } from './ladder.ts';
+import { isRosterLegal, rosterSpecies } from './rosters.ts';
 import {
   missingRoles,
   postalRole,
@@ -33,24 +32,6 @@ export interface FavoriteTeamSource {
   name: string;
   members: Member[];
   original?: Pick<Team, 'regulation'>;
-}
-
-const rosters: Record<string, { pokemon: Record<string, string[]> }> = {
-  'M-A': rosterA,
-  'M-B': rosterB,
-  'M-C': rosterC,
-};
-const rosterNames = new Map<string, string[]>();
-
-function rosterSpecies(regulation: string): string[] {
-  let names = rosterNames.get(regulation);
-  if (!names) {
-    names = Object.values(rosters[regulation]?.pokemon ?? {}).flatMap(
-      ([id]) => battleSpecies(id)?.name ?? []
-    );
-    rosterNames.set(regulation, names);
-  }
-  return names;
 }
 
 const sourceStub = (
@@ -74,6 +55,11 @@ const sourceStub = (
   pasteNotes: null,
 });
 
+export const CLOSE_SHARED = 3;
+export const fitKey = (shared: number, ladder: number) =>
+  shared >= CLOSE_SHARED ? shared : ladder;
+export const SLOT_SUGGESTION_LIMIT = 30;
+
 export interface PokemonSuggestion {
   pokemon: string;
   member: Member;
@@ -83,6 +69,8 @@ export interface PokemonSuggestion {
   roleFill: boolean;
   archetype: string | null;
   support: number;
+  closeSupport: number;
+  ladder: number;
   source: Team;
   favorite?: true;
   favoriteTeamName?: string;
@@ -177,6 +165,8 @@ interface Candidate {
   weights: Map<Member, number>;
   teamIds: Set<string>;
   support: number;
+  closeSupport: number;
+  ladder: number;
   bestShared: number;
   bestDetails: number;
   bestSource: Team;
@@ -189,7 +179,7 @@ const clean = (value: string | null) => (empty(value) ? null : value);
 const known = (kind: 'item' | 'ability' | 'move', value: string | null) =>
   empty(value) || Boolean(knownName(kind, value ?? ''));
 
-function isKnownMember(member: Member): boolean {
+export function isKnownMember(member: Member): boolean {
   if (resolveBattleForm(member).error !== null) return false;
   return (
     known('item', member.item) &&
@@ -385,6 +375,8 @@ function synthesize(
     roleFill: missing.some((role) => roleFlags(member).includes(role)),
     archetype: tagsForTeam(tags, candidate.bestSource.id)?.archetype ?? null,
     support: candidate.support,
+    closeSupport: candidate.closeSupport,
+    ladder: candidate.ladder,
     source: candidate.bestSource,
   };
 }
@@ -446,6 +438,8 @@ function buildFavoriteSuggestions(
         roleFill: missing.some((role) => roleFlags(member).includes(role)),
         archetype: tagsForTeam(tags, favTeam.id)?.archetype ?? null,
         support: 1,
+        closeSupport: shared >= CLOSE_SHARED ? 1 : 0,
+        ladder: 0,
         source: sourceStub(
           favTeam.id,
           favTeam.name,
@@ -470,15 +464,15 @@ export function pokemonSuggestions(
   {
     minShared = 1,
     limit = 6,
-    bySupport = false,
-  }: { minShared?: number; limit?: number; bySupport?: boolean } = {},
+    ladder,
+  }: { minShared?: number; limit?: number; ladder?: LadderShares } = {},
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): PokemonSuggestion[] {
-  const current = teams.filter((team) => team.regulation === currentRegulation);
-  const weight = voteWeights(current, currentRegulation);
+  const evidenceTeams = teams.filter((team) => team.regulation !== 'Unknown');
+  const weight = voteWeights(evidenceTeams, currentRegulation);
   const { ranked, missing } = rankedSourceTeams(
     teammates,
-    current,
+    evidenceTeams,
     currentRegulation,
     tags
   );
@@ -495,6 +489,7 @@ export function pokemonSuggestions(
   const megas = teammates.filter((member) =>
     isMegaSpecies(resolveBattleForm(member).pokemon || member.pokemon)
   ).length;
+  const mates = teammates.map((member) => resolveBattleForm(member).pokemon);
   const queryKey = normalize(query);
   const favoriteRows = buildFavoriteSuggestions(
     teammates,
@@ -508,6 +503,12 @@ export function pokemonSuggestions(
     tags,
     missing
   );
+  for (const row of favoriteRows)
+    row.ladder = ladderScore(
+      ladder,
+      resolveBattleForm(row.member).pokemon,
+      mates
+    );
   const favoriteKeys = new Set(
     favoriteRows.map(
       (row) =>
@@ -517,18 +518,25 @@ export function pokemonSuggestions(
   const candidates = new Map<string, Candidate>();
   const effectiveMinShared = queryKey ? 0 : minShared;
   for (const { team, shared, details } of ranked) {
-    if (shared < effectiveMinShared) break;
+    const fits = shared >= effectiveMinShared;
+    if (!fits && !ladder) break;
     const teamWeight = weight(team);
+    const earlier = team.regulation !== currentRegulation;
     for (const member of team.members) {
       const resolved = resolveBattleForm(member);
       if (resolved.error) continue;
       const { pokemon: form } = resolved;
       if (excluded.has(normalize(form)) || excluded.has(basePokemon(form)))
         continue;
+      if (earlier && !isRosterLegal(form, currentRegulation)) continue;
       if (isMegaSpecies(form) && megas >= MAX_TEAM_MEGAS) continue;
       if (queryKey && !normalize(form).includes(queryKey)) continue;
       let candidate = candidates.get(form);
+      if (!fits && candidate && candidate.bestShared >= effectiveMinShared)
+        continue;
       if (!candidate) {
+        const fit = ladderScore(ladder, form, mates);
+        if (!fits && !fit) continue;
         candidate = {
           form,
           names: new Map(),
@@ -536,6 +544,8 @@ export function pokemonSuggestions(
           weights: new Map(),
           teamIds: new Set(),
           support: 0,
+          closeSupport: 0,
+          ladder: fit,
           bestShared: shared,
           bestDetails: details,
           bestSource: team,
@@ -552,6 +562,7 @@ export function pokemonSuggestions(
       if (!candidate.teamIds.has(team.id)) {
         candidate.teamIds.add(team.id);
         candidate.support += teamWeight;
+        if (shared >= CLOSE_SHARED) candidate.closeSupport += teamWeight;
       }
       if (missing.some((role) => roleFlags(member).includes(role)))
         candidate.roleFill = true;
@@ -560,7 +571,7 @@ export function pokemonSuggestions(
   const catalogRows: PokemonSuggestion[] = [];
   const ordered = [...candidates.values()].sort(
     (a, b) =>
-      (bySupport ? b.support - a.support : 0) ||
+      fitKey(b.bestShared, b.ladder) - fitKey(a.bestShared, a.ladder) ||
       b.bestShared - a.bestShared ||
       b.support - a.support ||
       b.bestDetails - a.bestDetails ||
@@ -618,6 +629,8 @@ export function pokemonSuggestions(
           roleFill: false,
           archetype: null,
           support: 0,
+          closeSupport: 0,
+          ladder: 0,
           source: sourceStub('', '', currentRegulation, []),
         }))
     : [];
@@ -625,107 +638,14 @@ export function pokemonSuggestions(
   if (!queryKey)
     sourced.sort(
       (a, b) =>
+        fitKey(b.sharedTeammates, b.ladder) -
+          fitKey(a.sharedTeammates, a.ladder) ||
         b.sharedTeammates - a.sharedTeammates ||
         b.support - a.support ||
         b.matchingDetails - a.matchingDetails ||
         Number(Boolean(b.favorite)) - Number(Boolean(a.favorite))
     );
   return [...sourced, ...rosterRows];
-}
-
-export function swapTargets(
-  members: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  favoriteTeams: readonly FavoriteTeamSource[] = []
-): string[] {
-  const present = new Set<string>();
-  let megas = 0;
-  for (const member of members) {
-    const form = resolveBattleForm(member);
-    const name = form.error ? member.pokemon : form.pokemon;
-    present.add(normalize(name));
-    present.add(basePokemon(name));
-    if (isMegaSpecies(name)) megas++;
-  }
-  const names = new Set<string>();
-  const addMember = (member: Member, requireKnown: boolean) => {
-    if (requireKnown && !isKnownMember(member)) return;
-    const form = resolveBattleForm(member);
-    if (form.error) return;
-    if (
-      present.has(normalize(form.pokemon)) ||
-      present.has(basePokemon(form.pokemon)) ||
-      (isMegaSpecies(form.pokemon) && megas >= MAX_TEAM_MEGAS)
-    )
-      return;
-    names.add(form.pokemon);
-  };
-  for (const team of teams) {
-    if (team.regulation !== currentRegulation) continue;
-    for (const member of team.members) addMember(member, false);
-  }
-  for (const favTeam of favoriteTeams) {
-    for (const member of favTeam.members) addMember(member, true);
-  }
-  return [...names].sort();
-}
-
-export function swapIdeas(
-  members: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  tags?: TeamTagsIndex,
-  limit = 4,
-  favoriteTeams: readonly FavoriteTeamSource[] = []
-): SwapSuggestion[] {
-  const pool: SwapSuggestion[] = [];
-  for (const [slot, replaced] of members.entries()) {
-    const teammates = members.filter((_, index) => index !== slot);
-    for (const idea of pokemonSuggestions(
-      teammates,
-      teams,
-      currentRegulation,
-      replaced.pokemon,
-      tags,
-      '',
-      { minShared: 3, limit, bySupport: true }
-    ))
-      pool.push({ ...idea, slot });
-    if (favoriteTeams.length) {
-      for (const fav of pokemonSuggestions(
-        teammates,
-        teams,
-        currentRegulation,
-        replaced.pokemon,
-        tags,
-        '',
-        { minShared: 3, limit: 0 },
-        favoriteTeams
-      ))
-        pool.push({ ...fav, slot });
-    }
-  }
-  const seenSlots = new Set<number>();
-  const seenSpecies = new Set<string>();
-  return pool
-    .sort(
-      (a, b) =>
-        b.support - a.support ||
-        b.sharedTeammates - a.sharedTeammates ||
-        b.matchingDetails - a.matchingDetails ||
-        Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)) ||
-        compareTeams(a.source, b.source, currentRegulation) ||
-        a.slot - b.slot
-    )
-    .filter((idea) => {
-      const form = normalize(resolveBattleForm(idea.member).pokemon);
-      if (seenSlots.has(idea.slot) || seenSpecies.has(form)) return false;
-      seenSlots.add(idea.slot);
-      seenSpecies.add(form);
-      return true;
-    })
-    .slice(0, limit);
 }
 
 export function swapSuggestions(

@@ -12,11 +12,12 @@
     label: string;
     primary?: string;
     secondary?: string;
+    tertiary?: string;
     prefix?: string;
     glyph?: Glyph;
     selected?: boolean;
     disabled?: boolean;
-    onclick: () => void;
+    onclick: (event: MouseEvent) => void;
     children?: Snippet;
   }
 
@@ -24,6 +25,7 @@
     label,
     primary = '',
     secondary = '',
+    tertiary = '',
     prefix = '',
     glyph,
     selected = false,
@@ -41,7 +43,7 @@
 <li>
   <button
     type="button"
-    class="option-row w-full"
+    class="option-row w-full {tertiary ? 'py-1.5' : ''}"
     data-selected={selected}
     style:background-image={wash}
     aria-label={label}
@@ -71,7 +73,12 @@
           {#if prefix}<span class="term me-1.5">{prefix}</span>{/if}{primary}
         </span>
         {#if secondary}
-          <span class="provenance mt-0.5 block">{secondary}</span>
+          <span class="provenance mt-0.5 block {tertiary ? 'truncate' : ''}"
+            >{secondary}</span
+          >
+        {/if}
+        {#if tertiary}
+          <span class="provenance block truncate">{tertiary}</span>
         {/if}
       </span>
       {#if selected}

@@ -358,6 +358,8 @@ entry and their move suggestions rely on catalog observations alone.
 ## Ranking and discovery
 
 Automatic team and set suggestions consider only teams in the current regulation,
+except Pokémon suggestions, which also count earlier-regulation teams whose form
+is legal in the current regulation,
 then order by recency-adjusted achievement band, current-regulation status, and
 credential merit. A supplied recommendation tiebreak follows merit; publication
 time and team ID settle remaining ties.
