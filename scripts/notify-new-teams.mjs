@@ -39,7 +39,7 @@ export function newTeamsAlert(bundle) {
   if (sources.length > 3) shown.push(`${sources.length - 3} more`);
   return {
     title: `${teams.length} new Reg ${current} ${teams.length === 1 ? 'team' : 'teams'}`,
-    body: shown.length ? `${listFormat.format(shown)}.` : 'Tap to see them.',
+    body: shown.length ? listFormat.format(shown) : 'Tap to see them',
   };
 }
 

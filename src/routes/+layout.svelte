@@ -20,7 +20,6 @@
   import NotificationSettings from '#lib/components/NotificationSettings.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
-    catalogState,
     initCatalogRuntime,
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
@@ -472,11 +471,15 @@
 
   let newTeamsTapped = false;
 
-  function openNewTeams() {
+  async function openNewTeams() {
     if (!newTeamsTapped || !startupSettled) return;
     newTeamsTapped = false;
     if (sync.configured && !sync.user) return;
-    if (catalogState.ready) void refreshCatalogNow();
+    await initCatalogRuntime();
+    await Promise.race([
+      refreshCatalogNow(),
+      new Promise((done) => setTimeout(done, 5000)),
+    ]);
     void goto(resolve('?new=1'));
   }
 
@@ -493,7 +496,7 @@
     const tapListener = isNativeApp
       ? AtlasNative.addListener('newTeamsTap', () => {
           newTeamsTapped = true;
-          openNewTeams();
+          void openNewTeams();
         })
       : null;
     const onVisibility = () => {
@@ -544,7 +547,7 @@
       void sync.user;
       void checkSharedLinks();
       void syncGameResults().catch(() => {});
-      openNewTeams();
+      void openNewTeams();
     }
   });
 

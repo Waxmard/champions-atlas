@@ -28,7 +28,7 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
   assert.equal(newTeamsAlert(bundle([team('old', [regional], 'M-B')])), null);
   assert.deepEqual(
     newTeamsAlert(bundle([team('a', [report('Poch.ms collection')])])),
-    { title: '1 new Reg M-C team', body: 'Tap to see them.' }
+    { title: '1 new Reg M-C team', body: 'Tap to see them' }
   );
   assert.deepEqual(
     newTeamsAlert(
@@ -48,7 +48,7 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
     ),
     {
       title: '6 new Reg M-C teams',
-      body: 'Louisville Regional 2027, CybertronVGC, Nice Regional 2027 and 1 more.',
+      body: 'Louisville Regional 2027, CybertronVGC, Nice Regional 2027 and 1 more',
     }
   );
 });

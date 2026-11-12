@@ -195,6 +195,7 @@ async function fetchJsonWithLimit(
   try {
     const response = await fetcher(url, {
       method: 'GET',
+      cache: 'no-cache',
       headers: { Accept: 'application/json' },
       credentials: 'omit',
       redirect: 'error',
