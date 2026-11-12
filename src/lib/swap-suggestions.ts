@@ -55,8 +55,8 @@ const sourceStub = (
   pasteNotes: null,
 });
 
-const CLOSE_SHARED = 3;
-const fitKey = (shared: number, ladder: number) =>
+export const CLOSE_SHARED = 3;
+export const fitKey = (shared: number, ladder: number) =>
   shared >= CLOSE_SHARED ? shared : ladder;
 export const SLOT_SUGGESTION_LIMIT = 30;
 
@@ -179,7 +179,7 @@ const clean = (value: string | null) => (empty(value) ? null : value);
 const known = (kind: 'item' | 'ability' | 'move', value: string | null) =>
   empty(value) || Boolean(knownName(kind, value ?? ''));
 
-function isKnownMember(member: Member): boolean {
+export function isKnownMember(member: Member): boolean {
   if (resolveBattleForm(member).error !== null) return false;
   return (
     known('item', member.item) &&
@@ -646,107 +646,6 @@ export function pokemonSuggestions(
         Number(Boolean(b.favorite)) - Number(Boolean(a.favorite))
     );
   return [...sourced, ...rosterRows];
-}
-
-export function swapTargets(
-  members: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  favoriteTeams: readonly FavoriteTeamSource[] = []
-): string[] {
-  const present = new Set<string>();
-  let megas = 0;
-  for (const member of members) {
-    const form = resolveBattleForm(member);
-    const name = form.error ? member.pokemon : form.pokemon;
-    present.add(normalize(name));
-    present.add(basePokemon(name));
-    if (isMegaSpecies(name)) megas++;
-  }
-  const names = new Set<string>();
-  const addMember = (member: Member, requireKnown: boolean) => {
-    if (requireKnown && !isKnownMember(member)) return;
-    const form = resolveBattleForm(member);
-    if (form.error) return;
-    if (
-      present.has(normalize(form.pokemon)) ||
-      present.has(basePokemon(form.pokemon)) ||
-      (isMegaSpecies(form.pokemon) && megas >= MAX_TEAM_MEGAS)
-    )
-      return;
-    names.add(form.pokemon);
-  };
-  for (const team of teams) {
-    if (team.regulation !== currentRegulation) continue;
-    for (const member of team.members) addMember(member, false);
-  }
-  for (const favTeam of favoriteTeams) {
-    for (const member of favTeam.members) addMember(member, true);
-  }
-  return [...names].sort();
-}
-
-export function swapIdeas(
-  members: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  tags?: TeamTagsIndex,
-  limit = 4,
-  favoriteTeams: readonly FavoriteTeamSource[] = [],
-  ladder?: LadderShares,
-  all = false
-): SwapSuggestion[] {
-  const pool: SwapSuggestion[] = [];
-  const forms = members.map((member) => resolveBattleForm(member).pokemon);
-  for (const [slot, replaced] of members.entries()) {
-    const others = (_: unknown, index: number) => index !== slot;
-    const own = ladderScore(ladder, forms[slot], forms.filter(others));
-    for (const idea of pokemonSuggestions(
-      members.filter(others),
-      teams,
-      currentRegulation,
-      replaced.pokemon,
-      tags,
-      '',
-      { limit: SLOT_SUGGESTION_LIMIT, ladder },
-      favoriteTeams
-    ))
-      pool.push({ ...idea, slot, ladder: idea.ladder - own });
-  }
-  const seenSlots = new Set<number>();
-  const seenSpecies = new Set<string>();
-  const form = (idea: SwapSuggestion) =>
-    normalize(resolveBattleForm(idea.member).pokemon);
-  const head = pool
-    .sort(
-      (a, b) =>
-        b.closeSupport - a.closeSupport ||
-        fitKey(b.sharedTeammates, b.ladder) -
-          fitKey(a.sharedTeammates, a.ladder) ||
-        b.sharedTeammates - a.sharedTeammates ||
-        b.support - a.support ||
-        b.matchingDetails - a.matchingDetails ||
-        Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)) ||
-        compareTeams(a.source, b.source, currentRegulation) ||
-        a.slot - b.slot
-    )
-    .filter((idea) => {
-      const key = form(idea);
-      if (seenSlots.has(idea.slot) || seenSpecies.has(key)) return false;
-      seenSlots.add(idea.slot);
-      seenSpecies.add(key);
-      return true;
-    })
-    .slice(0, limit);
-  if (!all) return head;
-  const taken = new Set(head.map(form));
-  const rest = pool.filter((idea) => {
-    const key = form(idea);
-    if (taken.has(key)) return false;
-    taken.add(key);
-    return true;
-  });
-  return [...head, ...rest];
 }
 
 export function swapSuggestions(

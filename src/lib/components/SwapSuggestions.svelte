@@ -8,11 +8,10 @@
   import { regulationLabel, type Member, type Team } from '#lib/catalog.js';
   import { ladderShares } from '#lib/ladder.js';
   import {
-    swapIdeas,
     swapSuggestions,
-    swapTargets,
     type SwapSuggestion,
   } from '#lib/swap-suggestions.js';
+  import { swapIdeas, swapTargets } from '#lib/swap-ideas.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import type { SavedTeam } from '#lib/workbench.js';
 

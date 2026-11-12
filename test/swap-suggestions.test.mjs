@@ -11,10 +11,9 @@ import { catalogSuggestions } from '../src/lib/workbench.ts';
 import {
   pokemonSuggestions,
   SLOT_SUGGESTION_LIMIT,
-  swapIdeas,
   swapSuggestions,
-  swapTargets,
 } from '../src/lib/swap-suggestions.ts';
+import { swapIdeas, swapTargets } from '../src/lib/swap-ideas.ts';
 import { SPREAD, set, team } from './fixtures/swap.mjs';
 
 const core = () => [set('Sneasler'), set('Kingambit'), set('Gholdengo')];

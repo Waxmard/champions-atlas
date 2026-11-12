@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { reducePartners } from '../scripts/sync-ladder.mjs';
 import { ladderScore } from '../src/lib/ladder.ts';
-import { pokemonSuggestions, swapIdeas } from '../src/lib/swap-suggestions.ts';
+import { swapIdeas } from '../src/lib/swap-ideas.ts';
+import { pokemonSuggestions } from '../src/lib/swap-suggestions.ts';
 import { set, team } from './fixtures/swap.mjs';
 
 const draft = [

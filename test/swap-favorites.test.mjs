@@ -2,10 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   pokemonSuggestions,
-  swapIdeas,
   swapSuggestions,
-  swapTargets,
 } from '../src/lib/swap-suggestions.ts';
+import { swapIdeas, swapTargets } from '../src/lib/swap-ideas.ts';
 import { set, team } from './fixtures/swap.mjs';
 
 test('swap ideas rank Favorites with catalog suggestions and fill from weaker fits', () => {
