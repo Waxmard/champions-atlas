@@ -22,7 +22,7 @@
   });
 </script>
 
-<div bind:this={root} class="min-w-0 space-y-3">
+<div bind:this={root} class="enter-fade min-w-0 space-y-3">
   <div
     class="sticky top-0 z-10 flex min-w-0 flex-wrap items-center justify-between gap-2 bg-base-100 py-2"
   >

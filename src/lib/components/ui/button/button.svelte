@@ -34,7 +34,7 @@
     class?: HTMLButtonAttributes['class'];
   } = {}): string {
     return twMerge(
-      "btn whitespace-nowrap [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+      "btn whitespace-nowrap transition-[color,background-color,border-color,box-shadow,scale] not-disabled:active:scale-[0.97] [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
       variants[variant] ?? variants.quiet,
       sizes[size] ?? sizes.compact,
       clsx(className)

@@ -268,10 +268,7 @@
   }
 </script>
 
-<section
-  class="plate ev-editor-enter min-w-0 p-3.5 sm:p-4"
-  aria-label="EV editor"
->
+<section class="plate enter-fade min-w-0 p-3.5 sm:p-4" aria-label="EV editor">
   <!-- Nature modifies the stats below -->
   <fieldset class="mb-4 grid min-w-0 gap-2 border-b pb-4">
     <legend class="sr-only">Nature</legend>

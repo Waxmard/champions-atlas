@@ -1,5 +1,8 @@
 <script lang="ts">
   import { tick } from 'svelte';
+  import { flip } from 'svelte/animate';
+  import { fade } from 'svelte/transition';
+  import { dur } from '#lib/motion.js';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -75,7 +78,12 @@
 <ul bind:this={list} class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
   {#each entries as entry, index (entry.id)}
     {@const heading = savedTeamHeading(entry)}
-    <li class="min-w-0" data-wishlist-id={entry.id}>
+    <li
+      class="min-w-0"
+      data-wishlist-id={entry.id}
+      animate:flip={{ duration: dur(250) }}
+      out:fade={{ duration: dur(150) }}
+    >
       {#snippet titleActions()}
         <div class="flex gap-2">
           <Button

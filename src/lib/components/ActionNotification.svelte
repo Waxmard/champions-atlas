@@ -1,6 +1,8 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
   import { get } from 'svelte/store';
+  import { fly } from 'svelte/transition';
+  import { dur } from '#lib/motion.js';
   import { clearNotification, notification } from '#lib/notifications.js';
 
   let message = $state('');
@@ -48,6 +50,7 @@
 >
   {#if message}
     <div
+      transition:fly={{ y: -8, duration: dur(200) }}
       class="surface max-w-sm min-w-0 px-3 py-2 text-sm leading-normal font-normal wrap-anywhere text-base-content shadow-sm"
     >
       {message}

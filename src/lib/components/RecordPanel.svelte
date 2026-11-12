@@ -2,6 +2,8 @@
   import Minus from '@lucide/svelte/icons/minus';
   import Plus from '@lucide/svelte/icons/plus';
   import Modal from '#lib/components/Modal.svelte';
+  import { slide } from 'svelte/transition';
+  import { dur } from '#lib/motion.js';
   import { Button } from '#lib/components/ui/button/index.js';
   import { recordSummary, type WinLossRecord } from '#lib/team-collections.js';
 
@@ -90,7 +92,7 @@
         {#each [['wins', 'Win', 'bg-success text-success-content'], ['losses', 'Loss', 'bg-error text-error-content']] as const as [key, label, tone] (key)}
           <button
             type="button"
-            class="inline-flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-field text-[0.9375rem] font-bold transition-[filter] hover:brightness-95 focus-visible:brightness-95 disabled:cursor-not-allowed disabled:bg-base-200 disabled:text-base-content/40 {tone}"
+            class="inline-flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-field text-[0.9375rem] font-bold transition-[filter,scale] hover:brightness-95 focus-visible:brightness-95 not-disabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-base-200 disabled:text-base-content/40 {tone}"
             disabled={disabled || record[key] === 9999}
             onclick={() => step(key, 1)}
           >
@@ -110,6 +112,7 @@
         <div
           role="group"
           aria-label="Edit record"
+          transition:slide={{ duration: dur(200) }}
           class="flex flex-wrap items-center gap-x-1"
         >
           {#each [['wins', 'win', 'W'], ['losses', 'loss', 'L']] as const as [key, noun, mark] (key)}

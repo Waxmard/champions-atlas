@@ -98,7 +98,7 @@
   />
 {/if}
 
-<section bind:this={section} hidden={!!preview} class="grid gap-4">
+<section bind:this={section} hidden={!!preview} class="enter-fade grid gap-4">
   <label for="set-pokemon-input" class="sr-only">Pokémon</label>
   <label class="field">
     <PokemonSprite {pokemon} size={28} />

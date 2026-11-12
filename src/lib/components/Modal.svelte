@@ -3,6 +3,7 @@
   import X from '@lucide/svelte/icons/x';
   import { Button } from '#lib/components/ui/button/index.js';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
+  import { dialogOut } from '#lib/motion.js';
 
   interface Props {
     title: string;
@@ -47,6 +48,7 @@
 
 <dialog
   use:openDialog
+  out:dialogOut
   oncancel={(event) => {
     event.preventDefault();
     close();
@@ -55,7 +57,7 @@
     if (event.target === event.currentTarget) close();
   }}
   aria-labelledby={id}
-  class="fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
+  class="dialog-motion fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
 >
   <header
     class="flex shrink-0 items-center gap-2 border-b border-base-300 py-1 ps-4 pe-1"
@@ -84,7 +86,6 @@
 
 <style>
   dialog::backdrop {
-    background: rgb(0 0 0 / 0.5);
     overflow: hidden;
     overscroll-behavior: contain;
   }

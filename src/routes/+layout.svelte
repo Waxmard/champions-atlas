@@ -3,7 +3,12 @@
   import LoaderCircle from '@lucide/svelte/icons/loader-circle';
   import { Avatar, DropdownMenu } from 'bits-ui';
   import { resolve } from '$app/paths';
-  import { afterNavigate, beforeNavigate, goto } from '$app/navigation';
+  import {
+    afterNavigate,
+    beforeNavigate,
+    goto,
+    onNavigate,
+  } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
@@ -25,6 +30,7 @@
   import { normalizeInitialUrl } from '#lib/initial-url.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { clearNotification } from '#lib/notifications.js';
+  import { pageTransition } from '#lib/motion.js';
 
   let { children } = $props();
   const isHome = $derived(page.route.id === '/');
@@ -41,7 +47,7 @@
     isBrowse ? resolve(`?${page.url.searchParams}`) : resolve('?browse=all')
   );
   const tabClass = (active: boolean) =>
-    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none landscape:md:flex-row landscape:md:gap-1.5 landscape:md:text-xs [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
+    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none transition-[scale] duration-150 active:scale-95 landscape:md:flex-row landscape:md:gap-1.5 landscape:md:text-xs [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
 
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
   const userInitials = $derived(
@@ -277,6 +283,10 @@
     }
     if (!redirecting) void updateAfterRender();
   });
+
+  onNavigate((navigation) =>
+    startupReady && !pendingScroll ? pageTransition(navigation) : undefined
+  );
 
   function returnDestination(): string {
     if (pendingReturn) return pendingReturn;
@@ -581,7 +591,7 @@
 {:else}
   <header
     bind:clientHeight={headerHeight}
-    class="sticky top-0 z-40 border-b border-base-300 bg-base-100"
+    class="sticky top-0 z-40 border-b border-base-300 bg-base-100 [view-transition-name:app-header]"
   >
     <div
       class="app-container flex items-center justify-between gap-2 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5"
@@ -631,7 +641,7 @@
                 <DropdownMenu.Content
                   align="end"
                   sideOffset={6}
-                  class="surface z-50 min-w-56 p-1 text-base-content shadow-lg"
+                  class="surface popover-motion z-50 min-w-56 p-1 text-base-content shadow-lg"
                 >
                   <div class="px-2 py-1.5">
                     <p class="text-sm font-semibold wrap-anywhere">
@@ -704,7 +714,7 @@
   </footer>
   <nav
     aria-label="Main"
-    class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)]"
+    class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)] [view-transition-name:app-tabbar]"
   >
     <div class="app-container grid h-full grid-cols-4 items-center gap-1">
       <a

@@ -243,7 +243,7 @@
               side="bottom"
               align="end"
               sideOffset={8}
-              class="surface picker-popover-enter z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
+              class="surface popover-motion z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
             >
               {#if paste}
                 <DropdownMenu.Item

@@ -97,6 +97,7 @@
   const visible = $derived(
     results.slice((pageNumber - 1) * pageSize, pageNumber * pageSize)
   );
+  const visibleKey = $derived(visible.map((team) => team.id).join());
 
   function browseParams(params: URLSearchParams) {
     const result = writeFilters(new URLSearchParams(), readFilters(params));
@@ -300,40 +301,42 @@
         >{/if}
     </div>
     {#if results.length}
-      <div class="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-        {#each visible as team (team.id)}
-          <TeamCard
-            {team}
-            showRegulation={regulation === 'all'}
-            query={page.url.search}
-          >
-            {#snippet trailingActions()}
-              {@const busy =
-                !ready || savedError !== '' || pending.has(team.id)}
-              {@const isWishlisted =
-                wishlistedCatalogEntries(saved, team).length > 0}
-              <Button
-                type="button"
-                variant="quiet"
-                size="icon-compact"
-                class="catalog-wishlist-button size-11"
-                aria-label="Wishlist"
-                aria-pressed={isWishlisted}
-                title={isWishlisted
-                  ? 'Remove from Wishlist'
-                  : 'Add to Wishlist'}
-                disabled={busy}
-                onclick={() => wishlist(team)}
-              >
-                {#if isWishlisted}
-                  <BookmarkCheck class="size-4" aria-hidden="true" />
-                {:else}
-                  <Bookmark class="size-4" aria-hidden="true" />
-                {/if}
-              </Button>
-            {/snippet}
-          </TeamCard>{/each}
-      </div>
+      {#key visibleKey}
+        <div class="enter-fade grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          {#each visible as team (team.id)}
+            <TeamCard
+              {team}
+              showRegulation={regulation === 'all'}
+              query={page.url.search}
+            >
+              {#snippet trailingActions()}
+                {@const busy =
+                  !ready || savedError !== '' || pending.has(team.id)}
+                {@const isWishlisted =
+                  wishlistedCatalogEntries(saved, team).length > 0}
+                <Button
+                  type="button"
+                  variant="quiet"
+                  size="icon-compact"
+                  class="catalog-wishlist-button size-11"
+                  aria-label="Wishlist"
+                  aria-pressed={isWishlisted}
+                  title={isWishlisted
+                    ? 'Remove from Wishlist'
+                    : 'Add to Wishlist'}
+                  disabled={busy}
+                  onclick={() => wishlist(team)}
+                >
+                  {#if isWishlisted}
+                    <BookmarkCheck class="size-4" aria-hidden="true" />
+                  {:else}
+                    <Bookmark class="size-4" aria-hidden="true" />
+                  {/if}
+                </Button>
+              {/snippet}
+            </TeamCard>{/each}
+        </div>
+      {/key}
       {#if pageCount > 1}
         <nav
           aria-label="Team result pages"

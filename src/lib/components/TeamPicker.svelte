@@ -86,7 +86,7 @@
       sideOffset={6}
       trapFocus={false}
       onOpenAutoFocus={(event) => event.preventDefault()}
-      class="surface picker-popover-enter z-50 flex max-h-[min(26rem,calc(100dvh-12rem))] w-[calc(100vw-2rem)] max-w-sm flex-col p-1 text-base-content shadow-lg outline-none"
+      class="surface popover-motion z-50 flex max-h-[min(26rem,calc(100dvh-12rem))] w-[calc(100vw-2rem)] max-w-sm flex-col p-1 text-base-content shadow-lg outline-none"
     >
       <input
         type="search"

@@ -55,7 +55,7 @@
   />
 {/snippet}
 <article
-  class="plate relative flex min-w-0 flex-col overflow-hidden transition-colors duration-200 hover:border-primary"
+  class="plate relative flex min-w-0 flex-col overflow-hidden transition-[border-color,scale] duration-200 hover:border-primary has-[>a:active]:scale-[0.985]"
 >
   <a
     href={resolve(destination)}
