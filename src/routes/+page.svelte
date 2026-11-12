@@ -28,7 +28,7 @@
     type MemberFilter,
     type Team,
   } from '#lib/catalog.js';
-  const browseKeys = ['member', 'regulation', 'page'];
+  const browseKeys = ['member', 'regulation', 'page', 'new'];
   let storageError = $state(false);
   let filtersOpen = $state(false);
   let ready = $state(false);
@@ -62,6 +62,7 @@
   const regulation = $derived(
     page.url.searchParams.get('regulation') || current
   );
+  const newOnly = $derived(page.url.searchParams.get('new') === '1');
   const filterCount = $derived(
     filters.reduce(
       (count, { item, ability, move }) =>
@@ -70,7 +71,9 @@
         Number(!!ability.trim()) +
         Number(!!move.trim()),
       0
-    ) + Number(regulation !== current)
+    ) +
+      Number(regulation !== current) +
+      Number(newOnly)
   );
   const results = $derived(
     filterState.error
@@ -79,6 +82,7 @@
           .filter(
             (team) =>
               (regulation === 'all' || team.regulation === regulation) &&
+              (!newOnly || catalogState.freshIds.has(team.id)) &&
               matchesTeam(team, filters)
           )
           .sort((a, b) => compareBrowseTeams(a, b, current))
@@ -106,6 +110,8 @@
 
     if (pageValue && /^\d+$/.test(pageValue) && Number(pageValue) > 1)
       result.set('page', pageValue);
+
+    if (params.get('new') === '1') result.set('new', '1');
 
     return result;
   }
@@ -272,6 +278,18 @@
             >{/each}
         </select>
       </label>
+      {#if catalogState.freshIds.size || newOnly}
+        <label class="flex min-h-11 cursor-pointer items-center gap-3">
+          <input
+            type="checkbox"
+            class="size-5 accent-primary"
+            checked={newOnly}
+            onchange={(event) =>
+              changeOption('new', event.currentTarget.checked ? '1' : '')}
+          />
+          <span class="font-semibold">New teams only</span>
+        </label>
+      {/if}
     {/snippet}
   </PokemonFilters>
 
@@ -282,6 +300,9 @@
         : regulationLabel(regulation)}
     </p>
   {/if}
+  {#if newOnly}<p class="mt-2 text-sm text-base-content/70">
+      New teams only
+    </p>{/if}
 
   <section aria-label="Matching teams" class="mt-5 min-w-0">
     <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
@@ -293,7 +314,7 @@
         {results.length}
         {results.length === 1 ? 'team' : 'teams'}
       </p>
-      {#if filters.length || regulation !== current || filterState.error}<Button
+      {#if filters.length || regulation !== current || newOnly || filterState.error}<Button
           type="button"
           variant="quiet"
           disabled={!ready}
@@ -367,7 +388,9 @@
         </h2>
         <p class="mt-2 max-w-[46ch] text-[0.9375rem] leading-relaxed">
           {filterState.error ||
-            'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.'}
+            (newOnly
+              ? 'No new teams match. Turn off New teams only or remove a filter.'
+              : 'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.')}
         </p>
         <Button
           type="button"

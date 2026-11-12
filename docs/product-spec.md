@@ -47,13 +47,14 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Preserve Browse filters and scroll position when opening teams and returning.
   Back to teams stays visible while browsing a team.
 - Encode Browse filters in the URL so a refresh or shared link restores the selection.
-- Mark Browse cards added since the previous visit with a **New** chip. A visit
-  starts at a cold launch or after at least an hour in the background. The first
-  run marks nothing as new.
+- Mark Browse cards from the latest catalog batch (the most recent publish that
+  added teams) with a **New** chip; the chip stays until a later batch replaces
+  it. **New teams only** in Browse filters (`?new=1`) shows just those teams.
 - Signed-in iPhone users can turn off **Notifications → New teams** in the
-  account menu (on by default, stored on the device). The daily catalog refresh
-  sends one silent push banner counting current-regulation teams not announced
-  before; opening the app clears it.
+  account menu (on by default, stored on the device). The catalog refresh sends
+  one banner per batch counting its current-regulation teams, with a body naming
+  the tournaments and YouTubers they came from. Tapping it opens Browse with
+  **New teams only** on.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not

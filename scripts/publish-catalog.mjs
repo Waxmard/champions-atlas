@@ -22,10 +22,36 @@ async function writeAtomic(targetPath, contents) {
   await rename(tempPath, targetPath);
 }
 
+function latestBatch(previous, catalog) {
+  if (!previous) return undefined;
+  const before = new Set(previous.teams.map((team) => team.id));
+  const ids = admittedTeams(catalog.teams, catalog.currentRegulation)
+    .map((team) => team.id)
+    .filter((id) => !before.has(id));
+  return ids.length
+    ? { addedAt: catalog.updatedAt, ids }
+    : previous.latestBatch;
+}
+
+async function publishedBundle(origin) {
+  const manifest = await fetch(`${origin}/catalog/manifest.json`);
+  if (manifest.status === 404) return null;
+  if (!manifest.ok)
+    throw new Error(
+      `Published manifest request failed: HTTP ${manifest.status}.`
+    );
+  const { bundlePath } = await manifest.json();
+  const bundle = await fetch(`${origin}${bundlePath}`);
+  if (!bundle.ok)
+    throw new Error(`Published bundle request failed: HTTP ${bundle.status}.`);
+  return bundle.json();
+}
+
 export async function buildCatalogRelease({
   catalogPath = 'src/lib/data/catalog.json',
   tagsPath = 'src/lib/data/team-tags.json',
   outDir = '.cache/hosting',
+  previous = null,
 } = {}) {
   const [catalogRaw, tagsRaw] = await Promise.all([
     readFile(catalogPath, 'utf8'),
@@ -75,6 +101,7 @@ export async function buildCatalogRelease({
       );
   }
 
+  const batch = latestBatch(previous, catalog);
   const bundle = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
@@ -83,17 +110,12 @@ export async function buildCatalogRelease({
     sources: catalog.sources,
     teams: catalog.teams,
     tags: { teams: tags.teams },
+    ...(batch && { latestBatch: batch }),
   };
   validateCatalogBundle(bundle);
   const bundleJson = JSON.stringify(bundle);
   const bundleHash = createHash('sha256').update(bundleJson).digest('hex');
   const bundlePath = `/catalog/bundle-${bundleHash}.json`;
-  const currentIds = {
-    regulation: catalog.currentRegulation,
-    ids: admittedTeams(catalog.teams, catalog.currentRegulation)
-      .filter((team) => team.regulation === catalog.currentRegulation)
-      .map((team) => team.id),
-  };
   const manifest = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
@@ -106,15 +128,9 @@ export async function buildCatalogRelease({
   await rm(outDir, { recursive: true, force: true });
   const manifestFilePath = join(outDir, 'catalog', 'manifest.json');
   const bundleFilePath = join(outDir, 'catalog', `bundle-${bundleHash}.json`);
-  const currentIdsFilePath = join(
-    outDir,
-    'catalog',
-    `current-${bundleHash}.json`
-  );
   const indexFilePath = join(outDir, 'index.html');
 
   await writeAtomic(bundleFilePath, bundleJson);
-  await writeAtomic(currentIdsFilePath, JSON.stringify(currentIds));
   await writeAtomic(manifestFilePath, `${JSON.stringify(manifest, null, 2)}\n`);
   await writeAtomic(
     indexFilePath,
@@ -126,7 +142,6 @@ export async function buildCatalogRelease({
     bundle,
     manifestPath: manifestFilePath,
     bundleFilePath,
-    currentIdsFilePath,
   };
 }
 
@@ -134,7 +149,14 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const { manifest } = await buildCatalogRelease();
+  const origin = process.env.CATALOG_ORIGIN;
+  if (!origin)
+    console.warn(
+      'CATALOG_ORIGIN is not set; this release carries no new-team batch.'
+    );
+  const { manifest } = await buildCatalogRelease({
+    previous: origin ? await publishedBundle(origin) : null,
+  });
   console.log(
     `Published catalog bundle ${manifest.bundlePath} (${manifest.updatedAt}).`
   );

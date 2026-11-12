@@ -70,6 +70,8 @@ jobs:
         run: npm run eval:tags
       - name: Build catalog release
         run: npm run publish:catalog
+        env:
+          CATALOG_ORIGIN: https://champions-atlas-test.web.app
       - name: Deploy catalog to Firebase Hosting
         run: npx firebase-tools deploy --only hosting --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
       - name: Notify devices about new teams

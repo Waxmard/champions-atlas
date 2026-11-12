@@ -1,4 +1,8 @@
-import { Capacitor, registerPlugin } from '@capacitor/core';
+import {
+  Capacitor,
+  registerPlugin,
+  type PluginListenerHandle,
+} from '@capacitor/core';
 import type { GameTally, ShortcutTeam } from './team-collections.ts';
 
 export interface PushRegistration {
@@ -17,6 +21,10 @@ interface AtlasNativePlugin {
   getPendingResults(): Promise<{ results: GameTally[] }>;
   acknowledgeResults(options: { results: GameTally[] }): Promise<void>;
   registerPush(options: { authorize: boolean }): Promise<PushRegistration>;
+  addListener(
+    eventName: 'newTeamsTap',
+    listener: () => void
+  ): Promise<PluginListenerHandle>;
 }
 
 export const isNativeApp = Capacitor.isNativePlatform();

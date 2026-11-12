@@ -19,7 +19,11 @@
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import NotificationSettings from '#lib/components/NotificationSettings.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
+  import {
+    catalogState,
+    initCatalogRuntime,
+    refreshCatalogNow,
+  } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
@@ -466,6 +470,16 @@
     }
   }
 
+  let newTeamsTapped = false;
+
+  function openNewTeams() {
+    if (!newTeamsTapped || !startupSettled) return;
+    newTeamsTapped = false;
+    if (sync.configured && !sync.user) return;
+    if (catalogState.ready) void refreshCatalogNow();
+    void goto(resolve('?new=1'));
+  }
+
   onMount(() => {
     initialScroll = readScroll();
     try {
@@ -476,6 +490,12 @@
     initialUrl = normalizeInitialUrl(location.href, resolve('/'));
     void initCatalogRuntime();
     initSync();
+    const tapListener = isNativeApp
+      ? AtlasNative.addListener('newTeamsTap', () => {
+          newTeamsTapped = true;
+          openNewTeams();
+        })
+      : null;
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
         flushPosition();
@@ -502,6 +522,7 @@
       window.removeEventListener('pagehide', flushPosition);
       window.removeEventListener('hashchange', onHashChange);
       document.removeEventListener('visibilitychange', onVisibility);
+      void tapListener?.then((handle) => handle.remove());
       document.documentElement.style.removeProperty('--app-header-height');
     };
   });
@@ -523,6 +544,7 @@
       void sync.user;
       void checkSharedLinks();
       void syncGameResults().catch(() => {});
+      openNewTeams();
     }
   });
 

@@ -3,6 +3,7 @@ import UserNotifications
 
 @MainActor
 enum NewTeamPush {
+    static var launchedFromTap = false
     static let bannerId = "catalog-new-teams"
     private static var waiting: [UUID: CheckedContinuation<String?, Never>] = [:]
 

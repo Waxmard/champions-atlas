@@ -65,13 +65,8 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
     await writeFile(catalogPath, JSON.stringify(catalog), 'utf8');
     await writeFile(tagsPath, JSON.stringify(tags), 'utf8');
 
-    const {
-      manifest,
-      bundle,
-      manifestPath,
-      bundleFilePath,
-      currentIdsFilePath,
-    } = await buildCatalogRelease({ catalogPath, tagsPath, outDir });
+    const { manifest, bundle, manifestPath, bundleFilePath } =
+      await buildCatalogRelease({ catalogPath, tagsPath, outDir });
 
     const writtenManifest = JSON.parse(await readFile(manifestPath, 'utf8'));
     const writtenBundleText = await readFile(bundleFilePath, 'utf8');
@@ -84,16 +79,6 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
     assert.equal(manifest.bundlePath, `/catalog/bundle-${expectedHash}.json`);
     assert.deepEqual(validateCatalogManifest(writtenManifest), manifest);
     assert.deepEqual(validateCatalogBundle(writtenBundle), bundle);
-    assert.equal(
-      currentIdsFilePath,
-      join(outDir, 'catalog', `current-${expectedHash}.json`)
-    );
-    assert.deepEqual(JSON.parse(await readFile(currentIdsFilePath, 'utf8')), {
-      regulation: catalog.currentRegulation,
-      ids: catalog.teams
-        .filter((team) => team.regulation === catalog.currentRegulation)
-        .map((team) => team.id),
-    });
 
     const emptyCatalogPath = join(dir, 'empty-catalog.json');
     await writeFile(
@@ -349,4 +334,48 @@ test('fetchCatalogUpdate discards a bundle that disagrees with its manifest', as
 
 test('defaultCatalogEndpoint disables updates when nothing is configured', () => {
   assert.equal(defaultCatalogEndpoint(), '');
+});
+
+test('buildCatalogRelease batches teams missing from the previous release and carries the batch forward', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'catalog-batch-'));
+  try {
+    const { catalog, tags } = sampleFixture();
+    const catalogPath = join(dir, 'catalog.json');
+    const tagsPath = join(dir, 'team-tags.json');
+    await writeFile(catalogPath, JSON.stringify(catalog), 'utf8');
+    await writeFile(tagsPath, JSON.stringify(tags), 'utf8');
+    const build = (previous, name) =>
+      buildCatalogRelease({
+        catalogPath,
+        tagsPath,
+        outDir: join(dir, name),
+        previous,
+      });
+
+    const first = await build(null, 'first');
+    assert.equal('latestBatch' in first.bundle, false);
+
+    const added = await build(
+      { ...first.bundle, teams: [catalog.teams[0]] },
+      'added'
+    );
+    assert.deepEqual(added.bundle.latestBatch, {
+      addedAt: catalog.updatedAt,
+      ids: [catalog.teams[1].id],
+    });
+
+    const carried = await build(
+      {
+        ...added.bundle,
+        latestBatch: { addedAt: '2026-10-01T00:00:00.000Z', ids: ['gone'] },
+      },
+      'carried'
+    );
+    assert.deepEqual(carried.bundle.latestBatch, {
+      addedAt: '2026-10-01T00:00:00.000Z',
+      ids: ['gone'],
+    });
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });

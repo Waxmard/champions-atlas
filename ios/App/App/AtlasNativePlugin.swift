@@ -2,6 +2,7 @@ import Capacitor
 import Foundation
 import GoogleSignIn
 import UIKit
+import UserNotifications
 
 @objc(AtlasNativePlugin)
 public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
@@ -17,6 +18,10 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "acknowledgeResults", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "registerPush", returnType: CAPPluginReturnPromise)
     ]
+
+    func announceNewTeamsTap() {
+        notifyListeners("newTeamsTap", data: [:], retainUntilConsumed: true)
+    }
 
     @objc func signInWithGoogle(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
@@ -111,5 +116,15 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
             }
             call.resolve(result)
         }
+    }
+}
+
+extension AtlasNativePlugin: NotificationHandlerProtocol {
+    public func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions {
+        []
+    }
+
+    public func didReceive(response: UNNotificationResponse) {
+        announceNewTeamsTap()
     }
 }

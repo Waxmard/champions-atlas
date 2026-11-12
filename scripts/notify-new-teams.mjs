@@ -3,6 +3,7 @@ import { readFile } from 'node:fs/promises';
 import { connect } from 'node:http2';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { bestEvidence, youtubeChannelNames } from '../src/lib/catalog.ts';
 
 const BUNDLE_ID = 'com.maxwellward.championsatlas';
 const APPLE_TEAM_ID = '48TY2FP59S';
@@ -14,14 +15,31 @@ const APNS_HOSTS = [
 const REQUIRED_ENV = ['APNS_KEY_ID', 'APNS_KEY_P8', 'FIREBASE_SERVICE_ACCOUNT'];
 const FIRESTORE = 'https://firestore.googleapis.com/v1/';
 
-export function newTeamsAlert(known, current) {
-  if (!known) return null;
-  const seen = new Set(known);
-  const count = current.ids.filter((id) => !seen.has(id)).length;
-  if (!count) return null;
+const listFormat = new Intl.ListFormat('en-GB', { type: 'conjunction' });
+
+export function newTeamsAlert(bundle) {
+  const ids = new Set(bundle.latestBatch?.ids);
+  const current = bundle.currentRegulation;
+  const teams = bundle.teams.filter(
+    (team) => ids.has(team.id) && team.regulation === current
+  );
+  if (!teams.length) return null;
+  const counts = new Map();
+  for (const team of teams) {
+    const best = bestEvidence(team, current);
+    const source =
+      youtubeChannelNames(team.reports)[0] ??
+      (best.platform === 'Tournament' ? best.event.trim() : '');
+    if (source) counts.set(source, (counts.get(source) ?? 0) + 1);
+  }
+  const sources = [...counts]
+    .sort((a, b) => b[1] - a[1])
+    .map(([source]) => source);
+  const shown = sources.slice(0, 3);
+  if (sources.length > 3) shown.push(`${sources.length - 3} more`);
   return {
-    title: `${count} new Reg ${current.regulation} ${count === 1 ? 'team' : 'teams'}`,
-    body: 'Open Browse to see them.',
+    title: `${teams.length} new Reg ${current} ${teams.length === 1 ? 'team' : 'teams'}`,
+    body: shown.length ? `${listFormat.format(shown)}.` : 'Tap to see them.',
   };
 }
 
@@ -128,21 +146,23 @@ export async function notifyNewTeams({
   const manifest = JSON.parse(
     await readFile(join(hostingDir, 'catalog', 'manifest.json'), 'utf8')
   );
-  const current = JSON.parse(
+  const bundle = JSON.parse(
     await readFile(
-      join(hostingDir, 'catalog', `current-${manifest.bundleHash}.json`),
+      join(hostingDir, 'catalog', `bundle-${manifest.bundleHash}.json`),
       'utf8'
     )
   );
+  const batch = bundle.latestBatch;
+  if (!batch) return 'No batch of new teams yet; nothing sent.';
 
   const accessToken = await googleAccessToken(account);
   const documents = `${FIRESTORE}projects/${account.project_id}/databases/(default)/documents`;
   const state = await firestore(accessToken, `${documents}/pushState/catalog`);
-  const known = state ? JSON.parse(state.fields.known.stringValue) : null;
-  const alert = newTeamsAlert(known, current);
-  let summary = known
-    ? 'No new teams; nothing sent.'
-    : 'Stored the first baseline; nothing sent.';
+  if (state?.fields?.announced?.stringValue === batch.addedAt)
+    return 'No new teams; nothing sent.';
+  const alert = newTeamsAlert(bundle);
+  let summary =
+    'The latest batch has no current-regulation teams; nothing sent.';
 
   if (alert) {
     const names = [];
@@ -194,7 +214,7 @@ export async function notifyNewTeams({
     }
     if (counts.failed)
       throw new Error(
-        `${counts.failed} of ${names.length} notifications failed; the baseline was not advanced.`
+        `${counts.failed} of ${names.length} notifications failed; the batch was not marked as announced.`
       );
     summary = `Sent "${alert.title}" to ${counts.sent} device(s); removed ${counts.dead} stale token(s).`;
   }
@@ -202,13 +222,7 @@ export async function notifyNewTeams({
   await firestore(accessToken, `${documents}/pushState/catalog`, {
     method: 'PATCH',
     body: JSON.stringify({
-      fields: {
-        known: {
-          stringValue: JSON.stringify([
-            ...new Set([...(known ?? []), ...current.ids]),
-          ]),
-        },
-      },
+      fields: { announced: { stringValue: batch.addedAt } },
     }),
   });
   return summary;
