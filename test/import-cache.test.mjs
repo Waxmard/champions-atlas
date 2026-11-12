@@ -317,13 +317,6 @@ const speciesIds = new Map([
   ['Incineroar', 727],
   ['Basculegion', 902],
 ]);
-const assetUrls = new Set([
-  ...species.map(
-    (pokemon) =>
-      `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${speciesIds.get(pokemon)}.png`
-  ),
-  'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/ileftovers.png',
-]);
 function sheetCsv(regulation, description) {
   const row = Array(sheetHeader.length).fill('');
   row[0] = regulation === 'M-C' ? 'MC1' : 'MB1';
@@ -420,14 +413,14 @@ async function importerFixture(
     import { appendFileSync } from 'node:fs';
     import { pathToFileURL } from 'node:url';
     const responses = ${JSON.stringify(responses)};
-    const assets = new Set(${JSON.stringify([...assetUrls])});
+    const assetRoots = ['https://raw.githubusercontent.com/PokeAPI/sprites/master/', 'https://raw.githubusercontent.com/smogon/sprites/master/'];
     globalThis.fetch = async (address, options) => {
       appendFileSync('requests.jsonl', JSON.stringify({address: String(address), redirect: options?.redirect}) + '\\n');
       if (address === ${JSON.stringify(sourceAddresses[failedName])}) {
         throw new TypeError('fetch failed', {cause: Object.assign(new Error('connect timeout'), {code: 'UND_ERR_CONNECT_TIMEOUT'})});
       }
       if (Object.hasOwn(responses, address)) return new Response(responses[address]);
-      if (assets.has(String(address))) {
+      if (assetRoots.some((root) => String(address).startsWith(root))) {
         return new Response(Uint8Array.from([137,80,78,71,13,10,26,10]), {headers: {'content-type': 'image/png'}});
       }
       throw new Error('Unexpected URL: ' + address);
@@ -580,8 +573,11 @@ test('sprite resolution uses numeric PokéAPI sprites and exact aliases', () => 
     ['morpeko-full-belly', 877],
     ['gourgeist-average', 711],
     ['lycanroc-midday', 745],
+    ['polteageist', 855],
     ['pyroar-male', 668],
     ['squawkabilly-green-plumage', 931],
+    ['tauros-paldea-blaze-breed', 10251],
+    ['tauros-paldea-combat-breed', 10250],
     ['vivillon', 666],
   ]);
   const index = {
@@ -608,6 +604,9 @@ test('sprite resolution uses numeric PokéAPI sprites and exact aliases', () => 
     ['Morpeko', 'morpeko-full-belly'],
     ['Gourgeist', 'gourgeist-average'],
     ['Lycanroc', 'lycanroc-midday'],
+    ['Tauros-Paldea-Blaze', 'tauros-paldea-blaze-breed'],
+    ['Tauros-Paldea-Combat', 'tauros-paldea-combat-breed'],
+    ['Polteageist-Antique', 'polteageist'],
   ])
     assert.equal(resolveSprite(name, index), `${root}/${ids.get(target)}.png`);
   const pokeball = `${root}/666-poke-ball.png`;
@@ -657,6 +656,7 @@ test('sprite sync deduplicates names, retains cached PNGs, and never falls back'
       },
       { name: 'meowstic-male', url: 'https://pokeapi.co/api/v2/pokemon/678/' },
       { name: 'lucario', url: 'https://pokeapi.co/api/v2/pokemon/448/' },
+      { name: 'garchomp', url: 'https://pokeapi.co/api/v2/pokemon/445/' },
     ],
   };
   try {
@@ -666,6 +666,7 @@ test('sprite sync deduplicates names, retains cached PNGs, and never falls back'
     await writeFile(output, JSON.stringify(catalog));
     const stats = await syncSprites(teams, index, {
       directory: sprites,
+      extra: ['Lucario', 'odd bird', 'Garchomp', 'garchomp'],
       load: async (address) => {
         requests.push(address);
         if (address.endsWith('/678.png')) return png;
@@ -675,15 +676,16 @@ test('sprite sync deduplicates names, retains cached PNGs, and never falls back'
       warn: (message) => warnings.push(message),
     });
     assert.deepEqual(stats, {
-      wanted: 5,
+      wanted: 6,
       downloaded: 1,
-      failed: 2,
+      failed: 3,
       removed: 0,
     });
     assert.deepEqual(
       requests.sort(),
       [
         `${root}/10314.png`,
+        `${root}/445.png`,
         `${root}/678.png`,
         `${root}/666-poke-ball.png`,
       ].sort()
@@ -721,6 +723,7 @@ test('item icons resolve source aliases, preserve local names, and fail safely',
     ['Venosaurite', 'venusaurite'],
     ['Dragonitite', 'dragoninite'],
     ['Staraptorite', 'staraptite'],
+    ["King's Rock", 'kings_rock'],
   ])
     assert.equal(resolveItemIcon(name), `${root}/i${slug}.png`);
   assert.throws(() => validatePng(Buffer.from('not png')), /Invalid PNG/);
@@ -752,6 +755,7 @@ test('item icons resolve source aliases, preserve local names, and fail safely',
     await writeFile(output, JSON.stringify(catalog));
     const stats = await syncItems(teams, {
       directory: items,
+      extra: ['Leftovers', "King's Rock"],
       load: async (address) => {
         requests.push(address);
         if (
@@ -766,9 +770,9 @@ test('item icons resolve source aliases, preserve local names, and fail safely',
       warn: (message) => warnings.push(message),
     });
     assert.deepEqual(stats, {
-      wanted: 5,
+      wanted: 6,
       downloaded: 3,
-      failed: 2,
+      failed: 3,
       removed: 1,
     });
     assert.equal(

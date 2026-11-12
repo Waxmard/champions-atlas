@@ -12,6 +12,7 @@
     type ChampionsStat,
   } from '#lib/paste.js';
   import { normalize, type Member, type Team } from '#lib/catalog.js';
+  import Modal from '#lib/components/Modal.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -52,6 +53,7 @@
   let visibleNatureCount = $state(6);
   let natureDraft = $state<string | null>(null);
   let natureQuery = $state('');
+  let manualOpen = $state(false);
   const natureValue = $derived(natureDraft ?? member.nature ?? '');
   const natureMatches = $derived(
     natureSuggestions.filter((option) =>
@@ -199,6 +201,9 @@
       } satisfies ChampionsSpread)
   );
   const total = $derived(championsSpreadTotal(values));
+  const allocation = $derived(
+    `${formatChampionsSpread(values) || 'No EVs allocated'} · ${total} / 66`
+  );
   const effect = $derived(natureEffect(nature));
 
   const clampEv = (value: number) => Math.max(0, Math.min(32, value || 0));
@@ -364,117 +369,125 @@
       {/each}
     </SuggestionList>
   </fieldset>
-  <p class="provenance mb-2 px-0.5">
-    {formatChampionsSpread(values) || 'No EVs allocated'} · {total} / 66
-  </p>
-  <details>
-    <summary class="term min-h-11 cursor-pointer content-center" data-ev-toggle>
-      Adjust EVs manually
-    </summary>
-
-    <div class="grid divide-y">
-      {#each CHAMPIONS_STATS as stat (stat)}
-        {@const currentVal = values[stat]}
-        {@const target = balanceChampionsStat(values, stat)[stat]}
-        {@const delta = target - currentVal}
-        <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
-          <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="term inline-flex w-12 justify-center">{stat}</span>
-              {#if effect && effect.raised === stat}
-                <span
-                  class="value font-semibold"
-                  aria-hidden="true"
-                  title={`${nature} raises ${stat} by 10%`}
-                >
-                  +10%
-                </span>
-              {:else if effect && effect.lowered === stat}
-                <span
-                  class="value text-base-content/70"
-                  aria-hidden="true"
-                  title={`${nature} lowers ${stat} by 10%`}
-                >
-                  -10%
-                </span>
-              {/if}
-              <div class="flex items-center gap-1">
-                <Button
-                  variant="quiet"
-                  size="dense"
-                  class="font-mono text-[11px]"
-                  disabled={values[stat] === 0}
-                  onclick={() => update(stat, 0)}
-                >
-                  0
-                </Button>
-                <Button
-                  variant="quiet"
-                  size="dense"
-                  class="font-mono text-[11px]"
-                  disabled={values[stat] === 32}
-                  onclick={() => update(stat, 32)}
-                >
-                  32
-                </Button>
-                <Button
-                  variant="quiet"
-                  size="dense"
-                  class="font-mono text-[11px]"
-                  disabled={delta === 0}
-                  aria-label={`Fill remaining EVs into ${stat}`}
-                  title={delta === 0
-                    ? undefined
-                    : delta > 0
-                      ? `Add ${delta} EVs to ${stat}`
-                      : `Remove ${-delta} EVs from ${stat}`}
-                  onclick={() => update(stat, target)}
-                >
-                  {delta > 0 ? `+${delta}` : delta < 0 ? `−${-delta}` : 'Fill'}
-                </Button>
+  <p class="provenance mb-2 px-0.5">{allocation}</p>
+  <Button
+    variant="quiet"
+    class="-ms-3"
+    aria-haspopup="dialog"
+    data-ev-toggle
+    onclick={() => (manualOpen = true)}>Adjust EVs manually</Button
+  >
+  {#if manualOpen}
+    <Modal title="Adjust EVs manually" onclose={() => (manualOpen = false)}>
+      <p class="provenance mb-2">{allocation}</p>
+      <div class="grid divide-y">
+        {#each CHAMPIONS_STATS as stat (stat)}
+          {@const currentVal = values[stat]}
+          {@const target = balanceChampionsStat(values, stat)[stat]}
+          {@const delta = target - currentVal}
+          <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div class="flex flex-wrap items-center gap-2">
+                <span class="term inline-flex w-12 justify-center">{stat}</span>
+                {#if effect && effect.raised === stat}
+                  <span
+                    class="value font-semibold"
+                    aria-hidden="true"
+                    title={`${nature} raises ${stat} by 10%`}
+                  >
+                    +10%
+                  </span>
+                {:else if effect && effect.lowered === stat}
+                  <span
+                    class="value text-base-content/70"
+                    aria-hidden="true"
+                    title={`${nature} lowers ${stat} by 10%`}
+                  >
+                    -10%
+                  </span>
+                {/if}
+                <div class="flex items-center gap-1">
+                  <Button
+                    variant="quiet"
+                    size="dense"
+                    class="font-mono text-[11px]"
+                    disabled={values[stat] === 0}
+                    onclick={() => update(stat, 0)}
+                  >
+                    0
+                  </Button>
+                  <Button
+                    variant="quiet"
+                    size="dense"
+                    class="font-mono text-[11px]"
+                    disabled={values[stat] === 32}
+                    onclick={() => update(stat, 32)}
+                  >
+                    32
+                  </Button>
+                  <Button
+                    variant="quiet"
+                    size="dense"
+                    class="font-mono text-[11px]"
+                    disabled={delta === 0}
+                    aria-label={`Fill remaining EVs into ${stat}`}
+                    title={delta === 0
+                      ? undefined
+                      : delta > 0
+                        ? `Add ${delta} EVs to ${stat}`
+                        : `Remove ${-delta} EVs from ${stat}`}
+                    onclick={() => update(stat, target)}
+                  >
+                    {delta > 0
+                      ? `+${delta}`
+                      : delta < 0
+                        ? `−${-delta}`
+                        : 'Fill'}
+                  </Button>
+                </div>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <input
+                  id={`set-${stat}-ev`}
+                  aria-label={`${stat} EV`}
+                  type="number"
+                  min="0"
+                  max="32"
+                  value={values[stat]}
+                  data-ev-stat={stat}
+                  class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
+                  oninput={(event) =>
+                    setStat(stat, event.currentTarget.valueAsNumber)}
+                  onchange={commitDraft}
+                  onblur={commitDraft}
+                />
+                <span class="term">/ 32</span>
               </div>
             </div>
-            <div class="flex items-center gap-1.5">
-              <input
-                id={`set-${stat}-ev`}
-                aria-label={`${stat} EV`}
-                type="number"
-                min="0"
-                max="32"
-                value={values[stat]}
-                data-ev-stat={stat}
-                class="input min-h-9 w-14 px-1 text-center font-mono text-xs font-semibold input-sm"
-                oninput={(event) =>
-                  setStat(stat, event.currentTarget.valueAsNumber)}
-                onchange={commitDraft}
-                onblur={commitDraft}
-              />
-              <span class="term">/ 32</span>
-            </div>
-          </div>
 
-          <input
-            aria-label={`${stat} EV slider`}
-            type="range"
-            min="0"
-            max="32"
-            step="1"
-            value={values[stat]}
-            class="range h-11 w-full touch-pan-y [--range-thumb-size:16px] range-xs"
-            style:--ev-progress={currentVal / 32}
-            oninput={(event) =>
-              setStat(stat, event.currentTarget.valueAsNumber)}
-            onchange={commitDraft}
-            onblur={commitDraft}
-            onpointerdown={(event) => startPointer(event, stat)}
-            onpointermove={(event) => movePointer(event, stat)}
-            onpointerup={finishPointer}
-            onpointercancel={finishPointer}
-          />
-        </div>
-      {/each}
-    </div>
-  </details>
+            <input
+              aria-label={`${stat} EV slider`}
+              type="range"
+              min="0"
+              max="32"
+              step="1"
+              value={values[stat]}
+              class="range h-11 w-full touch-pan-y [--range-thumb-size:16px] range-xs"
+              style:--ev-progress={currentVal / 32}
+              oninput={(event) =>
+                setStat(stat, event.currentTarget.valueAsNumber)}
+              onchange={commitDraft}
+              onblur={commitDraft}
+              onpointerdown={(event) => startPointer(event, stat)}
+              onpointermove={(event) => movePointer(event, stat)}
+              onpointerup={finishPointer}
+              onpointercancel={finishPointer}
+            />
+          </div>
+        {/each}
+      </div>
+    </Modal>
+  {/if}
 </section>
 <SuggestionList
   id="set-spread-suggestions"

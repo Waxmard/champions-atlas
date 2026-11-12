@@ -1,6 +1,7 @@
 export function lockBodyScroll(): () => void {
   const { scrollX, scrollY } = window;
   const body = document.body;
+  if (body.style.position === 'fixed') return () => {};
   const styles = {
     position: body.style.position,
     top: body.style.top,

@@ -204,7 +204,7 @@
 <main id="main" class="app-container py-6 sm:py-8">
   <header>
     <h1
-      class="text-[1.75rem] leading-tight font-extrabold wrap-break-word sm:text-4xl"
+      class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
     >
       Explore teams
     </h1>
@@ -231,16 +231,15 @@
     {filters}
     onchange={changeFilters}
     expanded={filtersOpen}
-    controlsId="browse-filters"
+    onclose={() => (filtersOpen = false)}
   >
     {#snippet actions()}
       <Button
         type="button"
         variant="quiet"
         class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
-        aria-expanded={filtersOpen}
-        aria-controls="browse-filters"
-        onclick={() => (filtersOpen = !filtersOpen)}
+        aria-haspopup="dialog"
+        onclick={() => (filtersOpen = true)}
       >
         <Filter class="size-4" aria-hidden="true" />
         <span class="max-sm:sr-only">Filters</span>
@@ -274,7 +273,7 @@
     {/snippet}
   </PokemonFilters>
 
-  {#if !filtersOpen && regulation !== current}
+  {#if regulation !== current}
     <p class="mt-2 text-sm wrap-break-word text-base-content/70">
       Regulation: {regulation === 'all'
         ? 'All regulations'

@@ -4,7 +4,7 @@
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { type Team } from '#lib/catalog.js';
-  import { savedTeamHeading } from '#lib/team-collections.js';
+  import { recordSummary, savedTeamHeading } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import AtlasIcon from './AtlasIcon.svelte';
   import TeamCard from './TeamCard.svelte';
@@ -126,17 +126,27 @@
           </Button>
         {/snippet}
         {#snippet trailingActions()}
-          <Button
-            variant="quiet"
-            size="icon-compact"
-            class="size-11"
-            aria-label={`Remove from ${label}`}
-            title={`Remove from ${label}`}
-            {disabled}
-            onclick={() => onremove(entry)}
-          >
-            <Trash2 class="size-4" aria-hidden="true" />
-          </Button>
+          <div class="flex items-center gap-2">
+            {#if entry.record}
+              {@const summary = recordSummary(entry.record)}
+              <span
+                class="provenance"
+                role="img"
+                aria-label={`Record: ${summary.label}`}>{summary.text}</span
+              >
+            {/if}
+            <Button
+              variant="quiet"
+              size="icon-compact"
+              class="size-11"
+              aria-label={`Remove from ${label}`}
+              title={`Remove from ${label}`}
+              {disabled}
+              onclick={() => onremove(entry)}
+            >
+              <Trash2 class="size-4" aria-hidden="true" />
+            </Button>
+          </div>
         {/snippet}
       </TeamCard>
     </li>

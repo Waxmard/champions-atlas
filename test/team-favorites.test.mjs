@@ -9,6 +9,9 @@ import {
   reorderFavorites,
   teamsInUse,
   SavedTeamError,
+  recordSummary,
+  applyGameResults,
+  shortcutTeam,
 } from '../src/lib/team-collections.ts';
 import {
   activeTeamKey,
@@ -173,4 +176,68 @@ test('Favorites moves and restores reject missing or changed teams without writi
   assert.deepEqual(removeFavoriteTeam(s, 'missing'), readSavedTeams(s));
   assert.equal(s.data, before);
   assert.equal(s.writes, 0);
+});
+
+test('Win/loss record survives Favorites moves and invalid records are rejected', () => {
+  const record = { wins: 3, losses: 1 };
+  const team = { ...snapshot('rec'), record };
+  const s = storage([team]);
+  moveInUseTeamToFavorites(s, team.id, teamBaseline(team));
+  assert.deepEqual(readSavedTeams(s)[0].record, record);
+  assert.deepEqual(useFavoriteTeam(s, team.id).record, record);
+  for (const bad of [
+    { wins: -1, losses: 0 },
+    { wins: 1.5, losses: 0 },
+    { wins: 0, losses: 10000 },
+  ])
+    assert.throws(
+      () => readSavedTeams(storage([{ ...team, record: bad }])),
+      /could not be read/
+    );
+});
+
+test('Record summary adds a rounded win rate once a game is logged', () => {
+  assert.deepEqual(recordSummary({ wins: 3, losses: 1 }), {
+    text: '3W – 1L · 75%',
+    label: '3 wins, 1 loss, 75% win rate',
+    rate: 75,
+  });
+  assert.equal(recordSummary({ wins: 2, losses: 1 }).text, '2W – 1L · 67%');
+  assert.deepEqual(recordSummary({ wins: 0, losses: 0 }), {
+    text: '0W – 0L',
+    label: '0 wins, 0 losses',
+    rate: null,
+  });
+});
+
+test('Shortcut results add to saved records once and name the active team', () => {
+  const rain = { ...snapshot('a', 'Rain'), record: { wins: 9998, losses: 1 } };
+  const s = storage([rain, snapshot('b', 'Sun')]);
+  const record = (id) =>
+    readSavedTeams(s).find((team) => team.id === id).record;
+  assert.equal(
+    applyGameResults(s, [
+      { teamId: 'a', wins: 3, losses: 2 },
+      { teamId: 'gone', wins: 1, losses: 0 },
+    ]),
+    true
+  );
+  assert.deepEqual(record('a'), { wins: 9999, losses: 3 });
+  assert.equal(record('b'), undefined);
+  assert.equal(s.writes, 1);
+  assert.equal(
+    applyGameResults(s, [{ teamId: 'gone', wins: 1, losses: 0 }]),
+    false
+  );
+  assert.equal(s.writes, 1);
+  s.active = 'b';
+  assert.deepEqual(shortcutTeam(s), {
+    id: 'b',
+    name: 'Sun',
+    wins: 0,
+    losses: 0,
+  });
+  s.active = 'missing';
+  assert.equal(shortcutTeam(s).id, 'a');
+  assert.equal(shortcutTeam(storage()), null);
 });

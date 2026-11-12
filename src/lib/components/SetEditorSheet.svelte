@@ -100,6 +100,7 @@
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
   let closing = false;
+  let undoFailed = false;
   let editorElement = $state<HTMLElement>();
   let contentElement = $state<HTMLElement>();
   let editorHeading = $state<HTMLElement>();
@@ -536,23 +537,28 @@
     requestAnimationFrame(focusTarget);
   }
   function done() {
-    if (flush()) {
+    if (flush() || undoFailed) {
       closing = true;
       onclose();
     } else focusError();
   }
   export function requestClose(): boolean {
-    if (flush()) {
-      closing = true;
-      return true;
-    }
     closing = true;
-    const discard = confirm('Discard unsaved input?');
-    if (!discard) {
-      closing = false;
-      focusError();
-    }
-    return discard;
+    const opened = structuredClone($state.snapshot(initialMember));
+    if (
+      canonicalSnapshot($state.snapshot(accepted)) ===
+        canonicalSnapshot(opened) ||
+      onchange(opened)
+    )
+      return true;
+    closing = false;
+    undoFailed = true;
+    showError(
+      'set',
+      'Could not undo the changes already saved to this set. Choose Done to keep them.'
+    );
+    focusError();
+    return false;
   }
   export function focusInitialSection() {
     requestAnimationFrame(() => {
@@ -585,12 +591,12 @@
 
 <div bind:this={editorElement} class="flex min-h-0 grow flex-col">
   <header
-    class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-3 sm:px-6 sm:pt-5"
+    class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-4 pb-3 sm:px-6 sm:pt-5"
   >
     <div class="flex flex-wrap items-center justify-between gap-3">
       <h2
         bind:this={editorHeading}
-        class="min-w-[min(6rem,100%)] flex-1 text-lg leading-tight font-semibold wrap-anywhere sm:text-[1.375rem]"
+        class="min-w-[min(6rem,100%)] flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere sm:text-[1.375rem]"
         tabindex="-1"
         data-editor-section={currentView === 'details'
           ? initialField === 'ability'
@@ -754,7 +760,7 @@
     {/if}
   </div>
   <footer
-    class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:pb-4"
+    class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-3 sm:px-6 sm:pb-4"
   >
     {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability'].includes(errorField || '')) || (currentView === 'spread' && (errorField === 'spread' || errorField === 'nature')) || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
         role="alert"
@@ -773,7 +779,7 @@
         onpointerdown={keepFocus}
         onclick={() => {
           if (requestClose()) onclose();
-        }}>Close</Button
+        }}>Cancel</Button
       >
       <Button variant="primary" onpointerdown={keepFocus} onclick={done}
         >Done</Button

@@ -338,7 +338,7 @@
           bind:this={dialogTitle}
           id={`current-set-save-title-${teamId}`}
           tabindex="-1"
-          class="text-lg font-semibold"
+          class="font-display text-lg font-semibold tracking-tight"
         >
           Choose in-game sets to replace
         </h2>

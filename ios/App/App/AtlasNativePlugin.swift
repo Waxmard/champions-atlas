@@ -10,7 +10,10 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "signInWithGoogle", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "signOut", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getPendingShares", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "acknowledgeShare", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "acknowledgeShare", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setActiveTeam", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getPendingResults", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "acknowledgeResults", returnType: CAPPluginReturnPromise)
     ]
 
     @objc func signInWithGoogle(_ call: CAPPluginCall) {
@@ -79,5 +82,19 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             call.reject("The shared link could not be removed.", nil, error)
         }
+    }
+
+    @objc func setActiveTeam(_ call: CAPPluginCall) {
+        GameResultStore.setActiveTeam(call.getObject("team"))
+        call.resolve()
+    }
+
+    @objc func getPendingResults(_ call: CAPPluginCall) {
+        call.resolve(["results": GameResultStore.pending()])
+    }
+
+    @objc func acknowledgeResults(_ call: CAPPluginCall) {
+        GameResultStore.acknowledge(call.getArray("results", JSObject.self) ?? [])
+        call.resolve()
     }
 }

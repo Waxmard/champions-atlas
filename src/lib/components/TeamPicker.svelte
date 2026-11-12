@@ -64,7 +64,7 @@
     >
       <span class="min-w-0">
         <span
-          class="line-clamp-2 text-xl leading-tight font-extrabold wrap-anywhere landscape:md:text-base"
+          class="line-clamp-2 font-display text-xl leading-tight font-bold tracking-tight wrap-anywhere landscape:md:text-base"
           >{heading?.title ?? 'Choose saved team'}</span
         >
         {#if heading?.context}<span

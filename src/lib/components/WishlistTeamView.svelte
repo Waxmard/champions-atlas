@@ -57,7 +57,7 @@
 >
   <div class="min-w-0 flex-1">
     <h1
-      class="min-w-0 text-[1.75rem] leading-tight font-extrabold wrap-anywhere sm:text-4xl"
+      class="min-w-0 font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-anywhere sm:text-4xl"
     >
       {heading.title}
     </h1>
