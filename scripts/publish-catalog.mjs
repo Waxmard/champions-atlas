@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateCatalogBundle } from '../src/lib/catalog-data.ts';
+import { admittedTeams } from '../src/lib/catalog.ts';
 import { teamEligibilityError } from './champions-eligibility.mjs';
 
 function isPlainObject(value) {
@@ -87,6 +88,12 @@ export async function buildCatalogRelease({
   const bundleJson = JSON.stringify(bundle);
   const bundleHash = createHash('sha256').update(bundleJson).digest('hex');
   const bundlePath = `/catalog/bundle-${bundleHash}.json`;
+  const currentIds = {
+    regulation: catalog.currentRegulation,
+    ids: admittedTeams(catalog.teams, catalog.currentRegulation)
+      .filter((team) => team.regulation === catalog.currentRegulation)
+      .map((team) => team.id),
+  };
   const manifest = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
@@ -99,9 +106,15 @@ export async function buildCatalogRelease({
   await rm(outDir, { recursive: true, force: true });
   const manifestFilePath = join(outDir, 'catalog', 'manifest.json');
   const bundleFilePath = join(outDir, 'catalog', `bundle-${bundleHash}.json`);
+  const currentIdsFilePath = join(
+    outDir,
+    'catalog',
+    `current-${bundleHash}.json`
+  );
   const indexFilePath = join(outDir, 'index.html');
 
   await writeAtomic(bundleFilePath, bundleJson);
+  await writeAtomic(currentIdsFilePath, JSON.stringify(currentIds));
   await writeAtomic(manifestFilePath, `${JSON.stringify(manifest, null, 2)}\n`);
   await writeAtomic(
     indexFilePath,
@@ -113,6 +126,7 @@ export async function buildCatalogRelease({
     bundle,
     manifestPath: manifestFilePath,
     bundleFilePath,
+    currentIdsFilePath,
   };
 }
 

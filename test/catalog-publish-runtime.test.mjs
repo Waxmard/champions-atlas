@@ -65,8 +65,13 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
     await writeFile(catalogPath, JSON.stringify(catalog), 'utf8');
     await writeFile(tagsPath, JSON.stringify(tags), 'utf8');
 
-    const { manifest, bundle, manifestPath, bundleFilePath } =
-      await buildCatalogRelease({ catalogPath, tagsPath, outDir });
+    const {
+      manifest,
+      bundle,
+      manifestPath,
+      bundleFilePath,
+      currentIdsFilePath,
+    } = await buildCatalogRelease({ catalogPath, tagsPath, outDir });
 
     const writtenManifest = JSON.parse(await readFile(manifestPath, 'utf8'));
     const writtenBundleText = await readFile(bundleFilePath, 'utf8');
@@ -79,6 +84,16 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
     assert.equal(manifest.bundlePath, `/catalog/bundle-${expectedHash}.json`);
     assert.deepEqual(validateCatalogManifest(writtenManifest), manifest);
     assert.deepEqual(validateCatalogBundle(writtenBundle), bundle);
+    assert.equal(
+      currentIdsFilePath,
+      join(outDir, 'catalog', `current-${expectedHash}.json`)
+    );
+    assert.deepEqual(JSON.parse(await readFile(currentIdsFilePath, 'utf8')), {
+      regulation: catalog.currentRegulation,
+      ids: catalog.teams
+        .filter((team) => team.regulation === catalog.currentRegulation)
+        .map((team) => team.id),
+    });
 
     const emptyCatalogPath = join(dir, 'empty-catalog.json');
     await writeFile(

@@ -1,4 +1,5 @@
 import bundledCatalog, {
+  defaultCatalogEndpoint,
   fetchCatalogUpdate,
   tags as bundledTags,
   selectStoredCatalogBundle,
@@ -7,11 +8,20 @@ import bundledCatalog, {
 } from './catalog-data.ts';
 import { admittedTeams } from './catalog.ts';
 import type { TeamTagsIndex } from './tags.ts';
+import {
+  catalogNewsKey,
+  nextCatalogNews,
+  readCatalogNews,
+  readNotificationSettings,
+  type CatalogNews,
+} from './catalog-news.ts';
+import { AtlasNative, isNativeApp, type CatalogWatchResult } from './native.ts';
 
 const DB_NAME = 'champions-atlas-catalog';
 const STORE_NAME = 'bundles';
 const ACTIVE_KEY = 'active';
 const VISIBILITY_THROTTLE_MS = 5 * 60 * 1000;
+const VISIT_GAP_MS = 60 * 60 * 1000;
 
 function admittedCatalog(catalog: CatalogData): CatalogData {
   return {
@@ -24,6 +34,7 @@ class CatalogRuntimeState {
   catalog = $state.raw<CatalogData>(admittedCatalog(bundledCatalog));
   tags = $state.raw<TeamTagsIndex>(bundledTags);
   ready = $state(false);
+  freshIds = $state.raw<ReadonlySet<string>>(new Set());
 }
 
 export const catalogState = new CatalogRuntimeState();
@@ -32,6 +43,8 @@ let activeBundleHash: string | undefined;
 let initPromise: Promise<void> | null = null;
 let refreshPromise: Promise<boolean> | null = null;
 let lastVisibilityRefreshAt = 0;
+let news: CatalogNews | null = null;
+let hiddenAt = 0;
 
 function openCatalogDb(): Promise<IDBDatabase> {
   const { promise, resolve, reject } = Promise.withResolvers<IDBDatabase>();
@@ -115,6 +128,35 @@ function applyValidatedBundle(
   activeBundleHash = bundleHash ?? bundle.bundleHash;
 }
 
+export async function publishCatalogWatch(): Promise<CatalogWatchResult | null> {
+  if (!isNativeApp || !news) return null;
+  try {
+    return await AtlasNative.setCatalogWatch({
+      enabled: readNotificationSettings(localStorage).newTeams,
+      endpoint: defaultCatalogEndpoint(),
+      bundleHash: activeBundleHash ?? null,
+      knownIds: [...news.known, ...news.fresh],
+    });
+  } catch {
+    return null;
+  }
+}
+
+function trackNews(newVisit: boolean): void {
+  news = nextCatalogNews(
+    news,
+    catalogState.catalog.teams.map((team) => team.id),
+    newVisit
+  );
+  catalogState.freshIds = new Set(news.fresh);
+  try {
+    localStorage.setItem(catalogNewsKey, JSON.stringify(news));
+  } catch {
+    void 0;
+  }
+  void publishCatalogWatch();
+}
+
 export function refreshCatalogNow(options?: {
   endpoint?: string;
   fetcher?: typeof fetch;
@@ -135,6 +177,7 @@ export function refreshCatalogNow(options?: {
         () => undefined
       );
       applyValidatedBundle(update.bundle, update.bundleHash);
+      if (catalogState.ready) trackNews(false);
       return true;
     } catch {
       return false;
@@ -156,8 +199,14 @@ export function initCatalogRuntime(): Promise<void> {
     void refreshCatalogNow();
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'visible') return;
+    if (document.visibilityState !== 'visible') {
+      hiddenAt = Date.now();
+      return;
+    }
     const now = Date.now();
+    if (catalogState.ready && hiddenAt && now - hiddenAt >= VISIT_GAP_MS)
+      trackNews(true);
+    hiddenAt = 0;
     if (now - lastVisibilityRefreshAt < VISIBILITY_THROTTLE_MS) return;
     lastVisibilityRefreshAt = now;
     void refreshCatalogNow();
@@ -180,6 +229,8 @@ export function initCatalogRuntime(): Promise<void> {
     } catch {
       void 0;
     } finally {
+      news = readCatalogNews(localStorage);
+      trackNews(true);
       catalogState.ready = true;
       lastVisibilityRefreshAt = Date.now();
       void refreshCatalogNow();

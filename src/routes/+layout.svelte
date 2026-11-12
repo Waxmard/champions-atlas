@@ -17,6 +17,7 @@
   import Star from '@lucide/svelte/icons/star';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
+  import NotificationSettings from '#lib/components/NotificationSettings.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { initCatalogRuntime } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
@@ -80,6 +81,7 @@
   let checkingShares = false;
   let syncingResults = false;
   let notificationAccount: string | undefined;
+  let notificationSettingsOpen = $state(false);
 
   function validDestination(value: string | null): string | null {
     if (
@@ -669,6 +671,11 @@
                     >
                   {/if}
                   <DropdownMenu.Item
+                    onSelect={() => (notificationSettingsOpen = true)}
+                    class="option-row min-h-9 px-2"
+                    >Notifications</DropdownMenu.Item
+                  >
+                  <DropdownMenu.Item
                     onSelect={signOut}
                     class="option-row min-h-9 px-2">Sign out</DropdownMenu.Item
                   >
@@ -681,6 +688,9 @@
     </div>
   </header>
   <ActionNotification />
+  {#if notificationSettingsOpen}
+    <NotificationSettings onclose={() => (notificationSettingsOpen = false)} />
+  {/if}
   {#key sync.user?.uid}
     {@render children()}
   {/key}

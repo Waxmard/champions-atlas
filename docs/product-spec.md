@@ -47,6 +47,13 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Preserve Browse filters and scroll position when opening teams and returning.
   Back to teams stays visible while browsing a team.
 - Encode Browse filters in the URL so a refresh or shared link restores the selection.
+- Mark Browse cards added since the previous visit with a **New** chip. A visit
+  starts at a cold launch or after at least an hour in the background. The first
+  run marks nothing as new.
+- Signed-in iPhone users can turn on **Notifications → New teams** in the
+  account menu (off by default, stored on the device). iOS Background App
+  Refresh checks the published catalog and posts one silent banner counting new
+  current-regulation teams; opening the app clears it.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not

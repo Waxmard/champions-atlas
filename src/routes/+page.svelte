@@ -308,6 +308,7 @@
               {team}
               showRegulation={regulation === 'all'}
               query={page.url.search}
+              isNew={catalogState.freshIds.has(team.id)}
             >
               {#snippet trailingActions()}
                 {@const busy =
