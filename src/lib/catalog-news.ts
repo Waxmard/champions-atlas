@@ -56,14 +56,15 @@ export function readNotificationSettings(
       storage.getItem(notificationSettingsKey) ?? ''
     );
     return {
-      newTeams:
+      newTeams: !(
         typeof value === 'object' &&
         value !== null &&
         'newTeams' in value &&
-        value.newTeams === true,
+        value.newTeams === false
+      ),
     };
   } catch {
-    return { newTeams: false };
+    return { newTeams: true };
   }
 }
 

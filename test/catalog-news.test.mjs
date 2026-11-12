@@ -54,13 +54,12 @@ test('readCatalogNews rejects missing, malformed, and unreadable data', () => {
     null
   );
 });
-
-test('readNotificationSettings is on only for an explicit true', () => {
-  assert.deepEqual(readNotificationSettings(stored(null)), { newTeams: false });
+test('readNotificationSettings is off only for an explicit false', () => {
+  assert.deepEqual(readNotificationSettings(stored(null)), { newTeams: true });
   assert.deepEqual(readNotificationSettings(stored('{"newTeams":"yes"}')), {
-    newTeams: false,
-  });
-  assert.deepEqual(readNotificationSettings(stored('{"newTeams":true}')), {
     newTeams: true,
+  });
+  assert.deepEqual(readNotificationSettings(stored('{"newTeams":false}')), {
+    newTeams: false,
   });
 });
