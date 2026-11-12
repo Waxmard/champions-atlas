@@ -83,7 +83,8 @@
           )
           .sort((a, b) => compareBrowseTeams(a, b, current))
   );
-  const pageCount = $derived(Math.max(1, Math.ceil(results.length / 24)));
+  const pageSize = 12;
+  const pageCount = $derived(Math.max(1, Math.ceil(results.length / pageSize)));
   const pageNumber = $derived(
     Math.min(
       pageCount,
@@ -94,7 +95,7 @@
     )
   );
   const visible = $derived(
-    results.slice((pageNumber - 1) * 24, pageNumber * 24)
+    results.slice((pageNumber - 1) * pageSize, pageNumber * pageSize)
   );
 
   function browseParams(params: URLSearchParams) {
