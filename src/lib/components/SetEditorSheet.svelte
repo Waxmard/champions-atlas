@@ -653,7 +653,7 @@
         {activeMoveSlot}
         moveOptions={movePage.visible}
         hasMore={movePage.hasMore}
-        onshowmore={() => (visibleMoveCount += 10)}
+        onshowmore={() => (visibleMoveCount += 5)}
         {inGameMember}
         oningame={chooseInGame}
         {error}
@@ -687,8 +687,8 @@
         filteredAbilities={abilityPage.visible}
         hasMoreItems={itemPage.hasMore}
         hasMoreAbilities={abilityPage.hasMore}
-        onshowmoreitems={() => (visibleItemCount += 10)}
-        onshowmoreabilities={() => (visibleAbilityCount += 10)}
+        onshowmoreitems={() => (visibleItemCount += 5)}
+        onshowmoreabilities={() => (visibleAbilityCount += 5)}
         {inGameMember}
         oningame={chooseInGame}
         {error}
@@ -750,7 +750,7 @@
         {favoriteSlotSets}
         {error}
         {errorField}
-        onshowmore={() => (visiblePokemonCount += 10)}
+        onshowmore={() => (visiblePokemonCount += 5)}
         onchoose={(next) => chooseSet(next, true)}
         onresetquery={() => resetQuery('pokemon')}
         oninputchange={(value) => {

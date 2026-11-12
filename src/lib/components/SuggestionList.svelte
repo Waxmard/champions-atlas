@@ -20,7 +20,7 @@
     label,
     count,
     empty = 'No matching suggestions.',
-    moreLabel = 'Show 10 more',
+    moreLabel = 'Show 5 more',
     hasMore = false,
     onshowmore,
     class: className = '',

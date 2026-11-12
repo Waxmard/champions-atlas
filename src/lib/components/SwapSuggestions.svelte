@@ -34,6 +34,7 @@
     onapply,
   }: Props = $props();
   let query = $state('');
+  let visibleCount = $state(4);
   const regulation = $derived(regulationLabel(currentRegulation));
   const ideas = $derived(
     swapIdeas(
@@ -43,7 +44,8 @@
       tags,
       4,
       favoriteTeams,
-      ladderShares(currentRegulation)
+      ladderShares(currentRegulation),
+      true
     )
   );
   const searched = $derived(
@@ -74,7 +76,6 @@
       row.member.item,
       row.member.ability,
       row.member.nature,
-      row.sharedTeammates ? `${row.sharedTeammates} shared` : 'Ladder pairing',
     ]
       .filter(Boolean)
       .join(' · ');
@@ -98,8 +99,10 @@
     label="Suggested swaps"
     count={ideas.length}
     empty="No catalog team or ladder pairing fits this team yet. Pick a specific Pokémon below."
+    hasMore={ideas.length > visibleCount}
+    onshowmore={() => (visibleCount += 5)}
   >
-    {#each ideas as idea (swapRowKey(idea))}
+    {#each ideas.slice(0, visibleCount) as idea (swapRowKey(idea))}
       <SuggestionRow
         label={`Use ${idea.member.pokemon} set for slot ${idea.slot + 1}`}
         glyph={{ kind: 'pokemon', value: idea.member.pokemon }}

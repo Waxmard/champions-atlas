@@ -693,7 +693,8 @@ export function swapIdeas(
   tags?: TeamTagsIndex,
   limit = 4,
   favoriteTeams: readonly FavoriteTeamSource[] = [],
-  ladder?: LadderShares
+  ladder?: LadderShares,
+  all = false
 ): SwapSuggestion[] {
   const pool: SwapSuggestion[] = [];
   const forms = members.map((member) => resolveBattleForm(member).pokemon);
@@ -714,7 +715,9 @@ export function swapIdeas(
   }
   const seenSlots = new Set<number>();
   const seenSpecies = new Set<string>();
-  return pool
+  const form = (idea: SwapSuggestion) =>
+    normalize(resolveBattleForm(idea.member).pokemon);
+  const head = pool
     .sort(
       (a, b) =>
         b.closeSupport - a.closeSupport ||
@@ -728,13 +731,22 @@ export function swapIdeas(
         a.slot - b.slot
     )
     .filter((idea) => {
-      const form = normalize(resolveBattleForm(idea.member).pokemon);
-      if (seenSlots.has(idea.slot) || seenSpecies.has(form)) return false;
+      const key = form(idea);
+      if (seenSlots.has(idea.slot) || seenSpecies.has(key)) return false;
       seenSlots.add(idea.slot);
-      seenSpecies.add(form);
+      seenSpecies.add(key);
       return true;
     })
     .slice(0, limit);
+  if (!all) return head;
+  const taken = new Set(head.map(form));
+  const rest = pool.filter((idea) => {
+    const key = form(idea);
+    if (taken.has(key)) return false;
+    taken.add(key);
+    return true;
+  });
+  return [...head, ...rest];
 }
 
 export function swapSuggestions(

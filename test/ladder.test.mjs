@@ -96,3 +96,29 @@ test('swap ideas replace the member the ladder pairs least with the rest', () =>
   );
   assert.deepEqual(swapIdeas(draft, teams, 'M-C'), []);
 });
+
+test('extended swap ideas keep the first rows and list each Pokémon once', () => {
+  const teams = [
+    team('strong', [
+      set('Incineroar', { item: 'Life Orb' }),
+      set('Rillaboom', { item: 'Life Orb' }),
+      set('Sneasler', { item: 'Life Orb' }),
+      set('Garchomp', { item: 'Life Orb' }),
+      set('Tyranitar', { item: 'Focus Sash' }),
+    ]),
+    team('weak', [
+      set('Gholdengo', { item: 'Life Orb' }),
+      set('Gardevoir', { item: 'Choice Scarf' }),
+    ]),
+  ];
+  const rows = (...rest) =>
+    swapIdeas(draft, teams, 'M-C', undefined, ...rest).map(
+      ({ pokemon, slot }) => [pokemon, slot]
+    );
+  assert.deepEqual(rows(1), [['Garchomp', 3]]);
+  assert.deepEqual(rows(1, [], undefined, true), [
+    ['Garchomp', 3],
+    ['Tyranitar', 3],
+    ['Gardevoir', 0],
+  ]);
+});

@@ -116,7 +116,6 @@
     id="set-pokemon-suggestions"
     label="Pokémon suggestions"
     count={options.length}
-    moreLabel="Show 10 more"
     {hasMore}
     {onshowmore}
   >

@@ -243,10 +243,10 @@ stored with the saved team, but it cannot be restored from My Teams.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
-The **Swaps** pop-up lists up to four whole-set replacements, at most one per
+The **Swaps** pop-up opens with up to four whole-set replacements, at most one per
 slot, each taken from that slot's Pokémon suggestions in the set editor. Each
 row names the suggested Pokémon, the Pokémon it replaces, the set's item,
-ability, and nature, and its shared-teammate count. Rows backed by a team
+ability, and nature. **Show 5 more** reveals further rows in ranked order, each Pokémon once on the slot where it ranks best; a slot can repeat. Rows backed by a team
 sharing three or more teammates come first, ranked by the weighted vote of
 those teams. The remaining rows follow by shared teammates, then by the form's
 weighted vote, so a team that few current-regulation teams resemble still gets
