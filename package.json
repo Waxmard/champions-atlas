@@ -36,20 +36,20 @@
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
     "@eslint/js": "^10.0.1",
-    "@lucide/svelte": "^1.67.0",
+    "@lucide/svelte": "^1.69.0",
     "@pkmn/dex": "0.10.13",
     "@sveltejs/adapter-static": "^4.0.1",
     "@sveltejs/kit": "^3.1.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/vite": "^4.3.4",
     "@types/node": "^24",
-    "bits-ui": "^2.20.4",
+    "bits-ui": "^2.20.6",
     "csv-parse": "^7.0.3",
     "daisyui": "^5.7.50",
     "eslint": "^10.14.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-svelte": "^3.24.0",
-    "firebase-tools": "^15.34.2",
+    "firebase-tools": "^15.35.0",
     "globals": "^17.14.0",
     "lefthook": "^2.2.2",
     "parse5": "5.1.1",
@@ -61,7 +61,7 @@
     "tailwindcss": "^4.3.3",
     "typescript": "6.0.3",
     "typescript-eslint": "^8.72.1",
-    "vite": "^8.3.5"
+    "vite": "^8.3.6"
   },
   "allowScripts": {
     "fsevents": false,
