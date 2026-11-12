@@ -245,14 +245,17 @@ The two-Mega limit applies to Pokémon replacement suggestions.
 
 The **Swaps** pop-up opens with up to four whole-set replacements, at most one per
 slot, each taken from that slot's Pokémon suggestions in the set editor. Each
-row names the suggested Pokémon, the Pokémon it replaces, the set's item,
-ability, and nature. **Show 5 more** reveals further rows in ranked order, each Pokémon once on the slot where it ranks best; a slot can repeat. Rows backed by a team
+row names the suggested Pokémon, the Pokémon it replaces on a second line, and
+the set's item, ability, and nature on a third; long lines are cut off rather
+than wrapped. **Show 5 more** reveals further rows in ranked order, each Pokémon once on the slot where it ranks best; a slot can repeat. Rows backed by a team
 sharing three or more teammates come first, ranked by the weighted vote of
 those teams. The remaining rows follow by shared teammates, then by the form's
 weighted vote, so a team that few current-regulation teams resemble still gets
 suggestions. Sets from Favorites teams rank in the same list, count as much as
 the best-placed supporting team once they share three teammates, and are
-labelled **Favorite**. Applying a row replaces the whole set,
+labelled **Favorite**. Tapping a row in either list shows the full set inside
+the pop-up with **Back** and **Apply swap**; Back returns to the list where it
+was. Applying replaces the whole set,
 leaves **Revert changes** available, and closes the pop-up. **Swap in a specific Pokémon** looks one
 resolved form up across every slot. Swaps stay unavailable while team text is
 unsaved or an editor is open, and a team already holding two Mega Pokémon is not

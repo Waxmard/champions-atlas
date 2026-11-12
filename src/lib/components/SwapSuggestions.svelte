@@ -1,5 +1,7 @@
 <script lang="ts">
+  import { tick } from 'svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
+  import SetDetails from '#lib/components/SetDetails.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -35,6 +37,10 @@
   }: Props = $props();
   let query = $state('');
   let visibleCount = $state(4);
+  let preview = $state.raw<SwapSuggestion | null>(null);
+  let list = $state<HTMLDivElement>();
+  let previewHeading = $state<HTMLHeadingElement>();
+  let listScroll = 0;
   const regulation = $derived(regulationLabel(currentRegulation));
   const ideas = $derived(
     swapIdeas(
@@ -65,7 +71,7 @@
   );
   const swapRowKey = (row: SwapSuggestion) =>
     `${row.slot}:${row.favorite ? 'fav:' + (row.favoriteTeamName ?? '') : 'cat'}:${row.pokemon}:${row.member.item ?? ''}:${row.member.ability ?? ''}:${row.member.nature ?? ''}:${row.member.spread ?? ''}:${row.member.moves.join(',')}`;
-  const detail = (row: SwapSuggestion) =>
+  const headline = (row: SwapSuggestion) =>
     [
       `Replaces ${members[row.slot]?.pokemon ?? `slot ${row.slot + 1}`}`,
       row.favorite
@@ -73,22 +79,70 @@
           ? `Favorite (${row.favoriteTeamName})`
           : 'Favorite'
         : '',
-      row.member.item,
-      row.member.ability,
-      row.member.nature,
     ]
       .filter(Boolean)
       .join(' · ');
-  function apply(slot: number, member: Member) {
-    if (onapply(slot, $state.snapshot(member))) query = '';
+  function openPreview(row: SwapSuggestion) {
+    const scroller = list?.parentElement;
+    listScroll = scroller?.scrollTop ?? 0;
+    preview = row;
+    void tick().then(() => {
+      if (scroller) scroller.scrollTop = 0;
+      previewHeading?.focus({ preventScroll: true });
+    });
+  }
+  function closePreview() {
+    const scroller = list?.parentElement;
+    preview = null;
+    void tick().then(() => {
+      if (scroller) scroller.scrollTop = listScroll;
+    });
+  }
+  function applyPreview() {
+    if (preview) onapply(preview.slot, $state.snapshot(preview.member));
   }
 </script>
 
-<div class="min-w-0 space-y-2">
+{#snippet swapRow(row: SwapSuggestion)}
+  <SuggestionRow
+    label={`Preview ${row.member.pokemon} set for slot ${row.slot + 1}`}
+    glyph={{ kind: 'pokemon', value: row.member.pokemon }}
+    primary={row.member.pokemon}
+    secondary={headline(row)}
+    tertiary={[row.member.item, row.member.ability, row.member.nature]
+      .filter(Boolean)
+      .join(' · ') || 'No item, ability, or nature listed'}
+    {disabled}
+    onclick={() => openPreview(row)}
+  />
+{/snippet}
+
+{#if preview}
+  <div class="min-w-0 space-y-3">
+    <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+      <h3
+        bind:this={previewHeading}
+        tabindex="-1"
+        class="term min-w-0 wrap-anywhere"
+      >
+        {headline(preview)}
+      </h3>
+      <div class="flex gap-2">
+        <Button variant="quiet" onclick={closePreview}>Back</Button>
+        <Button variant="primary" {disabled} onclick={applyPreview}
+          >Apply swap</Button
+        >
+      </div>
+    </div>
+    <SetDetails member={preview.member} />
+  </div>
+{/if}
+
+<div bind:this={list} hidden={!!preview} class="min-w-0 space-y-2">
   {#if ideas.length || searched.length}
     <p class="provenance max-w-[68ch]">
-      Suggestions are built from catalog teams and {regulation} ladder pairings. Applying
-      one replaces the whole set.
+      Suggestions are built from catalog teams and {regulation} ladder pairings. Tap
+      one to preview the whole set before applying it.
     </p>
   {/if}
   {#if disabled}
@@ -103,14 +157,7 @@
     onshowmore={() => (visibleCount += 5)}
   >
     {#each ideas.slice(0, visibleCount) as idea (swapRowKey(idea))}
-      <SuggestionRow
-        label={`Use ${idea.member.pokemon} set for slot ${idea.slot + 1}`}
-        glyph={{ kind: 'pokemon', value: idea.member.pokemon }}
-        primary={idea.member.pokemon}
-        secondary={detail(idea)}
-        {disabled}
-        onclick={() => apply(idea.slot, idea.member)}
-      />
+      {@render swapRow(idea)}
     {/each}
   </SuggestionList>
   <div class="min-w-0 space-y-2 pt-2">
@@ -138,14 +185,7 @@
         empty={`No usable current ${regulation} set with ${query} for this team.`}
       >
         {#each searched as row (swapRowKey(row))}
-          <SuggestionRow
-            label={`Use ${row.member.pokemon} set for slot ${row.slot + 1}`}
-            glyph={{ kind: 'pokemon', value: row.member.pokemon }}
-            primary={row.member.pokemon}
-            secondary={detail(row)}
-            {disabled}
-            onclick={() => apply(row.slot, row.member)}
-          />
+          {@render swapRow(row)}
         {/each}
       </SuggestionList>
     {/if}
