@@ -80,6 +80,14 @@ function validateSnapshot({ sourceText, snapshot }) {
 }
 
 for (const loadedSnapshot of loadedSnapshots) validateSnapshot(loadedSnapshot);
+export const eligiblePokemonKeys = Object.freeze([
+  ...new Set(
+    loadedSnapshots.flatMap(({ snapshot }) => [
+      ...Object.values(snapshot.pokemon).flat(),
+      ...Object.keys(snapshot.megas),
+    ])
+  ),
+]);
 if (snapshots.size !== sourceStems.length)
   throw new Error('Champions eligibility snapshots are incomplete.');
 

@@ -317,13 +317,6 @@ const speciesIds = new Map([
   ['Incineroar', 727],
   ['Basculegion', 902],
 ]);
-const assetUrls = new Set([
-  ...species.map(
-    (pokemon) =>
-      `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${speciesIds.get(pokemon)}.png`
-  ),
-  'https://raw.githubusercontent.com/smogon/sprites/master/src/minisprites/items/ileftovers.png',
-]);
 function sheetCsv(regulation, description) {
   const row = Array(sheetHeader.length).fill('');
   row[0] = regulation === 'M-C' ? 'MC1' : 'MB1';
@@ -420,14 +413,14 @@ async function importerFixture(
     import { appendFileSync } from 'node:fs';
     import { pathToFileURL } from 'node:url';
     const responses = ${JSON.stringify(responses)};
-    const assets = new Set(${JSON.stringify([...assetUrls])});
+    const assetRoots = ['https://raw.githubusercontent.com/PokeAPI/sprites/master/', 'https://raw.githubusercontent.com/smogon/sprites/master/'];
     globalThis.fetch = async (address, options) => {
       appendFileSync('requests.jsonl', JSON.stringify({address: String(address), redirect: options?.redirect}) + '\\n');
       if (address === ${JSON.stringify(sourceAddresses[failedName])}) {
         throw new TypeError('fetch failed', {cause: Object.assign(new Error('connect timeout'), {code: 'UND_ERR_CONNECT_TIMEOUT'})});
       }
       if (Object.hasOwn(responses, address)) return new Response(responses[address]);
-      if (assets.has(String(address))) {
+      if (assetRoots.some((root) => String(address).startsWith(root))) {
         return new Response(Uint8Array.from([137,80,78,71,13,10,26,10]), {headers: {'content-type': 'image/png'}});
       }
       throw new Error('Unexpected URL: ' + address);
@@ -582,6 +575,7 @@ test('sprite resolution uses numeric PokéAPI sprites and exact aliases', () => 
     ['lycanroc-midday', 745],
     ['pyroar-male', 668],
     ['squawkabilly-green-plumage', 931],
+    ['tauros-paldea-blaze-breed', 10251],
     ['vivillon', 666],
   ]);
   const index = {
@@ -608,6 +602,7 @@ test('sprite resolution uses numeric PokéAPI sprites and exact aliases', () => 
     ['Morpeko', 'morpeko-full-belly'],
     ['Gourgeist', 'gourgeist-average'],
     ['Lycanroc', 'lycanroc-midday'],
+    ['Tauros-Paldea-Blaze', 'tauros-paldea-blaze-breed'],
   ])
     assert.equal(resolveSprite(name, index), `${root}/${ids.get(target)}.png`);
   const pokeball = `${root}/666-poke-ball.png`;
@@ -721,6 +716,7 @@ test('item icons resolve source aliases, preserve local names, and fail safely',
     ['Venosaurite', 'venusaurite'],
     ['Dragonitite', 'dragoninite'],
     ['Staraptorite', 'staraptite'],
+    ["King's Rock", 'kings_rock'],
   ])
     assert.equal(resolveItemIcon(name), `${root}/i${slug}.png`);
   assert.throws(() => validatePng(Buffer.from('not png')), /Invalid PNG/);

@@ -7,6 +7,8 @@ import {
   writeFile,
 } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { Generations } from '@smogon/calc/dist/data/index.js';
+import { eligiblePokemonKeys } from './champions-eligibility.mjs';
 
 const pokemonIndex = 'https://pokeapi.co/api/v2/pokemon?limit=100000';
 const spriteRoot =
@@ -35,7 +37,10 @@ const spriteAliases = {
   palafin: 'palafin-zero',
   morpeko: 'morpeko-full-belly',
   pyroar: 'pyroar-male',
+  polteageistantique: 'polteageist',
   taurospaldeaaqua: 'tauros-paldea-aqua-breed',
+  taurospaldeablaze: 'tauros-paldea-blaze-breed',
+  taurospaldeacombat: 'tauros-paldea-combat-breed',
   toxtricity: 'toxtricity-amped',
   squawkabilly: 'squawkabilly-green-plumage',
 };
@@ -56,6 +61,7 @@ const sourceItemAliases = {
 const sourceItemSlug = (text) => {
   const slug = text
     .toLowerCase()
+    .replace(/['’]/g, '')
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
   return sourceItemAliases[slug] || slug;
@@ -167,7 +173,12 @@ async function syncAssets(
 export async function syncSprites(
   teams,
   index,
-  { directory = resolve('static/sprites'), load, warn = console.warn } = {}
+  {
+    directory = resolve('static/sprites'),
+    load,
+    warn = console.warn,
+    extra = [],
+  } = {}
 ) {
   const pokemon = new Map();
   for (const team of teams)
@@ -176,6 +187,10 @@ export async function syncSprites(
         const slug = assetSlug(name);
         if (!pokemon.has(slug)) pokemon.set(slug, name);
       }
+  for (const name of extra) {
+    const slug = assetSlug(name);
+    if (!pokemon.has(slug)) pokemon.set(slug, name);
+  }
   const wanted = new Map();
   for (const [slug, name] of pokemon) {
     const source = resolveSprite(name, index);
@@ -187,14 +202,20 @@ export async function syncSprites(
 
 export async function syncItems(
   teams,
-  { directory = resolve('static/items'), load, warn = console.warn } = {}
+  {
+    directory = resolve('static/items'),
+    load,
+    warn = console.warn,
+    extra = [],
+  } = {}
 ) {
   const items = [
-    ...new Set(
-      teams.flatMap((team) =>
+    ...new Set([
+      ...teams.flatMap((team) =>
         team.members.map((member) => member.item).filter(Boolean)
-      )
-    ),
+      ),
+      ...extra,
+    ]),
   ];
   return syncAssets(
     new Map(
@@ -214,12 +235,14 @@ export async function restoreCatalogAssets(
     const index = validateIndex(
       await fetchCached('pokemon.json', pokemonIndex, validateIndex, refresh)
     );
-    sprites = await syncSprites(teams, index);
+    sprites = await syncSprites(teams, index, { extra: eligiblePokemonKeys });
   } catch (error) {
     console.warn(`Sprites unavailable: ${error.message}`);
   }
   try {
-    items = await syncItems(teams);
+    items = await syncItems(teams, {
+      extra: [...Generations.get(0).items].map((item) => item.name),
+    });
   } catch (error) {
     console.warn(`Item icons unavailable: ${error.message}`);
   }
