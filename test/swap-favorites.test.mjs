@@ -8,7 +8,7 @@ import {
 } from '../src/lib/swap-suggestions.ts';
 import { set, team } from './fixtures/swap.mjs';
 
-test('swap ideas rank Favorites with catalog suggestions on the same three-shared bar', () => {
+test('swap ideas rank Favorites with catalog suggestions and fill from weaker fits', () => {
   const draft = [
     'Incineroar',
     'Rillaboom',
@@ -59,6 +59,7 @@ test('swap ideas rank Favorites with catalog suggestions on the same three-share
     [
       ['Weavile', true],
       ['Garchomp', false],
+      ['Pelipper', true],
     ]
   );
   assert.deepEqual(
@@ -75,6 +76,7 @@ test('swap ideas rank Favorites with catalog suggestions on the same three-share
     [
       ['Garchomp', false],
       ['Weavile', true],
+      ['Pelipper', true],
     ]
   );
 });

@@ -10,6 +10,7 @@ import {
 import { catalogSuggestions } from '../src/lib/workbench.ts';
 import {
   pokemonSuggestions,
+  SLOT_SUGGESTION_LIMIT,
   swapIdeas,
   swapSuggestions,
   swapTargets,
@@ -470,7 +471,7 @@ test('specific search matches the resolved form and keeps every slot', () => {
   );
 });
 
-test('swap ideas need three shared teammates and keep one row per slot', () => {
+test("swap ideas come from each slot's Pokémon suggestions, close fits first", () => {
   const draft = [
     set('Incineroar'),
     set('Rillaboom'),
@@ -487,17 +488,37 @@ test('swap ideas need three shared teammates and keep one row per slot', () => {
   ]);
   const weak = team('weak', [
     set('Gholdengo', { item: 'Life Orb' }),
-    set('Gardevoir'),
+    set('Gardevoir', { item: 'Life Orb' }),
   ]);
+  const rows = (ideas) =>
+    ideas.map(({ pokemon, slot, sharedTeammates }) => [
+      pokemon,
+      slot,
+      sharedTeammates,
+    ]);
   const ideas = swapIdeas(draft, [strong, weak], 'M-C');
-  assert.ok(ideas.length > 0);
-  assert.ok(ideas.every((idea) => idea.sharedTeammates >= 3));
-  assert.equal(new Set(ideas.map(({ slot }) => slot)).size, ideas.length);
-  assert.ok(ideas.length <= 4);
-  assert.deepEqual(
-    ideas.map(({ pokemon }) => pokemon),
-    ['Garchomp']
-  );
+  assert.deepEqual(rows(ideas), [
+    ['Garchomp', 3, 3],
+    ['Gardevoir', 0, 1],
+  ]);
+  for (const idea of ideas) {
+    const slotRows = pokemonSuggestions(
+      draft.filter((_, index) => index !== idea.slot),
+      [strong, weak],
+      'M-C',
+      draft[idea.slot].pokemon,
+      undefined,
+      '',
+      { limit: SLOT_SUGGESTION_LIMIT }
+    );
+    assert.deepEqual(
+      slotRows.find((row) => row.pokemon === idea.pokemon)?.member,
+      idea.member
+    );
+  }
+  assert.deepEqual(rows(swapIdeas(draft, [weak], 'M-C')), [
+    ['Gardevoir', 0, 1],
+  ]);
 
   const crowded = [0, 1, 2, 3, 4].map((index) =>
     team(`crowded-${index}`, [

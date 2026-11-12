@@ -74,6 +74,9 @@ const sourceStub = (
   pasteNotes: null,
 });
 
+const CLOSE_SHARED = 3;
+export const SLOT_SUGGESTION_LIMIT = 30;
+
 export interface PokemonSuggestion {
   pokemon: string;
   member: Member;
@@ -83,6 +86,7 @@ export interface PokemonSuggestion {
   roleFill: boolean;
   archetype: string | null;
   support: number;
+  closeSupport: number;
   source: Team;
   favorite?: true;
   favoriteTeamName?: string;
@@ -177,6 +181,7 @@ interface Candidate {
   weights: Map<Member, number>;
   teamIds: Set<string>;
   support: number;
+  closeSupport: number;
   bestShared: number;
   bestDetails: number;
   bestSource: Team;
@@ -385,6 +390,7 @@ function synthesize(
     roleFill: missing.some((role) => roleFlags(member).includes(role)),
     archetype: tagsForTeam(tags, candidate.bestSource.id)?.archetype ?? null,
     support: candidate.support,
+    closeSupport: candidate.closeSupport,
     source: candidate.bestSource,
   };
 }
@@ -446,6 +452,7 @@ function buildFavoriteSuggestions(
         roleFill: missing.some((role) => roleFlags(member).includes(role)),
         archetype: tagsForTeam(tags, favTeam.id)?.archetype ?? null,
         support: 1,
+        closeSupport: shared >= CLOSE_SHARED ? 1 : 0,
         source: sourceStub(
           favTeam.id,
           favTeam.name,
@@ -467,11 +474,7 @@ export function pokemonSuggestions(
   excludePokemon?: string,
   tags?: TeamTagsIndex,
   query = '',
-  {
-    minShared = 1,
-    limit = 6,
-    bySupport = false,
-  }: { minShared?: number; limit?: number; bySupport?: boolean } = {},
+  { minShared = 1, limit = 6 }: { minShared?: number; limit?: number } = {},
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): PokemonSuggestion[] {
   const current = teams.filter((team) => team.regulation === currentRegulation);
@@ -536,6 +539,7 @@ export function pokemonSuggestions(
           weights: new Map(),
           teamIds: new Set(),
           support: 0,
+          closeSupport: 0,
           bestShared: shared,
           bestDetails: details,
           bestSource: team,
@@ -552,6 +556,7 @@ export function pokemonSuggestions(
       if (!candidate.teamIds.has(team.id)) {
         candidate.teamIds.add(team.id);
         candidate.support += teamWeight;
+        if (shared >= CLOSE_SHARED) candidate.closeSupport += teamWeight;
       }
       if (missing.some((role) => roleFlags(member).includes(role)))
         candidate.roleFill = true;
@@ -560,7 +565,6 @@ export function pokemonSuggestions(
   const catalogRows: PokemonSuggestion[] = [];
   const ordered = [...candidates.values()].sort(
     (a, b) =>
-      (bySupport ? b.support - a.support : 0) ||
       b.bestShared - a.bestShared ||
       b.support - a.support ||
       b.bestDetails - a.bestDetails ||
@@ -618,6 +622,7 @@ export function pokemonSuggestions(
           roleFill: false,
           archetype: null,
           support: 0,
+          closeSupport: 0,
           source: sourceStub('', '', currentRegulation, []),
         }))
     : [];
@@ -680,39 +685,26 @@ export function swapIdeas(
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): SwapSuggestion[] {
   const pool: SwapSuggestion[] = [];
-  for (const [slot, replaced] of members.entries()) {
-    const teammates = members.filter((_, index) => index !== slot);
+  for (const [slot, replaced] of members.entries())
     for (const idea of pokemonSuggestions(
-      teammates,
+      members.filter((_, index) => index !== slot),
       teams,
       currentRegulation,
       replaced.pokemon,
       tags,
       '',
-      { minShared: 3, limit, bySupport: true }
+      { limit: SLOT_SUGGESTION_LIMIT },
+      favoriteTeams
     ))
       pool.push({ ...idea, slot });
-    if (favoriteTeams.length) {
-      for (const fav of pokemonSuggestions(
-        teammates,
-        teams,
-        currentRegulation,
-        replaced.pokemon,
-        tags,
-        '',
-        { minShared: 3, limit: 0 },
-        favoriteTeams
-      ))
-        pool.push({ ...fav, slot });
-    }
-  }
   const seenSlots = new Set<number>();
   const seenSpecies = new Set<string>();
   return pool
     .sort(
       (a, b) =>
-        b.support - a.support ||
+        b.closeSupport - a.closeSupport ||
         b.sharedTeammates - a.sharedTeammates ||
+        b.support - a.support ||
         b.matchingDetails - a.matchingDetails ||
         Number(Boolean(b.favorite)) - Number(Boolean(a.favorite)) ||
         compareTeams(a.source, b.source, currentRegulation) ||

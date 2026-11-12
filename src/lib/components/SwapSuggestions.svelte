@@ -88,7 +88,7 @@
     id="swap-suggestions"
     label="Suggested swaps"
     count={ideas.length}
-    empty={`No strong current ${regulation} swap fits this team yet. Pick a specific Pokémon below.`}
+    empty={`No current ${regulation} team shares a Pokémon with this team yet. Pick a specific Pokémon below.`}
   >
     {#each ideas as idea (swapRowKey(idea))}
       <SuggestionRow

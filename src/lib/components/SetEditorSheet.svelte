@@ -16,7 +16,10 @@
     memberValidationError,
   } from '#lib/member-validation.js';
   import { memberSetSignature } from '#lib/spread-provenance.js';
-  import { pokemonSuggestions } from '#lib/swap-suggestions.js';
+  import {
+    pokemonSuggestions,
+    SLOT_SUGGESTION_LIMIT,
+  } from '#lib/swap-suggestions.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
   import type { TeamTagsIndex } from '#lib/tags.js';
   import {
@@ -162,7 +165,7 @@
       accepted.pokemon,
       tagIndex,
       pokemonQuery,
-      { limit: 30 },
+      { limit: SLOT_SUGGESTION_LIMIT },
       favoriteTeams
     )
   );
