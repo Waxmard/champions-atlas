@@ -19,7 +19,7 @@
   const games = $derived(record.wins + record.losses);
   const digits = $derived(`${record.wins}${record.losses}`.length);
   const scoreSize = $derived(
-    digits <= 3 ? 'text-7xl' : digits <= 5 ? 'text-5xl' : 'text-4xl'
+    digits <= 2 ? 'text-7xl' : digits <= 4 ? 'text-5xl' : 'text-4xl'
   );
 
   function close() {
