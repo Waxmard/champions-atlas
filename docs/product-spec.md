@@ -48,8 +48,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   Back to teams stays visible while browsing a team.
 - Encode Browse filters in the URL so a refresh or shared link restores the selection.
 - Mark Browse cards from the latest catalog batch (the most recent publish that
-  added teams) with a **New** chip; the chip stays until a later batch replaces
-  it. **New teams only** in Browse filters (`?new=1`) shows just those teams.
+  added teams) with a blue dot before the team name; the dot stays until a later
+  batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
+  those teams.
 - Signed-in iPhone users can turn off **Notifications → New teams** in the
   account menu (on by default, stored on the device). The catalog refresh sends
   one banner per batch counting its current-regulation teams, with a body naming

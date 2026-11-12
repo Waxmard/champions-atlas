@@ -9,11 +9,13 @@
     name,
     context = '',
     reserveTitleActions = false,
+    isNew = false,
     members,
   }: {
     name: string;
     context?: string;
     reserveTitleActions?: boolean;
+    isNew?: boolean;
     members: readonly Pick<Member, 'pokemon' | 'item'>[];
   } = $props();
 </script>
@@ -24,7 +26,11 @@
     data-morph-part
     style="--morph-name: team-title"
   >
-    {name}
+    {#if isNew}<span
+        role="img"
+        aria-label="New"
+        class="me-2 inline-block size-2 rounded-full bg-primary align-middle"
+      ></span>{/if}{name}
   </h2>
   {#if context}<p class="provenance mt-1 wrap-anywhere">{context}</p>{/if}
 </div>
