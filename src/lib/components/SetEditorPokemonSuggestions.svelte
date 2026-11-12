@@ -12,6 +12,7 @@
 
   let {
     pokemon = $bindable(),
+    previewing = $bindable(false),
     accepted,
     options,
     hasMore = false,
@@ -25,6 +26,7 @@
     oncommit,
   }: {
     pokemon: string;
+    previewing?: boolean;
     accepted: string;
     options: PokemonSuggestion[];
     hasMore?: boolean;
@@ -54,8 +56,14 @@
   let section = $state<HTMLElement>();
   let listScroll = 0;
   let typed = '';
+  let opener: HTMLElement | null = null;
 
-  function openPreview(member: Member, note: string) {
+  $effect(() => {
+    previewing = !!preview;
+  });
+
+  function openPreview(event: MouseEvent, member: Member, note: string) {
+    opener = event.currentTarget as HTMLElement;
     listScroll = section?.parentElement?.scrollTop ?? 0;
     typed = pokemon;
     pokemon = accepted;
@@ -71,6 +79,7 @@
     preview = null;
     void tick().then(() => {
       if (scroller) scroller.scrollTop = top;
+      if (restore) opener?.focus({ preventScroll: true });
     });
   }
   function applyPreview() {
@@ -154,7 +163,8 @@
             .filter(Boolean)
             .join(' · ')}
           disabled={!!fav.reason}
-          onclick={() => openPreview(fav.member, `Favorite (${fav.teamName})`)}
+          onclick={(event) =>
+            openPreview(event, fav.member, `Favorite (${fav.teamName})`)}
         />
       {/each}
     </SuggestionList>
@@ -179,7 +189,8 @@
         ]
           .filter(Boolean)
           .join(' · ')}
-        onclick={() => openPreview(option.member, favoriteLabel(option))}
+        onclick={(event) =>
+          openPreview(event, option.member, favoriteLabel(option))}
       />
     {/each}
   </SuggestionList>

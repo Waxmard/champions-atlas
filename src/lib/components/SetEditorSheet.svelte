@@ -101,6 +101,7 @@
   let visibleAbilityCount = $state(10);
   let visibleMoveCount = $state(10);
   let visiblePokemonCount = $state(10);
+  let previewing = $state(false);
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
   let closing = false;
@@ -744,6 +745,7 @@
     {:else if currentView === 'pokemon'}
       <SetEditorPokemonSuggestions
         bind:pokemon={form.pokemon}
+        bind:previewing
         accepted={accepted.pokemon}
         options={pokemonPage.visible}
         hasMore={pokemonPage.hasMore}
@@ -764,6 +766,7 @@
     {/if}
   </div>
   <footer
+    hidden={currentView === 'pokemon' && previewing}
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-3 sm:px-6 sm:pb-4"
   >
     {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability'].includes(errorField || '')) || (currentView === 'spread' && (errorField === 'spread' || errorField === 'nature')) || (currentView === 'pokemon' && errorField === 'pokemon'))}<p

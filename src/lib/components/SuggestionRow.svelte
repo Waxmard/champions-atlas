@@ -17,7 +17,7 @@
     glyph?: Glyph;
     selected?: boolean;
     disabled?: boolean;
-    onclick: () => void;
+    onclick: (event: MouseEvent) => void;
     children?: Snippet;
   }
 

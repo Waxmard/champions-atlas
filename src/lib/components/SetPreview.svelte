@@ -23,7 +23,9 @@
 </script>
 
 <div bind:this={root} class="min-w-0 space-y-3">
-  <div class="flex min-w-0 flex-wrap items-center justify-between gap-2">
+  <div
+    class="sticky top-0 z-10 flex min-w-0 flex-wrap items-center justify-between gap-2 bg-base-100 py-2"
+  >
     <h3 bind:this={heading} tabindex="-1" class="term min-w-0 wrap-anywhere">
       {title}
     </h3>

@@ -80,7 +80,9 @@
     ]
       .filter(Boolean)
       .join(' · ');
-  function openPreview(row: SwapSuggestion) {
+  let opener: HTMLElement | null = null;
+  function openPreview(event: MouseEvent, row: SwapSuggestion) {
+    opener = event.currentTarget as HTMLElement;
     listScroll = list?.parentElement?.scrollTop ?? 0;
     preview = row;
   }
@@ -89,6 +91,7 @@
     preview = null;
     void tick().then(() => {
       if (scroller) scroller.scrollTop = listScroll;
+      opener?.focus({ preventScroll: true });
     });
   }
   function applyPreview() {
@@ -106,7 +109,7 @@
       .filter(Boolean)
       .join(' · ') || 'No item, ability, or nature listed'}
     {disabled}
-    onclick={() => openPreview(row)}
+    onclick={(event) => openPreview(event, row)}
   />
 {/snippet}
 
