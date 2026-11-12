@@ -69,6 +69,10 @@ the ignored `src/lib/data/movepools.json` from each species' newest learnsets,
 and the dev, build, typecheck, and test hooks generate it when missing. See
 [data sources](docs/data-sources.md#species-movepools).
 
+`npm run sync:ladder` refreshes the checked-in `src/lib/data/ladder-partners.json`
+from the latest Smogon M-C ladder stats, which rank Pokémon suggestions that no
+close catalog team supports.
+
 A full refresh replaces historical records that sources change or remove.
 Offline imports require cached source files and do not disable asset downloads.
 Choose the import mode with:
