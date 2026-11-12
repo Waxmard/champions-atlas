@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.0](https://github.com/Waxmard/champions-atlas/compare/v0.8.0...v0.9.0) (2026-11-12)
+
+
+### Features
+
+* track win/loss records and log results from Shortcuts ([#98](https://github.com/Waxmard/champions-atlas/issues/98)) ([c7b0562](https://github.com/Waxmard/champions-atlas/commit/c7b05627063686c86ff09fa64b1a3928ed4a0e42))
+
 ## [0.8.0](https://github.com/Waxmard/champions-atlas/compare/v0.7.0...v0.8.0) (2026-11-10)
 
 
