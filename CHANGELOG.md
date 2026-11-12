@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.10.0](https://github.com/Waxmard/champions-atlas/compare/v0.9.0...v0.10.0) (2026-11-12)
+
+
+### Features
+
+* preview suggested sets before applying ([#101](https://github.com/Waxmard/champions-atlas/issues/101)) ([af11442](https://github.com/Waxmard/champions-atlas/commit/af114425be6e15564c32ee08ad233cd677bfdd49))
+
 ## [0.9.0](https://github.com/Waxmard/champions-atlas/compare/v0.8.0...v0.9.0) (2026-11-12)
 
 
