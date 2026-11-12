@@ -19,6 +19,7 @@
     width={size}
     height={size}
     class="shrink-0 object-contain"
+    data-morph-part
     onerror={hide}
   />
 {/if}

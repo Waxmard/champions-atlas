@@ -120,6 +120,7 @@
         query=""
         href={`${collection}?team=${encodeURIComponent(entry.id)}`}
         fromCatalog={false}
+        morphId={entry.id}
       >
         {#snippet leadingActions()}
           <Button

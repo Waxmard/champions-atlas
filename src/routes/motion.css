@@ -105,6 +105,13 @@
 :root[data-nav='pop']::view-transition-new(root) {
   animation: page-in-left 240ms var(--motion-ease) both;
 }
+:root[data-nav='morph'] [data-morph] [data-morph-part] {
+  view-transition-name: var(--morph-name);
+}
+:root[data-nav='morph']::view-transition-group(*) {
+  animation-duration: 300ms;
+  animation-timing-function: var(--motion-ease);
+}
 
 @media (prefers-reduced-motion: reduce) {
   *,

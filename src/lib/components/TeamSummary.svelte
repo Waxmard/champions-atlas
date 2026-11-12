@@ -20,7 +20,9 @@
 
 <div class="mt-1.5 min-w-0 {reserveTitleActions ? 'min-h-11 pe-24' : ''}">
   <h2
-    class="font-display text-lg leading-[1.4] font-bold tracking-tight wrap-anywhere"
+    class="w-fit font-display text-lg leading-[1.4] font-bold tracking-tight wrap-anywhere"
+    data-morph-part
+    style="--morph-name: team-title"
   >
     {name}
   </h2>
@@ -30,7 +32,10 @@
   {#each members as member, index (index)}
     {@const types = getPokemonTypes(member.pokemon)}
     {@const band = typeBand(types)}
-    <li class="flex min-w-0 flex-col gap-0.5">
+    <li
+      class="flex min-w-0 flex-col gap-0.5"
+      style:--morph-name={`team-sprite-${index}`}
+    >
       <p
         class="truncate px-0.5 text-[0.75rem] leading-tight font-bold text-[color:var(--color-muted)]"
         title={member.pokemon}

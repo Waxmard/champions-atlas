@@ -15,6 +15,7 @@
     trailingActions,
     href,
     fromCatalog = true,
+    morphId,
   }: {
     team: Team;
     heading?: { title: string; context: string };
@@ -25,6 +26,7 @@
     trailingActions?: Snippet;
     href?: `wishlist?${string}` | `favorites?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
+    morphId?: string;
   } = $props();
   const resolvedHeading = $derived(heading ?? teamHeading(team.name, team));
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
@@ -56,6 +58,7 @@
 {/snippet}
 <article
   class="plate relative flex min-w-0 flex-col overflow-hidden transition-[border-color,scale] duration-200 hover:border-primary has-[>a:active]:scale-[0.985]"
+  data-team-card={morphId ?? team.id}
 >
   <a
     href={resolve(destination)}
