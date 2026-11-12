@@ -1,5 +1,4 @@
 import bundledCatalog, {
-  defaultCatalogEndpoint,
   fetchCatalogUpdate,
   tags as bundledTags,
   selectStoredCatalogBundle,
@@ -12,10 +11,8 @@ import {
   catalogNewsKey,
   nextCatalogNews,
   readCatalogNews,
-  readNotificationSettings,
   type CatalogNews,
 } from './catalog-news.ts';
-import { AtlasNative, isNativeApp, type CatalogWatchResult } from './native.ts';
 
 const DB_NAME = 'champions-atlas-catalog';
 const STORE_NAME = 'bundles';
@@ -128,20 +125,6 @@ function applyValidatedBundle(
   activeBundleHash = bundleHash ?? bundle.bundleHash;
 }
 
-export async function publishCatalogWatch(): Promise<CatalogWatchResult | null> {
-  if (!isNativeApp || !news) return null;
-  try {
-    return await AtlasNative.setCatalogWatch({
-      enabled: readNotificationSettings(localStorage).newTeams,
-      endpoint: defaultCatalogEndpoint(),
-      bundleHash: activeBundleHash ?? null,
-      knownIds: [...news.known, ...news.fresh],
-    });
-  } catch {
-    return null;
-  }
-}
-
 function trackNews(newVisit: boolean): void {
   news = nextCatalogNews(
     news,
@@ -154,7 +137,6 @@ function trackNews(newVisit: boolean): void {
   } catch {
     void 0;
   }
-  void publishCatalogWatch();
 }
 
 export function refreshCatalogNow(options?: {

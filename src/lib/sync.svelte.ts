@@ -11,10 +11,12 @@ import {
   type User,
 } from 'firebase/auth';
 import {
+  deleteDoc,
   doc,
   getFirestore,
   runTransaction,
   serverTimestamp,
+  setDoc,
   Timestamp,
   type Firestore,
   type Unsubscribe,
@@ -40,7 +42,8 @@ import {
   validatedTeams,
 } from './team-sync.ts';
 import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
-import { AtlasNative, isNativeApp } from './native.ts';
+import { AtlasNative, isNativeApp, type PushRegistration } from './native.ts';
+import { readNotificationSettings } from './catalog-news.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
   readSyncCache,
@@ -444,6 +447,7 @@ export function initSync(): void {
         (error) => generation === session && fail(error)
       );
       void request();
+      void syncPushToken();
     } catch (error) {
       fail(error);
     }
@@ -502,6 +506,27 @@ export async function signOut(): Promise<void> {
     }
   } catch (error) {
     fail(error);
+  }
+}
+
+export async function syncPushToken(): Promise<PushRegistration | null> {
+  if (!db || !uid) return null;
+  const firestore = db;
+  const owner = uid;
+  const enabled = readNotificationSettings(localStorage).newTeams;
+  try {
+    const result = await AtlasNative.registerPush({ authorize: enabled });
+    if (result.token && owner === uid) {
+      const ref = doc(firestore, 'pushTokens', result.token);
+      void (
+        enabled && result.granted
+          ? setDoc(ref, { uid: owner, updatedAt: serverTimestamp() })
+          : deleteDoc(ref)
+      ).catch(() => undefined);
+    }
+    return result;
+  } catch {
+    return null;
   }
 }
 

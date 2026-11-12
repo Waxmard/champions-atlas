@@ -15,7 +15,7 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setActiveTeam", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getPendingResults", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "acknowledgeResults", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "setCatalogWatch", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "registerPush", returnType: CAPPluginReturnPromise)
     ]
 
     @objc func signInWithGoogle(_ call: CAPPluginCall) {
@@ -58,6 +58,7 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func signOut(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             GIDSignIn.sharedInstance.signOut()
+            UIApplication.shared.unregisterForRemoteNotifications()
             call.resolve()
         }
     }
@@ -100,20 +101,15 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
-    @objc func setCatalogWatch(_ call: CAPPluginCall) {
-        let enabled = call.getBool("enabled") ?? false
-        CatalogWatch.configure(
-            enabled: enabled,
-            endpoint: call.getString("endpoint") ?? "",
-            bundleHash: call.getString("bundleHash"),
-            knownIds: call.getArray("knownIds", String.self) ?? []
-        )
+    @objc func registerPush(_ call: CAPPluginCall) {
+        let authorize = call.getBool("authorize") ?? false
         Task { @MainActor in
-            let granted = enabled ? await CatalogWatch.authorize() : false
-            call.resolve([
-                "granted": granted,
-                "backgroundRefresh": UIApplication.shared.backgroundRefreshStatus == .available
-            ])
+            let granted = authorize ? await NewTeamPush.authorize() : false
+            var result: [String: Any] = ["granted": granted]
+            if let token = await NewTeamPush.token() {
+                result["token"] = token
+            }
+            call.resolve(result)
         }
     }
 }

@@ -4,7 +4,7 @@
     readNotificationSettings,
     writeNotificationSettings,
   } from '#lib/catalog-news.js';
-  import { publishCatalogWatch } from '#lib/catalog-runtime.svelte.js';
+  import { syncPushToken } from '#lib/sync.svelte.js';
 
   let { onclose }: { onclose: () => void } = $props();
 
@@ -18,17 +18,15 @@
     message = '';
     try {
       writeNotificationSettings(localStorage, { newTeams: wanted });
-      const result = await publishCatalogWatch();
-      if (wanted && !result?.granted) {
+      const result = await syncPushToken();
+      if (wanted && !(result?.granted && result.token)) {
         writeNotificationSettings(localStorage, { newTeams: false });
-        await publishCatalogWatch();
+        if (result?.token) await syncPushToken();
         enabled = false;
-        message = result
-          ? 'Notifications are turned off for this app. Allow them in iPhone Settings, then turn this on again.'
-          : 'Notifications could not be turned on. Try again.';
-      } else if (wanted && result && !result.backgroundRefresh) {
         message =
-          'Background App Refresh is off for this app in iPhone Settings. Notifications cannot arrive until it is on.';
+          result && !result.granted
+            ? 'Notifications are turned off for this app. Allow them in iPhone Settings, then turn this on again.'
+            : 'Notifications could not be turned on. Try again.';
       }
     } catch {
       enabled = readNotificationSettings(localStorage).newTeams;
@@ -55,10 +53,6 @@
       >
     </span>
   </label>
-  <p class="provenance mt-3">
-    iPhone checks for new teams in the background, so a notification can arrive
-    some hours after the teams are published.
-  </p>
   {#if message}
     <p
       role="alert"

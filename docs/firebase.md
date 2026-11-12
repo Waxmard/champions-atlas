@@ -317,6 +317,16 @@ To provide the development identity:
 4. Delete the temporary P12 after storing the secrets. Keep the original
    identity in Keychain and leave the distribution secrets unchanged.
 
+The daily Refresh Catalog workflow sends the new-team push notification
+straight through Apple's push service after it deploys the catalog. It reads
+three more `preview` secrets: `APNS_KEY_ID` and `APNS_KEY_P8` (an APNs auth key
+for team `48TY2FP59S`, Sandbox & Production), and `FIREBASE_SERVICE_ACCOUNT` (a
+JSON key for a service account with the **Cloud Datastore User** role). The app
+stores each device token at `pushTokens/{token}` while **Notifications → New
+teams** is on; the workflow records announced team IDs at `pushState/catalog`.
+A missing `pushState/catalog` stores a baseline and sends nothing. A push
+misconfiguration fails only that last step, after the catalog is published.
+
 The release-please workflow reads the repository secret `RELEASE_PLEASE_TOKEN`
 instead, because its job declares no environment.
 

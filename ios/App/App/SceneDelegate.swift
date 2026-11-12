@@ -28,6 +28,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         GameResultStore.prepareBanner()
-        CatalogWatch.clearBanner()
+        NewTeamPush.clearBanner()
     }
 }

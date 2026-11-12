@@ -51,9 +51,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   starts at a cold launch or after at least an hour in the background. The first
   run marks nothing as new.
 - Signed-in iPhone users can turn off **Notifications → New teams** in the
-  account menu (on by default, stored on the device). iOS Background App
-  Refresh checks the published catalog and posts one silent banner counting new
-  current-regulation teams; opening the app clears it.
+  account menu (on by default, stored on the device). The daily catalog refresh
+  sends one silent push banner counting current-regulation teams not announced
+  before; opening the app clears it.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not

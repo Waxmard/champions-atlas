@@ -19,7 +19,7 @@
 		A10000000000000000000001 /* AtlasNativePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000004 /* AtlasNativePlugin.swift */; };
 		A10000000000000000000002 /* AtlasBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000005 /* AtlasBridgeViewController.swift */; };
 		A10000000000000000000008 /* GameResultIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000000000000000000009 /* GameResultIntent.swift */; };
-		A1000000000000000000000A /* CatalogWatch.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* CatalogWatch.swift */; };
+		A1000000000000000000000A /* NewTeamPush.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000000000000000000000B /* NewTeamPush.swift */; };
 		A10000000000000000000003 /* GoogleSignIn in Frameworks */ = {isa = PBXBuildFile; productRef = A10000000000000000000007 /* GoogleSignIn */; };
 		B10000000000000000000001 /* ShareQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* ShareQueue.swift */; };
 		B10000000000000000000002 /* ShareQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10000000000000000000004 /* ShareQueue.swift */; };
@@ -58,7 +58,7 @@
 		A10000000000000000000004 /* AtlasNativePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasNativePlugin.swift; sourceTree = "<group>"; };
 		A10000000000000000000005 /* AtlasBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AtlasBridgeViewController.swift; sourceTree = "<group>"; };
 		A10000000000000000000009 /* GameResultIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GameResultIntent.swift; sourceTree = "<group>"; };
-		A1000000000000000000000B /* CatalogWatch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CatalogWatch.swift; sourceTree = "<group>"; };
+		A1000000000000000000000B /* NewTeamPush.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTeamPush.swift; sourceTree = "<group>"; };
 		B10000000000000000000004 /* ShareQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Shared/ShareQueue.swift; sourceTree = "<group>"; };
 		B10000000000000000000005 /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareExtension/ShareViewController.swift; sourceTree = "<group>"; };
 		B10000000000000000000007 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -111,7 +111,7 @@
 				A10000000000000000000004 /* AtlasNativePlugin.swift */,
 				A10000000000000000000005 /* AtlasBridgeViewController.swift */,
 				A10000000000000000000009 /* GameResultIntent.swift */,
-				A1000000000000000000000B /* CatalogWatch.swift */,
+				A1000000000000000000000B /* NewTeamPush.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -226,7 +226,7 @@
 				A10000000000000000000001 /* AtlasNativePlugin.swift in Sources */,
 				A10000000000000000000002 /* AtlasBridgeViewController.swift in Sources */,
 				A10000000000000000000008 /* GameResultIntent.swift in Sources */,
-				A1000000000000000000000A /* CatalogWatch.swift in Sources */,
+				A1000000000000000000000A /* NewTeamPush.swift in Sources */,
 				B10000000000000000000001 /* ShareQueue.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

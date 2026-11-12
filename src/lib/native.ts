@@ -1,9 +1,9 @@
 import { Capacitor, registerPlugin } from '@capacitor/core';
 import type { GameTally, ShortcutTeam } from './team-collections.ts';
 
-export interface CatalogWatchResult {
+export interface PushRegistration {
   granted: boolean;
-  backgroundRefresh: boolean;
+  token?: string;
 }
 
 interface AtlasNativePlugin {
@@ -16,12 +16,7 @@ interface AtlasNativePlugin {
   setActiveTeam(options: { team: ShortcutTeam | null }): Promise<void>;
   getPendingResults(): Promise<{ results: GameTally[] }>;
   acknowledgeResults(options: { results: GameTally[] }): Promise<void>;
-  setCatalogWatch(options: {
-    enabled: boolean;
-    endpoint: string;
-    bundleHash: string | null;
-    knownIds: string[];
-  }): Promise<CatalogWatchResult>;
+  registerPush(options: { authorize: boolean }): Promise<PushRegistration>;
 }
 
 export const isNativeApp = Capacitor.isNativePlatform();
