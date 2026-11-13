@@ -20,12 +20,12 @@ export function parseRegulationOverrides(value: unknown): RegulationOverride[] {
 
 export function readRegulationOverrides(
   storage: Pick<Storage, 'getItem'>
-): RegulationOverride[] {
+): RegulationOverride[] | null {
   try {
     const raw = storage.getItem(regulationOverridesKey);
     return raw === null ? [] : parseRegulationOverrides(JSON.parse(raw));
   } catch {
-    return [];
+    return null;
   }
 }
 

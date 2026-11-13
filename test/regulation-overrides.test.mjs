@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   mergeRegulationOverrides,
+  readRegulationOverrides,
   withRegulationOverrides,
 } from '../src/lib/regulation-overrides.ts';
 import { legalRegulations } from '../src/lib/rosters.ts';
@@ -68,4 +69,11 @@ test('legalRegulations lists rosters the whole team is legal in', () => {
     legalRegulations([{ pokemon: 'Maushold', item: null, ability: null }]),
     ['M-A', 'M-B']
   );
+});
+
+test('reading overrides distinguishes absent from unreadable storage', () => {
+  const storage = (raw) => ({ getItem: () => raw });
+  assert.deepEqual(readRegulationOverrides(storage(null)), []);
+  assert.equal(readRegulationOverrides(storage('{bad')), null);
+  assert.equal(readRegulationOverrides(storage('[{"id":""}]')), null);
 });

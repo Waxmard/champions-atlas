@@ -417,7 +417,7 @@ export async function syncRegulations(): Promise<void> {
         ? parseRegulationOverrides(snapshot.data().entries)
         : [];
       const next = mergeRegulationOverrides(
-        readRegulationOverrides(localStorage),
+        readRegulationOverrides(localStorage) ?? [],
         remote
       );
       if (canonicalSnapshot(next) !== canonicalSnapshot(remote))
@@ -429,10 +429,12 @@ export async function syncRegulations(): Promise<void> {
       return next;
     });
     if (!valid(generation, id)) return;
-    writeRegulationOverrides(
-      localStorage,
-      mergeRegulationOverrides(readRegulationOverrides(localStorage), merged)
-    );
+    const local = readRegulationOverrides(localStorage);
+    if (local)
+      writeRegulationOverrides(
+        localStorage,
+        mergeRegulationOverrides(local, merged)
+      );
     reloadRegulationOverrides();
   } catch (error) {
     if (generation === session) fail(error);

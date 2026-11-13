@@ -32,7 +32,7 @@ class CatalogRuntimeState {
   overrides = $state.raw<RegulationOverride[]>(
     typeof localStorage === 'undefined'
       ? []
-      : readRegulationOverrides(localStorage)
+      : (readRegulationOverrides(localStorage) ?? [])
   );
   catalog = $derived(withRegulationOverrides(this.base, this.overrides));
   tags = $state.raw<TeamTagsIndex>(bundledTags);
@@ -47,9 +47,11 @@ export function setRegulationOverride(
   regulation: string | null
 ): boolean {
   try {
+    const stored = readRegulationOverrides(localStorage);
+    if (!stored) return false;
     const next = mergeRegulationOverrides(
       [{ id, regulation, at: Date.now() }],
-      readRegulationOverrides(localStorage)
+      stored
     );
     writeRegulationOverrides(localStorage, next);
     catalogState.overrides = next;
@@ -60,7 +62,7 @@ export function setRegulationOverride(
 }
 
 export function reloadRegulationOverrides(): void {
-  catalogState.overrides = readRegulationOverrides(localStorage);
+  catalogState.overrides = readRegulationOverrides(localStorage) ?? [];
 }
 
 let activeBundleHash: string | undefined;
