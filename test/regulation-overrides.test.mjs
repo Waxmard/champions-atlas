@@ -71,6 +71,16 @@ test('legalRegulations lists rosters the whole team is legal in', () => {
   );
 });
 
+test('legalRegulations offers nothing when a member cannot be resolved', () => {
+  assert.deepEqual(
+    legalRegulations([
+      { pokemon: 'Squawkabilly', item: null, ability: null },
+      { pokemon: 'Notapokemon', item: null, ability: null },
+    ]),
+    []
+  );
+});
+
 test('reading overrides distinguishes absent from unreadable storage', () => {
   const storage = (raw) => ({ getItem: () => raw });
   assert.deepEqual(readRegulationOverrides(storage(null)), []);

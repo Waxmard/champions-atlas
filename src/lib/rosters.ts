@@ -46,6 +46,6 @@ export const legalRegulations = (
   rosterRegulations.filter((regulation) =>
     members.every((member) => {
       const form = resolveBattleForm(member);
-      return form.error !== null || isRosterLegal(form.pokemon, regulation);
+      return form.error === null && isRosterLegal(form.pokemon, regulation);
     })
   );

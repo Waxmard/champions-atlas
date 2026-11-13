@@ -35,7 +35,8 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Browse lists every regulation, newest first, with each card labelled by
   regulation. Selected Pokémon stay compact on the page; **Filters** opens a
   pop-up with item, ability, and move controls for each selection, plus
-  **Unknown regulation only** (`?unknown=1`).
+  **Unknown regulation only** (`?unknown=1`). Older links and saved filters
+  that carry a regulation choice are ignored.
 - A team of Unknown regulation shows a regulation picker on its page, offering
   only regulations whose roster the whole team is legal in. The choice is saved
   on the device, marked "Set by you", synced with a signed-in account, and
