@@ -156,6 +156,7 @@
     class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
   >
     <a
+      data-swipe-back
       href={resolve(`?${page.url.searchParams}`)}
       onclick={back}
       class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content"

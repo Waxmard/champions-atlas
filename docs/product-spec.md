@@ -220,7 +220,10 @@ page, it opens Browse. Explicit links take precedence, and a missing remembered
 detail falls back to browsing. Editors and dialogs reopen closed. The main
 navigation is a bottom tab bar (Browse, My Teams, Favorites, Wishlist) that
 remains visible while scrolling, and selecting a Pokémon clears its
-search input for the next choice.
+search input for the next choice. A rightward swipe from the left screen edge
+follows the screen's Back link, a downward swipe inside a dialog closes it as
+Escape does (the set editor cancels its edits), and dragging a Wishlist or
+Favorites row left past half its width asks to remove it.
 
 An explicit saved-team link with no saved teams keeps its URL and shows a
 missing-team notice. Resuming a deleted saved team opens the empty My teams view

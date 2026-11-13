@@ -3,6 +3,7 @@
   import { flip } from 'svelte/animate';
   import { fade } from 'svelte/transition';
   import { dur } from '#lib/motion.js';
+  import { swipeRemove } from '#lib/swipe.js';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
   import Trash2 from '@lucide/svelte/icons/trash-2';
@@ -79,7 +80,7 @@
   {#each entries as entry, index (entry.id)}
     {@const heading = savedTeamHeading(entry)}
     <li
-      class="min-w-0"
+      class="relative min-w-0"
       data-wishlist-id={entry.id}
       animate:flip={{ duration: dur(250) }}
       out:fade={{ duration: dur(150) }}
@@ -112,51 +113,64 @@
           </Button>
         </div>
       {/snippet}
-      <TeamCard
-        team={displayTeam(entry)}
-        {heading}
-        titleActions={sortable ? titleActions : undefined}
-        query=""
-        href={`${collection}?team=${encodeURIComponent(entry.id)}`}
-        fromCatalog={false}
-        morphId={entry.id}
+      <div
+        aria-hidden="true"
+        class="absolute inset-1 flex items-center justify-end rounded-box bg-error pe-6 text-error-content"
       >
-        {#snippet leadingActions()}
-          <Button
-            data-wishlist-use
-            variant="quiet"
-            class="min-h-11 ps-0 pe-1.5"
-            {disabled}
-            onclick={() => onuse(entry)}
-          >
-            <AtlasIcon />
-            <span>My Teams</span>
-          </Button>
-        {/snippet}
-        {#snippet trailingActions()}
-          <div class="flex items-center gap-2">
-            {#if entry.record}
-              {@const summary = recordSummary(entry.record)}
-              <span
-                class="provenance"
-                role="img"
-                aria-label={`Record: ${summary.label}`}>{summary.text}</span
-              >
-            {/if}
+        <Trash2 class="size-5" />
+      </div>
+      <div
+        class="relative touch-pan-y transition-[translate] duration-200"
+        use:swipeRemove={() => {
+          if (!disabled) onremove(entry);
+        }}
+      >
+        <TeamCard
+          team={displayTeam(entry)}
+          {heading}
+          titleActions={sortable ? titleActions : undefined}
+          query=""
+          href={`${collection}?team=${encodeURIComponent(entry.id)}`}
+          fromCatalog={false}
+          morphId={entry.id}
+        >
+          {#snippet leadingActions()}
             <Button
+              data-wishlist-use
               variant="quiet"
-              size="icon-compact"
-              class="size-11"
-              aria-label={`Remove from ${label}`}
-              title={`Remove from ${label}`}
+              class="min-h-11 ps-0 pe-1.5"
               {disabled}
-              onclick={() => onremove(entry)}
+              onclick={() => onuse(entry)}
             >
-              <Trash2 class="size-4" aria-hidden="true" />
+              <AtlasIcon />
+              <span>My Teams</span>
             </Button>
-          </div>
-        {/snippet}
-      </TeamCard>
+          {/snippet}
+          {#snippet trailingActions()}
+            <div class="flex items-center gap-2">
+              {#if entry.record}
+                {@const summary = recordSummary(entry.record)}
+                <span
+                  class="provenance"
+                  role="img"
+                  aria-label={`Record: ${summary.label}`}>{summary.text}</span
+                >
+              {/if}
+              <Button
+                variant="quiet"
+                size="icon-compact"
+                class="size-11"
+                aria-label={`Remove from ${label}`}
+                title={`Remove from ${label}`}
+                {disabled}
+                onclick={() => onremove(entry)}
+              >
+                <Trash2 class="size-4" aria-hidden="true" />
+              </Button>
+            </div>
+          {/snippet}
+        </TeamCard>
+      </div>
     </li>
   {/each}
 </ul>
