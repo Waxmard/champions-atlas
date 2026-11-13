@@ -116,7 +116,6 @@
         team={displayTeam(entry)}
         {heading}
         titleActions={sortable ? titleActions : undefined}
-        showRegulation
         query=""
         href={`${collection}?team=${encodeURIComponent(entry.id)}`}
         fromCatalog={false}

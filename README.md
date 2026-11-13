@@ -7,7 +7,7 @@ primitives, and locally bundled Nunito Variable and Unbounded Variable.
 
 ## Development
 
-Use the Node 24 LTS environment selected by mise. The development and preview
+Use the Node 26 LTS environment selected by mise. The development and preview
 servers are local tools for the shared UI, not a supported website or PWA.
 Install dependencies and start the loopback server with:
 

@@ -32,10 +32,16 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   identity does not change imported species/forms, exports, or battle
   calculations. Legacy filters canonicalize to the shared identity while
   retaining explicit constraints; duplicate aliases remain invalid.
-- Default Browse to the current regulation; make older regulations available
-  through All regulations. Selected Pokémon stay compact on the page; **Filters**
-  opens a pop-up with the regulation choice and item, ability, and move controls
-  for each selection.
+- Browse lists every regulation, newest first, with each card labelled by
+  regulation. Selected Pokémon stay compact on the page; **Filters** opens a
+  pop-up with item, ability, and move controls for each selection, plus
+  **Unknown regulation only** (`?unknown=1`). Older links and saved filters
+  that carry a regulation choice are ignored.
+- A team of Unknown regulation shows a regulation picker on its page, offering
+  only regulations whose roster the whole team is legal in. The choice is saved
+  on the device, marked "Set by you", synced with a signed-in account, and
+  treated as the team's regulation everywhere. Choosing "Regulation unknown"
+  reverts it.
 - Prioritize relevant results with the ordering in [data sources](data-sources.md).
 - Saving or moving a team does not hide its catalog entry; Browse filters still
   apply.
@@ -378,10 +384,14 @@ offers moving a team into either. Move a record in either direction without
 changing its ID, original snapshot, edits, or sources. Moving from My teams asks
 for confirmation first, is unavailable while edits are pending, and rejects
 stale records or a conflicting copy already in the target collection. Separate
-copies are never merged.
+copies are never merged. Wishlist holds only teams whose sets match their
+original, so Browse bookmarks and **My Teams** always open the original sets:
+moving a team with set edits to Wishlist is refused with a pointer to
+Favorites, which keeps edited teams. A rename alone does not count as an edit.
 
-Wishlist Pokémon search matches the saved roster, including edits, rather than
-the original catalog roster. All selected Pokémon must match, using the same
+Wishlist Pokémon search matches the saved roster, including edits on records
+saved before Wishlist required unedited sets, rather than the original catalog
+roster. All selected Pokémon must match, using the same
 base and Mega identities as Browse. Search does not change saved records. It
 stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.

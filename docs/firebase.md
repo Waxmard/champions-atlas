@@ -235,6 +235,16 @@ original storage values and the former owner; if rollback fails, it marks the
 owner interrupted. Sign-out preserves per-account snapshots. The current-set
 manifest listener requests reconciliation rather than replacing local state.
 
+Regulations the user sets on Unknown catalog teams are stored on the device under
+`champions-atlas:regulations:v1` and sync through
+`users/{uid}/catalogState/regulations`, which contains exactly
+`schemaVersion: 1`, `entries` (at most 2,000 `{id, regulation, at}` entries), and
+`updatedAt: serverTimestamp()`. Entries merge by team ID, keeping the newest
+`at`; choosing "Regulation unknown" stores a `null` regulation so the undo syncs.
+Labels are not partitioned per account: a device's labels merge into whichever
+account signs in there. A malformed document stops this sync without changing
+local labels.
+
 Cloud set members are validated against their original document IDs before
 normalization. When a canonical slot and a legacy Mega-Z duplicate both exist,
 the canonical slot is kept and the duplicate is dropped without a prompt, in the

@@ -72,6 +72,16 @@ service cloud.firestore {
         allow read: if owner();
         allow create, update: if owner() && currentSetEntry(setId);
       }
+      match /catalogState/regulations {
+        allow read: if owner();
+        allow create, update: if owner()
+          && request.resource.data.keys().hasAll(['schemaVersion', 'entries', 'updatedAt'])
+          && request.resource.data.keys().hasOnly(['schemaVersion', 'entries', 'updatedAt'])
+          && request.resource.data.schemaVersion == 1
+          && request.resource.data.entries is list
+          && request.resource.data.entries.size() <= 2000
+          && request.resource.data.updatedAt is timestamp;
+      }
     }
     match /pushTokens/{token} {
       allow create, update: if request.auth != null

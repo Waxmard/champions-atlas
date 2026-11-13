@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import {
   browsePokemon,
   getMemberOptions,
   matchesTeam,
+  pokemonId,
   readFilters,
   teamHeading,
   writeFilters,
@@ -505,6 +507,42 @@ test('Browse identities merge Mega aliases without merging functional forms', ()
   assert.equal(browsePokemon('Rotom-Wash'), 'Rotom-Wash');
 });
 
+test('Browse identities merge official same-row forms and Maushold', () => {
+  for (const stem of ['m-a', 'm-b', 'm-c']) {
+    const roster = JSON.parse(
+      readFileSync(
+        new URL(`../scripts/data/champions-${stem}.json`, import.meta.url),
+        'utf8'
+      )
+    );
+    for (const keys of Object.values(roster.pokemon))
+      assert.equal(new Set(keys.map(pokemonId)).size, 1, keys.join(', '));
+  }
+  for (const [form, base] of [
+    ['Palafin-Hero', 'Palafin'],
+    ['Aegislash-Blade', 'Aegislash'],
+    ['Maushold-Four', 'Maushold'],
+    ['Sinistcha-Masterpiece', 'Sinistcha'],
+  ])
+    assert.equal(browsePokemon(form), base);
+  for (const name of [
+    'Indeedee-F',
+    'Arcanine-Hisui',
+    'Gourgeist-Large',
+    'Toxtricity-Low-Key',
+    'Lycanroc-Dusk',
+    'Floette',
+  ])
+    assert.equal(browsePokemon(name), name);
+  const filter = (pokemon) => [{ pokemon, item: '', ability: '', move: '' }];
+  assert.ok(
+    matchesTeam({ members: [member('Palafin-Hero', null)] }, filter('Palafin'))
+  );
+  assert.ok(
+    matchesTeam({ members: [member('Palafin', null)] }, filter('Palafin-Hero'))
+  );
+});
+
 test('member options aggregate observed constraints across merged Browse forms', () => {
   for (const names of [
     ['Mawile', 'Mawile-Mega'],
@@ -601,6 +639,8 @@ test('legacy Mega URLs restore and write canonical labels without changing const
     ['Garchomp-Mega-Z', 'Garchomp', 'Garchompite Z'],
     ['Floette-Eternal-Mega', 'Floette-Eternal', 'Floettite'],
     ['Floette-Mega', 'Floette-Eternal', 'Floettite'],
+    ['Palafin-Hero', 'Palafin', 'Leftovers'],
+    ['Maushold-Four', 'Maushold', 'Focus Sash'],
   ]) {
     for (const item of ['', stone]) {
       const tuple = [legacy, item, 'Published ability', 'Protect'];
@@ -629,6 +669,7 @@ test('legacy Mega URLs restore and write canonical labels without changing const
     ['Charizard-Mega-X', 'Charizard-Mega-Y'],
     ['Floette-Eternal', 'Floette-Mega'],
     ['Floette-Eternal-Mega', 'Floette-Mega'],
+    ['Palafin', 'Palafin-Hero'],
   ]) {
     const params = new URLSearchParams();
     for (const pokemon of names)

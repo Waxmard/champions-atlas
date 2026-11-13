@@ -1,4 +1,4 @@
-import parse5 from 'parse5';
+import { parse } from 'parse5';
 import { isPasteUrl, normalize } from '../src/lib/catalog.ts';
 import { parsePaste } from '../src/lib/paste.ts';
 import { setText } from '../src/lib/workbench.ts';
@@ -227,7 +227,7 @@ export function parseVictoryRoad(html) {
       'invalid_source',
       'Victory Road HTML must be a string'
     );
-  const document = parse5.parse(html);
+  const document = parse(html);
   const allNodes = descendants(document, () => true);
   const headings = allNodes.filter((node) =>
     /^h[1-3]$/.test(node.tagName || '')
@@ -508,7 +508,7 @@ export function parseDevonCorp(html) {
       'invalid_source',
       'DevonCorp HTML must be a string'
     );
-  const document = parse5.parse(html);
+  const document = parse(html);
   const articles = descendants(document, (node) => node.tagName === 'article');
   let article = null;
   let blogContent = null;

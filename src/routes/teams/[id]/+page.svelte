@@ -39,8 +39,12 @@
     toggleCatalogWishlist,
   } from '#lib/saved-team-actions.js';
   import { wishlistedCatalogEntries } from '#lib/team-collections.js';
-  import { catalogState } from '#lib/catalog-runtime.svelte.js';
-  import { sync } from '#lib/sync.svelte.js';
+  import { legalRegulations } from '#lib/rosters.js';
+  import {
+    catalogState,
+    setRegulationOverride,
+  } from '#lib/catalog-runtime.svelte.js';
+  import { sync, syncRegulations } from '#lib/sync.svelte.js';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -101,6 +105,14 @@
     actionError = result.error;
     if (result.status) notify(result.status);
     pending = false;
+  }
+  function setRegulation(select: HTMLSelectElement) {
+    if (setRegulationOverride(team.id, select.value || null)) actionError = '';
+    else {
+      select.value = team.regulationSetByUser ? team.regulation : '';
+      actionError = 'Regulation could not be saved on this device.';
+    }
+    void syncRegulations();
   }
   async function useTeam() {
     if (pending) return;
@@ -170,7 +182,25 @@
             : 'By an unlisted creator'}
       </p>
       <div class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <span class="detail-badge">{regulationLabel(team.regulation)}</span>
+        {#if team.regulation === 'Unknown' || team.regulationSetByUser}
+          <select
+            aria-label="Regulation"
+            class="select min-h-11 w-auto text-base sm:text-sm"
+            disabled={!ready}
+            value={team.regulationSetByUser ? team.regulation : ''}
+            onchange={(event) => setRegulation(event.currentTarget)}
+          >
+            <option value="">Regulation unknown</option>
+            {#each legalRegulations(team.members) as regulation (regulation)}
+              <option value={regulation}>{regulationLabel(regulation)}</option>
+            {/each}
+          </select>
+          {#if team.regulationSetByUser}<span class="provenance"
+              >Set by you</span
+            >{/if}
+        {:else}
+          <span class="detail-badge">{regulationLabel(team.regulation)}</span>
+        {/if}
         <span class="detail-badge" data-grade={evidenceGrade(strongest.level)}
           >{reason?.label ?? strongest.label}</span
         >

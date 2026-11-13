@@ -6,6 +6,13 @@ import bundledCatalog, {
   type CatalogData,
 } from './catalog-data.ts';
 import { admittedTeams } from './catalog.ts';
+import {
+  mergeRegulationOverrides,
+  readRegulationOverrides,
+  withRegulationOverrides,
+  writeRegulationOverrides,
+  type RegulationOverride,
+} from './regulation-overrides.ts';
 import type { TeamTagsIndex } from './tags.ts';
 
 const DB_NAME = 'champions-atlas-catalog';
@@ -21,13 +28,42 @@ function admittedCatalog(catalog: CatalogData): CatalogData {
 }
 
 class CatalogRuntimeState {
-  catalog = $state.raw<CatalogData>(admittedCatalog(bundledCatalog));
+  base = $state.raw<CatalogData>(admittedCatalog(bundledCatalog));
+  overrides = $state.raw<RegulationOverride[]>(
+    typeof localStorage === 'undefined'
+      ? []
+      : (readRegulationOverrides(localStorage) ?? [])
+  );
+  catalog = $derived(withRegulationOverrides(this.base, this.overrides));
   tags = $state.raw<TeamTagsIndex>(bundledTags);
   ready = $state(false);
   freshIds = $state.raw<ReadonlySet<string>>(new Set());
 }
 
 export const catalogState = new CatalogRuntimeState();
+
+export function setRegulationOverride(
+  id: string,
+  regulation: string | null
+): boolean {
+  try {
+    const stored = readRegulationOverrides(localStorage);
+    if (!stored) return false;
+    const next = mergeRegulationOverrides(
+      [{ id, regulation, at: Date.now() }],
+      stored
+    );
+    writeRegulationOverrides(localStorage, next);
+    catalogState.overrides = next;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function reloadRegulationOverrides(): void {
+  catalogState.overrides = readRegulationOverrides(localStorage) ?? [];
+}
 
 let activeBundleHash: string | undefined;
 let initPromise: Promise<void> | null = null;
@@ -111,7 +147,7 @@ function applyValidatedBundle(
   bundle: CatalogBundle,
   bundleHash?: string
 ): void {
-  catalogState.catalog = admittedCatalog(bundle);
+  catalogState.base = admittedCatalog(bundle);
   catalogState.tags = bundle.tags;
   activeBundleHash = bundleHash ?? bundle.bundleHash;
   catalogState.freshIds = new Set(bundle.latestBatch?.ids);

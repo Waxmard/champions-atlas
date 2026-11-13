@@ -37,13 +37,13 @@
   "devDependencies": {
     "@capacitor/cli": "^8.5.3",
     "@eslint/js": "^10.0.1",
-    "@lucide/svelte": "^1.69.0",
-    "@pkmn/dex": "0.10.13",
+    "@lucide/svelte": "^1.70.0",
+    "@pkmn/dex": "0.10.15",
     "@sveltejs/adapter-static": "^4.0.1",
     "@sveltejs/kit": "^3.1.1",
     "@sveltejs/vite-plugin-svelte": "^7.3.1",
     "@tailwindcss/vite": "^4.3.4",
-    "@types/node": "^24",
+    "@types/node": "^26",
     "bits-ui": "^2.20.6",
     "csv-parse": "^7.0.3",
     "daisyui": "^5.7.50",
@@ -53,7 +53,7 @@
     "firebase-tools": "^15.35.0",
     "globals": "^17.14.0",
     "lefthook": "^2.2.2",
-    "parse5": "5.1.1",
+    "parse5": "8.1.0",
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
     "prettier-plugin-tailwindcss": "^0.8.1",
@@ -84,10 +84,11 @@
     "glob": "^14.0.3",
     "gaxios": {
       "uuid": "^11.1.1"
-    }
+    },
+    "superstatic": "^11.1.0"
   },
   "engines": {
-    "node": "^24.0.0"
+    "node": "^26.0.0"
   },
   "dependencies": {
     "@capacitor/core": "^8.5.3",

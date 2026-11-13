@@ -297,6 +297,7 @@ test('Mega-Z duplicates keep the canonical slot and drop the legacy one', () => 
     ['Garchomp', 'Garchomp-Mega-Z'],
     ['Lucario', 'Lucario-Mega-Z'],
     ['Absol', 'Absol-Mega-Z'],
+    ['Palafin', 'Palafin-Hero'],
   ];
   for (const [base, megaZ] of pairs) {
     const sets = [
@@ -355,6 +356,7 @@ test('invalid registries reject without startup writes', () => {
   const invalid = [
     [pikachu(), pikachu()],
     [{ id: 'unrelated', member: member({ pokemon: 'Garchomp-Mega-Z' }) }],
+    [{ id: 'garchompmega', member: member({ pokemon: 'Garchomp-Mega' }) }],
     [pikachu({ moves: ['Protect', 'protect'] })],
     [pikachu({ moves: ['A', 'B', 'C', 'D', 'E'] })],
     Array.from({ length: 1501 }, () => pikachu()),

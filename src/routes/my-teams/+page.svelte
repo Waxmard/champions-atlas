@@ -525,6 +525,7 @@
               name={draft.name}
               {baseline}
               {dirty}
+              edited={collections.hasSetEdits(draft)}
               members={draft.members}
               disabled={changed || editing || deleting || stale}
               deleteDisabled={editing || deleting}
