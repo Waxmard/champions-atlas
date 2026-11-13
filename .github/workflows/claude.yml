@@ -36,6 +36,7 @@ jobs:
 
             Review this pull request for bugs, security problems, and violations of AGENTS.md.
             Do not comment on PR scope, unrelated changes, or whether to split the PR.
+            Do not comment on the PR title, description, or commit messages, including whether they match the changes.
             The PR branch is already checked out in the current working directory.
 
             Use `gh pr comment` for top-level feedback.
