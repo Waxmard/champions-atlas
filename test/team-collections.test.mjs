@@ -238,18 +238,25 @@ test('collection changes preserve the catalog team and its saved original', () =
   assert.equal(edited.members[0].item, 'Edited item');
   assertOriginal();
 
-  const moved = moveInUseTeamToWishlist(
-    s,
-    edited.id,
-    canonicalSnapshot({ name: edited.name, members: edited.members })
+  const beforeMove = s.data;
+  assert.throws(
+    () =>
+      moveInUseTeamToWishlist(
+        s,
+        edited.id,
+        canonicalSnapshot({ name: edited.name, members: edited.members })
+      ),
+    (error) =>
+      error instanceof SavedTeamError &&
+      /only holds original teams/.test(error.message)
   );
-  assert.equal(moved.name, 'Edited name');
-  assert.equal(moved.members[0].item, 'Edited item');
+  assert.equal(s.data, beforeMove);
   assertOriginal();
-  removeWishlistedTeam(s, moved.id);
-  assert.deepEqual(readSavedTeams(s), []);
+  assert.equal(wishlistedCatalogEntries(readSavedTeams(s), source).length, 0);
+  const fresh = useCatalogTeam(s, source);
+  assert.notEqual(fresh.id, edited.id);
+  assert.deepEqual(fresh.members, fresh.original.members);
   assert.deepEqual(source, baseline);
-  assert.deepEqual(moved.original, baseline);
 });
 
 test('invalid collection, corrupt storage, quota, and capacity preserve existing data', () => {
@@ -315,15 +322,12 @@ const failing = (teams) => {
 const teamBaseline = (team) =>
   canonicalSnapshot({ name: team.name, members: team.members });
 
-test('moving a changed team to Wishlist and back keeps its saved record and latest sources', () => {
+test('moving a renamed team to Wishlist and back keeps its saved record and latest sources', () => {
   const initial = snapshot('team', 'Original name');
   const edited = {
     ...initial,
     name: 'Edited name',
     original: { ...initial.original, pasteUrl },
-    members: initial.members.map((member, index) =>
-      index ? member : { ...member, item: 'Edited item', set: 'Raw set text' }
-    ),
     sources: [{ name: 'Original source', pasteUrl }],
   };
   const s = storage([edited]);

@@ -383,7 +383,10 @@ offers moving a team into either. Move a record in either direction without
 changing its ID, original snapshot, edits, or sources. Moving from My teams asks
 for confirmation first, is unavailable while edits are pending, and rejects
 stale records or a conflicting copy already in the target collection. Separate
-copies are never merged.
+copies are never merged. Wishlist holds only teams whose sets match their
+original, so Browse bookmarks and **My Teams** always open the original sets:
+moving a team with set edits to Wishlist is refused with a pointer to
+Favorites, which keeps edited teams. A rename alone does not count as an edit.
 
 Wishlist Pokémon search matches the saved roster, including edits, rather than
 the original catalog roster. All selected Pokémon must match, using the same

@@ -14,6 +14,7 @@
     moveInUseTeamToWishlist,
     resolveSavedTeamId,
     SavedTeamError,
+    WISHLIST_EDITED_ERROR,
   } from '#lib/team-collections.js';
   import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
 
@@ -24,6 +25,7 @@
     members: Member[];
     disabled: boolean;
     dirty: boolean;
+    edited: boolean;
     deleteDisabled: boolean;
     ondelete: () => void;
   }
@@ -35,6 +37,7 @@
     members,
     disabled,
     dirty,
+    edited,
     deleteDisabled,
     ondelete,
   }: Props = $props();
@@ -48,6 +51,10 @@
 
   async function move(target: 'favorites' | 'wishlist') {
     if (moveDisabled) return;
+    if (target === 'wishlist' && edited) {
+      errorMessage = WISHLIST_EDITED_ERROR;
+      return;
+    }
     const id = teamId;
     const label = target === 'favorites' ? 'Favorites' : 'Wishlist';
     if (!confirm(`Move “${name}” to ${label}?`)) return;

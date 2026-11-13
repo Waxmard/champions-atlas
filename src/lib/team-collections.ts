@@ -18,6 +18,14 @@ export const isTeamInUse = (team: SavedTeam): boolean =>
 export const teamsInUse = (saved: SavedTeam[]): SavedTeam[] =>
   saved.filter(isTeamInUse);
 
+export const hasSetEdits = (
+  team: Pick<SavedTeam, 'members' | 'original'>
+): boolean =>
+  canonicalSnapshot(team.members) !== canonicalSnapshot(team.original.members);
+
+export const WISHLIST_EDITED_ERROR =
+  'Wishlist only holds original teams. Move this edited team to Favorites instead.';
+
 export const savedTeamHeading = (entry: SavedTeam) =>
   teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original);
 
@@ -355,6 +363,7 @@ export function moveInUseTeamToWishlist(
     throw new SavedTeamError(
       'This team changed elsewhere. Reopen My Teams before moving it.'
     );
+  if (hasSetEdits(latest)) throw new SavedTeamError(WISHLIST_EDITED_ERROR);
   rejectCollectionCopy(saved, latest, 'wishlist', 'Wishlist');
   return saveAndGet(storage, { ...latest, collection: 'wishlist' });
 }
