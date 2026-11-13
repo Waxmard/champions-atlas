@@ -60,4 +60,12 @@ test('legalRegulations lists rosters the whole team is legal in', () => {
   ]);
   assert.ok(legal.includes('M-C'));
   assert.ok(!legal.includes('M-A'));
+  assert.deepEqual(
+    legalRegulations([{ pokemon: 'Maushold-Four', item: null, ability: null }]),
+    ['M-C']
+  );
+  assert.deepEqual(
+    legalRegulations([{ pokemon: 'Maushold', item: null, ability: null }]),
+    ['M-A', 'M-B']
+  );
 });

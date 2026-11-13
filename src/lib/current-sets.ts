@@ -51,10 +51,10 @@ export function inspectRawCurrentSet(value: unknown): CurrentSetCandidate {
   if (!result.success) throw new Error(readError);
   const { id: originalId, member } = result.data;
   const id = pokemonId(member.pokemon);
-  const legacyMegaZ =
-    /[- ]mega[- ]z$/i.test(member.pokemon) &&
-    originalId === normalize(member.pokemon);
-  if (originalId !== id && !legacyMegaZ) throw new Error(readError);
+  const legacyForm =
+    originalId === normalize(member.pokemon) &&
+    !/[- ]mega(?:[- ][xy])?$/i.test(member.pokemon);
+  if (originalId !== id && !legacyForm) throw new Error(readError);
 
   const moves = member.moves.map(normalize);
   if (moves.some((move) => !move) || new Set(moves).size !== moves.length)

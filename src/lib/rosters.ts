@@ -35,7 +35,7 @@ export function isRosterLegal(form: string, regulation: string): boolean {
     rosterIds.set(regulation, ids);
   }
   return (
-    ids.has(pokemonId(form)) &&
+    ids.has(isMegaSpecies(form) ? pokemonId(form) : normalize(form)) &&
     (!isMegaSpecies(form) || normalize(form) in rosters[regulation].megas)
   );
 }

@@ -20,6 +20,23 @@ export const cosmeticForms: Record<string, string> = {
   vivillonpokeball: 'vivillon',
 };
 
+export const browseForms = new Map([
+  ['aegislashblade', 'Aegislash'],
+  ['aegislashshield', 'Aegislash'],
+  ['castformrainy', 'Castform'],
+  ['castformsnowy', 'Castform'],
+  ['castformsunny', 'Castform'],
+  ['floetteeternal', 'Floette-Eternal'],
+  ['floetteeternalmega', 'Floette-Eternal'],
+  ['floettemega', 'Floette-Eternal'],
+  ['mausholdfour', 'Maushold'],
+  ['morpekohangry', 'Morpeko'],
+  ['palafinhero', 'Palafin'],
+  ['polteageistantique', 'Polteageist'],
+  ['sinistchamasterpiece', 'Sinistcha'],
+  ['vivillonfancy', 'Vivillon'],
+]);
+
 export const battleSpecies = (name: string) =>
   generation.species.get(normalize(aliases[normalize(name)] ?? name) as ID);
 

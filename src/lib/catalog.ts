@@ -1,5 +1,6 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
+import { browseForms } from './battle-forms.ts';
 import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
 import { recencyPeriod } from './recency.ts';
 import { splitTeamName, videoHeading, withoutDivision } from './team-name.ts';
@@ -84,13 +85,10 @@ export const basePokemon = (name: string) =>
   normalize(name).replace(/mega[a-z]?$/, '');
 
 export function browsePokemon(name: string): string {
-  if (
-    ['floetteeternal', 'floetteeternalmega', 'floettemega'].includes(
-      normalize(name)
-    )
-  )
-    return 'Floette-Eternal';
-  return name.replace(/[- ]mega(?:[- ][xyz])?$/i, '');
+  return (
+    browseForms.get(normalize(name)) ??
+    name.replace(/[- ]mega(?:[- ][xyz])?$/i, '')
+  );
 }
 export const pokemonId = (name: string) => normalize(browsePokemon(name));
 export function isPasteUrl(value: string): boolean {
