@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.12.0](https://github.com/Waxmard/champions-atlas/compare/v0.11.0...v0.12.0) (2026-11-13)
+
+
+### Features
+
+* browse all regulations newest first ([#112](https://github.com/Waxmard/champions-atlas/issues/112)) ([3940f83](https://github.com/Waxmard/champions-atlas/commit/3940f834c0145823b89ccd568d258ca081f9177f))
+
 ## [0.11.0](https://github.com/Waxmard/champions-atlas/compare/v0.10.0...v0.11.0) (2026-11-13)
 
 
