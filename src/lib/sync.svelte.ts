@@ -490,11 +490,14 @@ export async function signOut(): Promise<void> {
   if (!auth) return;
   if (db && isNativeApp) {
     const firestore = db;
-    await AtlasNative.registerPush({ authorize: false })
-      .then(({ token }) =>
-        token ? deleteDoc(doc(firestore, 'pushTokens', token)) : undefined
-      )
-      .catch(() => undefined);
+    await Promise.race([
+      AtlasNative.registerPush({ authorize: false })
+        .then(({ token }) =>
+          token ? deleteDoc(doc(firestore, 'pushTokens', token)) : undefined
+        )
+        .catch(() => undefined),
+      new Promise((done) => setTimeout(done, 3000)),
+    ]);
   }
   invalidate();
   sync.user = null;

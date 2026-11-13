@@ -150,6 +150,10 @@ if (
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
   const origin = process.env.CATALOG_ORIGIN;
+  if (!origin && process.env.CI)
+    throw new Error(
+      'CATALOG_ORIGIN is required in CI; publishing without it would drop the new-team batch.'
+    );
   if (!origin)
     console.warn(
       'CATALOG_ORIGIN is not set; this release carries no new-team batch.'

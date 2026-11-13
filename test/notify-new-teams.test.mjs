@@ -54,14 +54,18 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
   );
 });
 
-const apns = (status, reason = '') => ({
+const apns = (
+  status,
+  reason = '',
+  body = reason && JSON.stringify({ reason })
+) => ({
   request() {
     const request = new EventEmitter();
     request.setEncoding = () => {};
     request.end = () =>
       queueMicrotask(() => {
         request.emit('response', { ':status': status });
-        if (reason) request.emit('data', JSON.stringify({ reason }));
+        if (body) request.emit('data', body);
         request.emit('end');
       });
     return request;
@@ -88,5 +92,9 @@ test('deliver maps APNs replies to sent, dead, rejected, or failed', async () =>
   assert.equal(
     await outcome(apns(429, 'TooManyRequests')),
     'failed: 429 TooManyRequests'
+  );
+  assert.equal(
+    await outcome(apns(502, '', '<html>Bad Gateway</html>')),
+    'failed: 502 <html>Bad Gateway</html>'
   );
 });

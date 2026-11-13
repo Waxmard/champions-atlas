@@ -89,6 +89,14 @@ async function firestore(accessToken, url, init = {}) {
   return response.json();
 }
 
+function failureReason(body) {
+  try {
+    return JSON.parse(body).reason;
+  } catch {
+    return body;
+  }
+}
+
 function send(session, authorization, deviceToken, payload) {
   const { promise, resolve: done, reject } = Promise.withResolvers();
   const request = session.request({
@@ -109,9 +117,7 @@ function send(session, authorization, deviceToken, payload) {
   request.on('data', (chunk) => {
     body += chunk;
   });
-  request.on('end', () =>
-    done({ status, reason: body ? JSON.parse(body).reason : '' })
-  );
+  request.on('end', () => done({ status, reason: failureReason(body) }));
   request.on('error', reject);
   request.end(payload);
   return promise;
@@ -219,11 +225,11 @@ export async function notifyNewTeams({
     } finally {
       for (const session of sessions) session.close();
     }
-    if (counts.failed)
+    if (counts.failed && !counts.sent)
       throw new Error(
-        `${counts.failed} of ${names.length} notifications failed; the batch was not marked as announced.`
+        `${counts.failed} of ${names.length} notifications failed and none were sent; the batch was not marked as announced.`
       );
-    summary = `Sent "${alert.title}" to ${counts.sent} device(s); removed ${counts.dead} stale token(s); ${counts.rejected} rejected.`;
+    summary = `Sent "${alert.title}" to ${counts.sent} device(s); removed ${counts.dead} stale token(s); ${counts.rejected} rejected; ${counts.failed} failed.`;
   }
 
   await firestore(accessToken, `${documents}/pushState/catalog`, {
