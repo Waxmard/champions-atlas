@@ -103,7 +103,7 @@
   {#if swipeRight}
     <div
       aria-hidden="true"
-      class="absolute inset-1 hidden items-center gap-2 rounded-box bg-success ps-6 text-sm font-semibold text-success-content opacity-60 peer-data-[swipe-armed]:opacity-100 peer-data-[swipe=right]:flex"
+      class="absolute inset-1 hidden items-center gap-2 rounded-box bg-success ps-6 text-sm font-semibold text-success-content peer-data-[swipe=right]:flex peer-data-[swipe-armed]:[&_svg]:scale-125"
     >
       {@render swipeRight()}
     </div>
@@ -111,7 +111,7 @@
   {#if swipeLeft}
     <div
       aria-hidden="true"
-      class="absolute inset-1 hidden items-center justify-end gap-2 rounded-box bg-error pe-6 text-sm font-semibold text-error-content opacity-60 peer-data-[swipe-armed]:opacity-100 peer-data-[swipe=left]:flex"
+      class="absolute inset-1 hidden items-center justify-end gap-2 rounded-box bg-error pe-6 text-sm font-semibold text-error-content peer-data-[swipe=left]:flex peer-data-[swipe-armed]:[&_svg]:scale-125"
     >
       {@render swipeLeft()}
     </div>

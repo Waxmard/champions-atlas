@@ -332,7 +332,7 @@
               {/snippet}
               {#snippet swipeRight()}
                 <Bookmark class="size-5" />
-                <span>Wishlist</span>
+                <span>Add to Wishlist</span>
               {/snippet}
               {#snippet swipeLeft()}
                 <span>Remove</span>
