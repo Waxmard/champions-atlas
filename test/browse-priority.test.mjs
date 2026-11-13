@@ -46,30 +46,51 @@ const order = (teams, compare = compareBrowseTeams, current = 'M-C') =>
   [...teams].sort((a, b) => compare(a, b, current)).map(({ id }) => id);
 const video = 'https://www.youtube.com/watch?v=abcdefghijk';
 
-test('resource groups outrank credentials and publication dates', () => {
-  const neither = team('neither', {
-    publishedAt: '2026-12-31',
-    reports: [report('Champions ranked battles', 'Master Ball 1')],
-    members: pokemon.map(() => member(null)),
+test('complete EVs outrank results, and results outrank a video', () => {
+  const noEvs = pokemon.map(() => member(null));
+  assert.deepEqual(
+    order([
+      team('no-evs', {
+        members: noEvs,
+        reports: [report('Champions ranked battles', 'Master Ball 1')],
+      }),
+      team('evs', { reports: [report('Other event', 'result')] }),
+    ]),
+    ['evs', 'no-evs']
+  );
+  assert.deepEqual(
+    order([
+      team('video', {
+        reports: [report('Champions ranked battles', 'Master Ball 2', video)],
+      }),
+      team('result', {
+        reports: [report('Champions ranked battles', 'Master Ball 1')],
+      }),
+    ]),
+    ['result', 'video']
+  );
+  assert.deepEqual(
+    order([
+      team('a-plain'),
+      team('z-video', { reports: [report('', '', video)] }),
+    ]),
+    ['z-video', 'a-plain']
+  );
+});
+
+test('newer regulations come first regardless of resources or results', () => {
+  const mA = team('m-a', {
+    regulation: 'M-A',
+    reports: [report('Champions ranked battles', 'Master Ball 1', video)],
   });
-  const videoOnly = team('video-only', {
-    publishedAt: '2026-12-30',
-    reports: [report('Champions ranked battles', 'Master Ball 2', video)],
-    members: pokemon.map(() => member(null)),
-  });
-  const evOnly = team('ev-only', {
-    publishedAt: '2020-01-01',
-    reports: [report('Event', 'not a result')],
-  });
-  const evVideo = team('ev-video', {
-    publishedAt: '2019-01-01',
-    reports: [report('', '', video)],
-  });
-  assert.deepEqual(order([neither, evOnly, videoOnly, evVideo]), [
-    'ev-video',
-    'ev-only',
-    'video-only',
-    'neither',
+  const mB = team('m-b', { regulation: 'M-B' });
+  const mC = team('m-c', { members: pokemon.map(() => member(null)) });
+  const unknown = team('unknown', { regulation: 'Unknown' });
+  assert.deepEqual(order([mA, mB, mC, unknown]), [
+    'm-c',
+    'm-b',
+    'm-a',
+    'unknown',
   ]);
 });
 
@@ -343,7 +364,7 @@ test('unknown regulation follows known teams despite richer resources', () => {
   ]);
 });
 
-test('current regulation precedes merit within a band, then merit, date, and ID break ties', () => {
+test('current regulation precedes merit, then merit, date, and ID break ties', () => {
   const currentWorseMerit = team('current', {
     regulation: 'M-C',
     reports: [report('Champions ranked battles', 'Reported #2')],

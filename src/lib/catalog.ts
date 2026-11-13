@@ -55,6 +55,7 @@ export interface Team {
   pasteNotes: string | null;
   pasteError?: string;
   regulationInference?: RegulationInference;
+  regulationSetByUser?: true;
 }
 
 export interface MemberFilter {
@@ -695,13 +696,17 @@ function isDirectYoutubeVideo(value: string): boolean {
 
 const browseCache = new WeakMap<
   Team,
-  { current: string; resource: number; priority: Priority }
+  {
+    current: string;
+    completeEvs: boolean;
+    hasVideo: boolean;
+    priority: Priority;
+  }
 >();
 
 function browseRankingOf(team: Team, current: string) {
   const cached = browseCache.get(team);
   if (cached?.current === current) return cached;
-
   const completeEvs =
     team.members.length === 6 &&
     team.members.every((member) =>
@@ -719,30 +724,25 @@ function browseRankingOf(team: Team, current: string) {
     );
     if (priorityCompare(candidate, priority) < 0) priority = candidate;
   }
-  const result = {
-    current,
-    resource: completeEvs ? (hasVideo ? 0 : 1) : hasVideo ? 2 : 3,
-    priority,
-  };
+  const result = { current, completeEvs, hasVideo, priority };
   browseCache.set(team, result);
   return result;
 }
 
 export function compareBrowseTeams(a: Team, b: Team, current: string): number {
-  const unknownOrder =
-    Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown');
-  if (unknownOrder) return unknownOrder;
-
   const ra = browseRankingOf(a, current);
   const rb = browseRankingOf(b, current);
   return (
-    scalarCompare(ra.resource, rb.resource) ||
+    Number(a.regulation === 'Unknown') - Number(b.regulation === 'Unknown') ||
+    Number(b.regulation === current) - Number(a.regulation === current) ||
+    b.regulation.localeCompare(a.regulation) ||
+    Number(rb.completeEvs) - Number(ra.completeEvs) ||
     scalarCompare(
       ra.priority[0] - recencyPeriod(a.publishedAt),
       rb.priority[0] - recencyPeriod(b.publishedAt)
     ) ||
-    Number(b.regulation === current) - Number(a.regulation === current) ||
     priorityCompare(ra.priority, rb.priority) ||
+    Number(rb.hasVideo) - Number(ra.hasVideo) ||
     b.publishedAt.localeCompare(a.publishedAt) ||
     a.id.localeCompare(b.id)
   );

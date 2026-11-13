@@ -8,7 +8,6 @@
   let {
     team,
     heading,
-    showRegulation,
     query,
     titleActions,
     leadingActions,
@@ -20,7 +19,6 @@
   }: {
     team: Team;
     heading?: { title: string; context: string };
-    showRegulation: boolean;
     query: string;
     titleActions?: Snippet;
     leadingActions?: Snippet;
@@ -75,34 +73,27 @@
       {@render titleActions()}
     </div>
   {/if}
-  {#if leadingActions || trailingActions || showRegulation || team.publishedAt}
+  <div
+    class="mx-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-t py-2"
+  >
+    {#if leadingActions}
+      <div class="col-start-1">
+        {@render leadingActions()}
+      </div>
+    {/if}
     <div
-      class="mx-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-t py-2"
+      class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
+        ? 'col-start-2 justify-center text-center'
+        : 'col-span-2 col-start-1'}"
     >
-      {#if leadingActions}
-        <div class="col-start-1">
-          {@render leadingActions()}
-        </div>
-      {/if}
-      {#if showRegulation || team.publishedAt}
-        <div
-          class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
-            ? 'col-start-2 justify-center text-center'
-            : 'col-span-2 col-start-1'}"
-        >
-          {#if showRegulation}<span class="term"
-              >{regulationLabel(team.regulation)}</span
-            >{/if}
-          {#if team.publishedAt}<span class="provenance"
-              >{team.publishedAt}</span
-            >{/if}
-        </div>
-      {/if}
-      {#if trailingActions}
-        <div class="col-start-3 justify-self-end">
-          {@render trailingActions()}
-        </div>
-      {/if}
+      <span class="term">{regulationLabel(team.regulation)}</span>
+      {#if team.publishedAt}<span class="provenance">{team.publishedAt}</span
+        >{/if}
     </div>
-  {/if}
+    {#if trailingActions}
+      <div class="col-start-3 justify-self-end">
+        {@render trailingActions()}
+      </div>
+    {/if}
+  </div>
 </article>

@@ -24,11 +24,10 @@
     writeFilters,
     matchesTeam,
     compareBrowseTeams,
-    regulationLabel,
     type MemberFilter,
     type Team,
   } from '#lib/catalog.js';
-  const browseKeys = ['member', 'regulation', 'page', 'new'];
+  const browseKeys = ['member', 'page', 'new', 'unknown'];
   let storageError = $state(false);
   let filtersOpen = $state(false);
   let ready = $state(false);
@@ -39,12 +38,6 @@
   const catalog = $derived(catalogState.catalog);
   const teams: Team[] = $derived(catalog.teams);
   const current = $derived(catalog.currentRegulation);
-  const historicalRegulations = $derived(
-    [...new Set(teams.map((team) => team.regulation))]
-      .filter((value) => value !== current)
-      .sort()
-      .reverse()
-  );
   const filterState = $derived.by(() => {
     try {
       return {
@@ -59,9 +52,7 @@
     }
   });
   const filters = $derived(filterState.filters);
-  const regulation = $derived(
-    page.url.searchParams.get('regulation') || current
-  );
+  const unknownOnly = $derived(page.url.searchParams.get('unknown') === '1');
   const newOnly = $derived(page.url.searchParams.get('new') === '1');
   const filterCount = $derived(
     filters.reduce(
@@ -72,7 +63,7 @@
         Number(!!move.trim()),
       0
     ) +
-      Number(regulation !== current) +
+      Number(unknownOnly) +
       Number(newOnly)
   );
   const results = $derived(
@@ -81,7 +72,7 @@
       : teams
           .filter(
             (team) =>
-              (regulation === 'all' || team.regulation === regulation) &&
+              (!unknownOnly || team.regulation === 'Unknown') &&
               (!newOnly || catalogState.freshIds.has(team.id)) &&
               matchesTeam(team, filters)
           )
@@ -105,13 +96,13 @@
 
   function browseParams(params: URLSearchParams) {
     const result = writeFilters(new URLSearchParams(), readFilters(params));
-    result.set('regulation', params.get('regulation') || current);
     const pageValue = params.get('page');
 
     if (pageValue && /^\d+$/.test(pageValue) && Number(pageValue) > 1)
       result.set('page', pageValue);
 
     if (params.get('new') === '1') result.set('new', '1');
+    if (params.get('unknown') === '1') result.set('unknown', '1');
 
     return result;
   }
@@ -157,14 +148,12 @@
       const saved = localStorage.getItem(browseStorageKey);
       if (saved !== null) {
         const params = new URLSearchParams(saved);
-        if (!browseKeys.some((key) => params.has(key))) throw new Error();
+        if (!browseKeys.some((key) => params.has(key))) return;
         navigate(params, true, page.url.hash);
-        return;
       }
     } catch (error) {
       if (error instanceof DOMException) storageError = true;
     }
-    navigate(new URLSearchParams(), true, page.url.hash);
   }
 
   afterNavigate(restoreBrowse);
@@ -256,28 +245,6 @@
       </Button>
     {/snippet}
     {#snippet controls()}
-      <label for="regulation" class="term block w-full sm:max-w-64"
-        >Regulation
-        <select
-          id="regulation"
-          class="select mt-1 min-h-11 w-full text-base sm:text-sm"
-          value={regulation}
-          onchange={(event) =>
-            changeOption('regulation', event.currentTarget.value)}
-        >
-          <option value={current}>{current} (current)</option>
-          <option value="all">All regulations</option>
-          {#if regulation !== current && regulation !== 'all' && !historicalRegulations.includes(regulation)}<option
-              value={regulation}
-              >{regulation === 'Unknown'
-                ? 'Unknown regulation'
-                : regulation}</option
-            >{/if}
-          {#each historicalRegulations as reg (reg)}<option value={reg}
-              >{reg === 'Unknown' ? 'Unknown regulation' : reg}</option
-            >{/each}
-        </select>
-      </label>
       {#if catalogState.freshIds.size || newOnly}
         <label class="flex min-h-11 cursor-pointer items-center gap-3">
           <input
@@ -290,16 +257,22 @@
           <span class="font-semibold">New teams only</span>
         </label>
       {/if}
+      <label class="flex min-h-11 cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          class="size-5 accent-primary"
+          checked={unknownOnly}
+          onchange={(event) =>
+            changeOption('unknown', event.currentTarget.checked ? '1' : '')}
+        />
+        <span class="font-semibold">Unknown regulation only</span>
+      </label>
     {/snippet}
   </PokemonFilters>
 
-  {#if regulation !== current}
-    <p class="mt-2 text-sm wrap-break-word text-base-content/70">
-      Regulation: {regulation === 'all'
-        ? 'All regulations'
-        : regulationLabel(regulation)}
-    </p>
-  {/if}
+  {#if unknownOnly}<p class="mt-2 text-sm text-base-content/70">
+      Unknown regulation only
+    </p>{/if}
   {#if newOnly}<p class="mt-2 text-sm text-base-content/70">
       New teams only
     </p>{/if}
@@ -314,7 +287,7 @@
         {results.length}
         {results.length === 1 ? 'team' : 'teams'}
       </p>
-      {#if filters.length || regulation !== current || newOnly || filterState.error}<Button
+      {#if filters.length || unknownOnly || newOnly || filterState.error}<Button
           type="button"
           variant="quiet"
           disabled={!ready}
@@ -327,7 +300,6 @@
           {#each visible as team (team.id)}
             <TeamCard
               {team}
-              showRegulation={regulation === 'all'}
               query={page.url.search}
               isNew={catalogState.freshIds.has(team.id)}
             >

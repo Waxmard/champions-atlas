@@ -407,15 +407,16 @@ test('current regulation, placement, date, and ID remain tie breakers', () => {
   const idZ = team('z', [gc('101st')]);
   for (const compare of comparators) {
     assert.ok(compare(current, historical, 'M-C') < 0);
-    assert.ok(compare(historicalTop, current, 'M-C') < 0);
     assert.ok(compare(better, current, 'M-C') < 0);
     assert.ok(compare(better, older, 'M-C') < 0);
     assert.ok(compare(idA, idZ, 'M-C') < 0);
   }
+  assert.ok(compareTeams(historicalTop, current, 'M-C') < 0);
+  assert.ok(compareBrowseTeams(current, historicalTop, 'M-C') < 0);
   assert.ok(compareTeams(idZ, idA, 'M-C', -1) < 0);
 });
 
-test('Browse resource groups remain ahead of Global Challenge achievements', () => {
+test('Browse ranks complete EVs, then results, then video', () => {
   const video = 'https://www.youtube.com/watch?v=abcdefghijk';
   const noEvs = pokemon.map((species) => ({ pokemon: species, spread: null }));
   const both = team('both', [report('', '', undefined, video)]);
@@ -428,7 +429,7 @@ test('Browse resource groups remain ahead of Global Challenge achievements', () 
   const neither = team('neither', [gc('1st')], { members: noEvs });
   assert.deepEqual(
     order([neither, videoOnly, evOnly, both], compareBrowseTeams),
-    ['both', 'ev-only', 'video-only', 'neither']
+    ['ev-only', 'both', 'video-only', 'neither']
   );
   assert.ok(compareTeams(neither, both, 'M-C') < 0);
 });

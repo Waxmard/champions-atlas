@@ -53,6 +53,13 @@ import {
   syncRecordKey,
   wireCurrentSets,
 } from './storage-migration.ts';
+import { reloadRegulationOverrides } from './catalog-runtime.svelte.ts';
+import {
+  mergeRegulationOverrides,
+  parseRegulationOverrides,
+  readRegulationOverrides,
+  writeRegulationOverrides,
+} from './regulation-overrides.ts';
 
 type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
 
@@ -72,6 +79,7 @@ let session = 0;
 let uid = '';
 let unsubscribe: Unsubscribe | null = null;
 let unsubscribeSets: Unsubscribe | null = null;
+let unsubscribeRegulations: Unsubscribe | null = null;
 let base: SavedTeam[] | null = null;
 let setsBase: CurrentSet[] | null = null;
 let setManifestSnapshot: string | null = null;
@@ -104,6 +112,8 @@ function invalidate() {
   unsubscribe = null;
   unsubscribeSets?.();
   unsubscribeSets = null;
+  unsubscribeRegulations?.();
+  unsubscribeRegulations = null;
   uid = '';
   base = null;
   setsBase = null;
@@ -395,6 +405,40 @@ async function drain(generation: number, id: string) {
   }
 }
 
+export async function syncRegulations(): Promise<void> {
+  if (!db || !uid) return;
+  const generation = session;
+  const id = uid;
+  const ref = doc(db, 'users', id, 'catalogState', 'regulations');
+  try {
+    const merged = await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      const remote = snapshot.exists()
+        ? parseRegulationOverrides(snapshot.data().entries)
+        : [];
+      const next = mergeRegulationOverrides(
+        readRegulationOverrides(localStorage),
+        remote
+      );
+      if (canonicalSnapshot(next) !== canonicalSnapshot(remote))
+        transaction.set(ref, {
+          schemaVersion: 1,
+          entries: next,
+          updatedAt: serverTimestamp(),
+        });
+      return next;
+    });
+    if (!valid(generation, id)) return;
+    writeRegulationOverrides(
+      localStorage,
+      mergeRegulationOverrides(readRegulationOverrides(localStorage), merged)
+    );
+    reloadRegulationOverrides();
+  } catch (error) {
+    if (generation === session) fail(error);
+  }
+}
+
 function firebaseConfig() {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
   const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
@@ -444,6 +488,12 @@ export function initSync(): void {
           setManifestSnapshot = next;
           void request();
         },
+        (error) => generation === session && fail(error)
+      );
+      unsubscribeRegulations = watchCurrentSetDocument(
+        doc(firestore, 'users', uid, 'catalogState', 'regulations'),
+        () => valid(generation, user.uid),
+        () => void syncRegulations(),
         (error) => generation === session && fail(error)
       );
       void request();

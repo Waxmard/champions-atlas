@@ -32,10 +32,15 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   identity does not change imported species/forms, exports, or battle
   calculations. Legacy filters canonicalize to the shared identity while
   retaining explicit constraints; duplicate aliases remain invalid.
-- Default Browse to the current regulation; make older regulations available
-  through All regulations. Selected Pokémon stay compact on the page; **Filters**
-  opens a pop-up with the regulation choice and item, ability, and move controls
-  for each selection.
+- Browse lists every regulation, newest first, with each card labelled by
+  regulation. Selected Pokémon stay compact on the page; **Filters** opens a
+  pop-up with item, ability, and move controls for each selection, plus
+  **Unknown regulation only** (`?unknown=1`).
+- A team of Unknown regulation shows a regulation picker on its page, offering
+  only regulations whose roster the whole team is legal in. The choice is saved
+  on the device, marked "Set by you", synced with a signed-in account, and
+  treated as the team's regulation everywhere. Choosing "Regulation unknown"
+  reverts it.
 - Prioritize relevant results with the ordering in [data sources](data-sources.md).
 - Saving or moving a team does not hide its catalog entry; Browse filters still
   apply.

@@ -240,7 +240,7 @@
   function canonicalizing(from: URL, to: URL): boolean {
     if (from.pathname !== to.pathname) return false;
     if (from.pathname === resolve('/'))
-      return !['member', 'regulation', 'page'].some((key) =>
+      return !['member', 'page', 'new', 'unknown'].some((key) =>
         from.searchParams.has(key)
       );
     if (from.pathname !== resolve('my-teams')) return false;

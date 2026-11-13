@@ -373,22 +373,22 @@ best team in the pool. Teams of Unknown regulation carry no vote on item,
 ability, move, and Nature values. A team without a valid share date ranks as
 oldest.
 
-Browse orders known regulations ahead of Unknown, then ranks resource groups:
-complete EVs with a video, complete EVs without a video, a video without complete
-EVs, and neither. Complete EVs require
+Browse orders Unknown regulation last, the current regulation first, then other
+regulations newest first by name (M-B before M-A). Within a regulation, teams
+with complete EVs come first. Complete EVs require
 exactly six Pokémon with valid 66-point allocations, with each stat from 0 to 32;
 Nature is not required. Attributed imported EV additions count as working sets.
 A video is a direct HTTPS YouTube watch, live, Shorts, or youtu.be link with a
 valid 11-character video ID, attached to a report or EV-addition attribution.
 Channel and playlist links do not count. Multiple videos count the same as one.
 
-Within each resource group, Browse ranks Global Challenge positions 1–100,
+Within each EV group, Browse ranks Global Challenge positions 1–100,
 Champion Tier or Champions positions 1–100, Master Ball 1, qualifying major
 finishes, qualifying community finishes, Global Challenge positions 101–1,000,
 Master Ball 2, Champions positions 101–1,000, Showdown positions 1–100, eligible
 lower Master Ball results, other reported results, then no result. Each window of
-age costs one band, as above. Current regulation comes before credential merit
-within each recency-adjusted band, followed by publication time and team ID.
+age costs one band, as above. Credential merit follows within each
+recency-adjusted band, then a video, publication time, and team ID break ties.
 Every report can supply the team's best Browse
 band. Showdown Bo1, Bo3, and unspecified labels receive the same qualification;
 none implies closed team sheets. These Browse rules do not change evidence
