@@ -1,21 +1,20 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { swipeDirection } from '../src/lib/swipe.ts';
+import { swipeKind } from '../src/lib/swipe.ts';
 
-test('classifies swipe direction', () => {
+test('swipeKind picks the dominant direction past the slop', () => {
   const cases = [
-    [64, 0, 'right'],
-    [63, 0, null],
-    [64, 32, 'right'],
-    [64, 33, null],
-    [-200, 0, null],
-    [0, 96, 'down'],
-    [0, 95, null],
-    [48, 96, 'down'],
-    [49, 96, null],
-    [0, -200, null],
-    [100, 100, null],
+    [9, 9, null],
+    [10, 0, 'right'],
+    [-10, 0, 'left'],
+    [0, 10, 'down'],
+    [0, -10, 'up'],
+    [30, 29, 'right'],
+    [30, 30, 'down'],
+    [-31, 30, 'left'],
+    [-30, 30, 'down'],
+    [-30, -30, 'up'],
   ];
   for (const [dx, dy, expected] of cases)
-    assert.equal(swipeDirection(dx, dy), expected, `${dx},${dy}`);
+    assert.equal(swipeKind(dx, dy), expected, `${dx},${dy}`);
 });

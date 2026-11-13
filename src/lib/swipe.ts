@@ -1,21 +1,39 @@
-const EDGE = 32;
+import { dur } from './motion.ts';
 
-let start: {
+const EDGE = 32;
+const SLOP = 10;
+const BACK = 64;
+const DISMISS = 96;
+const SETTLE = 200;
+const HOLD = 300;
+
+type Kind = 'left' | 'right' | 'down';
+type Start = {
   x: number;
   y: number;
+  target: Element;
   dialog: HTMLDialogElement | null;
-  dismissable: boolean;
-} | null = null;
+  top: boolean;
+};
+type Gesture = {
+  node: HTMLElement;
+  kind: Kind;
+  limit: number;
+  leaves: boolean;
+  commit: () => void;
+};
 
-export function swipeDirection(
-  dx: number,
-  dy: number
-): 'right' | 'down' | null {
+let start: Start | null = null;
+let gesture: Gesture | null = null;
+let offset = 0;
+let held: Animation | null = null;
+
+export function swipeKind(dx: number, dy: number): Kind | 'up' | null {
   const ax = Math.abs(dx);
   const ay = Math.abs(dy);
-  if (dx >= 64 && ax >= 2 * ay) return 'right';
-  if (dy >= 96 && ay >= 2 * ax) return 'down';
-  return null;
+  if (Math.max(ax, ay) < SLOP) return null;
+  if (ax > ay) return dx < 0 ? 'left' : 'right';
+  return dy < 0 ? 'up' : 'down';
 }
 
 function atTop(target: Element, dialog: Element): boolean {
@@ -28,78 +46,135 @@ function atTop(target: Element, dialog: Element): boolean {
   return true;
 }
 
-export function swipeStart(event: TouchEvent) {
+const shift = (kind: Kind, value: number) =>
+  kind === 'down' ? `0 ${value}px` : `${kind === 'left' ? -value : value}px`;
+
+function place({ node, kind, limit }: Gesture, value: number) {
+  node.style.translate = value ? shift(kind, value) : '';
+  if (value) node.dataset.swipe = kind;
+  else delete node.dataset.swipe;
+  node.toggleAttribute('data-swipe-armed', value >= limit);
+}
+
+function find(kind: Kind, { x, target, dialog, top }: Start): Gesture | null {
+  if (dialog)
+    return kind === 'down' && top
+      ? {
+          node: dialog,
+          kind,
+          limit: DISMISS,
+          leaves: true,
+          commit: () =>
+            dialog.dispatchEvent(new Event('cancel', { cancelable: true })),
+        }
+      : null;
+  if (kind === 'down') return null;
+  const row = target.closest<HTMLElement>('[data-swipe-row]');
+  const action = row?.querySelector<HTMLElement>(
+    `[data-swipe-${kind}]:enabled`
+  );
+  if (row && action)
+    return {
+      node: row,
+      kind,
+      limit: row.offsetWidth / 2,
+      leaves: false,
+      commit: () => action.click(),
+    };
+  const link =
+    kind === 'right' && x <= EDGE
+      ? document.querySelector<HTMLAnchorElement>('a[data-swipe-back]')
+      : null;
+  const main = document.getElementById('main');
+  if (!link || !main) return null;
+  document.documentElement.style.overflowX = 'hidden';
+  return {
+    node: main,
+    kind,
+    limit: BACK,
+    leaves: true,
+    commit: () => link.click(),
+  };
+}
+
+function settle(commit: boolean) {
+  const current = gesture;
+  const from = offset;
+  start = null;
+  gesture = null;
+  offset = 0;
+  if (!current) return;
+  const done = commit && from >= current.limit;
+  if (done) current.commit();
+  place(current, 0);
+  const hold = done && current.leaves;
+  const motion = current.node.animate(
+    {
+      translate: [
+        shift(current.kind, from),
+        shift(current.kind, hold ? from : 0),
+      ],
+    },
+    { duration: hold ? HOLD : dur(SETTLE), easing: 'ease-out' }
+  );
+  const unclip = () => {
+    document.documentElement.style.overflowX = '';
+  };
+  motion.onfinish = unclip;
+  motion.oncancel = unclip;
+  if (hold) held = motion;
+}
+
+function onStart(event: TouchEvent) {
+  settle(false);
   const touch = event.touches.length === 1 ? event.touches[0] : undefined;
   const target = event.target;
-  if (!touch || !(target instanceof Element)) {
-    start = null;
-    return;
-  }
+  if (!touch || !(target instanceof Element)) return;
   const dialog = target.closest('dialog');
   start = {
     x: touch.clientX,
     y: touch.clientY,
+    target,
     dialog,
-    dismissable:
+    top:
       !!dialog &&
       !target.closest('input, textarea, select') &&
       atTop(target, dialog),
   };
 }
 
-export function swipeEnd(event: TouchEvent) {
-  const origin = start;
-  const touch = event.changedTouches[0];
-  start = null;
-  if (!origin || !touch || event.touches.length) return;
-  const direction = swipeDirection(
-    touch.clientX - origin.x,
-    touch.clientY - origin.y
-  );
-  if (origin.dialog) {
-    if (direction === 'down' && origin.dismissable)
-      origin.dialog.dispatchEvent(new Event('cancel', { cancelable: true }));
-  } else if (direction === 'right' && origin.x <= EDGE)
-    document.querySelector<HTMLAnchorElement>('a[data-swipe-back]')?.click();
+function onMove(event: TouchEvent) {
+  const touch = event.touches[0];
+  if (!start || !touch) return;
+  const dx = touch.clientX - start.x;
+  const dy = touch.clientY - start.y;
+  if (!gesture) {
+    const kind = swipeKind(dx, dy);
+    if (!kind) return;
+    gesture = kind === 'up' ? null : find(kind, start);
+    if (!gesture) {
+      start = null;
+      return;
+    }
+  }
+  const { kind } = gesture;
+  offset = Math.max(0, kind === 'down' ? dy : kind === 'left' ? -dx : dx);
+  place(gesture, offset);
 }
 
-export function swipeRemove(node: HTMLElement, onremove: () => void) {
-  let origin: { x: number; y: number } | null = null;
-  let offset = 0;
-  function slide(value: number) {
-    offset = value;
-    node.style.transition = value ? 'none' : '';
-    node.style.translate = value ? `${value}px` : '';
-  }
-  node.addEventListener(
-    'touchstart',
-    (event) => {
-      const touch = event.touches.length === 1 ? event.touches[0] : undefined;
-      origin = touch ? { x: touch.clientX, y: touch.clientY } : null;
-    },
-    { passive: true }
-  );
-  node.addEventListener(
-    'touchmove',
-    (event) => {
-      const touch = event.touches[0];
-      if (!origin || !touch) return;
-      const dx = touch.clientX - origin.x;
-      const dy = touch.clientY - origin.y;
-      if (!offset && Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      if (!offset && (dx > 0 || Math.abs(dy) > Math.abs(dx))) origin = null;
-      else slide(Math.min(0, dx));
-    },
-    { passive: true }
-  );
-  node.addEventListener('touchend', () => {
-    const remove = offset <= -node.offsetWidth / 2 && offset < 0;
-    origin = null;
-    if (remove) onremove();
-    slide(0);
-  });
-  node.addEventListener('touchcancel', () => {
-    origin = null;
-    slide(0);
-  });
+function onEnd(event: TouchEvent) {
+  settle(event.type === 'touchend' && !event.touches.length);
+}
+
+export function swipe(node: Document) {
+  const passive = { passive: true };
+  node.addEventListener('touchstart', onStart, passive);
+  node.addEventListener('touchmove', onMove, passive);
+  node.addEventListener('touchend', onEnd);
+  node.addEventListener('touchcancel', onEnd);
+}
+
+export function swipeReset() {
+  held?.cancel();
+  held = null;
 }

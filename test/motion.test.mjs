@@ -1,11 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { morphTeam, navKind } from '../src/lib/motion.ts';
+import { navKind } from '../src/lib/motion.ts';
 
-const place = (id, search = '', params = null) => ({
+const place = (id, search = '') => ({
   route: { id },
   url: new URL('http://x/' + search),
-  params,
 });
 
 test('classifies navigation between places', () => {
@@ -28,21 +27,5 @@ test('classifies navigation between places', () => {
       expected,
       `${from.route.id}${from.url.search} → ${to.route.id}${to.url.search}`
     );
-  }
-});
-
-test('finds the team a list-to-team navigation is about', () => {
-  const cases = [
-    [place('/teams/[id]', '', { id: 't1' }), 't1'],
-    [place('/teams/[id]'), null],
-    [place('/wishlist', '?team=a'), 'a'],
-    [place('/favorites', '?team=b%20c'), 'b c'],
-    [place('/wishlist'), null],
-    [place('/my-teams/new'), null],
-    [place('/my-teams', '?team=a'), null],
-    [place('/'), null],
-  ];
-  for (const [at, expected] of cases) {
-    assert.equal(morphTeam(at), expected, `${at.route.id}${at.url.search}`);
   }
 });

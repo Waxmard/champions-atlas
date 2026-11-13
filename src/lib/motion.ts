@@ -1,7 +1,7 @@
 import type { NavigationTarget, OnNavigate } from '$app/navigation';
 import type { TransitionConfig } from 'svelte/transition';
 
-type Place = Pick<NavigationTarget, 'params' | 'route' | 'url'>;
+type Place = Pick<NavigationTarget, 'route' | 'url'>;
 export type NavKind = 'tab' | 'push' | 'pop';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -36,22 +36,7 @@ export function navKind(from: Place, to: Place): NavKind | null {
   return change > 0 ? 'push' : change < 0 ? 'pop' : null;
 }
 
-export function morphTeam({ params, route, url }: Place): string | null {
-  if (route.id === '/teams/[id]') return params?.id ?? null;
-  if (route.id === '/wishlist' || route.id === '/favorites')
-    return url.searchParams.get('team');
-  return null;
-}
-
 let active: ViewTransition | undefined;
-
-function markCard(id: string | null) {
-  document
-    .querySelectorAll<HTMLElement>('[data-team-card]')
-    .forEach((card) =>
-      card.toggleAttribute('data-morph', card.dataset.teamCard === id)
-    );
-}
 
 export function pageTransition({
   from,
@@ -61,24 +46,16 @@ export function pageTransition({
   if (!from || !to || reduced() || !('startViewTransition' in document)) return;
   const kind = navKind(from, to);
   if (!kind) return;
-  const team =
-    kind === 'push' ? morphTeam(to) : kind === 'pop' ? morphTeam(from) : null;
   const root = document.documentElement;
   const { promise, resolve } = Promise.withResolvers<void>();
-  root.dataset.nav = team ? 'morph' : kind;
-  markCard(kind === 'push' ? team : null);
+  root.dataset.nav = kind;
   const transition = document.startViewTransition(async () => {
     resolve();
     await complete;
-    if (!team) return;
-    await new Promise((done) => setTimeout(done));
-    markCard(kind === 'pop' ? team : null);
   });
   active = transition;
   void transition.finished.finally(() => {
-    if (active !== transition) return;
-    markCard(null);
-    delete root.dataset.nav;
+    if (active === transition) delete root.dataset.nav;
   });
   return promise;
 }

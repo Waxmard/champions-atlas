@@ -55,11 +55,9 @@
 <div
   class="mt-4 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"
 >
-  <div class="min-w-0 flex-1" data-morph>
+  <div class="min-w-0 flex-1">
     <h1
       class="w-fit min-w-0 font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-anywhere sm:text-4xl"
-      data-morph-part
-      style="--morph-name: team-title"
     >
       {heading.title}
     </h1>
@@ -86,7 +84,7 @@
   </div>
 </div>
 
-<section aria-label="Pokémon sets" class="mt-8" data-morph>
+<section aria-label="Pokémon sets" class="mt-8">
   <div
     class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-2.5"
   >
