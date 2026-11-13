@@ -1,4 +1,4 @@
-import { dur } from './motion.ts';
+import { dur, pageUnder } from './motion.ts';
 
 const EDGE = 32;
 const SLOP = 10;
@@ -19,14 +19,17 @@ type Gesture = {
   node: HTMLElement;
   kind: Kind;
   limit: number;
-  leaves: boolean;
+  exit: 'none' | 'hold' | 'slide';
   commit: () => void;
 };
 
 let start: Start | null = null;
 let gesture: Gesture | null = null;
 let offset = 0;
-let held: Animation | null = null;
+let motion: Animation | null = null;
+let timer: ReturnType<typeof setTimeout> | undefined;
+let moved: HTMLElement | null = null;
+let under: HTMLElement | null = null;
 
 export function swipeKind(dx: number, dy: number): Kind | 'up' | null {
   const ax = Math.abs(dx);
@@ -50,9 +53,8 @@ const shift = (kind: Kind, value: number) =>
   kind === 'down' ? `0 ${value}px` : `${kind === 'left' ? -value : value}px`;
 
 function place({ node, kind, limit }: Gesture, value: number) {
-  node.style.translate = value ? shift(kind, value) : '';
-  if (value) node.dataset.swipe = kind;
-  else delete node.dataset.swipe;
+  node.style.translate = shift(kind, value);
+  node.dataset.swipe = kind;
   node.toggleAttribute('data-swipe-armed', value >= limit);
 }
 
@@ -63,7 +65,7 @@ function find(kind: Kind, { x, target, dialog, top }: Start): Gesture | null {
           node: dialog,
           kind,
           limit: DISMISS,
-          leaves: true,
+          exit: 'hold',
           commit: () =>
             dialog.dispatchEvent(new Event('cancel', { cancelable: true })),
         }
@@ -78,7 +80,7 @@ function find(kind: Kind, { x, target, dialog, top }: Start): Gesture | null {
       node: row,
       kind,
       limit: row.offsetWidth / 2,
-      leaves: false,
+      exit: 'none',
       commit: () => action.click(),
     };
   const link =
@@ -87,14 +89,24 @@ function find(kind: Kind, { x, target, dialog, top }: Start): Gesture | null {
       : null;
   const main = document.getElementById('main');
   if (!link || !main) return null;
-  document.documentElement.style.overflowX = 'hidden';
   return {
     node: main,
     kind,
     limit: BACK,
-    leaves: true,
+    exit: 'slide',
     commit: () => link.click(),
   };
+}
+
+export function swipeReset() {
+  clearTimeout(timer);
+  motion?.cancel();
+  motion = null;
+  if (moved) delete moved.dataset.swipe;
+  moved = null;
+  under?.remove();
+  under = null;
+  document.documentElement.style.overflowX = '';
 }
 
 function settle(commit: boolean) {
@@ -104,25 +116,33 @@ function settle(commit: boolean) {
   gesture = null;
   offset = 0;
   if (!current) return;
+  const { node, kind, exit } = current;
   const done = commit && from >= current.limit;
-  if (done) current.commit();
-  place(current, 0);
-  const hold = done && current.leaves;
-  const motion = current.node.animate(
+  const slide = done && exit === 'slide';
+  const hold = done && exit === 'hold';
+  if (done && !slide) current.commit();
+  node.style.translate = '';
+  node.removeAttribute('data-swipe-armed');
+  const run = node.animate(
     {
       translate: [
-        shift(current.kind, from),
-        shift(current.kind, hold ? from : 0),
+        shift(kind, from),
+        shift(kind, slide ? window.innerWidth : hold ? from : 0),
       ],
     },
-    { duration: hold ? HOLD : dur(SETTLE), easing: 'ease-out' }
+    {
+      duration: hold ? HOLD : dur(SETTLE),
+      easing: 'ease-out',
+      fill: slide ? 'forwards' : 'none',
+    }
   );
-  const unclip = () => {
-    document.documentElement.style.overflowX = '';
+  motion = run;
+  run.onfinish = () => {
+    if (motion !== run) return;
+    if (!slide) return swipeReset();
+    current.commit();
+    timer = setTimeout(swipeReset, HOLD);
   };
-  motion.onfinish = unclip;
-  motion.oncancel = unclip;
-  if (hold) held = motion;
 }
 
 function onStart(event: TouchEvent) {
@@ -151,10 +171,18 @@ function onMove(event: TouchEvent) {
   if (!gesture) {
     const kind = swipeKind(dx, dy);
     if (!kind) return;
-    gesture = kind === 'up' ? null : find(kind, start);
-    if (!gesture) {
+    const next = kind === 'up' ? null : find(kind, start);
+    if (!next) {
       start = null;
       return;
+    }
+    swipeReset();
+    gesture = next;
+    moved = next.node;
+    if (next.exit === 'slide') {
+      document.documentElement.style.overflowX = 'hidden';
+      under = pageUnder();
+      if (under) document.body.append(under);
     }
   }
   const { kind } = gesture;
@@ -172,9 +200,4 @@ export function swipe(node: Document) {
   node.addEventListener('touchmove', onMove, passive);
   node.addEventListener('touchend', onEnd);
   node.addEventListener('touchcancel', onEnd);
-}
-
-export function swipeReset() {
-  held?.cancel();
-  held = null;
 }
