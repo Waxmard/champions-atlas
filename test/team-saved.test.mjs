@@ -7,6 +7,7 @@ import {
   orderedSaved,
   reorderSaved,
   setTeamFavorite,
+  setCurrentTeam,
   favoriteTeams,
   SavedTeamError,
   recordSummary,
@@ -15,10 +16,10 @@ import {
   sortByWinRate,
 } from '../src/lib/team-collections.ts';
 import {
-  activeTeamKey,
   newSavedTeam,
   readSavedTeams,
   saveTeam,
+  storageKey,
 } from '../src/lib/workbench.ts';
 import { canonicalSnapshot } from '../src/lib/team-history.ts';
 
@@ -58,14 +59,13 @@ const snapshot = (id, name = id, roster = species) => ({
 });
 const storage = (teams = []) => ({
   data: JSON.stringify(teams),
-  active: null,
   writes: 0,
-  getItem(key) {
-    return key === activeTeamKey ? this.active : this.data;
+  getItem() {
+    return this.data;
   },
   setItem(key, value) {
-    if (key === activeTeamKey) this.active = value;
-    else this.data = value;
+    assert.equal(key, storageKey);
+    this.data = value;
     this.writes++;
   },
 });
@@ -173,7 +173,7 @@ test('Record summary adds a rounded win rate once a game is logged', () => {
   });
 });
 
-test('Shortcut results add to saved records once and name the active team', () => {
+test('Shortcut results add to saved records once and name the current team', () => {
   const rain = { ...snapshot('a', 'Rain'), record: { wins: 9998, losses: 1 } };
   const s = storage([rain, snapshot('b', 'Sun')]);
   const record = (id) =>
@@ -193,21 +193,15 @@ test('Shortcut results add to saved records once and name the active team', () =
     false
   );
   assert.equal(s.writes, 1);
-  s.active = 'b';
+  assert.equal(shortcutTeam(s).id, orderedSaved(readSavedTeams(s))[0].id);
+  setCurrentTeam(s, 'a', true);
+  reorderSaved(s, ['b', 'a'], ['a', 'b']);
   assert.deepEqual(shortcutTeam(s), {
-    id: 'b',
-    name: 'Sun',
-    wins: 0,
-    losses: 0,
+    id: 'a',
+    name: 'Rain',
+    wins: 9999,
+    losses: 3,
   });
-  const wishlisted = storage([rain, snapshot('b', 'Sun'), wish('w')]);
-  for (const active of ['missing', 'w']) {
-    wishlisted.active = active;
-    assert.equal(
-      shortcutTeam(wishlisted).id,
-      orderedSaved(readSavedTeams(wishlisted))[0].id
-    );
-  }
   assert.equal(shortcutTeam(storage()), null);
 });
 
@@ -238,4 +232,53 @@ test('A newly saved team goes to the top of a manually ordered Saved list', () =
     orderedSaved(readSavedTeams(s)).map(({ id }) => id),
     ['c', ...before.toReversed()]
   );
+});
+
+test('Current team goes to the top and returns to its win rate spot', () => {
+  const s = storage([
+    { ...snapshot('a'), record: { wins: 3, losses: 1 } },
+    { ...snapshot('b'), record: { wins: 1, losses: 1 } },
+    snapshot('c'),
+    { ...snapshot('d'), record: { wins: 2, losses: 2 } },
+    { ...snapshot('e'), record: { wins: 4, losses: 0 } },
+    wish('w'),
+  ]);
+  const ids = () => orderedSaved(readSavedTeams(s)).map(({ id }) => id);
+  const current = () =>
+    readSavedTeams(s)
+      .filter((team) => team.current)
+      .map(({ id }) => id);
+  reorderSaved(s, ['a', 'd', 'b', 'c', 'e'], ids());
+
+  setCurrentTeam(s, 'e', true);
+  assert.deepEqual(ids(), ['e', 'a', 'd', 'b', 'c']);
+  assert.deepEqual(current(), ['e']);
+
+  setCurrentTeam(s, 'b', true);
+  assert.deepEqual(ids(), ['b', 'e', 'a', 'd', 'c']);
+  assert.deepEqual(current(), ['b']);
+
+  setCurrentTeam(s, 'b', false);
+  assert.deepEqual(ids(), ['e', 'a', 'd', 'b', 'c']);
+  assert.deepEqual(current(), []);
+
+  const writes = s.writes;
+  setCurrentTeam(s, 'c', false);
+  assert.equal(s.writes, writes);
+
+  setCurrentTeam(s, 'c', true);
+  setCurrentTeam(s, 'c', false);
+  assert.deepEqual(ids(), ['e', 'a', 'd', 'b', 'c']);
+
+  for (const id of ['missing', 'w'])
+    assert.throws(() => setCurrentTeam(s, id, true), SavedTeamError);
+});
+
+test('Moving the current team to Wishlist clears the marker', () => {
+  const s = storage([snapshot('a'), snapshot('b')]);
+  setCurrentTeam(s, 'a', true);
+  const a = readSavedTeams(s).find(({ id }) => id === 'a');
+  const moved = moveSavedTeamToWishlist(s, 'a', teamBaseline(a));
+  assert.equal(Object.hasOwn(moved, 'current'), false);
+  assert.equal(shortcutTeam(s).id, 'b');
 });

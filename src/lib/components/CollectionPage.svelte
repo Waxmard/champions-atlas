@@ -6,6 +6,9 @@
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Star from '@lucide/svelte/icons/star';
+  import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
+  import Check from '@lucide/svelte/icons/check';
+  import { DropdownMenu } from 'bits-ui';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SavedTeamEditor from '#lib/components/SavedTeamEditor.svelte';
   import WishlistList from '#lib/components/WishlistList.svelte';
@@ -37,6 +40,7 @@
     removeTeam,
     empty,
     setFavorite,
+    setCurrent,
     busy = false,
     ready = $bindable(false),
     loaded = $bindable(false),
@@ -62,6 +66,11 @@
       id: string,
       favorite: boolean
     ) => SavedTeam;
+    setCurrent?: (
+      storage: Storage,
+      id: string,
+      current: boolean
+    ) => SavedTeam[];
     ready?: boolean;
     loaded?: boolean;
     storageError?: string;
@@ -80,7 +89,8 @@
   const visibleEntries = $derived.by(() => {
     const matching = entries.filter(
       (entry) =>
-        matchesTeam(entry, filters) && (!favoritesOnly || entry.favorite)
+        matchesTeam(entry, filters) &&
+        (!favoritesOnly || entry.favorite || entry.current)
     );
     return sort === 'record' ? sortByWinRate(matching) : matching;
   });
@@ -258,6 +268,22 @@
     refresh();
   }
 
+  function toggleCurrent(entry: SavedTeam) {
+    if (pendingId || !setCurrent) return;
+    errorMessage = '';
+    inlineError = false;
+    try {
+      setCurrent(localStorage, entry.id, !entry.current);
+      void pushNow();
+    } catch (error) {
+      errorMessage =
+        error instanceof SavedTeamError
+          ? error.message
+          : 'Could not update this team. Existing saved teams have been left untouched.';
+    }
+    refresh();
+  }
+
   async function remove(entry: SavedTeam) {
     if (pendingId) return;
     if (
@@ -353,7 +379,7 @@
           onchange={(next) => (filters = next)}
         />
         <div
-          class="mt-5 flex flex-wrap items-baseline justify-between gap-3 border-b pb-1.5"
+          class="mt-5 flex items-baseline justify-between gap-3 border-b pb-1.5"
         >
           <p
             aria-live="polite"
@@ -364,17 +390,49 @@
               ? 'team'
               : 'teams'}
           </p>
-          <div class="flex flex-wrap items-center justify-end gap-1">
+          <div class="flex items-center gap-1">
             {#if setFavorite}
-              <select
-                class="select min-h-11 w-auto text-base sm:text-sm"
-                aria-label="Sort Saved"
-                value={sort}
-                onchange={(event) => setSort(event.currentTarget.value)}
-              >
-                <option value="manual">Manual order</option>
-                <option value="record">Win rate</option>
-              </select>
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger>
+                  {#snippet child({ props })}
+                    <Button
+                      {...props}
+                      type="button"
+                      variant="quiet"
+                      class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
+                      aria-label={`Sort Saved: ${sort === 'record' ? 'Win rate' : 'Manual order'}`}
+                    >
+                      <ArrowUpDown class="size-4" aria-hidden="true" />
+                      <span class="max-sm:sr-only">Sort</span>
+                    </Button>
+                  {/snippet}
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content
+                    side="bottom"
+                    align="end"
+                    sideOffset={8}
+                    class="surface popover-motion z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
+                  >
+                    <DropdownMenu.RadioGroup
+                      value={sort}
+                      onValueChange={setSort}
+                    >
+                      {#each [['manual', 'Manual order'], ['record', 'Win rate']] as [value, text] (value)}
+                        <DropdownMenu.RadioItem {value} class="option-row">
+                          {#snippet children({ checked })}
+                            <Check
+                              class="size-4 {checked ? '' : 'invisible'}"
+                              aria-hidden="true"
+                            />
+                            {text}
+                          {/snippet}
+                        </DropdownMenu.RadioItem>
+                      {/each}
+                    </DropdownMenu.RadioGroup>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
               <Button
                 type="button"
                 variant="quiet"
@@ -413,10 +471,11 @@
             disabled={!ready || !!pendingId || busy}
             sortable={sort === 'manual' && !filtered && entries.length > 1}
             displayTeam={displaySavedTeam}
-            onuse={use}
+            onuse={useTeam ? use : undefined}
             onremove={remove}
             onreorder={reorder}
             onfavorite={setFavorite ? toggleFavorite : undefined}
+            oncurrent={setCurrent ? toggleCurrent : undefined}
           />
         {:else if favoritesOnly && !filters.length}
           <div class="plate mt-2 max-w-xl px-4 py-3">

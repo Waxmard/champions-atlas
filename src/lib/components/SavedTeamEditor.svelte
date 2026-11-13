@@ -11,6 +11,7 @@
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import SwapSuggestions from '#lib/components/SwapSuggestions.svelte';
   import Star from '@lucide/svelte/icons/star';
+  import Swords from '@lucide/svelte/icons/swords';
   import { Button } from '#lib/components/ui/button/index.js';
   import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
   import TeamSources from '#lib/components/TeamSources.svelte';
@@ -20,7 +21,6 @@
   import { type Member } from '#lib/catalog.js';
   import { parseTeamPaste } from '#lib/member-validation.js';
   import {
-    activeTeamKey,
     exportPaste,
     readSavedTeams,
     rosterConflict,
@@ -113,17 +113,9 @@
     }
   }
   const persistDraft = () => (editorRef?.flush(), saveTeamName());
-  function remember() {
-    try {
-      localStorage.setItem(activeTeamKey, teamId);
-    } catch {
-      return;
-    }
-  }
   onMount(() => {
     ready = true;
     load();
-    remember();
     const warn = (e: BeforeUnloadEvent) =>
       dirty && (e.preventDefault(), (e.returnValue = ''));
     const onVis = () => document.visibilityState === 'hidden' && persistDraft();
@@ -229,6 +221,22 @@
     persistChange(({ favorite, ...team }) =>
       favorite ? team : { ...team, favorite: true }
     );
+  function toggleCurrent() {
+    if (!draft) return;
+    try {
+      collections.setCurrentTeam(localStorage, draft.id, !draft.current);
+      if (draft.current) delete draft.current;
+      else draft.current = true;
+      errorMessage = '';
+      void pushNow();
+      onchange();
+    } catch (error) {
+      errorMessage =
+        error instanceof collections.SavedTeamError
+          ? error.message
+          : 'Could not update this team. Existing saved teams have been left untouched.';
+    }
+  }
   function saveTeamName() {
     if (!draft || changed) return;
     const name = draft.name.trim();
@@ -390,6 +398,22 @@
               {heading.context}
             </p>{/if}
         </div>
+        <Button
+          variant="quiet"
+          size="icon-compact"
+          class="min-h-11 min-w-11 {draft.current
+            ? 'bg-info text-info-content hover:text-info-content'
+            : ''}"
+          aria-label="Current team"
+          aria-pressed={!!draft.current}
+          title={draft.current
+            ? 'Stop using as current team'
+            : 'Use as current team'}
+          disabled={changed || editing || busy || stale}
+          onclick={toggleCurrent}
+        >
+          <Swords class="size-4" aria-hidden="true" />
+        </Button>
         <Button
           variant="quiet"
           size="icon-compact"

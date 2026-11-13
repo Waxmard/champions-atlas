@@ -112,8 +112,9 @@ goes below zero and is unavailable while edits are pending or the team changed
 elsewhere. It is saved with the team, so it stays when the team moves between
 Saved and Wishlist and syncs like other team content. Saved
 and Wishlist cards show it read-only, with the percentage, once a team has a
-record. On iPhone, the **Log Game Result** shortcut action names the team last
-opened on this device, or the first team in Saved order when none has been opened, asks for **Win** or **Loss**, and logs it without opening
+record. On iPhone, the **Log Game Result** shortcut action names the current
+team, or the first team in Saved order when none is current, asks for **Win** or
+**Loss**, and logs it without opening
 the app. Results logged this way join the record the next time the app is
 opened.
 
@@ -414,13 +415,25 @@ stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
 
 With no Wishlist filters active, reorder bookmarks using the move up and down
-controls. New bookmarks appear first without changing the relative order of
-existing bookmarks. Saved uses the same controls and order rules while Favorites
-and Pokémon filters are off. The order persists across reloads and syncs with the account.
-Saved can also sort by **Win rate**: highest win percentage first, more games
-first on equal rates, and teams with no games last. Reordering is paused while
-Win rate is selected. Manual order is the default, and the choice is
-remembered on this device.
+controls. Holding an arrow for half a second offers **Move to top** or
+**Move to bottom**. New bookmarks appear first without changing the relative
+order of existing bookmarks. Saved uses the same controls and order rules while
+Favorites and Pokémon filters are off. The order persists across reloads and
+syncs with the account.
+The Saved **Sort** menu button, beside **Favorites**, offers **Manual order**
+and **Win rate**: highest win percentage first, more games first on equal
+rates, and teams with no games last. Reordering is paused while Win rate is
+selected. Manual order is the default, and the choice is remembered on this
+device.
+
+Each Saved row has a swords toggle marking it as the **current team**. Marking
+a team moves it to the top of Saved and clears the marker on any other team.
+When a team stops being current, by toggling it off or marking another team, it
+moves to just above the first team with a lower win rate (more games break
+ties), leaving the other teams in their order; a team that outranks no one goes
+last. Only one team is current at a time. The marker syncs with the account and
+is cleared when the team moves to Wishlist. The current team stays listed while
+Favorites is on, even when unstarred, but Pokémon filters still apply to it.
 
 The catalog **Wishlist** button adds a bookmark or immediately removes the
 matching saved Wishlist copy and its edits; Saved copies remain unchanged.

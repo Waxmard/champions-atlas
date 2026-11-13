@@ -2,7 +2,6 @@ import { isPasteUrl, teamHeading, type Team } from './catalog.ts';
 import type { PokepastePayload } from './pokepaste.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
-  activeTeamKey,
   deleteTeam,
   newCustomTeam,
   newSavedTeam,
@@ -48,10 +47,11 @@ const played = ({ record }: SavedTeam) =>
 const winRate = (team: SavedTeam) =>
   played(team) ? (team.record?.wins ?? 0) / played(team) : -1;
 
+const byWinRate = (a: SavedTeam, b: SavedTeam) =>
+  winRate(b) - winRate(a) || played(b) - played(a);
+
 export function sortByWinRate(teams: SavedTeam[]): SavedTeam[] {
-  return [...teams].sort(
-    (a, b) => winRate(b) - winRate(a) || played(b) - played(a)
-  );
+  return [...teams].sort(byWinRate);
 }
 
 export interface GameTally {
@@ -98,8 +98,7 @@ export function shortcutTeam(
   storage: Pick<Storage, 'getItem'>
 ): ShortcutTeam | null {
   const saved = orderedSaved(readSavedTeams(storage));
-  const active = storage.getItem(activeTeamKey);
-  const team = saved.find((entry) => entry.id === active) ?? saved[0];
+  const team = saved.find((entry) => entry.current) ?? saved[0];
   return team
     ? {
         id: team.id,
@@ -345,7 +344,9 @@ export function moveSavedTeamToWishlist(
     );
   if (hasSetEdits(latest)) throw new SavedTeamError(WISHLIST_EDITED_ERROR);
   rejectWishlistCopy(saved, latest);
-  return saveAndGet(storage, { ...latest, collection: 'wishlist' });
+  const moved: SavedTeam = { ...latest, collection: 'wishlist' };
+  delete moved.current;
+  return saveAndGet(storage, moved);
 }
 
 export function useCatalogTeam(
@@ -404,6 +405,45 @@ export function setTeamFavorite(
   const rest = { ...entry };
   delete rest.favorite;
   return saveAndGet(storage, favorite ? { ...rest, favorite: true } : rest);
+}
+
+export function setCurrentTeam(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  id: string,
+  current: boolean
+): SavedTeam[] {
+  const saved = readSavedTeams(storage);
+  const order = orderedSaved(saved);
+  const target = order.find((team) => team.id === id);
+  if (!target)
+    throw new SavedTeamError(
+      'This team is no longer in Saved. Refresh the list.'
+    );
+  const retiring = order.filter(
+    (team) => team.current && !(current && team === target)
+  );
+  if (!current && !retiring.length) return saved;
+  const ranked = order.filter(
+    (team) => !retiring.includes(team) && !(current && team === target)
+  );
+  for (const team of retiring) {
+    const index = ranked.findIndex((other) => byWinRate(team, other) < 0);
+    ranked.splice(index < 0 ? ranked.length : index, 0, team);
+  }
+  if (current) ranked.unshift(target);
+  const ranks = new Map(ranked.map((team, index) => [team.id, index]));
+  const raw = JSON.stringify(
+    saved.map((team) => {
+      const rank = ranks.get(team.id);
+      if (rank === undefined) return team;
+      const next: SavedTeam = { ...team, savedOrder: rank };
+      delete next.current;
+      return current && team.id === id ? { ...next, current: true } : next;
+    })
+  );
+  const normalized = readSavedTeams({ getItem: () => raw });
+  storage.setItem(storageKey, raw);
+  return normalized;
 }
 
 export const favoriteTeams = (teams: SavedTeam[]): SavedTeam[] =>

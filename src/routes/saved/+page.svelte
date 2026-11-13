@@ -7,6 +7,7 @@
     orderedSaved,
     removeSavedTeam,
     reorderSaved,
+    setCurrentTeam,
     setTeamFavorite,
   } from '#lib/team-collections.js';
 </script>
@@ -24,6 +25,7 @@
   reorderTeams={reorderSaved}
   removeTeam={removeSavedTeam}
   setFavorite={setTeamFavorite}
+  setCurrent={setCurrentTeam}
   {importForm}
   empty="No saved teams yet. Choose Save on a team in Browse or Wishlist, or add a custom team."
 />

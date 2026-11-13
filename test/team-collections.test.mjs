@@ -14,10 +14,10 @@ import {
   wishlistedCatalogEntries,
 } from '../src/lib/team-collections.ts';
 import {
-  activeTeamKey,
   newSavedTeam,
   readSavedTeams,
   saveTeam,
+  storageKey,
 } from '../src/lib/workbench.ts';
 import { canonicalSnapshot } from '../src/lib/team-history.ts';
 
@@ -57,14 +57,13 @@ const snapshot = (id, name = id, roster = species) => ({
 });
 const storage = (teams = []) => ({
   data: JSON.stringify(teams),
-  active: null,
   writes: 0,
-  getItem(key) {
-    return key === activeTeamKey ? this.active : this.data;
+  getItem() {
+    return this.data;
   },
   setItem(key, value) {
-    if (key === activeTeamKey) this.active = value;
-    else this.data = value;
+    assert.equal(key, storageKey);
+    this.data = value;
     this.writes++;
   },
 });
@@ -298,7 +297,6 @@ test('moving a renamed team to Wishlist and back keeps its saved record and late
     sources: [{ name: 'Original source', pasteUrl }],
   };
   const s = storage([edited]);
-  s.active = edited.id;
   const baseline = teamBaseline(readSavedTeams(s)[0]);
   saveTeam(s, {
     ...readSavedTeams(s)[0],
@@ -307,7 +305,6 @@ test('moving a renamed team to Wishlist and back keeps its saved record and late
   const latest = readSavedTeams(s)[0];
   const moved = moveSavedTeamToWishlist(s, edited.id, baseline);
   assert.deepEqual(moved, { ...latest, collection: 'wishlist' });
-  assert.equal(s.active, edited.id);
   assert.deepEqual(readSavedTeams(s), [moved]);
   const promoted = useWishlistedTeam(s, edited.id);
   assert.deepEqual(promoted, latest);
@@ -444,9 +441,8 @@ test('quota failure during promotion or removal leaves stored bytes unchanged', 
   assert.equal(readSavedTeams(s)[1].collection, 'wishlist');
 });
 
-test('Poképaste import saves a custom Wishlist record and never changes the active team', () => {
+test('Poképaste import saves a custom Wishlist record', () => {
   const s = storage();
-  s.active = 'active-team';
   const saved = addPokepasteToWishlist(s, payload, 'M-C', []);
   assert.equal(saved.collection, 'wishlist');
   assert.equal(saved.origin, 'custom');
@@ -457,7 +453,6 @@ test('Poképaste import saves a custom Wishlist record and never changes the act
   assert.match(saved.original.paste, /^Shiny: Yes$/m);
   assert.equal(saved.members[0].spread, '32 HP / 32 Atk / 1 Spe');
   assert.deepEqual(readSavedTeams(s), [saved]);
-  assert.equal(s.getItem(activeTeamKey), 'active-team');
   assert.equal(s.writes, 1);
 });
 
@@ -506,7 +501,6 @@ test('ambiguous catalog Poképaste imports fail without writing', () => {
     { ...catalogTeam('second'), pasteUrl },
   ];
   const s = storage([snapshot('keep')]);
-  s.active = 'keep';
   const before = s.data;
 
   assert.throws(
@@ -516,7 +510,6 @@ test('ambiguous catalog Poképaste imports fail without writing', () => {
       /Multiple catalog teams/.test(error.message)
   );
   assert.equal(s.data, before);
-  assert.equal(s.active, 'keep');
   assert.equal(s.writes, 0);
 });
 
