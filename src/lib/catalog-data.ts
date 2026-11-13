@@ -33,6 +33,7 @@ export interface CatalogManifest {
 export interface CatalogBundle extends CatalogData {
   schemaVersion: 1;
   bundleHash?: string;
+  latestBatch?: { addedAt: string; ids: string[] };
   tags: TeamTagsIndex;
 }
 
@@ -103,6 +104,9 @@ const bundleSchema = z
     currentRegulation: nonEmptyTextSchema,
     sourceHash: hashSchema,
     bundleHash: hashSchema.optional(),
+    latestBatch: z
+      .object({ addedAt: isoTimestampSchema, ids: z.array(textSchema) })
+      .optional(),
     sources: z.array(catalogSourceSchema).min(1),
     teams: z.array(catalogTeamSchema).min(1),
     tags: z.object({
@@ -191,6 +195,7 @@ async function fetchJsonWithLimit(
   try {
     const response = await fetcher(url, {
       method: 'GET',
+      cache: 'no-cache',
       headers: { Accept: 'application/json' },
       credentials: 'omit',
       redirect: 'error',

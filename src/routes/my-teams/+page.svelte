@@ -34,6 +34,7 @@
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
+  import { dialogOut } from '#lib/motion.js';
   import * as collections from '#lib/team-collections.js';
   type TeamPanel = 'details' | 'swaps' | 'text';
   const panels = [
@@ -541,11 +542,11 @@
     </div>
     {#if ready && !storageError && draft}
       {@const activeTeam = draft}
-      <section
-        aria-label="Your team"
-        class="team-sheet min-w-0 landscape:md:col-start-1 landscape:md:row-start-1"
-      >
-        {#key draft.id}
+      {#key draft.id}
+        <section
+          aria-label="Your team"
+          class="enter-fade team-sheet min-w-0 landscape:md:col-start-1 landscape:md:row-start-1"
+        >
           <TeamSetGrid members={draft.members}>
             {#snippet renderMember(index)}
               <MemberCurrentSetControls
@@ -563,8 +564,8 @@
               />
             {/snippet}
           </TeamSetGrid>
-        {/key}
-      </section>
+        </section>
+      {/key}
     {/if}
   </div>
   {#if ready && !storageError && draft}
@@ -582,7 +583,7 @@
       {#each panels as [id, label] (id)}
         <button
           type="button"
-          class="inline-flex min-h-9 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold text-base-content/70 transition-colors outline-none hover:bg-base-200 hover:text-base-content disabled:pointer-events-none disabled:opacity-50 max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm"
+          class="inline-flex min-h-9 min-w-0 cursor-pointer items-center justify-center gap-1 rounded-[calc(var(--radius-field)-4px)] px-1.5 text-xs font-bold text-base-content/70 transition-[color,background-color,scale] outline-none hover:bg-base-200 hover:text-base-content active:scale-[0.97] disabled:pointer-events-none disabled:opacity-50 max-md:min-h-11 sm:gap-1.5 sm:px-3 sm:text-sm"
           aria-haspopup="dialog"
           disabled={changed && id !== 'text'}
           onclick={() => setPanel(id)}
@@ -697,9 +698,10 @@
     {@const editIndex = activeEditIndex}
     <dialog
       use:openSetDialog
+      out:dialogOut
       oncancel={handleDialogCancel}
       aria-label={`Edit ${editorMember.pokemon} set`}
-      class="set-editor-dialog fixed inset-0 z-50 m-auto flex h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[46rem] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
+      class="dialog-motion fixed inset-0 z-50 m-auto flex h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[46rem] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
     >
       <SetEditorSheet
         bind:this={editorRef}

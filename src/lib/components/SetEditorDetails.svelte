@@ -134,7 +134,7 @@
   </SuggestionList>
 {/snippet}
 
-<section class="grid gap-5">
+<section class="enter-fade grid gap-5">
   <div class="grid gap-4 sm:grid-cols-2">
     <div class="min-w-0">
       {@render detailField(

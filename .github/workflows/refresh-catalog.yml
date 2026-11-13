@@ -2,7 +2,7 @@ name: Refresh Catalog
 
 on:
   schedule:
-    - cron: '17 6 * * *'
+    - cron: '17 14 * * *'
   workflow_dispatch:
     inputs:
       refresh_history:
@@ -70,5 +70,13 @@ jobs:
         run: npm run eval:tags
       - name: Build catalog release
         run: npm run publish:catalog
+        env:
+          CATALOG_ORIGIN: https://champions-atlas-test.web.app
       - name: Deploy catalog to Firebase Hosting
         run: npx firebase-tools deploy --only hosting --project champions-atlas-test --token "${{ secrets.FIREBASE_TOKEN }}"
+      - name: Notify devices about new teams
+        run: node scripts/notify-new-teams.mjs
+        env:
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_KEY_P8: ${{ secrets.APNS_KEY_P8 }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

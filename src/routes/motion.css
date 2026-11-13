@@ -1,0 +1,126 @@
+:root {
+  --motion-fast: 150ms;
+  --motion-base: 200ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes enter-fade {
+  from {
+    opacity: 0;
+  }
+}
+.enter-fade {
+  animation: enter-fade var(--motion-base) ease;
+}
+
+@keyframes popover-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+}
+@keyframes popover-exit {
+  to {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+.popover-motion[data-state='open'] {
+  animation: popover-enter var(--motion-fast) ease;
+}
+.popover-motion[data-state='closed'] {
+  animation: popover-exit 100ms ease-in forwards;
+}
+
+@keyframes dialog-enter {
+  from {
+    opacity: 0;
+    scale: 0.96;
+  }
+}
+.dialog-motion {
+  animation: dialog-enter var(--motion-base) var(--motion-ease);
+}
+.dialog-motion::backdrop {
+  background: rgb(0 0 0 / 0.5);
+  animation: enter-fade 200ms ease;
+}
+.dialog-motion[data-closing] {
+  opacity: 0;
+  scale: 0.96;
+  transition:
+    opacity 150ms ease-in,
+    scale 150ms ease-in;
+}
+.dialog-motion[data-closing]::backdrop {
+  opacity: 0;
+  transition: opacity 150ms ease-in;
+}
+
+::view-transition-old(app-header),
+::view-transition-old(app-tabbar) {
+  display: none;
+}
+::view-transition-new(app-header),
+::view-transition-new(app-tabbar) {
+  animation: none;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 200ms;
+}
+@keyframes page-out-left {
+  to {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+@keyframes page-in-right {
+  from {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+@keyframes page-out-right {
+  to {
+    opacity: 0;
+    translate: 24px 0;
+  }
+}
+@keyframes page-in-left {
+  from {
+    opacity: 0;
+    translate: -16px 0;
+  }
+}
+:root[data-nav='push']::view-transition-old(root) {
+  animation: page-out-left 160ms ease-in both;
+}
+:root[data-nav='push']::view-transition-new(root) {
+  animation: page-in-right 240ms var(--motion-ease) both;
+}
+:root[data-nav='pop']::view-transition-old(root) {
+  animation: page-out-right 160ms ease-in both;
+}
+:root[data-nav='pop']::view-transition-new(root) {
+  animation: page-in-left 240ms var(--motion-ease) both;
+}
+:root[data-nav='morph'] [data-morph] [data-morph-part] {
+  view-transition-name: var(--morph-name);
+}
+:root[data-nav='morph']::view-transition-group(*) {
+  animation-duration: 300ms;
+  animation-timing-function: var(--motion-ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  *::backdrop {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

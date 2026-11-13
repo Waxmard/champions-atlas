@@ -68,6 +68,8 @@ jobs:
         run: npm run eval:tags
       - name: Build catalog release
         run: npm run publish:catalog
+        env:
+          CATALOG_ORIGIN: https://champions-atlas-test.web.app
       - run: npm run build
         env:
           VITE_FIREBASE_API_KEY: ${{ secrets.VITE_FIREBASE_API_KEY }}

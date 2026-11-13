@@ -3,7 +3,12 @@ import Capacitor
 
 class AtlasBridgeViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
-        bridge?.registerPluginInstance(AtlasNativePlugin())
+        let plugin = AtlasNativePlugin()
+        bridge?.registerPluginInstance(plugin)
+        bridge?.notificationRouter.pushNotificationHandler = plugin
+        if NewTeamPush.launchedFromTap {
+            plugin.announceNewTeamsTap()
+        }
         NotificationCenter.default.addObserver(
             self,
             selector: #selector(clearStaleKeyboardFrame),

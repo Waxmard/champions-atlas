@@ -24,6 +24,7 @@ class CatalogRuntimeState {
   catalog = $state.raw<CatalogData>(admittedCatalog(bundledCatalog));
   tags = $state.raw<TeamTagsIndex>(bundledTags);
   ready = $state(false);
+  freshIds = $state.raw<ReadonlySet<string>>(new Set());
 }
 
 export const catalogState = new CatalogRuntimeState();
@@ -113,6 +114,7 @@ function applyValidatedBundle(
   catalogState.catalog = admittedCatalog(bundle);
   catalogState.tags = bundle.tags;
   activeBundleHash = bundleHash ?? bundle.bundleHash;
+  catalogState.freshIds = new Set(bundle.latestBatch?.ids);
 }
 
 export function refreshCatalogNow(options?: {

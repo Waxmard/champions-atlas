@@ -142,7 +142,7 @@ provenance only for the active slice. Frozen records retain their existing data.
 ## Freshness and scheduling
 
 `.github/workflows/refresh-catalog.yml` imports and publishes the catalog daily
-at 06:17 UTC and by manual dispatch through **Actions** → **Refresh Catalog** →
+at 14:17 UTC and by manual dispatch through **Actions** → **Refresh Catalog** →
 **Run workflow**. The app checks for newer validated bundles on launch,
 reconnection, and foreground.
 

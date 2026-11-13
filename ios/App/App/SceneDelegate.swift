@@ -1,12 +1,14 @@
 import UIKit
 import Capacitor
 import GoogleSignIn
+import UserNotifications
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo session: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
         guard let windowScene = scene as? UIWindowScene else { return }
+        NewTeamPush.launchedFromTap = connectionOptions.notificationResponse?.notification.request.trigger is UNPushNotificationTrigger
 
         window = UIWindow(windowScene: windowScene)
         window?.rootViewController = AtlasBridgeViewController()
@@ -28,5 +30,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     func sceneDidBecomeActive(_ scene: UIScene) {
         GameResultStore.prepareBanner()
+        NewTeamPush.clearBanner()
     }
 }

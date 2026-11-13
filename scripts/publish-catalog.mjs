@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateCatalogBundle } from '../src/lib/catalog-data.ts';
+import { admittedTeams } from '../src/lib/catalog.ts';
 import { teamEligibilityError } from './champions-eligibility.mjs';
 
 function isPlainObject(value) {
@@ -21,10 +22,36 @@ async function writeAtomic(targetPath, contents) {
   await rename(tempPath, targetPath);
 }
 
+function latestBatch(previous, catalog) {
+  if (!previous) return undefined;
+  const before = new Set(previous.teams.map((team) => team.id));
+  const ids = admittedTeams(catalog.teams, catalog.currentRegulation)
+    .map((team) => team.id)
+    .filter((id) => !before.has(id));
+  return ids.length
+    ? { addedAt: catalog.updatedAt, ids }
+    : previous.latestBatch;
+}
+
+async function publishedBundle(origin) {
+  const manifest = await fetch(`${origin}/catalog/manifest.json`);
+  if (manifest.status === 404) return null;
+  if (!manifest.ok)
+    throw new Error(
+      `Published manifest request failed: HTTP ${manifest.status}.`
+    );
+  const { bundlePath } = await manifest.json();
+  const bundle = await fetch(`${origin}${bundlePath}`);
+  if (!bundle.ok)
+    throw new Error(`Published bundle request failed: HTTP ${bundle.status}.`);
+  return bundle.json();
+}
+
 export async function buildCatalogRelease({
   catalogPath = 'src/lib/data/catalog.json',
   tagsPath = 'src/lib/data/team-tags.json',
   outDir = '.cache/hosting',
+  previous = null,
 } = {}) {
   const [catalogRaw, tagsRaw] = await Promise.all([
     readFile(catalogPath, 'utf8'),
@@ -74,6 +101,7 @@ export async function buildCatalogRelease({
       );
   }
 
+  const batch = latestBatch(previous, catalog);
   const bundle = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
@@ -82,6 +110,7 @@ export async function buildCatalogRelease({
     sources: catalog.sources,
     teams: catalog.teams,
     tags: { teams: tags.teams },
+    ...(batch && { latestBatch: batch }),
   };
   validateCatalogBundle(bundle);
   const bundleJson = JSON.stringify(bundle);
@@ -120,7 +149,18 @@ if (
   process.argv[1] &&
   resolve(process.argv[1]) === fileURLToPath(import.meta.url)
 ) {
-  const { manifest } = await buildCatalogRelease();
+  const origin = process.env.CATALOG_ORIGIN;
+  if (!origin && process.env.CI)
+    throw new Error(
+      'CATALOG_ORIGIN is required in CI; publishing without it would drop the new-team batch.'
+    );
+  if (!origin)
+    console.warn(
+      'CATALOG_ORIGIN is not set; this release carries no new-team batch.'
+    );
+  const { manifest } = await buildCatalogRelease({
+    previous: origin ? await publishedBundle(origin) : null,
+  });
   console.log(
     `Published catalog bundle ${manifest.bundlePath} (${manifest.updatedAt}).`
   );

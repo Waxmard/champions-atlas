@@ -2,6 +2,7 @@
   import Save from '@lucide/svelte/icons/save';
   import { tick } from 'svelte';
   import { lockBodyScroll } from '#lib/dialog-scroll-lock.js';
+  import { dialogOut } from '#lib/motion.js';
   import { browsePokemon, type Member } from '#lib/catalog.js';
   import { notify } from '#lib/notifications.js';
   import {
@@ -328,10 +329,11 @@
   {#if pendingPlan}
     <dialog
       use:openDialog
+      out:dialogOut
       oncancel={handleDialogCancel}
       aria-labelledby={`current-set-save-title-${teamId}`}
       aria-describedby={`current-set-save-description-${teamId}`}
-      class="current-set-save-dialog fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
+      class="dialog-motion fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
     >
       <header class="shrink-0 border-b border-base-300 p-5">
         <h2

@@ -42,7 +42,7 @@
   } = $props();
 </script>
 
-<section aria-label="Moves" class="grid gap-4">
+<section aria-label="Moves" class="enter-fade grid gap-4">
   <div class="grid gap-2 sm:grid-cols-2">
     {#each moves as move, index (index)}
       {@const type = getMoveType(move)}

@@ -66,7 +66,7 @@
     <Combobox.Content
       customAnchor={fieldEl}
       sideOffset={6}
-      class="surface picker-popover-enter z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto p-1 shadow-lg"
+      class="surface popover-motion z-50 max-h-72 w-[var(--bits-combobox-anchor-width)] overflow-y-auto p-1 shadow-lg"
     >
       <Combobox.Viewport>
         {#each filtered as pokemon (pokemon)}

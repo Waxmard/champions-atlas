@@ -21,6 +21,7 @@
     <section
       id={`pokemon-slot-${index}`}
       class="min-w-0"
+      style:--morph-name={`team-sprite-${index}`}
       aria-label={`${member.pokemon} set`}
     >
       {#if renderMember}

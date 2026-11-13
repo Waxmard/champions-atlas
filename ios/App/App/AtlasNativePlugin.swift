@@ -1,6 +1,8 @@
 import Capacitor
 import Foundation
 import GoogleSignIn
+import UIKit
+import UserNotifications
 
 @objc(AtlasNativePlugin)
 public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
@@ -13,8 +15,13 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "acknowledgeShare", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setActiveTeam", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getPendingResults", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "acknowledgeResults", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "acknowledgeResults", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "registerPush", returnType: CAPPluginReturnPromise)
     ]
+
+    func announceNewTeamsTap() {
+        notifyListeners("newTeamsTap", data: [:], retainUntilConsumed: true)
+    }
 
     @objc func signInWithGoogle(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
@@ -56,6 +63,7 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func signOut(_ call: CAPPluginCall) {
         DispatchQueue.main.async {
             GIDSignIn.sharedInstance.signOut()
+            UIApplication.shared.unregisterForRemoteNotifications()
             call.resolve()
         }
     }
@@ -96,5 +104,27 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func acknowledgeResults(_ call: CAPPluginCall) {
         GameResultStore.acknowledge(call.getArray("results", JSObject.self) ?? [])
         call.resolve()
+    }
+
+    @objc func registerPush(_ call: CAPPluginCall) {
+        let authorize = call.getBool("authorize") ?? false
+        Task { @MainActor in
+            let granted = authorize ? await NewTeamPush.authorize() : false
+            var result: [String: Any] = ["granted": granted]
+            if let token = await NewTeamPush.token() {
+                result["token"] = token
+            }
+            call.resolve(result)
+        }
+    }
+}
+
+extension AtlasNativePlugin: NotificationHandlerProtocol {
+    public func willPresent(notification: UNNotification) -> UNNotificationPresentationOptions {
+        []
+    }
+
+    public func didReceive(response: UNNotificationResponse) {
+        announceNewTeamsTap()
     }
 }

@@ -123,7 +123,7 @@
   />
 {/if}
 
-<div bind:this={list} hidden={!!preview} class="min-w-0 space-y-2">
+<div bind:this={list} hidden={!!preview} class="enter-fade min-w-0 space-y-2">
   {#if ideas.length || searched.length}
     <p class="provenance max-w-[68ch]">
       Suggestions are built from catalog teams and {regulation} ladder pairings. Tap
