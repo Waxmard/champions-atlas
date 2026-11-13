@@ -96,7 +96,7 @@
           ?.querySelector<HTMLElement>('[data-set-field="set"]') ?? null
       );
     return (
-      document.querySelector<HTMLElement>('[data-move-favorites]') ??
+      document.querySelector<HTMLElement>('[data-move-saved]') ??
       document.querySelector<HTMLElement>('[data-team-action="menu"]')
     );
   }

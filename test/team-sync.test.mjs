@@ -264,11 +264,11 @@ test('Wishlist reorders combine with opposite-side edits without recovery', () =
   }
 });
 
-test('Favorites reorders sync, merge with opposite-side renames, and strip on promotion', () => {
-  const fav = (id, favoriteOrder, name = id) => ({
+test('Saved reorders sync, merge with opposite-side renames, and keep order across promotion', () => {
+  const fav = (id, savedOrder, name = id) => ({
     ...team(id, name),
-    collection: 'favorites',
-    ...(favoriteOrder === undefined ? {} : { favoriteOrder }),
+    collection: 'saved',
+    ...(savedOrder === undefined ? {} : { savedOrder }),
   });
   const base = [fav('a', 0), fav('b', 1)];
   const reordered = [fav('a', 1), fav('b', 0)];
@@ -284,14 +284,23 @@ test('Favorites reorders sync, merge with opposite-side renames, and strip on pr
   ];
   const afterPromote = merge(base, reordered, promoted);
   assert.equal(afterPromote[0].collection, 'my-teams');
-  assert.equal(Object.hasOwn(afterPromote[0], 'favoriteOrder'), false);
+  assert.equal(afterPromote[0].savedOrder, 1);
   const promotedIn = [
-    { ...team('a'), collection: 'favorites', favoriteOrder: 4 },
+    { ...team('a'), collection: 'saved', savedOrder: 4 },
     fav('b', 1),
   ];
   const inUse = [team('a'), fav('b', 1)];
   assert.deepEqual(merge(inUse, inUse, promotedIn), promotedIn);
   assert.deepEqual(merge(inUse, promotedIn, inUse), promotedIn);
+  const starred = [
+    { ...team('a'), collection: 'saved', favorite: true, savedOrder: 0 },
+    { ...team('b'), collection: 'saved', favorite: true, savedOrder: 1 },
+  ];
+  const legacy = [
+    { ...team('a'), collection: 'favorites', favoriteOrder: 0 },
+    { ...team('b'), collection: 'favorites', favoriteOrder: 1 },
+  ];
+  assert.deepEqual(merge(starred, starred, legacy), starred);
 });
 
 test('deletion and promotion win over an opposite-side Wishlist reorder', () => {

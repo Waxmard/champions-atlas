@@ -14,7 +14,7 @@
   import type { ResolvedPathname } from '$app/types';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Search from '@lucide/svelte/icons/search';
-  import Star from '@lucide/svelte/icons/star';
+  import Folder from '@lucide/svelte/icons/folder';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import NotificationSettings from '#lib/components/NotificationSettings.svelte';
@@ -39,7 +39,7 @@
 
   let { children } = $props();
   const isHome = $derived(page.route.id === '/');
-  const collectionRoutes = ['/my-teams', '/favorites', '/wishlist'] as const;
+  const collectionRoutes = ['/my-teams', '/saved', '/wishlist'] as const;
   const isCollectionPath = (path: string) =>
     collectionRoutes.some((route) => path === resolve(route));
   const isMyTeams = $derived(
@@ -776,12 +776,12 @@
         <span class="truncate">My Teams</span>
       </a>
       <a
-        href={resolve('favorites')}
-        aria-current={page.route.id === '/favorites' ? 'page' : undefined}
-        class={tabClass(page.route.id === '/favorites')}
+        href={resolve('saved')}
+        aria-current={page.route.id === '/saved' ? 'page' : undefined}
+        class={tabClass(page.route.id === '/saved')}
       >
-        <Star aria-hidden="true" />
-        <span class="truncate">Favorites</span>
+        <Folder aria-hidden="true" />
+        <span class="truncate">Saved</span>
       </a>
       <a
         href={resolve('wishlist')}

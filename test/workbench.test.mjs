@@ -410,24 +410,37 @@ test('custom teams validate paste and preserve independent snapshots and empty s
   assert.throws(() => saveTeam(storage, invalid), /untouched/);
 });
 
-test('savedTeamSchema and saveTeam validate and preserve favoriteOrder only within favorites', () => {
+test('legacy Favorites read as starred Saved teams and Saved order survives My Teams moves', () => {
   const paste = pasteFor('32 HP / 32 Atk / 2 Spe');
-  const base = {
-    ...newCustomTeam('Fav', 'M-C', paste),
-    collection: 'favorites',
+  const base = newCustomTeam('Fav', 'M-C', paste);
+  let raw = JSON.stringify([
+    { ...base, collection: 'favorites', favoriteOrder: 2 },
+  ]);
+  let writes = 0;
+  const storage = {
+    getItem: () => raw,
+    setItem: (_, value) => {
+      writes++;
+      raw = value;
+    },
   };
-  let raw = JSON.stringify([{ ...base, favoriteOrder: 2 }]);
-  const storage = { getItem: () => raw, setItem: (_, value) => (raw = value) };
-  assert.equal(readSavedTeams(storage)[0].favoriteOrder, 2);
+  const [legacy] = readSavedTeams(storage);
+  assert.equal(legacy.collection, 'saved');
+  assert.equal(legacy.favorite, true);
+  assert.equal(legacy.savedOrder, 2);
+  assert.equal(Object.hasOwn(legacy, 'favoriteOrder'), false);
+  assert.equal(writes, 0);
   const renamed = saveTeam(storage, {
-    ...base,
+    ...legacy,
     name: 'Renamed',
-    favoriteOrder: 99,
+    savedOrder: 99,
   })[0];
-  assert.equal(renamed.favoriteOrder, 2);
-  const promoted = saveTeam(storage, { ...renamed, collection: 'my-teams' })[0];
-  assert.equal(promoted.favoriteOrder, undefined);
-  assert.equal(Object.hasOwn(promoted, 'favoriteOrder'), false);
+  assert.equal(renamed.savedOrder, 2);
+  const moved = saveTeam(storage, { ...renamed, collection: 'my-teams' })[0];
+  assert.equal(moved.savedOrder, 2);
+  assert.equal(moved.favorite, true);
+  const wishlisted = saveTeam(storage, { ...moved, collection: 'wishlist' })[0];
+  assert.equal(Object.hasOwn(wishlisted, 'savedOrder'), false);
 });
 
 test('generateUUID produces valid RFC4122 v4 UUID', () => {

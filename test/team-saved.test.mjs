@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
-  moveInUseTeamToFavorites,
+  moveInUseTeamToSaved,
   useWishlistedTeam,
-  useFavoriteTeam,
-  removeFavoriteTeam,
-  orderedFavorites,
-  reorderFavorites,
+  useSavedTeam,
+  removeSavedTeam,
+  orderedSaved,
+  reorderSaved,
+  setTeamFavorite,
+  favoriteTeams,
   teamsInUse,
   SavedTeamError,
   recordSummary,
@@ -74,7 +76,7 @@ const wish = (id, roster) => ({
 const teamBaseline = (team) =>
   canonicalSnapshot({ name: team.name, members: team.members });
 
-test('Favorites lifecycle preserves edits, rejects duplicate base teams, reorders, and restores to My Teams', () => {
+test('Saved lifecycle preserves edits, rejects duplicate base teams, reorders, and restores to My Teams', () => {
   const first = snapshot('fav-1', 'Variant A');
   const second = snapshot('fav-2', 'Variant B');
   const duplicate = {
@@ -84,29 +86,32 @@ test('Favorites lifecycle preserves edits, rejects duplicate base teams, reorder
   second.members[0].item = 'Choice Band';
   const secondOriginal = structuredClone(second.original);
   const s = storage([first, second, duplicate]);
-  const ids = () => orderedFavorites(readSavedTeams(s)).map((x) => x.id);
-  const favorite = (id) => readSavedTeams(s).find((x) => x.id === id);
+  const moved = new Set(['fav-1', 'fav-2']);
+  const ids = () =>
+    orderedSaved(readSavedTeams(s))
+      .map((x) => x.id)
+      .filter((id) => moved.has(id));
+  const saved = (id) => readSavedTeams(s).find((x) => x.id === id);
   const editedSurvives = () => {
-    assert.equal(favorite('fav-2').members[0].item, 'Choice Band');
-    assert.deepEqual(favorite('fav-2').original, secondOriginal);
+    assert.equal(saved('fav-2').members[0].item, 'Choice Band');
+    assert.deepEqual(saved('fav-2').original, secondOriginal);
   };
   assert.equal(
-    moveInUseTeamToFavorites(s, first.id, teamBaseline(first)).collection,
-    'favorites'
+    moveInUseTeamToSaved(s, first.id, teamBaseline(first)).collection,
+    'saved'
   );
   const beforeDuplicate = s.data;
   const writes = s.writes;
   assert.throws(
-    () => moveInUseTeamToFavorites(s, duplicate.id, teamBaseline(duplicate)),
+    () => moveInUseTeamToSaved(s, duplicate.id, teamBaseline(duplicate)),
     (error) =>
-      error instanceof SavedTeamError &&
-      /already in Favorites/.test(error.message)
+      error instanceof SavedTeamError && /already in Saved/.test(error.message)
   );
   assert.equal(s.data, beforeDuplicate);
   assert.equal(s.writes, writes);
   assert.equal(
-    moveInUseTeamToFavorites(s, second.id, teamBaseline(second)).collection,
-    'favorites'
+    moveInUseTeamToSaved(s, second.id, teamBaseline(second)).collection,
+    'saved'
   );
   assert.deepEqual(
     teamsInUse(readSavedTeams(s)).map((x) => x.id),
@@ -114,32 +119,30 @@ test('Favorites lifecycle preserves edits, rejects duplicate base teams, reorder
   );
   assert.deepEqual(ids(), ['fav-2', 'fav-1']);
   editedSurvives();
-  assert.equal(
-    reorderFavorites(s, ['fav-2', 'fav-1'], ['fav-2', 'fav-1']),
-    null
-  );
-  reorderFavorites(s, ['fav-1', 'fav-2'], ['fav-2', 'fav-1']);
+  const all = ['fav-2', 'fav-1', 'fav-dup'];
+  assert.equal(reorderSaved(s, all, all), null);
+  reorderSaved(s, ['fav-1', 'fav-2', 'fav-dup'], all);
   assert.deepEqual(ids(), ['fav-1', 'fav-2']);
   editedSurvives();
-  assert.throws(
-    () => reorderFavorites(s, ['fav-2', 'fav-1'], ['fav-2', 'fav-1']),
-    /Favorites changed/
-  );
+  assert.throws(() => reorderSaved(s, all, all), /Saved changed/);
   assert.throws(() => useWishlistedTeam(s, 'fav-2'), /no longer in Wishlist/);
-  const restored = useFavoriteTeam(s, 'fav-2');
+  const restored = useSavedTeam(s, 'fav-2');
   assert.equal(restored.collection, 'my-teams');
-  assert.equal(restored.favoriteOrder, undefined);
+  assert.equal(restored.savedOrder, 1);
   assert.equal(restored.members[0].item, 'Choice Band');
   editedSurvives();
-  assert.equal(useFavoriteTeam(s, 'fav-2').id, 'fav-2');
-  assert.throws(() => removeFavoriteTeam(s, 'fav-2'), /no longer in Favorites/);
+  assert.equal(useSavedTeam(s, 'fav-2').id, 'fav-2');
   assert.equal(
-    removeFavoriteTeam(s, 'fav-1').some((x) => x.id === 'fav-1'),
+    removeSavedTeam(s, 'fav-2').some((x) => x.id === 'fav-2'),
+    false
+  );
+  assert.equal(
+    removeSavedTeam(s, 'fav-1').some((x) => x.id === 'fav-1'),
     false
   );
 });
 
-test('Favorites moves and restores reject missing or changed teams without writing', () => {
+test('Saved moves and restores reject missing or changed teams without writing', () => {
   const initial = snapshot('team');
   const baseline = teamBaseline(readSavedTeams(storage([initial]))[0]);
   const editedMembers = initial.members.map((m, i) =>
@@ -147,7 +150,7 @@ test('Favorites moves and restores reject missing or changed teams without writi
   );
   const cases = [
     { id: 'missing', team: initial },
-    { id: initial.id, team: { ...initial, collection: 'favorites' } },
+    { id: initial.id, team: { ...initial, collection: 'saved' } },
     { id: initial.id, team: { ...initial, name: 'Changed elsewhere' } },
     { id: initial.id, team: { ...initial, members: editedMembers } },
   ];
@@ -155,7 +158,7 @@ test('Favorites moves and restores reject missing or changed teams without writi
     const s = storage([team]);
     const before = s.data;
     assert.throws(
-      () => moveInUseTeamToFavorites(s, id, baseline),
+      () => moveInUseTeamToSaved(s, id, baseline),
       (error) =>
         error instanceof SavedTeamError &&
         /changed elsewhere/.test(error.message)
@@ -167,24 +170,30 @@ test('Favorites moves and restores reject missing or changed teams without writi
   const before = s.data;
   for (const [id, pattern] of [
     ['missing', /no longer saved/],
-    ['w', /no longer in Favorites/],
+    ['w', /no longer in Saved/],
   ])
     assert.throws(
-      () => useFavoriteTeam(s, id),
+      () => useSavedTeam(s, id),
       (error) => error instanceof SavedTeamError && pattern.test(error.message)
     );
-  assert.deepEqual(removeFavoriteTeam(s, 'missing'), readSavedTeams(s));
+  assert.throws(
+    () => removeSavedTeam(s, 'w'),
+    (error) =>
+      error instanceof SavedTeamError &&
+      /no longer in Saved/.test(error.message)
+  );
+  assert.deepEqual(removeSavedTeam(s, 'missing'), readSavedTeams(s));
   assert.equal(s.data, before);
   assert.equal(s.writes, 0);
 });
 
-test('Win/loss record survives Favorites moves and invalid records are rejected', () => {
+test('Win/loss record survives Saved moves and invalid records are rejected', () => {
   const record = { wins: 3, losses: 1 };
   const team = { ...snapshot('rec'), record };
   const s = storage([team]);
-  moveInUseTeamToFavorites(s, team.id, teamBaseline(team));
+  moveInUseTeamToSaved(s, team.id, teamBaseline(team));
   assert.deepEqual(readSavedTeams(s)[0].record, record);
-  assert.deepEqual(useFavoriteTeam(s, team.id).record, record);
+  assert.deepEqual(useSavedTeam(s, team.id).record, record);
   for (const bad of [
     { wins: -1, losses: 0 },
     { wins: 1.5, losses: 0 },
@@ -196,6 +205,46 @@ test('Win/loss record survives Favorites moves and invalid records are rejected'
     );
 });
 
+test('favorite is a flag on current and Saved-only teams', () => {
+  const s = storage([
+    snapshot('a'),
+    { ...snapshot('b'), collection: 'saved' },
+    wish('w'),
+  ]);
+  const starred = setTeamFavorite(s, 'a', true);
+  assert.equal(starred.favorite, true);
+  assert.equal(starred.collection, undefined);
+  assert.equal(
+    Object.hasOwn(setTeamFavorite(s, 'a', false), 'favorite'),
+    false
+  );
+  const before = s.data;
+  const writes = s.writes;
+  for (const id of ['w', 'missing'])
+    assert.throws(
+      () => setTeamFavorite(s, id, true),
+      (error) => error instanceof SavedTeamError
+    );
+  assert.equal(s.data, before);
+  assert.equal(s.writes, writes);
+  setTeamFavorite(s, 'a', true);
+  setTeamFavorite(s, 'b', true);
+  const a = readSavedTeams(s).find((team) => team.id === 'a');
+  moveInUseTeamToSaved(s, 'a', teamBaseline(a));
+  assert.equal(useSavedTeam(s, 'a').favorite, true);
+  assert.deepEqual(
+    favoriteTeams(readSavedTeams(s))
+      .map((team) => team.id)
+      .sort(),
+    ['a', 'b']
+  );
+  assert.deepEqual(
+    orderedSaved(readSavedTeams(s))
+      .map((team) => team.id)
+      .sort(),
+    ['a', 'b']
+  );
+});
 test('Record summary adds a rounded win rate once a game is logged', () => {
   assert.deepEqual(recordSummary({ wins: 3, losses: 1 }), {
     text: '3W – 1L · 75%',

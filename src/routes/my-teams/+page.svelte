@@ -14,6 +14,7 @@
   import TeamPicker from '#lib/components/TeamPicker.svelte';
   import SwapSuggestions from '#lib/components/SwapSuggestions.svelte';
   import Plus from '@lucide/svelte/icons/plus';
+  import Star from '@lucide/svelte/icons/star';
   import { Button } from '#lib/components/ui/button/index.js';
   import SetEditorSheet from '#lib/components/SetEditorSheet.svelte';
   import TeamSources from '#lib/components/TeamSources.svelte';
@@ -73,6 +74,9 @@
   const editing = $derived(activeEditIndex !== null);
   const hasTeam = $derived(ready && !storageError && !!draft);
   const changed = $derived(!!draft && pasteText !== exportPaste(draft.members));
+  const favoriteSources = $derived(
+    favorites.filter((team) => team.id !== draft?.id)
+  );
   const dirty = $derived(
     (!!draft && draft.name !== (baseline ? JSON.parse(baseline).name : '')) ||
       editorPending ||
@@ -92,7 +96,7 @@
     try {
       const allSaved = readSavedTeams(localStorage);
       saved = collections.teamsInUse(allSaved);
-      favorites = collections.orderedFavorites(allSaved);
+      favorites = collections.favoriteTeams(allSaved);
       storageError = '';
       const activeId =
         activeOverride === undefined
@@ -124,7 +128,7 @@
       activeEditIndex = editorMember = null;
       message =
         id && !entry && !collections.resolveSavedTeamId(saved, null, activeId)
-          ? 'This saved team is not on this device. Choose a saved team or browse the catalog.'
+          ? 'This team is not in My Teams on this device. Choose a current team or browse the catalog.'
           : '';
       errorMessage = nameError = '';
     } catch {
@@ -230,7 +234,7 @@
       const pendingName = draft.name;
       const allSaved = saveTeam(localStorage, next);
       saved = collections.teamsInUse(allSaved);
-      favorites = collections.orderedFavorites(allSaved);
+      favorites = collections.favoriteTeams(allSaved);
       const persisted = saved.find(({ id }) => id === next.id);
       if (!persisted) throw new Error('saved team is missing after saving');
       baseline = contentSnapshot(persisted);
@@ -256,6 +260,10 @@
     });
   const resetRecord = () =>
     persistChange((team) => ({ ...team, record: { wins: 0, losses: 0 } }));
+  const toggleFavorite = () =>
+    persistChange(({ favorite, ...team }) =>
+      favorite ? team : { ...team, favorite: true }
+    );
   function saveTeamName() {
     if (!draft || changed) return;
     const name = draft.name.trim();
@@ -468,7 +476,7 @@
         </p>{/if}
       {#if !ready}
         <p class="text-[0.9375rem] text-base-content/70">
-          Loading saved teams…
+          Loading current teams…
         </p>
       {:else if !storageError}
         {#if saved.length}
@@ -490,6 +498,23 @@
               />
             </div>
             {#if draft}
+              <Button
+                variant="quiet"
+                size="icon-compact"
+                class="min-h-11 min-w-11"
+                aria-label="Favorite"
+                aria-pressed={!!draft.favorite}
+                title={draft.favorite
+                  ? 'Remove from favorites'
+                  : 'Add to favorites'}
+                disabled={changed || editing || deleting || stale}
+                onclick={toggleFavorite}
+              >
+                <Star
+                  class="size-4 {draft.favorite ? 'fill-current' : ''}"
+                  aria-hidden="true"
+                />
+              </Button>
               <TeamActionsMenu
                 oncopy={copyPaste}
                 disabled={changed || editing || deleting}
@@ -499,7 +524,7 @@
         {:else}
           <div class="plate max-w-xl px-4 py-3">
             <p class="text-[0.9375rem] leading-relaxed">
-              No saved teams yet. Open a catalog team and choose “Use this
+              No current teams yet. Open a catalog team and choose “Use this
               team”.
             </p>
             <Button
@@ -655,7 +680,7 @@
             {teams}
             currentRegulation={current}
             tags={catalogState.tags}
-            favoriteTeams={favorites}
+            favoriteTeams={favoriteSources}
             disabled={changed || editing || deleting || stale}
             onapply={applySwap}
           />
@@ -714,7 +739,7 @@
         initialMoveSlot={activeEditMoveSlot}
         teammates={draft.members.filter((_, i) => i !== editIndex)}
         tagIndex={catalogState.tags}
-        favoriteTeams={favorites}
+        favoriteTeams={favoriteSources}
         onchange={(next) => saveMember(editIndex, next)}
         onclose={closeSetEdit}
         onpendingchange={(value) => (editorPending = value)}

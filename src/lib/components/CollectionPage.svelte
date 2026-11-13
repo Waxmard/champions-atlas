@@ -5,6 +5,7 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import Star from '@lucide/svelte/icons/star';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import WishlistList from '#lib/components/WishlistList.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
@@ -15,6 +16,7 @@
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
     displaySavedTeam,
+    isTeamInUse,
     resolveCatalogTeam,
     SavedTeamError,
     savedTeamHeading,
@@ -32,6 +34,7 @@
     useTeam,
     removeTeam,
     empty,
+    setFavorite,
     busy = false,
     ready = $bindable(false),
     loaded = $bindable(false),
@@ -41,7 +44,7 @@
     importForm,
     shareRecovery,
   }: {
-    collection: 'wishlist' | 'favorites';
+    collection: 'wishlist' | 'saved';
     orderTeams: (teams: SavedTeam[]) => SavedTeam[];
     reorderTeams: (
       storage: Storage,
@@ -52,6 +55,11 @@
     removeTeam: (storage: Storage, id: string) => void;
     empty: string;
     busy?: boolean;
+    setFavorite?: (
+      storage: Storage,
+      id: string,
+      favorite: boolean
+    ) => SavedTeam;
     ready?: boolean;
     loaded?: boolean;
     storageError?: string;
@@ -63,15 +71,20 @@
 
   let entries = $state<SavedTeam[]>([]);
   let filters = $state<MemberFilter[]>([]);
+  let favoritesOnly = $state(false);
+  const filtered = $derived(filters.length > 0 || favoritesOnly);
   const pickerTeams = $derived(entries.map(displaySavedTeam));
   const visibleEntries = $derived(
-    entries.filter((entry) => matchesTeam(entry, filters))
+    entries.filter(
+      (entry) =>
+        matchesTeam(entry, filters) && (!favoritesOnly || entry.favorite)
+    )
   );
   let pendingId = $state('');
   let listRegion = $state<HTMLDivElement>();
   let listScroll: { x: number; y: number } | null = null;
   let listOpener: HTMLElement | null = null;
-  const label = $derived(collection === 'favorites' ? 'Favorites' : 'Wishlist');
+  const label = $derived(collection === 'saved' ? 'Saved' : 'Wishlist');
   const route = $derived(`/${collection}`);
   const selectedId = $derived(page.url.searchParams.get('team'));
   const selectedEntry = $derived(
@@ -158,6 +171,7 @@
     pendingId = entry.id;
     errorMessage = '';
     inlineError = false;
+    const moved = !isTeamInUse(entry);
     let promoted: SavedTeam;
     try {
       promoted = useTeam(localStorage, entry.id);
@@ -165,7 +179,7 @@
       errorMessage =
         error instanceof SavedTeamError
           ? error.message
-          : `Could not move this team to My Teams. Check app storage access and available space. Your ${label} ${collection === 'favorites' ? 'were' : 'was'} not changed.`;
+          : 'Could not move this team to My Teams. Check app storage access and available space. Nothing was changed.';
       pendingId = '';
       refresh();
       return;
@@ -177,7 +191,7 @@
       errorMessage =
         'Your team was saved, but the active team could not be remembered.';
       refresh();
-      notify('Team moved to My Teams.');
+      if (moved) notify('Team moved to My Teams.');
       pendingId = '';
       return;
     }
@@ -193,13 +207,36 @@
         : 'Could not open My Teams. Your team was saved.';
       refresh();
     }
-    notify('Team moved to My Teams.');
+    if (moved) notify('Team moved to My Teams.');
     pendingId = '';
+  }
+
+  function toggleFavorite(entry: SavedTeam) {
+    if (pendingId || !setFavorite) return;
+    errorMessage = '';
+    inlineError = false;
+    try {
+      setFavorite(localStorage, entry.id, !entry.favorite);
+      void pushNow();
+    } catch (error) {
+      errorMessage =
+        error instanceof SavedTeamError
+          ? error.message
+          : 'Could not update this team. Existing saved teams have been left untouched.';
+    }
+    refresh();
   }
 
   async function remove(entry: SavedTeam) {
     if (pendingId) return;
-    if (!confirm(`Remove “${entry.name}” from ${label}?`)) return;
+    if (
+      !confirm(
+        collection === 'saved'
+          ? `Delete “${entry.name}” and its record?`
+          : `Remove “${entry.name}” from ${label}?`
+      )
+    )
+      return;
     pendingId = entry.id;
     errorMessage = '';
     inlineError = false;
@@ -217,7 +254,7 @@
       return;
     }
     void pushNow();
-    notify(`Removed from ${label}.`);
+    notify(collection === 'saved' ? 'Team deleted.' : `Removed from ${label}.`);
     refresh();
     pendingId = '';
     if (wasSelected) {
@@ -295,13 +332,34 @@
               ? 'team'
               : 'teams'}
           </p>
-          {#if filters.length}
-            <Button type="button" variant="quiet" onclick={() => (filters = [])}
-              >Clear filters</Button
-            >
-          {/if}
+          <div class="flex items-center gap-1">
+            {#if setFavorite}
+              <Button
+                type="button"
+                variant="quiet"
+                aria-pressed={favoritesOnly}
+                onclick={() => (favoritesOnly = !favoritesOnly)}
+              >
+                <Star
+                  class="size-4 {favoritesOnly ? 'fill-current' : ''}"
+                  aria-hidden="true"
+                />
+                Favorites
+              </Button>
+            {/if}
+            {#if filtered}
+              <Button
+                type="button"
+                variant="quiet"
+                onclick={() => {
+                  filters = [];
+                  favoritesOnly = false;
+                }}>Clear filters</Button
+              >
+            {/if}
+          </div>
         </div>
-        {#if filters.length && entries.length > 1}
+        {#if filtered && entries.length > 1}
           <p class="provenance mt-2">Clear filters to reorder {label}.</p>
         {/if}
         {#if visibleEntries.length}
@@ -309,11 +367,12 @@
             {collection}
             entries={visibleEntries}
             disabled={!ready || !!pendingId || busy}
-            sortable={filters.length === 0 && entries.length > 1}
+            sortable={!filtered && entries.length > 1}
             displayTeam={displaySavedTeam}
             onuse={use}
             onremove={remove}
             onreorder={reorder}
+            onfavorite={setFavorite ? toggleFavorite : undefined}
           />
         {:else}
           <div class="plate mt-2 max-w-xl px-4 py-3">
@@ -370,6 +429,9 @@
           disabled={!ready || !!pendingId}
           onuse={() => use(selectedEntry)}
           onremove={() => remove(selectedEntry)}
+          onfavorite={setFavorite
+            ? () => toggleFavorite(selectedEntry)
+            : undefined}
         />
       {/key}
     {:else}

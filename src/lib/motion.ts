@@ -25,7 +25,7 @@ const tab = ({ route }: Place) =>
 const depth = ({ route, url }: Place) =>
   route.id === '/teams/[id]' ||
   route.id === '/my-teams/new' ||
-  ((route.id === '/wishlist' || route.id === '/favorites') &&
+  ((route.id === '/wishlist' || route.id === '/saved') &&
     url.searchParams.has('team'))
     ? 1
     : 0;

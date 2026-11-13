@@ -134,7 +134,7 @@ test('catalog resolution rejects missing, malformed, unmatched, and ambiguous UR
   assert.deepEqual(cat, before);
 });
 
-test('legacy teams default to My Teams without rewriting; Wishlist and Favorites are excluded from resolution', () => {
+test('legacy teams default to My Teams without rewriting; Wishlist and Saved are excluded from resolution', () => {
   const legacy = snapshot('legacy');
   delete legacy.collection;
   const s = storage([legacy]);
@@ -143,7 +143,7 @@ test('legacy teams default to My Teams without rewriting; Wishlist and Favorites
   const list = [
     snapshot('a'),
     { ...snapshot('w'), collection: 'wishlist' },
-    { ...snapshot('f'), collection: 'favorites' },
+    { ...snapshot('f'), collection: 'saved' },
     snapshot('b'),
   ];
   assert.deepEqual(
@@ -430,8 +430,8 @@ test('moving at the record limit succeeds and quota failures keep existing bytes
   assert.equal(quota.data, before);
 });
 
-test('requested, active and fallback IDs never resolve to Wishlist or Favorites entries', () => {
-  const fav = (id) => ({ ...snapshot(id), collection: 'favorites' });
+test('requested, active and fallback IDs never resolve to Wishlist or Saved entries', () => {
+  const fav = (id) => ({ ...snapshot(id), collection: 'saved' });
   const w1 = wish('w1'),
     w2 = wish('w2'),
     f1 = fav('f1'),

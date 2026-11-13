@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import Bookmark from '@lucide/svelte/icons/bookmark';
-  import Star from '@lucide/svelte/icons/star';
+  import Folder from '@lucide/svelte/icons/folder';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import type { Member } from '#lib/catalog.js';
   import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
@@ -10,7 +10,7 @@
   import { notify } from '#lib/notifications.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import {
-    moveInUseTeamToFavorites,
+    moveInUseTeamToSaved,
     moveInUseTeamToWishlist,
     resolveSavedTeamId,
     SavedTeamError,
@@ -52,22 +52,21 @@
     if (!edited && errorMessage === WISHLIST_EDITED_ERROR) errorMessage = '';
   });
 
-  async function move(target: 'favorites' | 'wishlist') {
+  async function move(target: 'saved' | 'wishlist') {
     if (moveDisabled) return;
     if (target === 'wishlist' && edited) {
       errorMessage = WISHLIST_EDITED_ERROR;
       return;
     }
     const id = teamId;
-    const label = target === 'favorites' ? 'Favorites' : 'Wishlist';
+    const label = target === 'saved' ? 'Saved' : 'Wishlist';
     if (!confirm(`Move “${name}” to ${label}?`)) return;
     pending = true;
     errorMessage = '';
     let previousActiveId: string | null;
     try {
       previousActiveId = localStorage.getItem(activeTeamKey);
-      if (target === 'favorites')
-        moveInUseTeamToFavorites(localStorage, id, baseline);
+      if (target === 'saved') moveInUseTeamToSaved(localStorage, id, baseline);
       else moveInUseTeamToWishlist(localStorage, id, baseline);
     } catch (error) {
       errorMessage =
@@ -115,13 +114,13 @@
   <Button
     variant="quiet"
     class={action}
-    aria-label="Move to Favorites"
-    data-move-favorites
+    aria-label="Move to Saved"
+    data-move-saved
     disabled={moveDisabled}
-    onclick={() => move('favorites')}
+    onclick={() => move('saved')}
   >
-    <Star class="size-4" aria-hidden="true" />
-    <span>Favorites</span>
+    <Folder class="size-4" aria-hidden="true" />
+    <span>Saved</span>
   </Button>
   <Button
     variant="quiet"

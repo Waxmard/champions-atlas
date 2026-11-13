@@ -2,6 +2,7 @@
   import { resolve } from '$app/paths';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
+  import Star from '@lucide/svelte/icons/star';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
@@ -20,15 +21,16 @@
     disabled,
     onuse,
     onremove,
+    onfavorite,
   }: {
-    collection?: 'wishlist' | 'favorites';
+    collection?: 'wishlist' | 'saved';
     entry: SavedTeam;
     match: Team | undefined;
     disabled: boolean;
     onuse: () => void;
     onremove: () => void;
+    onfavorite?: () => void;
   } = $props();
-  const label = $derived(collection === 'favorites' ? 'Favorites' : 'Wishlist');
   const heading = $derived(savedTeamHeading(entry));
   let selectedIndex = $state<number | null>(null);
   let failedCopyText = $state('');
@@ -70,12 +72,31 @@
       <AtlasIcon />
       <span>My Teams</span>
     </Button>
+    {#if onfavorite}
+      <Button
+        variant="quiet"
+        size="icon-compact"
+        class="min-h-11 min-w-11"
+        aria-label="Favorite"
+        aria-pressed={!!entry.favorite}
+        title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}
+        {disabled}
+        onclick={onfavorite}
+      >
+        <Star
+          class="size-4 {entry.favorite ? 'fill-current' : ''}"
+          aria-hidden="true"
+        />
+      </Button>
+    {/if}
     <Button
       variant="quiet"
       size="icon-compact"
       class="min-h-11 min-w-11"
-      aria-label={`Remove from ${label}`}
-      title={`Remove from ${label}`}
+      aria-label={collection === 'saved'
+        ? 'Delete team'
+        : 'Remove from Wishlist'}
+      title={collection === 'saved' ? 'Delete team' : 'Remove from Wishlist'}
       {disabled}
       onclick={onremove}
     >

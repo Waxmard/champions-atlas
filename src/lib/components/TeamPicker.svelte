@@ -59,13 +59,13 @@
       {disabled}
       aria-label={heading
         ? `Switch team, currently ${heading.title}`
-        : 'Choose saved team'}
+        : 'Choose current team'}
       class="flex min-h-11 w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-[var(--radius-field)] text-start disabled:pointer-events-none disabled:opacity-50"
     >
       <span class="min-w-0">
         <span
           class="line-clamp-2 font-display text-xl leading-tight font-bold tracking-tight wrap-anywhere landscape:md:text-base"
-          >{heading?.title ?? 'Choose saved team'}</span
+          >{heading?.title ?? 'Choose current team'}</span
         >
         {#if heading?.context}<span
             class="provenance line-clamp-1 wrap-anywhere"
@@ -81,7 +81,7 @@
   <Popover.Portal>
     <Popover.Content
       role="dialog"
-      aria-label="Saved teams"
+      aria-label="Current teams"
       align="start"
       sideOffset={6}
       trapFocus={false}
@@ -90,8 +90,8 @@
     >
       <input
         type="search"
-        aria-label="Search saved teams"
-        placeholder="Search saved teams"
+        aria-label="Search current teams"
+        placeholder="Search current teams"
         autocomplete="off"
         class="input mb-1 min-h-11 w-full shrink-0 text-base"
         bind:value={query}

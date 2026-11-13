@@ -5,9 +5,14 @@
   import { dur } from '#lib/motion.js';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
+  import Star from '@lucide/svelte/icons/star';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { type Team } from '#lib/catalog.js';
-  import { recordSummary, savedTeamHeading } from '#lib/team-collections.js';
+  import {
+    isTeamInUse,
+    recordSummary,
+    savedTeamHeading,
+  } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import AtlasIcon from './AtlasIcon.svelte';
   import TeamCard from './TeamCard.svelte';
@@ -22,8 +27,9 @@
     onuse,
     onremove,
     onreorder,
+    onfavorite,
   }: {
-    collection?: 'wishlist' | 'favorites';
+    collection?: 'wishlist' | 'saved';
     entries: SavedTeam[];
     disabled: boolean;
     sortable: boolean;
@@ -31,8 +37,8 @@
     onuse: (entry: SavedTeam) => void;
     onremove: (entry: SavedTeam) => void;
     onreorder: (orderedIds: string[], expectedIds: string[]) => boolean;
+    onfavorite?: (entry: SavedTeam) => void;
   } = $props();
-  const label = $derived(collection === 'favorites' ? 'Favorites' : 'Wishlist');
 
   let list: HTMLUListElement;
 
@@ -77,7 +83,14 @@
 
 <ul bind:this={list} class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
   {#each entries as entry, index (entry.id)}
-    {@const heading = savedTeamHeading(entry)}
+    {@const base = savedTeamHeading(entry)}
+    {@const heading =
+      collection === 'saved' && isTeamInUse(entry)
+        ? {
+            ...base,
+            context: ['In My Teams', base.context].filter(Boolean).join(' · '),
+          }
+        : base}
     <li
       class="min-w-0"
       data-wishlist-id={entry.id}
@@ -143,12 +156,35 @@
                 aria-label={`Record: ${summary.label}`}>{summary.text}</span
               >
             {/if}
+            {#if onfavorite}
+              <Button
+                variant="quiet"
+                size="icon-compact"
+                class="size-11"
+                aria-label="Favorite"
+                aria-pressed={!!entry.favorite}
+                title={entry.favorite
+                  ? 'Remove from favorites'
+                  : 'Add to favorites'}
+                {disabled}
+                onclick={() => onfavorite(entry)}
+              >
+                <Star
+                  class="size-4 {entry.favorite ? 'fill-current' : ''}"
+                  aria-hidden="true"
+                />
+              </Button>
+            {/if}
             <Button
               variant="quiet"
               size="icon-compact"
               class="size-11"
-              aria-label={`Remove from ${label}`}
-              title={`Remove from ${label}`}
+              aria-label={collection === 'saved'
+                ? 'Delete team'
+                : 'Remove from Wishlist'}
+              title={collection === 'saved'
+                ? 'Delete team'
+                : 'Remove from Wishlist'}
               {disabled}
               data-swipe-left
               onclick={() => onremove(entry)}
@@ -162,7 +198,7 @@
           <span>My Teams</span>
         {/snippet}
         {#snippet swipeLeft()}
-          <span>Remove</span>
+          <span>{collection === 'saved' ? 'Delete' : 'Remove'}</span>
           <Trash2 class="size-5" />
         {/snippet}
       </TeamCard>
