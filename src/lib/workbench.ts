@@ -45,6 +45,7 @@ import {
 
 export const storageKey = 'champions-atlas:teams:v1';
 export const activeTeamKey = 'champions-atlas:active-team:v1';
+export const savedFavoritesKey = 'champions-atlas:saved-favorites:v1';
 export const browseStorageKey = 'champions-atlas:browse:v1';
 
 export function setText(member: Member) {
@@ -186,15 +187,14 @@ const storedTeamSchema = z.object({
 });
 type StoredTeam = z.infer<typeof storedTeamSchema>;
 export type SavedTeam = Omit<StoredTeam, 'collection' | 'favoriteOrder'> & {
-  collection?: 'my-teams' | 'wishlist' | 'saved';
+  collection?: 'wishlist';
 };
 const savedTeamSchema = storedTeamSchema.transform(
   ({ collection, favoriteOrder, ...team }): SavedTeam => {
-    if (collection !== 'favorites')
-      return collection ? { ...team, collection } : team;
+    if (collection === 'wishlist') return { ...team, collection };
+    if (collection !== 'favorites') return team;
     return {
       ...team,
-      collection: 'saved',
       favorite: true,
       ...(favoriteOrder === undefined ? {} : { savedOrder: favoriteOrder }),
     };

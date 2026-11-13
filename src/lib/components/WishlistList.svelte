@@ -5,16 +5,12 @@
   import { dur } from '#lib/motion.js';
   import ArrowDown from '@lucide/svelte/icons/arrow-down';
   import ArrowUp from '@lucide/svelte/icons/arrow-up';
+  import Folder from '@lucide/svelte/icons/folder';
   import Star from '@lucide/svelte/icons/star';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { type Team } from '#lib/catalog.js';
-  import {
-    isTeamInUse,
-    recordSummary,
-    savedTeamHeading,
-  } from '#lib/team-collections.js';
+  import { recordSummary, savedTeamHeading } from '#lib/team-collections.js';
   import type { SavedTeam } from '#lib/workbench.js';
-  import AtlasIcon from './AtlasIcon.svelte';
   import TeamCard from './TeamCard.svelte';
   import { Button } from './ui/button/index.js';
 
@@ -34,7 +30,7 @@
     disabled: boolean;
     sortable: boolean;
     displayTeam: (entry: SavedTeam) => Team;
-    onuse: (entry: SavedTeam) => void;
+    onuse?: (entry: SavedTeam) => void;
     onremove: (entry: SavedTeam) => void;
     onreorder: (orderedIds: string[], expectedIds: string[]) => boolean;
     onfavorite?: (entry: SavedTeam) => void;
@@ -83,14 +79,7 @@
 
 <ul bind:this={list} class="mt-2 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
   {#each entries as entry, index (entry.id)}
-    {@const base = savedTeamHeading(entry)}
-    {@const heading =
-      collection === 'saved' && isTeamInUse(entry)
-        ? {
-            ...base,
-            context: ['In My Teams', base.context].filter(Boolean).join(' · '),
-          }
-        : base}
+    {@const heading = savedTeamHeading(entry)}
     <li
       class="min-w-0"
       data-wishlist-id={entry.id}
@@ -125,27 +114,33 @@
           </Button>
         </div>
       {/snippet}
+      {#snippet useAction()}
+        <Button
+          data-wishlist-use
+          variant="quiet"
+          class="min-h-11 ps-0 pe-1.5"
+          {disabled}
+          data-swipe-right
+          onclick={() => onuse?.(entry)}
+        >
+          <Folder class="size-4" aria-hidden="true" />
+          <span>Save</span>
+        </Button>
+      {/snippet}
+      {#snippet useSwipe()}
+        <Folder class="size-4" aria-hidden="true" />
+        <span>Save</span>
+      {/snippet}
       <TeamCard
         team={displayTeam(entry)}
         {heading}
         titleActions={sortable ? titleActions : undefined}
+        leadingActions={onuse ? useAction : undefined}
+        swipeRight={onuse ? useSwipe : undefined}
         query=""
         href={`${collection}?team=${encodeURIComponent(entry.id)}`}
         fromCatalog={false}
       >
-        {#snippet leadingActions()}
-          <Button
-            data-wishlist-use
-            variant="quiet"
-            class="min-h-11 ps-0 pe-1.5"
-            {disabled}
-            data-swipe-right
-            onclick={() => onuse(entry)}
-          >
-            <AtlasIcon />
-            <span>My Teams</span>
-          </Button>
-        {/snippet}
         {#snippet trailingActions()}
           <div class="flex items-center gap-2">
             {#if entry.record}
@@ -192,10 +187,6 @@
               <Trash2 class="size-4" aria-hidden="true" />
             </Button>
           </div>
-        {/snippet}
-        {#snippet swipeRight()}
-          <AtlasIcon />
-          <span>My Teams</span>
         {/snippet}
         {#snippet swipeLeft()}
           <span>{collection === 'saved' ? 'Delete' : 'Remove'}</span>

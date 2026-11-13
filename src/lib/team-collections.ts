@@ -1,4 +1,4 @@
-import { isPasteUrl, normalize, teamHeading, type Team } from './catalog.ts';
+import { isPasteUrl, teamHeading, type Team } from './catalog.ts';
 import type { PokepastePayload } from './pokepaste.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
@@ -13,11 +13,8 @@ import {
   type SavedTeam,
 } from './workbench.ts';
 
-export const isTeamInUse = (team: SavedTeam): boolean =>
-  team.collection === undefined || team.collection === 'my-teams';
-
-export const teamsInUse = (saved: SavedTeam[]): SavedTeam[] =>
-  saved.filter(isTeamInUse);
+export const isSavedTeam = (team: SavedTeam): boolean =>
+  team.collection !== 'wishlist';
 
 export const hasSetEdits = (
   team: Pick<SavedTeam, 'members' | 'original'>
@@ -25,7 +22,7 @@ export const hasSetEdits = (
   canonicalSnapshot(team.members) !== canonicalSnapshot(team.original.members);
 
 export const WISHLIST_EDITED_ERROR =
-  'Wishlist only holds original teams. Move this edited team to Saved instead.';
+  'Wishlist only holds original teams. This team has set edits, so it stays in Saved.';
 
 export const savedTeamHeading = (entry: SavedTeam) =>
   teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original);
@@ -89,9 +86,9 @@ export function applyGameResults(
 export function shortcutTeam(
   storage: Pick<Storage, 'getItem'>
 ): ShortcutTeam | null {
-  const saved = readSavedTeams(storage);
-  const id = resolveSavedTeamId(saved, null, storage.getItem(activeTeamKey));
-  const team = saved.find((entry) => entry.id === id);
+  const saved = orderedSaved(readSavedTeams(storage));
+  const active = storage.getItem(activeTeamKey);
+  const team = saved.find((entry) => entry.id === active) ?? saved[0];
   return team
     ? {
         id: team.id,
@@ -220,21 +217,6 @@ const saveAndGet = (
   return saved;
 };
 
-export function resolveSavedTeamId(
-  saved: SavedTeam[],
-  requestedId: string | null,
-  activeId: string | null
-): string | null {
-  const teams = teamsInUse(saved);
-  const fallbackId =
-    (activeId && teams.find((team) => team.id === activeId)?.id) ??
-    teams[0]?.id ??
-    null;
-  return requestedId && teams.some((team) => team.id === requestedId)
-    ? requestedId
-    : fallbackId;
-}
-
 export function resolveCatalogTeam(
   identity: { id?: string; pasteUrl?: string },
   catalog: Team[]
@@ -312,37 +294,29 @@ export function useWishlistedTeam(
     throw new SavedTeamError(
       'This Wishlist team is no longer saved. Refresh the list.'
     );
-  if (isTeamInUse(entry)) return entry;
-  if (entry.collection !== 'wishlist')
-    throw new SavedTeamError(
-      'This team is no longer in Wishlist. Refresh the list.'
-    );
-  const promoted = { ...entry, collection: 'my-teams' as const };
+  if (isSavedTeam(entry)) return entry;
+  const promoted = { ...entry };
+  delete promoted.collection;
   return saveAndGet(storage, promoted);
 }
 
-function rejectCollectionCopy(
-  saved: SavedTeam[],
-  latest: SavedTeam,
-  collection: 'wishlist' | 'saved',
-  label: string
-) {
+function rejectWishlistCopy(saved: SavedTeam[], latest: SavedTeam) {
   if (
     saved.some(
       (team) =>
         team.id !== latest.id &&
-        team.collection === collection &&
+        team.collection === 'wishlist' &&
         (team.original.id === latest.original.id ||
           (latest.original.pasteUrl !== '' &&
             team.original.pasteUrl === latest.original.pasteUrl))
     )
   )
     throw new SavedTeamError(
-      `A copy of this team is already in ${label}. Move or remove that copy first.`
+      'A copy of this team is already in Wishlist. Move or remove that copy first.'
     );
 }
 
-export function moveInUseTeamToWishlist(
+export function moveSavedTeamToWishlist(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   id: string,
   baseline: string
@@ -351,52 +325,16 @@ export function moveInUseTeamToWishlist(
   const latest = saved.find((team) => team.id === id);
   if (
     !latest ||
-    !isTeamInUse(latest) ||
+    !isSavedTeam(latest) ||
     canonicalSnapshot({ name: latest.name, members: latest.members }) !==
       baseline
   )
     throw new SavedTeamError(
-      'This team changed elsewhere. Reopen My Teams before moving it.'
+      'This team changed elsewhere. Reopen it before moving it.'
     );
   if (hasSetEdits(latest)) throw new SavedTeamError(WISHLIST_EDITED_ERROR);
-  rejectCollectionCopy(saved, latest, 'wishlist', 'Wishlist');
+  rejectWishlistCopy(saved, latest);
   return saveAndGet(storage, { ...latest, collection: 'wishlist' });
-}
-
-export function moveInUseTeamToSaved(
-  storage: Pick<Storage, 'getItem' | 'setItem'>,
-  id: string,
-  baseline: string
-): SavedTeam {
-  const saved = readSavedTeams(storage);
-  const latest = saved.find((team) => team.id === id);
-  if (
-    !latest ||
-    !isTeamInUse(latest) ||
-    canonicalSnapshot({ name: latest.name, members: latest.members }) !==
-      baseline
-  )
-    throw new SavedTeamError(
-      'This team changed elsewhere. Reopen My Teams before moving it.'
-    );
-  rejectCollectionCopy(saved, latest, 'saved', 'Saved');
-  return saveAndGet(storage, { ...latest, collection: 'saved' });
-}
-
-export function useSavedTeam(
-  storage: Pick<Storage, 'getItem' | 'setItem'>,
-  id: string
-): SavedTeam {
-  const saved = readSavedTeams(storage);
-  const entry = saved.find((team) => team.id === id);
-  if (!entry)
-    throw new SavedTeamError('This team is no longer saved. Refresh the list.');
-  if (isTeamInUse(entry)) return entry;
-  if (entry.collection !== 'saved')
-    throw new SavedTeamError(
-      'This team is no longer in Saved. Refresh the list.'
-    );
-  return saveAndGet(storage, { ...entry, collection: 'my-teams' });
 }
 
 export function useCatalogTeam(
@@ -460,52 +398,10 @@ export function setTeamFavorite(
 export const favoriteTeams = (teams: SavedTeam[]): SavedTeam[] =>
   orderedSaved(teams).filter((team) => team.favorite);
 
-export function liveInUseTeam(
+export function liveSavedTeam(
   storage: Pick<Storage, 'getItem'>,
   id: string
 ): SavedTeam | null {
   const latest = readSavedTeams(storage).find((team) => team.id === id);
-  return latest && isTeamInUse(latest) ? latest : null;
-}
-
-const subsequence = (query: string, field: string) => {
-  let at = 0;
-  for (const char of field) if (char === query[at]) at++;
-  return at === query.length;
-};
-
-function matchTier(term: string, fields: string[]): number {
-  let best = Infinity;
-  for (const field of fields) {
-    if (field === term) best = Math.min(best, 0);
-    else if (field.startsWith(term)) best = Math.min(best, 1);
-    else if (field.includes(term)) best = Math.min(best, 2);
-    else if (subsequence(term, field)) best = Math.min(best, 3);
-  }
-  return best;
-}
-
-export function rankSavedTeams(teams: SavedTeam[], query: string): SavedTeam[] {
-  const terms = query.trim().split(/\s+/).map(normalize).filter(Boolean);
-  if (!terms.length) return teams;
-  return teams
-    .map((team, index) => {
-      const fields = [
-        team.name,
-        ...team.members.map((member) => member.pokemon),
-      ].map(normalize);
-      let score = 0;
-      for (const term of terms) {
-        const tier = matchTier(term, fields);
-        if (!Number.isFinite(tier)) return null;
-        score += tier;
-      }
-      return { team, index, score };
-    })
-    .filter(
-      (entry): entry is { team: SavedTeam; index: number; score: number } =>
-        entry !== null
-    )
-    .sort((a, b) => a.score - b.score || a.index - b.index)
-    .map(({ team }) => team);
+  return latest && isSavedTeam(latest) ? latest : null;
 }

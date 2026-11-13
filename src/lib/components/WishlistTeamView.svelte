@@ -2,9 +2,8 @@
   import { resolve } from '$app/paths';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
-  import Star from '@lucide/svelte/icons/star';
+  import Folder from '@lucide/svelte/icons/folder';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -15,21 +14,17 @@
   import { exportPaste, type SavedTeam } from '#lib/workbench.js';
 
   let {
-    collection = 'wishlist',
     entry,
     match,
     disabled,
     onuse,
     onremove,
-    onfavorite,
   }: {
-    collection?: 'wishlist' | 'saved';
     entry: SavedTeam;
     match: Team | undefined;
     disabled: boolean;
     onuse: () => void;
     onremove: () => void;
-    onfavorite?: () => void;
   } = $props();
   const heading = $derived(savedTeamHeading(entry));
   let selectedIndex = $state<number | null>(null);
@@ -69,34 +64,15 @@
   </div>
   <div class="flex flex-wrap items-center gap-2">
     <Button variant="quiet" class="min-h-11" {disabled} onclick={onuse}>
-      <AtlasIcon />
-      <span>My Teams</span>
+      <Folder class="size-4" aria-hidden="true" />
+      <span>Save</span>
     </Button>
-    {#if onfavorite}
-      <Button
-        variant="quiet"
-        size="icon-compact"
-        class="min-h-11 min-w-11"
-        aria-label="Favorite"
-        aria-pressed={!!entry.favorite}
-        title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}
-        {disabled}
-        onclick={onfavorite}
-      >
-        <Star
-          class="size-4 {entry.favorite ? 'fill-current' : ''}"
-          aria-hidden="true"
-        />
-      </Button>
-    {/if}
     <Button
       variant="quiet"
       size="icon-compact"
       class="min-h-11 min-w-11"
-      aria-label={collection === 'saved'
-        ? 'Delete team'
-        : 'Remove from Wishlist'}
-      title={collection === 'saved' ? 'Delete team' : 'Remove from Wishlist'}
+      aria-label="Remove from Wishlist"
+      title="Remove from Wishlist"
       {disabled}
       onclick={onremove}
     >

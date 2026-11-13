@@ -3,6 +3,12 @@ import test from 'node:test';
 import { mergeSavedTeams, teamsSnapshot } from '../src/lib/team-sync.ts';
 import { orderedWishlist } from '../src/lib/team-collections.ts';
 
+const promote = (entry) => {
+  const rest = { ...entry };
+  delete rest.collection;
+  return rest;
+};
+
 const team = (id, name = id) => ({
   id,
   name,
@@ -157,13 +163,13 @@ test('Wishlist metadata survives sync snapshots and merge promotion', () => {
   };
   const snapshot = teamsSnapshot([bookmark]);
   assert.match(snapshot, /wishlist/);
-  const promoted = { ...bookmark, collection: 'my-teams' };
+  const promoted = promote(bookmark);
   assert.equal(
     merge([bookmark], [promoted], [bookmark])[0].collection,
-    'my-teams'
+    undefined
   );
   const staleDelete = merge([bookmark], [], [promoted]);
-  assert.equal(staleDelete[0].collection, 'my-teams');
+  assert.equal(staleDelete[0].collection, undefined);
 });
 
 const wishlisted = (id, name = id) => ({
@@ -176,13 +182,13 @@ const wishlisted = (id, name = id) => ({
 
 test('promotion versus stale Wishlist deletion recovers the promoted team intact', () => {
   const base = [wishlisted('wish')];
-  const promoted = [{ ...base[0], collection: 'my-teams' }];
+  const promoted = [promote(base[0])];
   const ids = new Map();
   const recovered = merge(base, [], promoted, ids);
   assert.equal(recovered.length, 1);
   assert.notEqual(recovered[0].id, 'wish');
   assert.equal(recovered[0].name, 'wish (recovered)');
-  assert.equal(recovered[0].collection, 'my-teams');
+  assert.equal(recovered[0].collection, undefined);
   assert.deepEqual(recovered[0].original, promoted[0].original);
   assert.deepEqual(recovered[0].members, promoted[0].members);
   assert.deepEqual(recovered[0].sources, promoted[0].sources);
@@ -194,7 +200,7 @@ test('promotion versus stale Wishlist deletion recovers the promoted team intact
 test('recovered conflicting teams keep each side collection', () => {
   const base = [wishlisted('wish')];
   const localEdit = [{ ...base[0], name: 'Local rename' }];
-  const remotePromoted = [{ ...base[0], collection: 'my-teams' }];
+  const remotePromoted = [promote(base[0])];
   const result = merge(base, localEdit, remotePromoted);
   assert.equal(result.length, 2);
   assert.deepEqual(
@@ -204,7 +210,7 @@ test('recovered conflicting teams keep each side collection', () => {
       {
         id: result[1].id,
         name: 'wish (recovered)',
-        collection: 'my-teams',
+        collection: undefined,
       },
     ]
   );
@@ -213,13 +219,13 @@ test('recovered conflicting teams keep each side collection', () => {
 });
 
 test('first adoption recovery retains Wishlist collection on the displaced team', () => {
-  const cloud = { ...wishlisted('one', 'Cloud'), collection: 'my-teams' };
+  const cloud = promote(wishlisted('one', 'Cloud'));
   const local = wishlisted('one', 'Local');
   const merged = merge(null, [local], [cloud]);
   assert.deepEqual(
     merged.map(({ name, collection }) => ({ name, collection })),
     [
-      { name: 'Cloud', collection: 'my-teams' },
+      { name: 'Cloud', collection: undefined },
       { name: 'Local (recovered)', collection: 'wishlist' },
     ]
   );
@@ -267,7 +273,6 @@ test('Wishlist reorders combine with opposite-side edits without recovery', () =
 test('Saved reorders sync, merge with opposite-side renames, and keep order across promotion', () => {
   const fav = (id, savedOrder, name = id) => ({
     ...team(id, name),
-    collection: 'saved',
     ...(savedOrder === undefined ? {} : { savedOrder }),
   });
   const base = [fav('a', 0), fav('b', 1)];
@@ -278,23 +283,17 @@ test('Saved reorders sync, merge with opposite-side renames, and keep order acro
   const combined = [fav('a', 1, 'Renamed'), fav('b', 0)];
   assert.deepEqual(merge(base, reordered, renamed), combined);
   assert.deepEqual(merge(base, renamed, reordered), combined);
-  const promoted = [
-    { ...team('a', 'Renamed'), collection: 'my-teams' },
-    fav('b', 1),
-  ];
+  const promoted = [team('a', 'Renamed'), fav('b', 1)];
   const afterPromote = merge(base, reordered, promoted);
-  assert.equal(afterPromote[0].collection, 'my-teams');
+  assert.equal(afterPromote[0].collection, undefined);
   assert.equal(afterPromote[0].savedOrder, 1);
-  const promotedIn = [
-    { ...team('a'), collection: 'saved', savedOrder: 4 },
-    fav('b', 1),
-  ];
+  const promotedIn = [{ ...team('a'), savedOrder: 4 }, fav('b', 1)];
   const inUse = [team('a'), fav('b', 1)];
   assert.deepEqual(merge(inUse, inUse, promotedIn), promotedIn);
   assert.deepEqual(merge(inUse, promotedIn, inUse), promotedIn);
   const starred = [
-    { ...team('a'), collection: 'saved', favorite: true, savedOrder: 0 },
-    { ...team('b'), collection: 'saved', favorite: true, savedOrder: 1 },
+    { ...team('a'), favorite: true, savedOrder: 0 },
+    { ...team('b'), favorite: true, savedOrder: 1 },
   ];
   const legacy = [
     { ...team('a'), collection: 'favorites', favoriteOrder: 0 },
@@ -309,18 +308,10 @@ test('deletion and promotion win over an opposite-side Wishlist reorder', () => 
   assert.deepEqual(merge(base, [], reordered), []);
   assert.deepEqual(merge(base, reordered, []), []);
 
-  const promoted = { ...base[0], collection: 'my-teams' };
+  const promoted = promote(base[0]);
   delete promoted.wishlistOrder;
   assert.deepEqual(merge(base, [promoted], reordered), [promoted]);
   assert.deepEqual(merge(base, reordered, [promoted]), [promoted]);
-  const legacyPromotion = { ...promoted };
-  delete legacyPromotion.collection;
-  assert.deepEqual(merge(base, [legacyPromotion], reordered), [
-    legacyPromotion,
-  ]);
-  assert.deepEqual(merge(base, reordered, [legacyPromotion]), [
-    legacyPromotion,
-  ]);
   const staleRank = { ...promoted, wishlistOrder: 17 };
   for (const result of [
     merge(base, [staleRank], reordered),
@@ -419,12 +410,12 @@ test('Wishlist content conflicts retain exact sets and reuse recovery IDs across
 test('conflicts across collections retain each surviving source rank', () => {
   const base = [ranked('wish', 0)];
   const local = ranked('wish', 3, 'Local');
-  const promoted = { ...base[0], collection: 'my-teams' };
+  const promoted = promote(base[0]);
   delete promoted.wishlistOrder;
   const merged = merge(base, [local], [promoted]);
   assert.equal(merged.length, 2);
   assert.deepEqual(merged[0], local);
-  assert.equal(merged[1].collection, 'my-teams');
+  assert.equal(merged[1].collection, undefined);
   assert.equal(Object.hasOwn(merged[1], 'wishlistOrder'), false);
 
   const cloud = { ...promoted, name: 'Cloud' };

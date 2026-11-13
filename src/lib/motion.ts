@@ -18,13 +18,13 @@ export function dialogOut(node: Element): TransitionConfig {
 const tab = ({ route }: Place) =>
   route.id === '/teams/[id]'
     ? '/'
-    : route.id === '/my-teams/new'
-      ? '/my-teams'
+    : route.id === '/saved/new'
+      ? '/saved'
       : route.id;
 
 const depth = ({ route, url }: Place) =>
   route.id === '/teams/[id]' ||
-  route.id === '/my-teams/new' ||
+  route.id === '/saved/new' ||
   ((route.id === '/wishlist' || route.id === '/saved') &&
     url.searchParams.has('team'))
     ? 1

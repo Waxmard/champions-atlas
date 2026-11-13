@@ -152,7 +152,7 @@ decoding the built app's `embedded.mobileprovision`. Do not export signing priva
 keys. Launch online before leaving the Mac.
 
 Verify the device behavior before relying on it away from the Mac. With Xcode
-closed and the phone disconnected, open Browse and My teams, make a reversible set
+closed and the phone disconnected, open Browse and Saved, make a reversible set
 edit, and confirm it survives a force-quit and phone restart. With Wi-Fi off and
 cellular on, check sign-in and sync. After an online sign-in, enable Airplane Mode,
 force-quit and reopen the app, check Browse and saved teams, and confirm a
@@ -170,7 +170,7 @@ A signed-in user owns a manifest at `users/{uid}` containing exactly
 including its immutable original and provenance. The
 team's `id` matches its document ID. The manifest holds at most 50 unique IDs;
 the client rejects IDs that Firestore cannot safely represent without changing
-local identities. Filters, navigation, and the active team stay device-local.
+local identities. Filters, navigation, and the last-opened team stay device-local.
 
 Transactions read the manifest and every listed child before writing. Missing,
 malformed, or mismatched children stop sync without replacing local teams or the

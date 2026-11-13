@@ -2,7 +2,6 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import Bookmark from '@lucide/svelte/icons/bookmark';
-  import Folder from '@lucide/svelte/icons/folder';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import type { Member } from '#lib/catalog.js';
   import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
@@ -10,13 +9,10 @@
   import { notify } from '#lib/notifications.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import {
-    moveInUseTeamToSaved,
-    moveInUseTeamToWishlist,
-    resolveSavedTeamId,
+    moveSavedTeamToWishlist,
     SavedTeamError,
     WISHLIST_EDITED_ERROR,
   } from '#lib/team-collections.js';
-  import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
 
   interface Props {
     teamId: string;
@@ -52,27 +48,23 @@
     if (!edited && errorMessage === WISHLIST_EDITED_ERROR) errorMessage = '';
   });
 
-  async function move(target: 'saved' | 'wishlist') {
+  async function move() {
     if (moveDisabled) return;
-    if (target === 'wishlist' && edited) {
+    if (edited) {
       errorMessage = WISHLIST_EDITED_ERROR;
       return;
     }
     const id = teamId;
-    const label = target === 'saved' ? 'Saved' : 'Wishlist';
-    if (!confirm(`Move “${name}” to ${label}?`)) return;
+    if (!confirm(`Move “${name}” to Wishlist?`)) return;
     pending = true;
     errorMessage = '';
-    let previousActiveId: string | null;
     try {
-      previousActiveId = localStorage.getItem(activeTeamKey);
-      if (target === 'saved') moveInUseTeamToSaved(localStorage, id, baseline);
-      else moveInUseTeamToWishlist(localStorage, id, baseline);
+      moveSavedTeamToWishlist(localStorage, id, baseline);
     } catch (error) {
       errorMessage =
         error instanceof SavedTeamError
           ? error.message
-          : `Could not move this team to ${label}. Check app storage access and available space. Your team was not changed.`;
+          : 'Could not move this team to Wishlist. Check app storage access and available space. Your team was not changed.';
       pending = false;
       return;
     }
@@ -80,57 +72,29 @@
     movedId = id;
     void pushNow();
     try {
-      const replacement = resolveSavedTeamId(
-        readSavedTeams(localStorage),
-        null,
-        previousActiveId
-      );
-      if (replacement) localStorage.setItem(activeTeamKey, replacement);
-      else localStorage.removeItem(activeTeamKey);
+      await goto(resolve('wishlist'));
     } catch {
-      errorMessage = `Team moved to ${label}, but the active team could not be remembered.`;
-      pending = false;
-      notify(`Team moved to ${label}.`);
-      return;
-    }
-    try {
-      await goto(resolve(target));
-    } catch {
-      const navigationError = `Team moved to ${label}, but ${label} could not be opened.`;
-      errorMessage = errorMessage
-        ? `${errorMessage} ${navigationError}`
-        : navigationError;
+      errorMessage =
+        'Team moved to Wishlist, but Wishlist could not be opened.';
     } finally {
       pending = false;
     }
-    notify(`Team moved to ${label}.`);
+    notify('Team moved to Wishlist.');
   }
 </script>
 
 <div
   class="flex min-w-0 flex-wrap items-center gap-x-1 landscape:md:flex-col landscape:md:items-stretch [&>div>button]:order-1 [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:w-full [&>div>button]:max-w-full [&>div>button]:justify-start [&>div>button]:gap-1 [&>div>button]:px-2 [&>div>button]:text-start [&>div>button]:whitespace-normal [&>div>p]:px-2"
 >
-  <span class="provenance ps-2" aria-hidden="true">Move to</span>
-  <Button
-    variant="quiet"
-    class={action}
-    aria-label="Move to Saved"
-    data-move-saved
-    disabled={moveDisabled}
-    onclick={() => move('saved')}
-  >
-    <Folder class="size-4" aria-hidden="true" />
-    <span>Saved</span>
-  </Button>
   <Button
     variant="quiet"
     class={action}
     aria-label="Move to Wishlist"
     disabled={moveDisabled}
-    onclick={() => move('wishlist')}
+    onclick={move}
   >
     <Bookmark class="size-4" aria-hidden="true" />
-    <span>Wishlist</span>
+    <span>Move to Wishlist</span>
   </Button>
   <Button
     variant="danger-quiet"

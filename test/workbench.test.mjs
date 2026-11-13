@@ -410,7 +410,7 @@ test('custom teams validate paste and preserve independent snapshots and empty s
   assert.throws(() => saveTeam(storage, invalid), /untouched/);
 });
 
-test('legacy Favorites read as starred Saved teams and Saved order survives My Teams moves', () => {
+test('legacy Favorites read as starred Saved teams and Saved order survives legacy moves', () => {
   const paste = pasteFor('32 HP / 32 Atk / 2 Spe');
   const base = newCustomTeam('Fav', 'M-C', paste);
   let raw = JSON.stringify([
@@ -425,11 +425,21 @@ test('legacy Favorites read as starred Saved teams and Saved order survives My T
     },
   };
   const [legacy] = readSavedTeams(storage);
-  assert.equal(legacy.collection, 'saved');
+  assert.equal(legacy.collection, undefined);
   assert.equal(legacy.favorite, true);
   assert.equal(legacy.savedOrder, 2);
   assert.equal(Object.hasOwn(legacy, 'favoriteOrder'), false);
   assert.equal(writes, 0);
+  const legacyRaw = raw;
+  for (const collection of ['my-teams', 'saved']) {
+    raw = JSON.stringify([{ ...base, collection }]);
+    assert.equal(
+      Object.hasOwn(readSavedTeams(storage)[0], 'collection'),
+      false
+    );
+  }
+  assert.equal(writes, 0);
+  raw = legacyRaw;
   const renamed = saveTeam(storage, {
     ...legacy,
     name: 'Renamed',

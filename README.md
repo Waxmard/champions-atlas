@@ -130,12 +130,12 @@ choose **Add a Poképaste** on **Wishlist**, then enter a
 matches do not require a fetch; other links require a connection. Importing the
 same link again keeps the existing bookmark and its edits.
 
-Move a saved team between **Wishlist** and **My teams** without losing its edits
-or source history. Separate copies are not merged. To use a catalog team, open
-its details and choose **My Teams**. To use a bookmark, choose **My Teams** on
-its Wishlist card. Import a complete six-member
+Move a saved team between **Wishlist** and **Saved** without losing its edits
+or source history. Separate copies are not merged. To save a catalog team, open
+its details and choose **Save**. To save a bookmark, choose **Save** on
+its Wishlist card. Saved teams open in a full editor from their row. Import a complete six-member
 [Showdown team](https://play.pokemonshowdown.com/teambuilder) through
-**Add custom team** in **My teams**.
+**Add custom team** in **Saved**.
 
 Edit saved sets, revert a set to how it was when you opened the team, and
 export current team text. On catalog team details, **Published paste text** preserves
@@ -148,7 +148,7 @@ explicitly record committed sets as snapshots: they change Atlas only, never
 Pokémon Champions. Team edits do not update those snapshots. The **Log Game
 Result** action appears under Champion's Atlas in the Shortcuts app; run it from
 Back Tap, the Action Button, or Siri ("Log a game in Champion's Atlas") to log a
-win or a loss for the team selected in My Teams without leaving your game.
+win or a loss for the team you last opened in Saved (or the first team in Saved order) without leaving your game.
 
 Saving requires app-local storage; clearing it removes local saved data. With
 Firebase configured, native Google sign-in is required and syncs saved teams, their

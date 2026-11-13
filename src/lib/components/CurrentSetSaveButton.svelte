@@ -18,7 +18,7 @@
     createCurrentSetRegistry,
     currentSetOwnerMatches,
   } from '#lib/current-set-registry.svelte.js';
-  import { liveInUseTeam } from '#lib/team-collections.js';
+  import { liveSavedTeam } from '#lib/team-collections.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
   import { pushNow } from '#lib/sync.svelte.js';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -70,7 +70,7 @@
   }
 
   function liveTeam() {
-    const latest = liveInUseTeam(localStorage, teamId);
+    const latest = liveSavedTeam(localStorage, teamId);
     if (
       !latest ||
       canonicalSnapshot({ name: latest.name, members: latest.members }) !==
@@ -95,10 +95,7 @@
           .getElementById(`pokemon-slot-${memberIndex}`)
           ?.querySelector<HTMLElement>('[data-set-field="set"]') ?? null
       );
-    return (
-      document.querySelector<HTMLElement>('[data-move-saved]') ??
-      document.querySelector<HTMLElement>('[data-team-action="menu"]')
-    );
+    return document.querySelector<HTMLElement>('[data-team-action="copy"]');
   }
 
   function restoreFocus(trigger: HTMLButtonElement, wasFocused: boolean) {

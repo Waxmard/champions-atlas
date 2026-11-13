@@ -206,7 +206,7 @@ test('Wishlist ordering persists safely through edits and collection changes', (
   assert.equal(writes, 1);
   const mine = before[1];
   saveTeam(storage, { ...mine, name: 'Renamed', wishlistOrder: 88 });
-  const inUse = collections.teamsInUse(readSavedTeams(storage));
+  const inUse = readSavedTeams(storage).filter(collections.isSavedTeam);
   assert.deepEqual(
     inUse.map(({ id }) => id),
     [before[3].id, mine.id]
@@ -227,7 +227,7 @@ test('Wishlist ordering persists safely through edits and collection changes', (
   const promoted = collections.useWishlistedTeam(storage, 'C');
   assert.equal(Object.hasOwn(promoted, 'wishlistOrder'), false);
   assert.deepEqual(order(), [added.id, 'A', 'B']);
-  const moved = collections.moveInUseTeamToWishlist(
+  const moved = collections.moveSavedTeamToWishlist(
     storage,
     'C',
     canonicalSnapshot({ name: promoted.name, members: promoted.members })
