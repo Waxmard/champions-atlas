@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.11.0](https://github.com/Waxmard/champions-atlas/compare/v0.10.0...v0.11.0) (2026-11-13)
+
+
+### Features
+
+* notify players when new catalog teams arrive ([#103](https://github.com/Waxmard/champions-atlas/issues/103)) ([6b9b7c9](https://github.com/Waxmard/champions-atlas/commit/6b9b7c90cb2650b60f7c80ba4394ccea45d258bd))
+
 ## [0.10.0](https://github.com/Waxmard/champions-atlas/compare/v0.9.0...v0.10.0) (2026-11-12)
 
 
