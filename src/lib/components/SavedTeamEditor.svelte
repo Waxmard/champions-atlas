@@ -402,7 +402,7 @@
           variant="quiet"
           size="icon-compact"
           class="min-h-11 min-w-11 {draft.current
-            ? 'bg-info text-info-content hover:text-info-content'
+            ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
             : ''}"
           aria-label="Current team"
           aria-pressed={!!draft.current}

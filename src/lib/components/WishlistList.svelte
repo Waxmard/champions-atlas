@@ -187,7 +187,7 @@
           variant="quiet"
           size="icon-compact"
           class="size-11 {entry.current
-            ? 'bg-info text-info-content hover:text-info-content'
+            ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
             : ''}"
           aria-label="Current team"
           aria-pressed={!!entry.current}
