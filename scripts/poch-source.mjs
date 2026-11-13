@@ -1,5 +1,5 @@
 import { isDeepStrictEqual } from 'node:util';
-import parse5 from 'parse5';
+import { parse } from 'parse5';
 import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import { exportPaste, setText } from '../src/lib/workbench.ts';
@@ -61,7 +61,7 @@ function sourceData(html) {
     }
     for (const child of node.childNodes || []) walk(child);
   }
-  walk(parse5.parse(html));
+  walk(parse(html));
   let container;
   function locate(value) {
     if (!value || typeof value !== 'object') return;
