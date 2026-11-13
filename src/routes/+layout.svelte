@@ -35,6 +35,7 @@
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { clearNotification } from '#lib/notifications.js';
   import { pageTransition } from '#lib/motion.js';
+  import { swipe, swipeReset } from '#lib/swipe.js';
 
   let { children } = $props();
   const isHome = $derived(page.route.id === '/');
@@ -272,6 +273,7 @@
   });
 
   afterNavigate(({ from, to, type }) => {
+    swipeReset();
     navigationGeneration++;
     if (!to) return;
     settledUrl = urlString(to.url);
@@ -592,6 +594,8 @@
   });
 </script>
 
+<svelte:document use:swipe />
+
 {#if shareReadError && page.url.pathname !== resolve('wishlist')}
   <div role="alert" class="plate mx-4 mt-4 px-4 py-3">
     Shared links could not be read. Try again.
@@ -764,6 +768,7 @@
       </a>
       <a
         href={resolve('my-teams')}
+        data-swipe-back={page.route.id === '/my-teams/new' ? '' : undefined}
         aria-current={isMyTeams ? 'page' : undefined}
         class={tabClass(isMyTeams)}
       >

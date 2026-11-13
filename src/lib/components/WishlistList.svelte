@@ -119,7 +119,6 @@
         query=""
         href={`${collection}?team=${encodeURIComponent(entry.id)}`}
         fromCatalog={false}
-        morphId={entry.id}
       >
         {#snippet leadingActions()}
           <Button
@@ -127,6 +126,7 @@
             variant="quiet"
             class="min-h-11 ps-0 pe-1.5"
             {disabled}
+            data-swipe-right
             onclick={() => onuse(entry)}
           >
             <AtlasIcon />
@@ -150,11 +150,20 @@
               aria-label={`Remove from ${label}`}
               title={`Remove from ${label}`}
               {disabled}
+              data-swipe-left
               onclick={() => onremove(entry)}
             >
               <Trash2 class="size-4" aria-hidden="true" />
             </Button>
           </div>
+        {/snippet}
+        {#snippet swipeRight()}
+          <AtlasIcon />
+          <span>My Teams</span>
+        {/snippet}
+        {#snippet swipeLeft()}
+          <span>Remove</span>
+          <Trash2 class="size-5" />
         {/snippet}
       </TeamCard>
     </li>

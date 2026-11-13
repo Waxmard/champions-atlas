@@ -14,7 +14,8 @@
     trailingActions,
     href,
     fromCatalog = true,
-    morphId,
+    swipeLeft,
+    swipeRight,
     isNew = false,
   }: {
     team: Team;
@@ -25,7 +26,8 @@
     trailingActions?: Snippet;
     href?: `wishlist?${string}` | `favorites?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
-    morphId?: string;
+    swipeLeft?: Snippet;
+    swipeRight?: Snippet;
     isNew?: boolean;
   } = $props();
   const resolvedHeading = $derived(heading ?? teamHeading(team.name, team));
@@ -57,43 +59,61 @@
     members={team.members}
   />
 {/snippet}
-<article
-  class="plate relative flex min-w-0 flex-col overflow-hidden transition-[border-color,scale] duration-200 hover:border-primary has-[>a:active]:scale-[0.985]"
-  data-team-card={morphId ?? team.id}
->
-  <a
-    href={resolve(destination)}
-    onclick={open}
-    class="block flex-1 rounded-[inherit] p-4 outline-none"
+<div class="relative flex min-w-0 overflow-hidden rounded-box">
+  <article
+    class="peer plate relative z-1 flex min-w-0 flex-1 touch-pan-y flex-col overflow-hidden transition-[border-color,scale] duration-200 hover:border-primary has-[>a:active]:scale-[0.985]"
+    data-swipe-row
   >
-    {@render content()}
-  </a>
-  {#if titleActions}
-    <div class="absolute end-4 top-[1.375rem] z-10">
-      {@render titleActions()}
-    </div>
-  {/if}
-  <div
-    class="mx-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-t py-2"
-  >
-    {#if leadingActions}
-      <div class="col-start-1">
-        {@render leadingActions()}
+    <a
+      href={resolve(destination)}
+      onclick={open}
+      class="block flex-1 rounded-[inherit] p-4 outline-none"
+    >
+      {@render content()}
+    </a>
+    {#if titleActions}
+      <div class="absolute end-4 top-[1.375rem] z-10">
+        {@render titleActions()}
       </div>
     {/if}
     <div
-      class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
-        ? 'col-start-2 justify-center text-center'
-        : 'col-span-2 col-start-1'}"
+      class="mx-4 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-x-2 border-t py-2"
     >
-      <span class="term">{regulationLabel(team.regulation)}</span>
-      {#if team.publishedAt}<span class="provenance">{team.publishedAt}</span
-        >{/if}
-    </div>
-    {#if trailingActions}
-      <div class="col-start-3 justify-self-end">
-        {@render trailingActions()}
+      {#if leadingActions}
+        <div class="col-start-1">
+          {@render leadingActions()}
+        </div>
+      {/if}
+      <div
+        class="flex min-w-0 flex-wrap items-baseline gap-2 break-words {leadingActions
+          ? 'col-start-2 justify-center text-center'
+          : 'col-span-2 col-start-1'}"
+      >
+        <span class="term">{regulationLabel(team.regulation)}</span>
+        {#if team.publishedAt}<span class="provenance">{team.publishedAt}</span
+          >{/if}
       </div>
-    {/if}
-  </div>
-</article>
+      {#if trailingActions}
+        <div class="col-start-3 justify-self-end">
+          {@render trailingActions()}
+        </div>
+      {/if}
+    </div>
+  </article>
+  {#if swipeRight}
+    <div
+      aria-hidden="true"
+      class="absolute inset-1 hidden items-center gap-2 rounded-box bg-success ps-6 text-sm font-semibold text-success-content peer-data-[swipe=right]:flex peer-data-[swipe-armed]:[&_svg]:scale-125"
+    >
+      {@render swipeRight()}
+    </div>
+  {/if}
+  {#if swipeLeft}
+    <div
+      aria-hidden="true"
+      class="absolute inset-1 hidden items-center justify-end gap-2 rounded-box bg-error pe-6 text-sm font-semibold text-error-content peer-data-[swipe=left]:flex peer-data-[swipe-armed]:[&_svg]:scale-125"
+    >
+      {@render swipeLeft()}
+    </div>
+  {/if}
+</div>

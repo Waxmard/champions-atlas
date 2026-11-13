@@ -320,6 +320,8 @@
                     : 'Add to Wishlist'}
                   disabled={busy}
                   onclick={() => wishlist(team)}
+                  data-swipe-right={isWishlisted ? undefined : ''}
+                  data-swipe-left={isWishlisted ? '' : undefined}
                 >
                   {#if isWishlisted}
                     <BookmarkCheck class="size-4" aria-hidden="true" />
@@ -327,6 +329,14 @@
                     <Bookmark class="size-4" aria-hidden="true" />
                   {/if}
                 </Button>
+              {/snippet}
+              {#snippet swipeRight()}
+                <Bookmark class="size-5" />
+                <span>Add to Wishlist</span>
+              {/snippet}
+              {#snippet swipeLeft()}
+                <span>Remove</span>
+                <Bookmark class="size-5" />
               {/snippet}
             </TeamCard>{/each}
         </div>

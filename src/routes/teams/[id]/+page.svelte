@@ -151,11 +151,12 @@
   <title>{heading.title} — Champion's Atlas</title>
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-5xl px-4 py-6 sm:px-8 sm:py-10" data-morph>
+<main id="main" class="mx-auto max-w-5xl px-4 pt-2 pb-6 sm:px-8 sm:pb-10">
   <div
     class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
   >
     <a
+      data-swipe-back
       href={resolve(`?${page.url.searchParams}`)}
       onclick={back}
       class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content"
@@ -169,8 +170,6 @@
     <div class="min-w-0">
       <h1
         class="w-fit max-w-3xl font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-anywhere sm:text-3xl"
-        data-morph-part
-        style="--morph-name: team-title"
       >
         {heading.title}
       </h1>

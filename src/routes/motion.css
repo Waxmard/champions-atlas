@@ -105,12 +105,24 @@
 :root[data-nav='pop']::view-transition-new(root) {
   animation: page-in-left 240ms var(--motion-ease) both;
 }
-:root[data-nav='morph'] [data-morph] [data-morph-part] {
-  view-transition-name: var(--morph-name);
+[data-swipe-under] {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: var(--color-base-200);
 }
-:root[data-nav='morph']::view-transition-group(*) {
-  animation-duration: 300ms;
-  animation-timing-function: var(--motion-ease);
+[data-swipe-under] * {
+  animation: none;
+}
+#main[data-swipe='right'] {
+  position: relative;
+  z-index: 2;
+  background: var(--color-base-200);
+  box-shadow:
+    -1px 0 0 var(--color-base-300),
+    0 0 0 100vmax var(--color-base-200);
+  clip-path: inset(-100vmax -100vmax -100vmax -1px);
 }
 
 @media (prefers-reduced-motion: reduce) {

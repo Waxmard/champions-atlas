@@ -1,7 +1,7 @@
 import type { NavigationTarget, OnNavigate } from '$app/navigation';
 import type { TransitionConfig } from 'svelte/transition';
 
-type Place = Pick<NavigationTarget, 'params' | 'route' | 'url'>;
+type Place = Pick<NavigationTarget, 'route' | 'url'>;
 export type NavKind = 'tab' | 'push' | 'pop';
 
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -36,21 +36,34 @@ export function navKind(from: Place, to: Place): NavKind | null {
   return change > 0 ? 'push' : change < 0 ? 'pop' : null;
 }
 
-export function morphTeam({ params, route, url }: Place): string | null {
-  if (route.id === '/teams/[id]') return params?.id ?? null;
-  if (route.id === '/wishlist' || route.id === '/favorites')
-    return url.searchParams.get('team');
-  return null;
-}
-
 let active: ViewTransition | undefined;
 
-function markCard(id: string | null) {
-  document
-    .querySelectorAll<HTMLElement>('[data-team-card]')
-    .forEach((card) =>
-      card.toggleAttribute('data-morph', card.dataset.teamCard === id)
-    );
+let under: HTMLElement | null = null;
+
+export const pageUnder = () => under;
+
+function keep(kind: NavKind) {
+  under = null;
+  const main = kind === 'push' ? document.getElementById('main') : null;
+  if (!main) return;
+  const { left, top, width } = main.getBoundingClientRect();
+  const copy = main.cloneNode(true) as HTMLElement;
+  copy.removeAttribute('id');
+  copy.inert = true;
+  Object.assign(copy.style, {
+    position: 'absolute',
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${width}px`,
+    margin: '0',
+  });
+  copy.querySelectorAll('img').forEach((image) => {
+    image.loading = 'eager';
+  });
+  under = document.createElement('div');
+  under.dataset.swipeUnder = '';
+  under.ariaHidden = 'true';
+  under.append(copy);
 }
 
 export function pageTransition({
@@ -58,27 +71,22 @@ export function pageTransition({
   to,
   complete,
 }: OnNavigate): Promise<void> | undefined {
-  if (!from || !to || reduced() || !('startViewTransition' in document)) return;
+  if (!from || !to) return;
   const kind = navKind(from, to);
   if (!kind) return;
-  const team =
-    kind === 'push' ? morphTeam(to) : kind === 'pop' ? morphTeam(from) : null;
+  const swiped = !!under?.isConnected;
+  keep(kind);
+  if (swiped || reduced() || !('startViewTransition' in document)) return;
   const root = document.documentElement;
   const { promise, resolve } = Promise.withResolvers<void>();
-  root.dataset.nav = team ? 'morph' : kind;
-  markCard(kind === 'push' ? team : null);
+  root.dataset.nav = kind;
   const transition = document.startViewTransition(async () => {
     resolve();
     await complete;
-    if (!team) return;
-    await new Promise((done) => setTimeout(done));
-    markCard(kind === 'pop' ? team : null);
   });
   active = transition;
   void transition.finished.finally(() => {
-    if (active !== transition) return;
-    markCard(null);
-    delete root.dataset.nav;
+    if (active === transition) delete root.dataset.nav;
   });
   return promise;
 }
