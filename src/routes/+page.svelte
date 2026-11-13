@@ -362,7 +362,9 @@
           {filterState.error ||
             (newOnly
               ? 'No new teams match. Turn off New teams only or remove a filter.'
-              : 'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.')}
+              : unknownOnly
+                ? 'No teams with an unknown regulation match. Turn off Unknown regulation only or remove a filter.'
+                : 'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.')}
         </p>
         <Button
           type="button"

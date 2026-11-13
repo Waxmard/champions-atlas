@@ -48,6 +48,9 @@
     disabled || dirty || pending || movedId === teamId
   );
   const action = 'gap-1 px-2 landscape:md:justify-start';
+  $effect(() => {
+    if (!edited && errorMessage === WISHLIST_EDITED_ERROR) errorMessage = '';
+  });
 
   async function move(target: 'favorites' | 'wishlist') {
     if (moveDisabled) return;

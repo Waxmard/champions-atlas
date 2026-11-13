@@ -106,10 +106,12 @@
     if (result.status) notify(result.status);
     pending = false;
   }
-  function setRegulation(value: string) {
-    actionError = setRegulationOverride(team.id, value || null)
-      ? ''
-      : 'Regulation could not be saved on this device.';
+  function setRegulation(select: HTMLSelectElement) {
+    if (setRegulationOverride(team.id, select.value || null)) actionError = '';
+    else {
+      select.value = team.regulationSetByUser ? team.regulation : '';
+      actionError = 'Regulation could not be saved on this device.';
+    }
     void syncRegulations();
   }
   async function useTeam() {
@@ -186,7 +188,7 @@
             class="select min-h-11 w-auto text-base sm:text-sm"
             disabled={!ready}
             value={team.regulationSetByUser ? team.regulation : ''}
-            onchange={(event) => setRegulation(event.currentTarget.value)}
+            onchange={(event) => setRegulation(event.currentTarget)}
           >
             <option value="">Regulation unknown</option>
             {#each legalRegulations(team.members) as regulation (regulation)}
