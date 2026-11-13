@@ -388,8 +388,9 @@ original, so Browse bookmarks and **My Teams** always open the original sets:
 moving a team with set edits to Wishlist is refused with a pointer to
 Favorites, which keeps edited teams. A rename alone does not count as an edit.
 
-Wishlist Pokémon search matches the saved roster, including edits, rather than
-the original catalog roster. All selected Pokémon must match, using the same
+Wishlist Pokémon search matches the saved roster, including edits on records
+saved before Wishlist required unedited sets, rather than the original catalog
+roster. All selected Pokémon must match, using the same
 base and Mega identities as Browse. Search does not change saved records. It
 stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
