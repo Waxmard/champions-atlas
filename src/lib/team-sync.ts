@@ -1,4 +1,9 @@
-import { generateUUID, readSavedTeams, type SavedTeam } from './workbench.ts';
+import {
+  generateUUID,
+  orderKeyOf,
+  readSavedTeams,
+  type SavedTeam,
+} from './workbench.ts';
 import { canonicalSnapshot } from './team-history.ts';
 const roomError =
   'Sync needs more room. Remove unneeded teams before retrying; existing data has been preserved.';
@@ -15,11 +20,11 @@ export function teamsSnapshot(teams: SavedTeam[]): string {
 }
 
 function withoutCollectionOrder(team: SavedTeam): SavedTeam {
-  if (team.wishlistOrder === undefined && team.favoriteOrder === undefined)
+  if (team.wishlistOrder === undefined && team.savedOrder === undefined)
     return team;
   const content = { ...team };
   delete content.wishlistOrder;
-  delete content.favoriteOrder;
+  delete content.savedOrder;
   return content;
 }
 
@@ -33,18 +38,10 @@ function orderMerged(
   r: SavedTeam | undefined,
   b: SavedTeam | undefined
 ): SavedTeam {
-  const [key, other] =
-    selected.collection === 'wishlist'
-      ? (['wishlistOrder', 'favoriteOrder'] as const)
-      : (['favoriteOrder', 'wishlistOrder'] as const);
+  const key = orderKeyOf(selected);
   const ordered = { ...selected };
-  delete ordered[other];
-  if (
-    !l ||
-    !r ||
-    l.collection !== selected.collection ||
-    r.collection !== selected.collection
-  )
+  delete ordered[key === 'wishlistOrder' ? 'savedOrder' : 'wishlistOrder'];
+  if (!l || !r || orderKeyOf(l) !== key || orderKeyOf(r) !== key)
     return ordered;
   const order = b ? (l[key] === b[key] ? r[key] : l[key]) : (r[key] ?? l[key]);
   if (order === undefined) delete ordered[key];
@@ -121,10 +118,7 @@ export function mergeSavedTeams(
       selected = l;
     }
     if (!selected) return;
-    return selected.collection === 'wishlist' ||
-      selected.collection === 'favorites'
-      ? orderMerged(selected, l, r, b)
-      : withoutCollectionOrder(selected);
+    return orderMerged(selected, l, r, b);
   };
   const recover = (team: SavedTeam) => {
     const key = contentSnapshot(team);

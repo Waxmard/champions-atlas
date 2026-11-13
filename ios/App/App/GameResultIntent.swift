@@ -87,14 +87,14 @@ enum GameResult: String, AppEnum {
 @available(iOS 16.0, *)
 struct NoTeamError: Error, CustomLocalizedStringResourceConvertible {
     var localizedStringResource: LocalizedStringResource {
-        "Open Champion's Atlas and choose a team in My Teams first."
+        "Open Champion's Atlas and save a team first."
     }
 }
 
 @available(iOS 16.0, *)
 struct LogGameResultIntent: AppIntent {
     static var title: LocalizedStringResource = "Log Game Result"
-    static var description = IntentDescription("Adds a win or a loss to the team selected in My Teams, without opening the app.")
+    static var description = IntentDescription("Adds a win or a loss to the team you last opened in Saved, without opening the app.")
     static var openAppWhenRun = false
     static var parameterSummary: some ParameterSummary {
         Summary("Log \(\.$result) for my team")

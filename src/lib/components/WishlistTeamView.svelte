@@ -2,8 +2,8 @@
   import { resolve } from '$app/paths';
   import Copy from '@lucide/svelte/icons/copy';
   import ExternalLink from '@lucide/svelte/icons/external-link';
+  import Folder from '@lucide/svelte/icons/folder';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -14,21 +14,18 @@
   import { exportPaste, type SavedTeam } from '#lib/workbench.js';
 
   let {
-    collection = 'wishlist',
     entry,
     match,
     disabled,
     onuse,
     onremove,
   }: {
-    collection?: 'wishlist' | 'favorites';
     entry: SavedTeam;
     match: Team | undefined;
     disabled: boolean;
     onuse: () => void;
     onremove: () => void;
   } = $props();
-  const label = $derived(collection === 'favorites' ? 'Favorites' : 'Wishlist');
   const heading = $derived(savedTeamHeading(entry));
   let selectedIndex = $state<number | null>(null);
   let failedCopyText = $state('');
@@ -67,15 +64,15 @@
   </div>
   <div class="flex flex-wrap items-center gap-2">
     <Button variant="quiet" class="min-h-11" {disabled} onclick={onuse}>
-      <AtlasIcon />
-      <span>My Teams</span>
+      <Folder class="size-4" aria-hidden="true" />
+      <span>Save</span>
     </Button>
     <Button
       variant="quiet"
       size="icon-compact"
       class="min-h-11 min-w-11"
-      aria-label={`Remove from ${label}`}
-      title={`Remove from ${label}`}
+      aria-label="Remove from Wishlist"
+      title="Remove from Wishlist"
       {disabled}
       onclick={onremove}
     >

@@ -77,8 +77,8 @@ adds no paid API, scraper, or subscription.
 
 ## Saved teams, similarity, and editing
 
-Open a catalog team and choose **My Teams**, or choose **My Teams** on a Wishlist
-card. **My teams** keeps an immutable original and an editable copy. Catalog
+Open a catalog team and choose **Save**, or choose **Save** on a Wishlist
+card; the team opens in the Saved editor. **Saved** keeps an immutable original and an editable copy. Catalog
 originals retain the full published sets and source metadata available when
 saved; show that metadata as evidence for the original, not the edited version.
 Older saved teams show only metadata they retained. Custom originals are
@@ -92,16 +92,16 @@ saved edits, or independent team copies. Teams without a match remain usable
 without a catalog link or warning.
 
 Browse and Wishlist share a compact team summary style. Opening a catalog team,
-a Wishlist bookmark, or My teams shows the six Pokémon sets in a shared card
-grid. Catalog and Wishlist cards open a read-only full-set view; My teams cards
+a Wishlist bookmark, or a Saved team shows the six Pokémon sets in a shared card
+grid. Catalog and Wishlist cards open a read-only full-set view; Saved cards
 open editors for individual fields. When available, **View catalog details**
-opens the matching catalog team from My teams or a selected Wishlist team.
+opens the matching catalog team from a Saved team or a selected Wishlist team.
 
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
 restoration conflicts with the current roster.
 
-My Teams shows a **Record** row for the selected team, such as
+The Saved editor shows a **Record** row for the team, such as
 **3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
 number, and is omitted before the first game. Tapping the row opens a pop-up.
 **Win** and **Loss** each log one game and the pop-up stays open, so several
@@ -110,10 +110,11 @@ a loss and **Reset**.
 Reset asks for confirmation and returns the record to 0W – 0L. The record never
 goes below zero and is unavailable while edits are pending or the team changed
 elsewhere. It is saved with the team, so it stays when the team moves between
-My Teams, Favorites, and Wishlist and syncs like other team content. Favorites
+Saved and Wishlist and syncs like other team content. Saved
 and Wishlist cards show it read-only, with the percentage, once a team has a
-record. On iPhone, the **Log Game Result** shortcut action names the team
-selected in My Teams, asks for **Win** or **Loss**, and logs it without opening
+record. On iPhone, the **Log Game Result** shortcut action names the current
+team, or the first team in Saved order when none is current, asks for **Win** or
+**Loss**, and logs it without opening
 the app. Results logged this way join the record the next time the app is
 opened.
 
@@ -211,26 +212,27 @@ stays unchanged, and stale saves retain pending input rather than overwrite a
 remote change or recreate a deleted team. The immutable original and the current
 team synchronize across devices.
 
-Saved teams can be deleted after confirmation. If the deleted team was active,
-the next saved team becomes active; deleting the last one returns to the empty
-My teams view. Deletion also discards unsaved edits to that team. The app
+Saved teams can be deleted after confirmation, from the editor or the Saved row;
+deleting from the editor returns to the Saved list. Deletion also discards unsaved edits to that team. The app
 remembers the last successfully visited URL and scroll position on this device
 for a bare-root reopen and returns to that page after sign-in. With no remembered
 page, it opens Browse. Explicit links take precedence, and a missing remembered
 detail falls back to browsing. Editors and dialogs reopen closed. The main
-navigation is a bottom tab bar (Browse, My Teams, Favorites, Wishlist) that
-remains visible while scrolling, and selecting a Pokémon clears its
+navigation is a bottom tab bar (Browse, Saved, Wishlist) that
+remains visible while scrolling. From outside Saved, the Saved tab reopens the
+team that was open when you left Saved, if it is still in Saved; from inside
+Saved, or after returning to the Saved list, it opens the list. Selecting a
+Pokémon clears its
 search input for the next choice. A rightward swipe from the left screen edge
 follows the screen's Back link, a downward swipe inside a dialog closes it as
 Escape does (the set editor cancels its edits), and dragging a Wishlist or
-Favorites row left past half its width asks to remove it, while dragging it
-right moves the team to My Teams and opens it. On Browse, dragging a card right
+Saved row left past half its width asks to remove or delete it, while dragging a Wishlist row
+right saves the team and opens it in Saved. On Browse, dragging a card right
 adds it to the Wishlist and dragging a wishlisted card left removes it without
 asking, as its Wishlist button does.
 
-An explicit saved-team link with no saved teams keeps its URL and shows a
-missing-team notice. Resuming a deleted saved team opens the empty My teams view
-and clears its active selection.
+An explicit saved-team link, or a resumed link to a deleted saved team, keeps its
+URL and shows a missing-team notice with a link back to the list.
 
 Saving requires available app-local storage; clearing it removes local saves.
 Only unsaved input prompts before navigation. Browse filters and
@@ -261,7 +263,7 @@ distinct.
 
 The **Details** pop-up holds the team name and the original team's
 results, source links, paste link, and replica code. The original team stays
-stored with the saved team, but it cannot be restored from My Teams.
+stored with the saved team, but it cannot be restored from Saved.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
@@ -275,7 +277,7 @@ those teams. The remaining rows follow by shared teammates, then by how often
 the suggested Pokémon is paired with the rest of the team on the current
 regulation's Smogon ladder, so a team that few catalog teams resemble still gets
 suggestions. A row that would lower the team's ladder pairing is dropped unless
-it is that slot's only idea. Sets from Favorites teams rank in the same list, count as much as
+it is that slot's only idea. Sets from other favorite teams rank in the same list, count as much as
 the best-placed supporting team once they share three teammates, and are
 labelled **Favorite**. Tapping a row in either list shows the full set inside
 the pop-up with **Back** and **Apply swap**; Back returns to the list where it
@@ -292,12 +294,12 @@ Wishlist import remain permissive.
 
 Catalog item, ability, and move suggestions show the value with provenance
 labels: **Original** for the original team's value, **In-game** for the recorded
-in-game set, **Favorite** for a value from a matching set in a Favorites team,
+in-game set, **Favorite** for a value from a matching set in another favorite team,
 and **Movepool** for a move no catalog team recorded. Favorite values rank after
 Original and In-game values. Items another
 teammate already holds are not offered. Move suggestions include the species'
 newest available movepool, which ranks after catalog observations. In the set
-editor's Pokémon suggestions, Favorites sets rank among catalog suggestions by
+editor's Pokémon suggestions, favorite teams' sets rank among catalog suggestions by
 shared teammates until a name is typed, then they list first. Tapping a row
 there shows the same full-set preview as Swaps, with **Back** and **Apply
 swap**; nothing changes until Apply swap, and applying returns to the Pokémon
@@ -351,7 +353,7 @@ already share the same teammates and set details and are equally proven; the
 keyword half of that tiebreak works without them. See
 [data sources](data-sources.md) for how they are generated and validated.
 
-Custom text import starts in **My teams** with a required name and complete
+Custom text import starts from **Add custom team** in Saved with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
 ability, nature, EVs, and four unique moves. Export the text from
 [Pokémon Showdown Teambuilder](https://play.pokemonshowdown.com/teambuilder)
@@ -365,7 +367,7 @@ From a Poképaste page, the iOS share extension accepts one direct link or paste
 ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
 The manual fallback, **Add a Poképaste** on the Wishlist list, accepts a
 `pokepast.es` link or 16-character paste ID.
-Imports do not change the active team. An existing bookmark for the link is
+Imports do not change the last-opened team. An existing bookmark for the link is
 returned unchanged, even if multiple catalog teams share that link. A unique
 catalog match is bookmarked with its source metadata without a network request.
 When multiple catalog teams share a link without an existing bookmark, import is
@@ -382,18 +384,28 @@ codes.
 Similarity can suggest alternatives without AI. It cannot recover unpublished
 spreads. Any borrowed or inferred spread must remain separate from sourced data.
 
-**Wishlist** and **Favorites** are collections over the same saved-team
-records: a record without a collection belongs to My teams, and `wishlist` and
-`favorites` records are excluded from My teams selection and its active-team
-fallback. Each has its own page and tab beside My Teams, and the team sheet
-offers moving a team into either. Move a record in either direction without
-changing its ID, original snapshot, edits, or sources. Moving from My teams asks
-for confirmation first, is unavailable while edits are pending, and rejects
-stale records or a conflicting copy already in the target collection. Separate
+**Wishlist** and **Saved** are collections over the same saved-team records. A
+record with the `wishlist` collection lives only in Wishlist; every other
+record, including older ones marked `my-teams` or `saved`, is a Saved team.
+Saved lists every team outside Wishlist, and each opens in a full editor from its
+row; deleting a team deletes it and its record. Each collection has its own
+page and tab. **Save** on a Wishlist team moves the same record into Saved, and
+**Move to Wishlist** in the Saved editor moves it back, each without changing its
+ID, original snapshot, edits, or sources. Moving to Wishlist asks for
+confirmation first, is unavailable while edits are pending, and rejects
+stale records or a conflicting copy already in Wishlist. Separate
 copies are never merged. Wishlist holds only teams whose sets match their
-original, so Browse bookmarks and **My Teams** always open the original sets:
-moving a team with set edits to Wishlist is refused with a pointer to
-Favorites, which keeps edited teams. A rename alone does not count as an edit.
+original, so Browse bookmarks and **Save** always open the original sets:
+moving a team with set edits to Wishlist is refused, because
+Saved keeps edited teams. A rename alone does not count as an edit.
+
+Any Saved team can be starred as a favorite with the star beside its
+name in the editor or on its Saved row; Wishlist shows no star. The star syncs
+like the record. The Saved **Favorites** filter lists only starred teams and is
+on by default; the choice is remembered on this device. While it is on,
+reordering is paused (turn it off to reorder), and it stays when opening a team
+and returning. With no starred teams, Saved offers **Show all**. Teams from the
+earlier Favorites list read as starred Saved teams.
 
 Wishlist Pokémon search matches the saved roster, including edits on records
 saved before Wishlist required unedited sets, rather than the original catalog
@@ -403,11 +415,28 @@ stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
 
 With no Wishlist filters active, reorder bookmarks using the move up and down
-controls. New bookmarks appear first without changing the relative order of
-existing bookmarks. The order persists across reloads and syncs with the account.
+controls. Holding an arrow for half a second offers **Move to top** or
+**Move to bottom**. New bookmarks appear first without changing the relative
+order of existing bookmarks. Saved uses the same controls and order rules while
+Favorites and Pokémon filters are off. The order persists across reloads and
+syncs with the account.
+The Saved **Sort** menu button, beside **Favorites**, offers **Manual order**
+and **Win rate**: highest win percentage first, more games first on equal
+rates, and teams with no games last. Reordering is paused while Win rate is
+selected. Manual order is the default, and the choice is remembered on this
+device.
+
+Each Saved row has a swords toggle marking it as the **current team**. Marking
+a team moves it to the top of Saved and clears the marker on any other team.
+When a team stops being current, by toggling it off or marking another team, it
+moves to just above the first team with a lower win rate (more games break
+ties), leaving the other teams in their order; a team that outranks no one goes
+last. Only one team is current at a time. The marker syncs with the account and
+is cleared when the team moves to Wishlist. The current team stays listed while
+Favorites is on, even when unstarred, but Pokémon filters still apply to it.
 
 The catalog **Wishlist** button adds a bookmark or immediately removes the
-matching saved Wishlist copy and its edits; My teams copies remain unchanged.
+matching saved Wishlist copy and its edits; Saved copies remain unchanged.
 If multiple Wishlist records match, remove them individually in Wishlist rather
 than deleting them together. Using a bookmarked catalog team promotes the same
 record; if multiple bookmarks match, choose one in Wishlist. Removal rejects a
@@ -422,11 +451,6 @@ The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when
 connected. A first sign-in may require connectivity. Native setup and signing
 are described in [iOS installation and Firebase sync](firebase.md).
-
-The My teams title opens a list of in-use teams with the selected team checked.
-The list's search box takes focus only when tapped. Search covers the current
-team name and each member's species, with exact, prefix, substring, and
-character-subsequence tiers, requiring every whitespace-separated term to match.
 
 ## Future scope
 
@@ -445,7 +469,7 @@ character-subsequence tiers, requiring every whitespace-separated term to match.
 - Old regulations remain discoverable and visibly labeled.
 - Unknown placements, tiers, spreads, and legality are not fabricated.
 - Reimporting does not create duplicate teams or erase valid cached data on failure.
-- Current team(s) survive reload and app reopening without a cloud account.
+- Saved teams survive reload and app reopening without a cloud account.
 - Mobile layout and reduced-motion behavior work; state
   transitions are smooth without disturbing browsing position.
 - Relevant tests, lint, type checking, and production build pass with the selected

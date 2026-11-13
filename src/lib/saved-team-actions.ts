@@ -9,7 +9,7 @@ import {
   useCatalogTeam,
   wishlistedCatalogEntries,
 } from './team-collections';
-import { activeTeamKey, readSavedTeams, type SavedTeam } from './workbench';
+import { readSavedTeams, type SavedTeam } from './workbench';
 
 export const SAVE_FAILURE =
   'Could not save this team. Check app storage access and available space. Existing saved teams were not replaced.';
@@ -24,7 +24,7 @@ export function readSavedTeamsState(): {
     return {
       saved: [],
       error:
-        'Saved teams could not be read, so Wishlist and Use are unavailable. Check app storage access.',
+        'Saved teams could not be read, so Wishlist and Save are unavailable. Check app storage access.',
     };
   }
 }
@@ -71,14 +71,9 @@ export async function openCatalogTeam(team: Team): Promise<string> {
   }
   void pushNow();
   try {
-    localStorage.setItem(activeTeamKey, entry.id);
+    await goto(resolve(`saved?team=${encodeURIComponent(entry.id)}`));
   } catch {
-    // My Teams reports storage trouble; the explicit ID still opens the team.
-  }
-  try {
-    await goto(resolve(`my-teams?team=${encodeURIComponent(entry.id)}`));
-  } catch {
-    return 'Could not open My Teams. Your team was saved.';
+    return 'Could not open Saved. Your team was saved.';
   }
   return '';
 }

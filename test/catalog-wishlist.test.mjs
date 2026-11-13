@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import { registerHooks } from 'node:module';
 import test from 'node:test';
 import {
-  activeTeamKey,
   newSavedTeam,
   readSavedTeams,
   saveTeam,
@@ -104,7 +103,6 @@ test('catalog toggle adds and removes without changing an in-use copy', () => {
   const inUse = newSavedTeam(catalog);
   saveTeam(s, inUse);
   const inUseBefore = readSavedTeams(s)[0];
-  s.setItem(activeTeamKey, inUse.id);
   install(s);
 
   const added = toggleCatalogWishlist(catalog);
@@ -116,7 +114,6 @@ test('catalog toggle adds and removes without changing an in-use copy', () => {
   assert.equal(removed.error, '');
   assert.ok(removed.status);
   assert.deepEqual(readSavedTeams(s), [inUseBefore]);
-  assert.equal(s.getItem(activeTeamKey), inUse.id);
 });
 
 test('catalog toggle matches a Wishlist copy by source URL and rejects multiple matches', () => {
@@ -178,7 +175,7 @@ test('Wishlist ordering persists safely through edits and collection changes', (
   let raw = JSON.stringify(initial);
   let writes = 0;
   const storage = {
-    getItem: (key) => (key === activeTeamKey ? 'active-team' : raw),
+    getItem: () => raw,
     setItem: (key, value) => {
       assert.equal(key, storageKey);
       raw = value;
@@ -206,7 +203,7 @@ test('Wishlist ordering persists safely through edits and collection changes', (
   assert.equal(writes, 1);
   const mine = before[1];
   saveTeam(storage, { ...mine, name: 'Renamed', wishlistOrder: 88 });
-  const inUse = collections.teamsInUse(readSavedTeams(storage));
+  const inUse = readSavedTeams(storage).filter(collections.isSavedTeam);
   assert.deepEqual(
     inUse.map(({ id }) => id),
     [before[3].id, mine.id]
@@ -227,14 +224,13 @@ test('Wishlist ordering persists safely through edits and collection changes', (
   const promoted = collections.useWishlistedTeam(storage, 'C');
   assert.equal(Object.hasOwn(promoted, 'wishlistOrder'), false);
   assert.deepEqual(order(), [added.id, 'A', 'B']);
-  const moved = collections.moveInUseTeamToWishlist(
+  const moved = collections.moveSavedTeamToWishlist(
     storage,
     'C',
     canonicalSnapshot({ name: promoted.name, members: promoted.members })
   );
   assert.equal(Object.hasOwn(moved, 'wishlistOrder'), false);
   assert.deepEqual(order(), ['C', added.id, 'A', 'B']);
-  assert.equal(storage.getItem(activeTeamKey), 'active-team');
 });
 
 test('Wishlist reorder rejects stale and invalid lists without writing', () => {
