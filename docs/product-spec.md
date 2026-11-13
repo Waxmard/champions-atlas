@@ -218,7 +218,10 @@ for a bare-root reopen and returns to that page after sign-in. With no remembere
 page, it opens Browse. Explicit links take precedence, and a missing remembered
 detail falls back to browsing. Editors and dialogs reopen closed. The main
 navigation is a bottom tab bar (Browse, Saved, Wishlist) that
-remains visible while scrolling, and selecting a Pokémon clears its
+remains visible while scrolling. From outside Saved, the Saved tab reopens the
+team that was open when you left Saved, if it is still in Saved; from inside
+Saved, or after returning to the Saved list, it opens the list. Selecting a
+Pokémon clears its
 search input for the next choice. A rightward swipe from the left screen edge
 follows the screen's Back link, a downward swipe inside a dialog closes it as
 Escape does (the set editor cancels its edits), and dragging a Wishlist or
@@ -414,6 +417,10 @@ With no Wishlist filters active, reorder bookmarks using the move up and down
 controls. New bookmarks appear first without changing the relative order of
 existing bookmarks. Saved uses the same controls and order rules while Favorites
 and Pokémon filters are off. The order persists across reloads and syncs with the account.
+Saved can also sort by **Win rate**: highest win percentage first, more games
+first on equal rates, and teams with no games last. Reordering is paused while
+Win rate is selected. Manual order is the default, and the choice is
+remembered on this device.
 
 The catalog **Wishlist** button adds a bookmark or immediately removes the
 matching saved Wishlist copy and its edits; Saved copies remain unchanged.

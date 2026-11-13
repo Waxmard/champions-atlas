@@ -12,11 +12,13 @@ import {
   recordSummary,
   applyGameResults,
   shortcutTeam,
+  sortByWinRate,
 } from '../src/lib/team-collections.ts';
 import {
   activeTeamKey,
   newSavedTeam,
   readSavedTeams,
+  saveTeam,
 } from '../src/lib/workbench.ts';
 import { canonicalSnapshot } from '../src/lib/team-history.ts';
 
@@ -207,4 +209,33 @@ test('Shortcut results add to saved records once and name the active team', () =
     );
   }
   assert.equal(shortcutTeam(storage()), null);
+});
+
+test('Win rate sort ranks by rate, then games, and leaves unplayed teams last in manual order', () => {
+  const teams = [
+    snapshot('a'),
+    { ...snapshot('b'), record: { wins: 1, losses: 1 } },
+    { ...snapshot('c'), record: { wins: 3, losses: 1 } },
+    { ...snapshot('d'), record: { wins: 2, losses: 2 } },
+    { ...snapshot('e'), record: { wins: 0, losses: 0 } },
+  ];
+  assert.deepEqual(
+    sortByWinRate(teams).map(({ id }) => id),
+    ['c', 'd', 'b', 'a', 'e']
+  );
+  assert.deepEqual(
+    teams.map(({ id }) => id),
+    ['a', 'b', 'c', 'd', 'e']
+  );
+});
+
+test('A newly saved team goes to the top of a manually ordered Saved list', () => {
+  const s = storage([snapshot('a'), snapshot('b')]);
+  const before = orderedSaved(readSavedTeams(s)).map(({ id }) => id);
+  reorderSaved(s, before.toReversed(), before);
+  saveTeam(s, snapshot('c'));
+  assert.deepEqual(
+    orderedSaved(readSavedTeams(s)).map(({ id }) => id),
+    ['c', ...before.toReversed()]
+  );
 });

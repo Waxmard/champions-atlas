@@ -20,10 +20,12 @@
     resolveCatalogTeam,
     SavedTeamError,
     savedTeamHeading,
+    sortByWinRate,
   } from '#lib/team-collections.js';
   import {
     readSavedTeams,
     savedFavoritesKey,
+    savedSortKey,
     type SavedTeam,
   } from '#lib/workbench.js';
 
@@ -72,14 +74,16 @@
   let entries = $state<SavedTeam[]>([]);
   let filters = $state<MemberFilter[]>([]);
   let favoritesOnly = $state(false);
+  let sort = $state<'manual' | 'record'>('manual');
   const filtered = $derived(filters.length > 0 || favoritesOnly);
   const pickerTeams = $derived(entries.map(displaySavedTeam));
-  const visibleEntries = $derived(
-    entries.filter(
+  const visibleEntries = $derived.by(() => {
+    const matching = entries.filter(
       (entry) =>
         matchesTeam(entry, filters) && (!favoritesOnly || entry.favorite)
-    )
-  );
+    );
+    return sort === 'record' ? sortByWinRate(matching) : matching;
+  });
   let pendingId = $state('');
   let listRegion = $state<HTMLDivElement>();
   let listScroll: { x: number; y: number } | null = null;
@@ -146,6 +150,25 @@
     }
   }
 
+  function readSort(): 'manual' | 'record' {
+    try {
+      return localStorage.getItem(savedSortKey) === 'record'
+        ? 'record'
+        : 'manual';
+    } catch {
+      return 'manual';
+    }
+  }
+
+  function setSort(value: string) {
+    sort = value === 'record' ? 'record' : 'manual';
+    try {
+      localStorage.setItem(savedSortKey, sort);
+    } catch {
+      return;
+    }
+  }
+
   function setFavoritesOnly(value: boolean) {
     favoritesOnly = value;
     try {
@@ -157,7 +180,10 @@
 
   onMount(() => {
     ready = true;
-    if (setFavorite) favoritesOnly = readFavoritesOnly();
+    if (setFavorite) {
+      favoritesOnly = readFavoritesOnly();
+      sort = readSort();
+    }
     refresh();
   });
 
@@ -327,7 +353,7 @@
           onchange={(next) => (filters = next)}
         />
         <div
-          class="mt-5 flex items-baseline justify-between gap-3 border-b pb-1.5"
+          class="mt-5 flex flex-wrap items-baseline justify-between gap-3 border-b pb-1.5"
         >
           <p
             aria-live="polite"
@@ -338,8 +364,17 @@
               ? 'team'
               : 'teams'}
           </p>
-          <div class="flex items-center gap-1">
+          <div class="flex flex-wrap items-center justify-end gap-1">
             {#if setFavorite}
+              <select
+                class="select min-h-11 w-auto text-base sm:text-sm"
+                aria-label="Sort Saved"
+                value={sort}
+                onchange={(event) => setSort(event.currentTarget.value)}
+              >
+                <option value="manual">Manual order</option>
+                <option value="record">Win rate</option>
+              </select>
               <Button
                 type="button"
                 variant="quiet"
@@ -362,11 +397,13 @@
             {/if}
           </div>
         </div>
-        {#if filtered && entries.length > 1}
+        {#if (filtered || sort === 'record') && entries.length > 1}
           <p class="provenance mt-2">
-            {favoritesOnly
-              ? 'Turn off Favorites to reorder Saved.'
-              : `Clear filters to reorder ${label}.`}
+            {sort === 'record'
+              ? 'Switch to Manual order to reorder Saved.'
+              : favoritesOnly
+                ? 'Turn off Favorites to reorder Saved.'
+                : `Clear filters to reorder ${label}.`}
           </p>
         {/if}
         {#if visibleEntries.length}
@@ -374,7 +411,7 @@
             {collection}
             entries={visibleEntries}
             disabled={!ready || !!pendingId || busy}
-            sortable={!filtered && entries.length > 1}
+            sortable={sort === 'manual' && !filtered && entries.length > 1}
             displayTeam={displaySavedTeam}
             onuse={use}
             onremove={remove}

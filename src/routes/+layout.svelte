@@ -8,6 +8,7 @@
     beforeNavigate,
     goto,
     onNavigate,
+    type NavigationTarget,
   } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
@@ -24,7 +25,11 @@
   } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
-  import { applyGameResults, shortcutTeam } from '#lib/team-collections.js';
+  import {
+    applyGameResults,
+    liveSavedTeam,
+    shortcutTeam,
+  } from '#lib/team-collections.js';
   import { normalizeInitialUrl } from '#lib/initial-url.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { clearNotification } from '#lib/notifications.js';
@@ -38,6 +43,12 @@
     collectionRoutes.some((route) => path === resolve(route));
   const isSaved = $derived(
     page.route.id === '/saved' || page.route.id === '/saved/new'
+  );
+  let savedTeamId = $state<string | null>(null);
+  const savedHref = $derived(
+    !isSaved && savedTeamId
+      ? resolve(`saved?team=${encodeURIComponent(savedTeamId)}`)
+      : resolve('saved')
   );
   const isBrowse = $derived(isHome || page.route.id === '/teams/[id]');
   const isLogin = $derived(page.url.pathname === resolve('login'));
@@ -58,6 +69,7 @@
       .join('') || '?'
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
+  const savedTeamKey = 'champions-atlas:saved-open-team:v1';
   const lastScrollKey = 'champions-atlas:last-scroll:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   const authReturnSourceKey = 'champions-atlas:auth-return-source:v1';
@@ -138,6 +150,27 @@
     } catch {
       return;
     }
+  }
+
+  function trackSavedTeam(from: NavigationTarget | null, to: NavigationTarget) {
+    let id = savedTeamId;
+    if (!from) {
+      try {
+        id = localStorage.getItem(savedTeamKey);
+      } catch {
+        id = null;
+      }
+    }
+    if (to.route.id === '/saved') id = to.url.searchParams.get('team') || null;
+    else if (id && from?.route.id !== to.route.id) {
+      try {
+        if (!liveSavedTeam(localStorage, id)) id = null;
+      } catch {
+        id = null;
+      }
+    }
+    savedTeamId = id;
+    updateStorage('local', savedTeamKey, id);
   }
 
   function urlString(
@@ -257,6 +290,7 @@
     swipeReset();
     navigationGeneration++;
     if (!to) return;
+    trackSavedTeam(from, to);
     settledUrl = urlString(to.url);
     if (!startupReady) return;
     if (pendingScroll && settledUrl !== pendingScroll.url) {
@@ -729,7 +763,7 @@
         <span class="truncate">Browse</span>
       </a>
       <a
-        href={resolve('saved')}
+        href={savedHref}
         data-swipe-back={page.route.id === '/saved/new' ? '' : undefined}
         aria-current={isSaved ? 'page' : undefined}
         class={tabClass(isSaved)}

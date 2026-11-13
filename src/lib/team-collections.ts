@@ -43,6 +43,17 @@ export function recordSummary({ wins, losses }: WinLossRecord): {
   };
 }
 
+const played = ({ record }: SavedTeam) =>
+  record ? record.wins + record.losses : 0;
+const winRate = (team: SavedTeam) =>
+  played(team) ? (team.record?.wins ?? 0) / played(team) : -1;
+
+export function sortByWinRate(teams: SavedTeam[]): SavedTeam[] {
+  return [...teams].sort(
+    (a, b) => winRate(b) - winRate(a) || played(b) - played(a)
+  );
+}
+
 export interface GameTally {
   teamId: string;
   wins: number;
