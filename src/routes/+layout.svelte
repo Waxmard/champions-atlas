@@ -695,11 +695,13 @@
                       >Retry sync</DropdownMenu.Item
                     >
                   {/if}
-                  <DropdownMenu.Item
-                    onSelect={() => (notificationSettingsOpen = true)}
-                    class="option-row min-h-9 px-2"
-                    >Notifications</DropdownMenu.Item
-                  >
+                  {#if isNativeApp}
+                    <DropdownMenu.Item
+                      onSelect={() => (notificationSettingsOpen = true)}
+                      class="option-row min-h-9 px-2"
+                      >Notifications</DropdownMenu.Item
+                    >
+                  {/if}
                   <DropdownMenu.Item
                     onSelect={signOut}
                     class="option-row min-h-9 px-2">Sign out</DropdownMenu.Item

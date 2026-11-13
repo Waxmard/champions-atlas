@@ -117,7 +117,7 @@ function send(session, authorization, deviceToken, payload) {
   return promise;
 }
 
-async function deliver(sessions, authorization, deviceToken, payload) {
+export async function deliver(sessions, authorization, deviceToken, payload) {
   for (const session of sessions) {
     const { status, reason } = await send(
       session,
@@ -127,8 +127,10 @@ async function deliver(sessions, authorization, deviceToken, payload) {
     );
     if (status === 200) return 'sent';
     if (status === 410) return 'dead';
-    if (status !== 400 || reason !== 'BadDeviceToken')
-      return `failed: ${status} ${reason}`;
+    if (status === 400 && reason === 'BadDeviceToken') continue;
+    if (status >= 400 && status < 500 && status !== 403 && status !== 429)
+      return `rejected: ${status} ${reason}`;
+    return `failed: ${status} ${reason}`;
   }
   return 'dead';
 }
@@ -187,9 +189,11 @@ export async function notifyNewTeams({
     )}`;
     const payload = JSON.stringify({ aps: { alert } });
     const sessions = APNS_HOSTS.map((host) =>
-      connect(host).on('error', () => undefined)
+      connect(host).on('error', (error) =>
+        console.error(`APNs connection to ${host} failed: ${error.message}`)
+      )
     );
-    const counts = { sent: 0, dead: 0, failed: 0 };
+    const counts = { sent: 0, dead: 0, rejected: 0, failed: 0 };
     try {
       for (const name of names) {
         const outcome = await deliver(
@@ -204,6 +208,9 @@ export async function notifyNewTeams({
           await firestore(accessToken, `${FIRESTORE}${name}`, {
             method: 'DELETE',
           });
+        } else if (outcome.startsWith('rejected')) {
+          counts.rejected++;
+          console.error(`Notification ${outcome}`);
         } else {
           counts.failed++;
           console.error(`Notification ${outcome}`);
@@ -216,7 +223,7 @@ export async function notifyNewTeams({
       throw new Error(
         `${counts.failed} of ${names.length} notifications failed; the batch was not marked as announced.`
       );
-    summary = `Sent "${alert.title}" to ${counts.sent} device(s); removed ${counts.dead} stale token(s).`;
+    summary = `Sent "${alert.title}" to ${counts.sent} device(s); removed ${counts.dead} stale token(s); ${counts.rejected} rejected.`;
   }
 
   await firestore(accessToken, `${documents}/pushState/catalog`, {

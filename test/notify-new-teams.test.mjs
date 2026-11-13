@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { newTeamsAlert } from '../scripts/notify-new-teams.mjs';
+import { EventEmitter } from 'node:events';
+import { deliver, newTeamsAlert } from '../scripts/notify-new-teams.mjs';
 
 const report = (event, rank = '', sourceUrl = '') => ({
   event,
@@ -50,5 +51,42 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
       title: '6 new Reg M-C teams',
       body: 'Louisville Regional 2027, CybertronVGC, Nice Regional 2027 and 1 more',
     }
+  );
+});
+
+const apns = (status, reason = '') => ({
+  request() {
+    const request = new EventEmitter();
+    request.setEncoding = () => {};
+    request.end = () =>
+      queueMicrotask(() => {
+        request.emit('response', { ':status': status });
+        if (reason) request.emit('data', JSON.stringify({ reason }));
+        request.emit('end');
+      });
+    return request;
+  },
+});
+
+test('deliver maps APNs replies to sent, dead, rejected, or failed', async () => {
+  const outcome = (...sessions) => deliver(sessions, 'bearer x', 'token', '{}');
+  assert.equal(await outcome(apns(200)), 'sent');
+  assert.equal(await outcome(apns(410, 'Unregistered')), 'dead');
+  assert.equal(await outcome(apns(400, 'BadDeviceToken'), apns(200)), 'sent');
+  assert.equal(
+    await outcome(apns(400, 'BadDeviceToken'), apns(400, 'BadDeviceToken')),
+    'dead'
+  );
+  assert.equal(
+    await outcome(apns(400, 'DeviceTokenNotForTopic')),
+    'rejected: 400 DeviceTokenNotForTopic'
+  );
+  assert.equal(
+    await outcome(apns(403, 'InvalidProviderToken')),
+    'failed: 403 InvalidProviderToken'
+  );
+  assert.equal(
+    await outcome(apns(429, 'TooManyRequests')),
+    'failed: 429 TooManyRequests'
   );
 });

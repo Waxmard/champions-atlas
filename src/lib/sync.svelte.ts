@@ -488,6 +488,14 @@ export async function signIn(): Promise<void> {
 
 export async function signOut(): Promise<void> {
   if (!auth) return;
+  if (db && isNativeApp) {
+    const firestore = db;
+    await AtlasNative.registerPush({ authorize: false })
+      .then(({ token }) =>
+        token ? deleteDoc(doc(firestore, 'pushTokens', token)) : undefined
+      )
+      .catch(() => undefined);
+  }
   invalidate();
   sync.user = null;
   let nativeError: unknown;
@@ -518,11 +526,9 @@ export async function syncPushToken(): Promise<PushRegistration | null> {
     const result = await AtlasNative.registerPush({ authorize: enabled });
     if (result.token && owner === uid) {
       const ref = doc(firestore, 'pushTokens', result.token);
-      void (
-        enabled && result.granted
-          ? setDoc(ref, { uid: owner, updatedAt: serverTimestamp() })
-          : deleteDoc(ref)
-      ).catch(() => undefined);
+      await (enabled && result.granted
+        ? setDoc(ref, { uid: owner, updatedAt: serverTimestamp() })
+        : deleteDoc(ref));
     }
     return result;
   } catch {
