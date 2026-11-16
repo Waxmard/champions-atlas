@@ -50,6 +50,12 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   or the featured channel or listing source otherwise. Keep placements on team
   details, and show result evidence, paste links, and copyable rental/replica
   codes when published.
+- List a YouTuber's copy of a team once. When a team's only sources are a
+  YouTube channel, and exactly one other team with a paste, published on or
+  before it, has the same regulation and identical sets (Pokémon, item,
+  ability, moves, nature, and EV spread), Browse shows that earlier team with
+  the video added as a source. A team without EV spreads never counts as
+  identical. Otherwise the copy stays listed on its own.
 - Preserve Browse filters and scroll position when opening teams and returning.
   Back to teams stays visible while browsing a team.
 - Encode Browse filters in the URL so a refresh or shared link restores the selection.
