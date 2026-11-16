@@ -238,11 +238,6 @@
   }
   function resetQuery(field: string) {
     if (
-      field === 'pokemon' &&
-      normalize(form.pokemon) === normalize(acceptedFields.pokemon)
-    )
-      pokemonQuery = '';
-    else if (
       field === 'item' &&
       normalize(form.item) === normalize(acceptedFields.item)
     )
@@ -615,7 +610,7 @@
         class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
       >
         <SpeciesLabel
-          pokemon={form.pokemon || initialMember.pokemon}
+          pokemon={accepted.pokemon}
           spriteSize={20}
           textClass="max-w-[120px] truncate text-xs font-medium"
         />
@@ -746,6 +741,7 @@
       <SetEditorPokemonSuggestions
         bind:pokemon={form.pokemon}
         bind:previewing
+        query={pokemonQuery}
         accepted={accepted.pokemon}
         options={pokemonPage.visible}
         hasMore={pokemonPage.hasMore}
@@ -754,9 +750,9 @@
         {errorField}
         onshowmore={() => (visiblePokemonCount += 5)}
         onchoose={(next) => chooseSet(next, true)}
-        onresetquery={() => resetQuery('pokemon')}
         oninputchange={(value) => {
-          pokemonQuery = form.pokemon = value;
+          pokemonQuery = value;
+          form.pokemon = value.trim() || acceptedFields.pokemon;
           replacement = null;
           visiblePokemonCount = 10;
           clearError();
