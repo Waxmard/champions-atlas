@@ -371,7 +371,7 @@
           onchange={(next) => (filters = next)}
         />
         <div
-          class="mt-5 flex items-baseline justify-between gap-3 border-b pb-1.5"
+          class="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-1.5"
         >
           <p
             aria-live="polite"
@@ -382,7 +382,7 @@
               ? 'team'
               : 'teams'}
           </p>
-          <div class="flex items-center gap-1">
+          <div class="flex flex-wrap items-center gap-1">
             {#if setFavorite}
               <DropdownMenu.Root>
                 <DropdownMenu.Trigger>
