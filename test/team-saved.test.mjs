@@ -193,7 +193,7 @@ test('Shortcut results add to saved records once and name the current team', () 
     false
   );
   assert.equal(s.writes, 1);
-  assert.equal(shortcutTeam(s).id, orderedSaved(readSavedTeams(s))[0].id);
+  assert.equal(shortcutTeam(s).id, 'b');
   setCurrentTeam(s, 'a', true);
   reorderSaved(s, ['b', 'a'], ['a', 'b']);
   assert.deepEqual(shortcutTeam(s), {
