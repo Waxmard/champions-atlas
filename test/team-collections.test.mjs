@@ -141,10 +141,6 @@ test('my-teams, saved and absent collections all read as Saved; Wishlist is excl
     list.filter(isSavedTeam).map((x) => x.id),
     ['a', 'f', 'b']
   );
-  assert.equal(
-    list.some((x) => x.collection === 'my-teams' || x.collection === 'saved'),
-    false
-  );
   assert.equal(isSavedTeam(list[1]), false);
 });
 

@@ -252,12 +252,12 @@
     pendingId = '';
   }
 
-  function toggleFavorite(entry: SavedTeam) {
-    if (pendingId || !setFavorite) return;
+  function updateFlag(run: () => unknown) {
+    if (pendingId) return;
     errorMessage = '';
     inlineError = false;
     try {
-      setFavorite(localStorage, entry.id, !entry.favorite);
+      run();
       void pushNow();
     } catch (error) {
       errorMessage =
@@ -268,21 +268,13 @@
     refresh();
   }
 
-  function toggleCurrent(entry: SavedTeam) {
-    if (pendingId || !setCurrent) return;
-    errorMessage = '';
-    inlineError = false;
-    try {
-      setCurrent(localStorage, entry.id, !entry.current);
-      void pushNow();
-    } catch (error) {
-      errorMessage =
-        error instanceof SavedTeamError
-          ? error.message
-          : 'Could not update this team. Existing saved teams have been left untouched.';
-    }
-    refresh();
-  }
+  const toggleFavorite = (entry: SavedTeam) =>
+    setFavorite &&
+    updateFlag(() => setFavorite(localStorage, entry.id, !entry.favorite));
+
+  const toggleCurrent = (entry: SavedTeam) =>
+    setCurrent &&
+    updateFlag(() => setCurrent(localStorage, entry.id, !entry.current));
 
   async function remove(entry: SavedTeam) {
     if (pendingId) return;

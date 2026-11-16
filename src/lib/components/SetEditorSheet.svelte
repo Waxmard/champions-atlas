@@ -405,10 +405,8 @@
         }
         showError(
           'pokemon',
-          !form.pokemon.trim()
-            ? 'Enter a Pokémon.'
-            : rosterError({ ...accepted, pokemon: form.pokemon.trim() }) ||
-                'Choose a known Pokémon.'
+          rosterError({ ...accepted, pokemon: form.pokemon.trim() }) ||
+            'Choose a known Pokémon.'
         );
         return false;
       }

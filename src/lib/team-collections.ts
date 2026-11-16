@@ -67,30 +67,37 @@ export interface ShortcutTeam {
   losses: number;
 }
 
+function writeTeams(
+  storage: Pick<Storage, 'setItem'>,
+  teams: unknown[]
+): SavedTeam[] {
+  const raw = JSON.stringify(teams);
+  const normalized = readSavedTeams({ getItem: () => raw });
+  storage.setItem(storageKey, raw);
+  return normalized;
+}
+
 export function applyGameResults(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   results: GameTally[]
 ): boolean {
   const tallies = new Map(results.map((result) => [result.teamId, result]));
   let changed = false;
-  const raw = JSON.stringify(
-    readSavedTeams(storage).map((team) => {
-      const tally = tallies.get(team.id);
-      if (!tally || !(tally.wins || tally.losses)) return team;
-      changed = true;
-      const record = team.record ?? { wins: 0, losses: 0 };
-      return {
-        ...team,
-        record: {
-          wins: Math.min(9999, record.wins + tally.wins),
-          losses: Math.min(9999, record.losses + tally.losses),
-        },
-      };
-    })
-  );
+  const teams = readSavedTeams(storage).map((team) => {
+    const tally = tallies.get(team.id);
+    if (!tally || !(tally.wins || tally.losses)) return team;
+    changed = true;
+    const record = team.record ?? { wins: 0, losses: 0 };
+    return {
+      ...team,
+      record: {
+        wins: Math.min(9999, record.wins + tally.wins),
+        losses: Math.min(9999, record.losses + tally.losses),
+      },
+    };
+  });
   if (!changed) return false;
-  readSavedTeams({ getItem: () => raw });
-  storage.setItem(storageKey, raw);
+  writeTeams(storage, teams);
   return true;
 }
 
@@ -169,16 +176,14 @@ function reorderCollection(
     );
   if (orderedIds.every((id, index) => id === currentIds[index])) return null;
   const ranks = new Map(orderedIds.map((id, index) => [id, index]));
-  const raw = JSON.stringify(
+  return writeTeams(
+    storage,
     saved.map((team) =>
       orderKeyOf(team) === orderKey
         ? { ...team, [orderKey]: ranks.get(team.id) }
         : team
     )
   );
-  const normalized = readSavedTeams({ getItem: () => raw });
-  storage.setItem(storageKey, raw);
-  return normalized;
 }
 
 export function orderedWishlist(teams: SavedTeam[]): SavedTeam[] {
@@ -442,7 +447,8 @@ export function setCurrentTeam(
   }
   if (current) ranked.unshift(target);
   const ranks = new Map(ranked.map((team, index) => [team.id, index]));
-  const raw = JSON.stringify(
+  return writeTeams(
+    storage,
     saved.map((team) => {
       const rank = ranks.get(team.id);
       if (rank === undefined) return team;
@@ -451,9 +457,6 @@ export function setCurrentTeam(
       return current && team.id === id ? { ...next, current: true } : next;
     })
   );
-  const normalized = readSavedTeams({ getItem: () => raw });
-  storage.setItem(storageKey, raw);
-  return normalized;
 }
 
 export const favoriteTeams = (teams: SavedTeam[]): SavedTeam[] =>
