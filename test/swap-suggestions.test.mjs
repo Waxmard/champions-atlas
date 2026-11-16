@@ -14,6 +14,7 @@ import {
   swapSuggestions,
 } from '../src/lib/swap-suggestions.ts';
 import { swapIdeas, swapTargets } from '../src/lib/swap-ideas.ts';
+import { rosterSpecies } from '../src/lib/rosters.ts';
 import { SPREAD, set, team } from './fixtures/swap.mjs';
 
 const core = () => [set('Sneasler'), set('Kingambit'), set('Gholdengo')];
@@ -440,19 +441,25 @@ test('specific search matches the resolved form and keeps every slot', () => {
   assert.equal(results[4].sharedTeammates, 1);
 
   assert.deepEqual(swapSuggestions(draft, [one], 'M-C', 'Missing'), []);
+  const blank = swapSuggestions(
+    draft,
+    [
+      team('mega-only', [
+        set('Froslass', { item: 'Froslassite' }),
+        set('Sneasler'),
+      ]),
+    ],
+    'M-C',
+    'Froslass'
+  );
   assert.deepEqual(
-    swapSuggestions(
-      draft,
-      [
-        team('mega-only', [
-          set('Froslass', { item: 'Froslassite' }),
-          set('Sneasler'),
-        ]),
-      ],
-      'M-C',
-      'Froslass'
-    ),
-    []
+    blank.map(({ slot }) => slot).sort((a, b) => a - b),
+    [0, 1, 2, 3, 4, 5]
+  );
+  assert.ok(
+    blank.every(
+      ({ member }) => member.item === null && member.moves.length === 0
+    )
   );
   assert.equal(
     swapSuggestions(
@@ -466,7 +473,7 @@ test('specific search matches the resolved form and keeps every slot', () => {
       'M-C',
       'Froslass-Mega'
     ).length,
-    5
+    6
   );
 });
 
@@ -622,7 +629,16 @@ test('swap targets list current-regulation forms the team is missing', () => {
     teams,
     'M-C'
   );
-  assert.deepEqual(oneMega, ['Froslass-Mega', 'Gardevoir']);
+  assert.ok(oneMega.includes('Froslass-Mega'));
+  assert.ok(oneMega.includes('Gardevoir'));
+  const roster = rosterSpecies('M-C');
+  for (const name of roster)
+    assert.equal(
+      oneMega.includes(name),
+      name !== 'Sneasler' && name !== 'Dragonite'
+    );
+  if (!roster.includes('Aerodactyl'))
+    assert.ok(!oneMega.includes('Aerodactyl'));
 
   const twoMegas = swapTargets(
     [
@@ -632,7 +648,10 @@ test('swap targets list current-regulation forms the team is missing', () => {
     teams,
     'M-C'
   );
-  assert.deepEqual(twoMegas, ['Gardevoir', 'Sneasler']);
+  assert.ok(twoMegas.includes('Gardevoir'));
+  assert.ok(twoMegas.includes('Sneasler'));
+  for (const name of ['Froslass-Mega', 'Dragonite', 'Garchomp'])
+    assert.ok(!twoMegas.includes(name));
 });
 
 test('earlier-regulation teams feed suggestions when the form is legal now', () => {
@@ -700,7 +719,7 @@ test('earlier-regulation teams feed suggestions when the form is legal now', () 
   assert.equal(swapped[0].member.item, 'Life Orb');
   assert.deepEqual(
     swapped.map(({ slot }) => slot),
-    [0, 1, 2, 4, 5]
+    [0, 1, 2, 4, 5, 3]
   );
 });
 

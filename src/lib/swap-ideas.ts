@@ -9,6 +9,7 @@ import {
   type Team,
 } from './catalog.ts';
 import { ladderScore, type LadderShares } from './ladder.ts';
+import { rosterSpecies } from './rosters.ts';
 import {
   CLOSE_SHARED,
   SLOT_SUGGESTION_LIMIT,
@@ -55,6 +56,18 @@ export function swapTargets(
   for (const favTeam of favoriteTeams) {
     for (const member of favTeam.members) addMember(member, true);
   }
+  for (const pokemon of rosterSpecies(currentRegulation))
+    addMember(
+      {
+        pokemon,
+        item: null,
+        ability: null,
+        nature: null,
+        spread: null,
+        moves: [],
+      },
+      false
+    );
   return [...names].sort();
 }
 

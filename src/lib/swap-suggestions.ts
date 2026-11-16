@@ -670,10 +670,7 @@ export function swapSuggestions(
       { minShared: 1, limit: 6 },
       favoriteTeams
     ))
-      if (
-        (suggestion.favorite || suggestion.sharedTeammates > 0) &&
-        normalize(resolveBattleForm(suggestion.member).pokemon) === wanted
-      )
+      if (normalize(resolveBattleForm(suggestion.member).pokemon) === wanted)
         candidates.push({ ...suggestion, slot });
   }
   return candidates.sort((a, b) => {
