@@ -111,8 +111,10 @@ The Saved editor shows a **Record** row for the team, such as
 **3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
 number, and is omitted before the first game. Tapping the row opens a pop-up.
 **Win** and **Loss** each log one game and the pop-up stays open, so several
-games can be logged in a row. **Edit** reveals buttons to add or remove a win or
-a loss and **Reset**.
+games can be logged in a row. Logging a game animates the score: a win pops
+with a short burst, a loss shakes, and the win-rate bar glides to its new width.
+Removing a game or resetting does not animate. **Edit** reveals buttons to add
+or remove a win or a loss and **Reset**.
 Reset asks for confirmation and returns the record to 0W – 0L. The record never
 goes below zero and is unavailable while edits are pending or the team changed
 elsewhere. It is saved with the team, so it stays when the team moves between
