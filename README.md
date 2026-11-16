@@ -148,7 +148,8 @@ explicitly record committed sets as snapshots: they change Atlas only, never
 Pokémon Champions. Team edits do not update those snapshots. The **Log Game
 Result** action appears under Champion's Atlas in the Shortcuts app; run it from
 Back Tap, the Action Button, or Siri ("Log a game in Champion's Atlas") to log a
-win or a loss for the team you last opened in Saved (or the first team in Saved order) without leaving your game.
+win or a loss for your current team in Saved (the first team in Saved order when
+none is current) without leaving your game.
 
 Saving requires app-local storage; clearing it removes local saved data. With
 Firebase configured, native Google sign-in is required and syncs saved teams, their
