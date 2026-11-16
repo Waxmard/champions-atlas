@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.14.0](https://github.com/Waxmard/champions-atlas/compare/v0.13.0...v0.14.0) (2026-11-16)
+
+
+### Features
+
+* replace My Teams and Favorites with Saved ([#117](https://github.com/Waxmard/champions-atlas/issues/117)) ([087b425](https://github.com/Waxmard/champions-atlas/commit/087b425bc264d295649d2f79f9dbce1732361277))
+
 ## [0.13.0](https://github.com/Waxmard/champions-atlas/compare/v0.12.0...v0.13.0) (2026-11-13)
 
 
