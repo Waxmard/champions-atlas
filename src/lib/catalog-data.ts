@@ -3,12 +3,7 @@ import rawCatalog from './data/catalog.json' with { type: 'json' };
 import rawTags from './data/team-tags.json' with { type: 'json' };
 import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
-import {
-  normalize,
-  youtubeChannelNames,
-  type Report,
-  type Team,
-} from './catalog.ts';
+import { normalize, youtubeChannelNames, type Team } from './catalog.ts';
 import { reportSchema, textSchema } from './spread-provenance.ts';
 import type { TeamTagsIndex } from './tags.ts';
 import { originalSchema } from './workbench.ts';
@@ -309,7 +304,7 @@ export function mergeYoutubeCopies(teams: readonly Team[]): Team[] {
     else groups.set(key, [team]);
   }
   const copies = new Set<Team>();
-  const added = new Map<Team, Report[]>();
+  const added = new Map<Team, Team[]>();
   for (const group of groups.values()) {
     if (group.length < 2) continue;
     for (const copy of group) {
@@ -324,27 +319,24 @@ export function mergeYoutubeCopies(teams: readonly Team[]): Team[] {
       );
       if (originals.length !== 1) continue;
       copies.add(copy);
-      added.set(originals[0], [
-        ...(added.get(originals[0]) ?? []),
-        ...copy.reports,
-      ]);
+      added.set(originals[0], [...(added.get(originals[0]) ?? []), copy]);
     }
   }
   return teams
     .filter((team) => !copies.has(team))
     .map((team) => {
-      const extra = added.get(team);
-      if (!extra) return team;
+      const merged = added.get(team);
+      if (!merged) return team;
       const seen = new Set(
         team.reports.map((report) => JSON.stringify(report))
       );
       const reports = [...team.reports];
-      for (const report of extra) {
+      for (const report of merged.flatMap((copy) => copy.reports)) {
         const key = JSON.stringify(report);
         if (seen.has(key)) continue;
         seen.add(key);
         reports.push(report);
       }
-      return { ...team, reports };
+      return { ...team, reports, mergedIds: merged.map((copy) => copy.id) };
     });
 }

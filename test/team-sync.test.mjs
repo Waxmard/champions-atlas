@@ -438,3 +438,27 @@ test('conflicts across collections retain each surviving source rank', () => {
     assert.equal(result[1].wishlistOrder, 3);
   }
 });
+
+test('concurrent current and favorite flags merge without recovery and keep one current team', () => {
+  const a = { ...team('a'), savedOrder: 0 };
+  const b = { ...team('b'), savedOrder: 1 };
+  const base = [a, b];
+  const local = [
+    { ...a, current: true },
+    { ...b, name: 'Edited' },
+  ];
+  const remote = [a, { ...b, current: true, favorite: true }];
+  const result = merge(base, local, remote);
+  assert.deepEqual(
+    result.map(({ id, name, current, favorite }) => ({
+      id,
+      name,
+      current,
+      favorite,
+    })),
+    [
+      { id: 'a', name: 'a', current: true, favorite: undefined },
+      { id: 'b', name: 'Edited', current: undefined, favorite: true },
+    ]
+  );
+});

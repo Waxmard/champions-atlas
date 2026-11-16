@@ -4,6 +4,7 @@ import {
   readSavedTeams,
   type SavedTeam,
 } from './workbench.ts';
+import { orderedSaved } from './team-collections.ts';
 import { canonicalSnapshot } from './team-history.ts';
 const roomError =
   'Sync needs more room. Remove unneeded teams before retrying; existing data has been preserved.';
@@ -19,34 +20,42 @@ export function teamsSnapshot(teams: SavedTeam[]): string {
   );
 }
 
-function withoutCollectionOrder(team: SavedTeam): SavedTeam {
-  if (team.wishlistOrder === undefined && team.savedOrder === undefined)
-    return team;
+function withoutMetadata(team: SavedTeam): SavedTeam {
   const content = { ...team };
   delete content.wishlistOrder;
   delete content.savedOrder;
+  delete content.current;
+  delete content.favorite;
   return content;
 }
 
 function contentSnapshot(team: SavedTeam): string {
-  return canonicalSnapshot(withoutCollectionOrder(team));
+  return canonicalSnapshot(withoutMetadata(team));
 }
 
-function orderMerged(
+function metadataMerged(
   selected: SavedTeam,
   l: SavedTeam | undefined,
   r: SavedTeam | undefined,
   b: SavedTeam | undefined
 ): SavedTeam {
   const key = orderKeyOf(selected);
-  const ordered = { ...selected };
-  delete ordered[key === 'wishlistOrder' ? 'savedOrder' : 'wishlistOrder'];
-  if (!l || !r || orderKeyOf(l) !== key || orderKeyOf(r) !== key)
-    return ordered;
-  const order = b ? (l[key] === b[key] ? r[key] : l[key]) : (r[key] ?? l[key]);
-  if (order === undefined) delete ordered[key];
-  else ordered[key] = order;
-  return ordered;
+  const merged = { ...selected };
+  delete merged[key === 'wishlistOrder' ? 'savedOrder' : 'wishlistOrder'];
+  if (!l || !r) return merged;
+  const take = (field: typeof key | 'current' | 'favorite') => {
+    const value = b
+      ? l[field] === b[field]
+        ? r[field]
+        : l[field]
+      : (r[field] ?? l[field]);
+    if (value === undefined) delete merged[field];
+    else Object.assign(merged, { [field]: value });
+  };
+  if (orderKeyOf(l) === key && orderKeyOf(r) === key) take(key);
+  take('current');
+  take('favorite');
+  return merged;
 }
 
 export function validateTeamIds(value: unknown): string[] {
@@ -118,7 +127,7 @@ export function mergeSavedTeams(
       selected = l;
     }
     if (!selected) return;
-    return orderMerged(selected, l, r, b);
+    return metadataMerged(selected, l, r, b);
   };
   const recover = (team: SavedTeam) => {
     const key = contentSnapshot(team);
@@ -149,5 +158,12 @@ export function mergeSavedTeams(
     if (selected) result.push(selected);
   }
   if (result.length + recovered.length > 50) throw new Error(roomError);
-  return validatedTeams([...result, ...recovered]);
+  const merged = validatedTeams([...result, ...recovered]);
+  const current = orderedSaved(merged).find((team) => team.current)?.id;
+  return merged.map((team) => {
+    if (!team.current || team.id === current) return team;
+    const rest = { ...team };
+    delete rest.current;
+    return rest;
+  });
 }

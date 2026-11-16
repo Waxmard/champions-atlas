@@ -57,6 +57,7 @@ export interface Team {
   pasteError?: string;
   regulationInference?: RegulationInference;
   regulationSetByUser?: true;
+  mergedIds?: string[];
 }
 
 export interface MemberFilter {

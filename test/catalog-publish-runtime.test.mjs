@@ -467,6 +467,7 @@ test('YouTube copies fold only into the single earlier original with identical s
     video('copy'),
     video('second-copy'),
   ]);
+  assert.deepEqual(merged[0].mergedIds, ['copy', 'second-copy']);
   assert.deepEqual(original.reports, [result]);
   assert.deepEqual(merged.slice(1), kept.slice(1));
 });

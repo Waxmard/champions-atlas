@@ -227,11 +227,21 @@ const saveAndGet = (
   return saved;
 };
 
+export function findTeamById(
+  teams: readonly Team[],
+  id: string
+): Team | undefined {
+  return (
+    teams.find((team) => team.id === id) ??
+    teams.find((team) => team.mergedIds?.includes(id))
+  );
+}
+
 export function resolveCatalogTeam(
   identity: { id?: string; pasteUrl?: string },
   catalog: Team[]
 ): Team | undefined {
-  const byId = identity.id && catalog.find((team) => team.id === identity.id);
+  const byId = identity.id && findTeamById(catalog, identity.id);
   if (byId) return byId;
   if (!identity.pasteUrl || !isPasteUrl(identity.pasteUrl)) return undefined;
   let match: Team | undefined;
