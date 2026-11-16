@@ -29,11 +29,11 @@ test('preserves explicit native paths, queries and fragments', () => {
   assert.deepEqual(
     parts(
       normalizeInitialUrl(
-        'capacitor://localhost/my-teams?team=existing#member',
+        'capacitor://localhost/saved?team=existing#member',
         '/'
       )
     ),
-    ['/my-teams', '?team=existing', '#member']
+    ['/saved', '?team=existing', '#member']
   );
 });
 

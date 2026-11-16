@@ -3,7 +3,7 @@ import rawCatalog from './data/catalog.json' with { type: 'json' };
 import rawTags from './data/team-tags.json' with { type: 'json' };
 import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
-import type { Team } from './catalog.ts';
+import { normalize, youtubeChannelNames, type Team } from './catalog.ts';
 import { reportSchema, textSchema } from './spread-provenance.ts';
 import type { TeamTagsIndex } from './tags.ts';
 import { originalSchema } from './workbench.ts';
@@ -262,4 +262,81 @@ export async function fetchCatalogUpdate(
   } catch {
     return null;
   }
+}
+
+function isYoutubeCopy(team: Team): boolean {
+  const channels = youtubeChannelNames(team.reports);
+  return (
+    channels.length > 0 &&
+    team.reports.every((report) =>
+      channels.some(
+        (name) =>
+          report.event === `${name} collection` ||
+          report.event === `${name} video`
+      )
+    )
+  );
+}
+
+const setsKey = (team: Team) =>
+  [
+    team.regulation,
+    ...team.members
+      .map((member) =>
+        [
+          normalize(member.pokemon),
+          normalize(member.item ?? ''),
+          normalize(member.ability ?? ''),
+          member.moves.map(normalize).sort().join(','),
+          normalize(member.nature ?? ''),
+          normalize(member.spread ?? ''),
+        ].join('@')
+      )
+      .sort(),
+  ].join('|');
+
+export function mergeYoutubeCopies(teams: readonly Team[]): Team[] {
+  const groups = new Map<string, Team[]>();
+  for (const team of teams) {
+    const key = setsKey(team);
+    const group = groups.get(key);
+    if (group) group.push(team);
+    else groups.set(key, [team]);
+  }
+  const copies = new Set<Team>();
+  const added = new Map<Team, Team[]>();
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    for (const copy of group) {
+      if (!isYoutubeCopy(copy) || copy.members.some((member) => !member.spread))
+        continue;
+      const originals = group.filter(
+        (team) =>
+          team.pasteUrl &&
+          team.publishedAt &&
+          team.publishedAt <= copy.publishedAt &&
+          !isYoutubeCopy(team)
+      );
+      if (originals.length !== 1) continue;
+      copies.add(copy);
+      added.set(originals[0], [...(added.get(originals[0]) ?? []), copy]);
+    }
+  }
+  return teams
+    .filter((team) => !copies.has(team))
+    .map((team) => {
+      const merged = added.get(team);
+      if (!merged) return team;
+      const seen = new Set(
+        team.reports.map((report) => JSON.stringify(report))
+      );
+      const reports = [...team.reports];
+      for (const report of merged.flatMap((copy) => copy.reports)) {
+        const key = JSON.stringify(report);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        reports.push(report);
+      }
+      return { ...team, reports, mergedIds: merged.map((copy) => copy.id) };
+    });
 }

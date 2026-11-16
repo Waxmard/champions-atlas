@@ -24,7 +24,7 @@
     titleActions?: Snippet;
     leadingActions?: Snippet;
     trailingActions?: Snippet;
-    href?: `wishlist?${string}` | `favorites?${string}` | `teams/${string}`;
+    href?: `wishlist?${string}` | `saved?${string}` | `teams/${string}`;
     fromCatalog?: boolean;
     swipeLeft?: Snippet;
     swipeRight?: Snippet;

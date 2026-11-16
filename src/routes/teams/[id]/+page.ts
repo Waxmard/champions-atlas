@@ -1,4 +1,5 @@
 import { error } from '@sveltejs/kit';
+import { findTeamById } from '#lib/team-collections.ts';
 import {
   catalogState,
   initCatalogRuntime,
@@ -6,10 +7,10 @@ import {
 import type { PageLoad } from './$types';
 
 export const load: PageLoad = async ({ params }) => {
-  let team = catalogState.catalog.teams.find((entry) => entry.id === params.id);
+  let team = findTeamById(catalogState.catalog.teams, params.id);
   if (!team && !catalogState.ready) {
     await initCatalogRuntime();
-    team = catalogState.catalog.teams.find((entry) => entry.id === params.id);
+    team = findTeamById(catalogState.catalog.teams, params.id);
   }
   if (!team) error(404, 'Team not found in this catalog.');
   return { team };

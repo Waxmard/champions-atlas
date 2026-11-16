@@ -2,7 +2,7 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { activeTeamKey, newCustomTeam, saveTeam } from '#lib/workbench.js';
+  import { newCustomTeam, saveTeam } from '#lib/workbench.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { pushNow } from '#lib/sync.svelte.js';
   let name = $state('');
@@ -18,9 +18,8 @@
         paste
       );
       saveTeam(localStorage, saved);
-      localStorage.setItem(activeTeamKey, saved.id);
       void pushNow();
-      await goto(resolve(`my-teams?team=${encodeURIComponent(saved.id)}`));
+      await goto(resolve(`saved?team=${encodeURIComponent(saved.id)}`));
     } catch (error) {
       message =
         error instanceof Error

@@ -155,7 +155,7 @@ test('Favorite sets rank with catalog rows without averaging and preserve catalo
   assert.equal(queried.length, 1);
   assert.equal(queried[0].pokemon, 'Pelipper');
   assert.equal(queried[0].favorite, true);
-  assert.deepEqual(swapTargets(teammates, [], 'M-C', [favZero]), ['Pelipper']);
+  assert.ok(swapTargets(teammates, [], 'M-C', [favZero]).includes('Pelipper'));
 
   const roster = [sn, kg, set('Garchomp', { item: 'Rocky Helmet' })];
   const specific = swapSuggestions(

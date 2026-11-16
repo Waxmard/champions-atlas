@@ -12,6 +12,7 @@ import bundledCatalog, {
   defaultCatalogEndpoint,
   fetchCatalogUpdate,
   tags as bundledTags,
+  mergeYoutubeCopies,
   selectStoredCatalogBundle,
   validateCatalogBundle,
   validateCatalogManifest,
@@ -378,4 +379,95 @@ test('buildCatalogRelease batches teams missing from the previous release and ca
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('YouTube copies fold only into the single earlier original with identical sets', () => {
+  const members = (overrides = {}) =>
+    [
+      'Aurorus',
+      'Gengar',
+      'Incineroar',
+      'Rillaboom',
+      'Mudsdale',
+      'Charizard',
+    ].map((pokemon, index) => ({
+      pokemon,
+      item: `Item ${index}`,
+      ability: 'Ability',
+      moves: ['Protect', 'Fake Out'],
+      nature: 'Modest',
+      spread: '32 HP / 32 SpA',
+      ...overrides,
+    }));
+  const team = (id, regulation, publishedAt, reports, overrides = {}) => ({
+    id,
+    sheetIds: [],
+    name: id,
+    creator: '',
+    regulation,
+    publishedAt,
+    pasteUrl: `https://pokepast.es/${id}`,
+    replicaCode: null,
+    replicaStatus: '',
+    reports,
+    members: members(),
+    paste: null,
+    pasteNotes: null,
+    ...overrides,
+  });
+  const result = {
+    event: '2027 Global Challenge II',
+    rank: '281st',
+    sourceUrl: 'https://x.com/a',
+  };
+  const collection = {
+    event: 'James Baek collection',
+    rank: '',
+    sourceUrl: 'https://www.youtube.com/@jameswbaekpkmn',
+  };
+  const video = (id) => ({
+    event: 'James Baek video',
+    rank: '',
+    sourceUrl: `https://www.youtube.com/watch?v=${id}`,
+  });
+  const copyOf = (id, regulation, overrides = {}) =>
+    team(id, regulation, '2026-11-14', [collection, video(id)], overrides);
+  const original = team('original', 'M-C', '2026-11-02', [result]);
+  const kept = [
+    original,
+    team('two-a', 'M-B', '2026-11-01', [result]),
+    team('two-b', 'M-B', '2026-11-02', [result]),
+    copyOf('two-copy', 'M-B'),
+    team('later', 'M-A', '2026-11-20', [result]),
+    copyOf('later-copy', 'M-A'),
+    team('no-paste', 'M-D', '2026-11-02', [result], { pasteUrl: '' }),
+    copyOf('no-paste-copy', 'M-D'),
+    team('differs', 'M-E', '2026-11-02', [result]),
+    copyOf('differs-copy', 'M-E', { members: members({ nature: 'Quiet' }) }),
+    team('bare', 'M-F', '2026-11-02', [result], {
+      members: members({ spread: null }),
+    }),
+    copyOf('bare-copy', 'M-F', { members: members({ spread: null }) }),
+  ];
+  const merged = mergeYoutubeCopies([
+    ...kept,
+    copyOf('copy', 'M-C', {
+      members: members({ moves: ['Fake Out', 'Protect'] }).reverse(),
+    }),
+    copyOf('second-copy', 'M-C'),
+  ]);
+
+  assert.deepEqual(
+    merged.map(({ id }) => id),
+    kept.map(({ id }) => id)
+  );
+  assert.deepEqual(merged[0].reports, [
+    result,
+    collection,
+    video('copy'),
+    video('second-copy'),
+  ]);
+  assert.deepEqual(merged[0].mergedIds, ['copy', 'second-copy']);
+  assert.deepEqual(original.reports, [result]);
+  assert.deepEqual(merged.slice(1), kept.slice(1));
 });

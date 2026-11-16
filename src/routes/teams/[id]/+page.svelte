@@ -10,7 +10,7 @@
   import Ellipsis from '@lucide/svelte/icons/ellipsis';
   import ExternalLink from '@lucide/svelte/icons/external-link';
   import FileText from '@lucide/svelte/icons/file-text';
-  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
+  import Folder from '@lucide/svelte/icons/folder';
   import Modal from '#lib/components/Modal.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
@@ -235,8 +235,8 @@
         disabled={!ready || savedError !== '' || pending}
         onclick={useTeam}
       >
-        <AtlasIcon />
-        <span>My Teams</span>
+        <Folder class="size-4" aria-hidden="true" />
+        <span>Save</span>
       </Button>
       <Button
         variant="quiet"

@@ -1,7 +1,7 @@
 <script lang="ts">
   import { tick } from 'svelte';
   import X from '@lucide/svelte/icons/x';
-  import PokemonSprite from '#lib/components/PokemonSprite.svelte';
+  import Search from '@lucide/svelte/icons/search';
   import SetPreview from '#lib/components/SetPreview.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
@@ -13,6 +13,7 @@
   let {
     pokemon = $bindable(),
     previewing = $bindable(false),
+    query,
     accepted,
     options,
     hasMore = false,
@@ -21,12 +22,12 @@
     errorField = null,
     onshowmore,
     onchoose,
-    onresetquery,
     oninputchange,
     oncommit,
   }: {
     pokemon: string;
     previewing?: boolean;
+    query: string;
     accepted: string;
     options: PokemonSuggestion[];
     hasMore?: boolean;
@@ -40,7 +41,6 @@
     errorField?: EditableSetField | null;
     onshowmore?: () => void;
     onchoose: (member: Member) => void;
-    onresetquery: () => void;
     oninputchange: (value: string) => void;
     oncommit: (blurOnSuccess?: boolean) => boolean;
   } = $props();
@@ -99,17 +99,15 @@
 {/if}
 
 <section bind:this={section} hidden={!!preview} class="enter-fade grid gap-4">
-  <label for="set-pokemon-input" class="sr-only">Pokémon</label>
+  <label for="set-pokemon-input" class="sr-only">Search Pokémon</label>
   <label class="field">
-    <PokemonSprite {pokemon} size={28} />
+    <Search class="size-5 shrink-0 text-base-content/70" aria-hidden="true" />
     <input
       id="set-pokemon-input"
-      aria-label="Pokémon"
+      aria-label="Search Pokémon"
       class="grow bg-transparent text-sm focus:outline-none"
-      placeholder="Pokémon"
-      bind:value={pokemon}
-      onfocus={onresetquery}
-      onclick={onresetquery}
+      placeholder="Search any Pokémon…"
+      value={query}
       oninput={(event) => oninputchange(event.currentTarget.value)}
       onblur={() => {
         if (!preview) oncommit(false);
@@ -121,18 +119,17 @@
         }
       }}
     />
-    {#if pokemon !== accepted}
+    {#if query}
       <Button
         variant="quiet"
         size="icon-compact"
         class="-me-2"
-        aria-label={`Revert Pokémon to ${accepted}`}
+        aria-label="Clear Pokémon search"
         onpointerdown={(event) => event.preventDefault()}
         onclick={(event) => {
           event.preventDefault();
           event.stopPropagation();
-          oninputchange(accepted);
-          oncommit(true);
+          oninputchange('');
         }}
       >
         <X class="size-4" />
@@ -140,7 +137,8 @@
     {/if}
   </label>
   <p class="provenance">
-    Tap a suggested Pokémon to preview its set before applying it.
+    Type any Pokémon legal in this regulation, or tap a suggestion to preview
+    its set before applying it.
   </p>
   {#if favoriteSlotSets.length}
     <SuggestionList

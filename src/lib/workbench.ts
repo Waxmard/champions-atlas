@@ -44,7 +44,8 @@ import {
 } from './spread-provenance.ts';
 
 export const storageKey = 'champions-atlas:teams:v1';
-export const activeTeamKey = 'champions-atlas:active-team:v1';
+export const savedFavoritesKey = 'champions-atlas:saved-favorites:v1';
+export const savedSortKey = 'champions-atlas:saved-sort:v1';
 export const browseStorageKey = 'champions-atlas:browse:v1';
 
 export function setText(member: Member) {
@@ -164,7 +165,7 @@ export const originalSchema = z.looseObject({
   pasteError: textSchema.optional(),
   regulationInference: regulationInferenceSchema.optional(),
 });
-const savedTeamSchema = z.object({
+const storedTeamSchema = z.object({
   id: textSchema,
   name: textSchema,
   original: originalSchema,
@@ -172,9 +173,12 @@ const savedTeamSchema = z.object({
   changeSlot: z.number().int().min(0).max(5).nullable().default(null),
   sources: z.array(sourceSchema).max(100),
   origin: z.enum(['catalog', 'custom']).optional(),
-  collection: z.enum(['my-teams', 'wishlist', 'favorites']).optional(),
+  collection: z.enum(['my-teams', 'wishlist', 'saved', 'favorites']).optional(),
   wishlistOrder: z.number().int().safe().optional(),
+  savedOrder: z.number().int().safe().optional(),
   favoriteOrder: z.number().int().safe().optional(),
+  favorite: z.literal(true).optional(),
+  current: z.literal(true).optional(),
   record: z
     .object({
       wins: z.number().int().min(0).max(9999),
@@ -182,8 +186,25 @@ const savedTeamSchema = z.object({
     })
     .optional(),
 });
+type StoredTeam = z.infer<typeof storedTeamSchema>;
+export type SavedTeam = Omit<StoredTeam, 'collection' | 'favoriteOrder'> & {
+  collection?: 'wishlist';
+};
+const savedTeamSchema = storedTeamSchema.transform(
+  ({ collection, favoriteOrder, ...team }): SavedTeam => {
+    if (collection === 'wishlist') return { ...team, collection };
+    if (collection !== 'favorites') return team;
+    return {
+      ...team,
+      favorite: true,
+      ...(favoriteOrder === undefined ? {} : { savedOrder: favoriteOrder }),
+    };
+  }
+);
 const savedTeamsSchema = z.array(savedTeamSchema).max(50);
-export type SavedTeam = z.infer<typeof savedTeamSchema>;
+
+export const orderKeyOf = (team: Pick<SavedTeam, 'collection'>) =>
+  team.collection === 'wishlist' ? 'wishlistOrder' : 'savedOrder';
 
 export function readSavedTeams(storage: Pick<Storage, 'getItem'>): SavedTeam[] {
   const raw = storage.getItem(storageKey);
@@ -209,20 +230,12 @@ export function saveTeam(
   const [candidate] = readSavedTeams({ getItem: () => JSON.stringify([team]) });
   const saved = readSavedTeams(storage);
   const previous = saved.find((entry) => entry.id === candidate.id);
-  if (
-    previous?.collection === 'wishlist' &&
-    candidate.collection === 'wishlist' &&
-    previous.wishlistOrder !== undefined
-  )
-    candidate.wishlistOrder = previous.wishlistOrder;
-  else delete candidate.wishlistOrder;
-  if (
-    previous?.collection === 'favorites' &&
-    candidate.collection === 'favorites' &&
-    previous.favoriteOrder !== undefined
-  )
-    candidate.favoriteOrder = previous.favoriteOrder;
-  else delete candidate.favoriteOrder;
+  const key = orderKeyOf(candidate);
+  const order =
+    previous && orderKeyOf(previous) === key ? previous[key] : undefined;
+  delete candidate.wishlistOrder;
+  delete candidate.savedOrder;
+  if (order !== undefined) candidate[key] = order;
   const nextTeam = previous
     ? { ...candidate, original: previous.original, origin: previous.origin }
     : candidate;

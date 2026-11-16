@@ -8,15 +8,15 @@
     beforeNavigate,
     goto,
     onNavigate,
+    type NavigationTarget,
   } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
   import type { ResolvedPathname } from '$app/types';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Search from '@lucide/svelte/icons/search';
-  import Star from '@lucide/svelte/icons/star';
+  import Folder from '@lucide/svelte/icons/folder';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
-  import AtlasIcon from '#lib/components/AtlasIcon.svelte';
   import NotificationSettings from '#lib/components/NotificationSettings.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
@@ -24,12 +24,11 @@
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
   import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
-  import { activeTeamKey, readSavedTeams } from '#lib/workbench.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
   import {
     applyGameResults,
+    liveSavedTeam,
     shortcutTeam,
-    teamsInUse,
   } from '#lib/team-collections.js';
   import { normalizeInitialUrl } from '#lib/initial-url.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
@@ -39,11 +38,17 @@
 
   let { children } = $props();
   const isHome = $derived(page.route.id === '/');
-  const collectionRoutes = ['/my-teams', '/favorites', '/wishlist'] as const;
+  const collectionRoutes = ['/saved', '/wishlist'] as const;
   const isCollectionPath = (path: string) =>
     collectionRoutes.some((route) => path === resolve(route));
-  const isMyTeams = $derived(
-    page.route.id === '/my-teams' || page.route.id === '/my-teams/new'
+  const isSaved = $derived(
+    page.route.id === '/saved' || page.route.id === '/saved/new'
+  );
+  let savedTeamId = $state<string | null>(null);
+  const savedHref = $derived(
+    !isSaved && savedTeamId
+      ? resolve(`saved?team=${encodeURIComponent(savedTeamId)}`)
+      : resolve('saved')
   );
   const isBrowse = $derived(isHome || page.route.id === '/teams/[id]');
   const isLogin = $derived(page.url.pathname === resolve('login'));
@@ -64,6 +69,7 @@
       .join('') || '?'
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
+  const savedTeamKey = 'champions-atlas:saved-open-team:v1';
   const lastScrollKey = 'champions-atlas:last-scroll:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   const authReturnSourceKey = 'champions-atlas:auth-return-source:v1';
@@ -103,7 +109,7 @@
       if (
         path !== resolve('/') &&
         !isCollectionPath(path) &&
-        path !== resolve('my-teams/new') &&
+        path !== resolve('saved/new') &&
         !(
           path.startsWith(detailPrefix) &&
           path.length > detailPrefix.length &&
@@ -144,6 +150,27 @@
     } catch {
       return;
     }
+  }
+
+  function trackSavedTeam(from: NavigationTarget | null, to: NavigationTarget) {
+    let id = savedTeamId;
+    if (!from) {
+      try {
+        id = localStorage.getItem(savedTeamKey);
+      } catch {
+        id = null;
+      }
+    }
+    if (to.route.id === '/saved') id = to.url.searchParams.get('team') || null;
+    else if (id && from?.route.id !== to.route.id) {
+      try {
+        if (!liveSavedTeam(localStorage, id)) id = null;
+      } catch {
+        id = null;
+      }
+    }
+    savedTeamId = id;
+    updateStorage('local', savedTeamKey, id);
   }
 
   function urlString(
@@ -244,20 +271,7 @@
       return !['member', 'page', 'new', 'unknown'].some((key) =>
         from.searchParams.has(key)
       );
-    if (from.pathname !== resolve('my-teams')) return false;
-    const selected = from.searchParams.get('team');
-    const target = to.searchParams.get('team');
-    if (
-      to.hash ||
-      to.search !== (target ? '?team=' + encodeURIComponent(target) : '')
-    )
-      return false;
-    if (selected) return selected === target;
-    try {
-      return target === localStorage.getItem(activeTeamKey);
-    } catch {
-      return false;
-    }
+    return false;
   }
 
   beforeNavigate(({ from, to, type }) => {
@@ -276,6 +290,7 @@
     swipeReset();
     navigationGeneration++;
     if (!to) return;
+    trackSavedTeam(from, to);
     settledUrl = urlString(to.url);
     if (!startupReady) return;
     if (pendingScroll && settledUrl !== pendingScroll.url) {
@@ -331,25 +346,6 @@
   }
 
   async function visitDestination(destination: string, remembered: boolean) {
-    if (remembered) {
-      const url = new URL(destination, page.url.origin);
-      const selected =
-        url.pathname === resolve('my-teams')
-          ? url.searchParams.get('team')
-          : null;
-      if (selected) {
-        try {
-          if (
-            !teamsInUse(readSavedTeams(localStorage)).some(
-              (team) => team.id === selected
-            )
-          )
-            destination = resolve('my-teams');
-        } catch {
-          destination = resolve('my-teams');
-        }
-      }
-    }
     const incoming = initialUrl ? urlString(initialUrl) : null;
     const explicit =
       (incoming === destination && incoming !== resolve('/')) ||
@@ -757,7 +753,7 @@
     aria-label="Main"
     class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)] [view-transition-name:app-tabbar]"
   >
-    <div class="app-container grid h-full grid-cols-4 items-center gap-1">
+    <div class="app-container grid h-full grid-cols-3 items-center gap-1">
       <a
         href={brandHref}
         aria-current={isBrowse ? 'page' : undefined}
@@ -767,21 +763,13 @@
         <span class="truncate">Browse</span>
       </a>
       <a
-        href={resolve('my-teams')}
-        data-swipe-back={page.route.id === '/my-teams/new' ? '' : undefined}
-        aria-current={isMyTeams ? 'page' : undefined}
-        class={tabClass(isMyTeams)}
+        href={savedHref}
+        data-swipe-back={page.route.id === '/saved/new' ? '' : undefined}
+        aria-current={isSaved ? 'page' : undefined}
+        class={tabClass(isSaved)}
       >
-        <AtlasIcon />
-        <span class="truncate">My Teams</span>
-      </a>
-      <a
-        href={resolve('favorites')}
-        aria-current={page.route.id === '/favorites' ? 'page' : undefined}
-        class={tabClass(page.route.id === '/favorites')}
-      >
-        <Star aria-hidden="true" />
-        <span class="truncate">Favorites</span>
+        <Folder aria-hidden="true" />
+        <span class="truncate">Saved</span>
       </a>
       <a
         href={resolve('wishlist')}

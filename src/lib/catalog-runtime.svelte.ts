@@ -1,6 +1,7 @@
 import bundledCatalog, {
   fetchCatalogUpdate,
   tags as bundledTags,
+  mergeYoutubeCopies,
   selectStoredCatalogBundle,
   type CatalogBundle,
   type CatalogData,
@@ -23,7 +24,9 @@ const VISIBILITY_THROTTLE_MS = 5 * 60 * 1000;
 function admittedCatalog(catalog: CatalogData): CatalogData {
   return {
     ...catalog,
-    teams: admittedTeams(catalog.teams, catalog.currentRegulation),
+    teams: mergeYoutubeCopies(
+      admittedTeams(catalog.teams, catalog.currentRegulation)
+    ),
   };
 }
 

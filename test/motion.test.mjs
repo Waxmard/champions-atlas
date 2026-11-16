@@ -12,14 +12,14 @@ test('classifies navigation between places', () => {
     [place('/'), place('/teams/[id]'), 'push'],
     [place('/teams/[id]'), place('/'), 'pop'],
     [place('/', '?page=1'), place('/', '?page=2'), null],
-    [place('/'), place('/my-teams'), 'tab'],
+    [place('/'), place('/saved'), 'tab'],
     [place('/teams/[id]'), place('/wishlist'), 'tab'],
     [place('/wishlist'), place('/wishlist', '?team=a'), 'push'],
     [place('/wishlist', '?team=a'), place('/wishlist'), 'pop'],
     [place('/wishlist', '?team=a'), place('/wishlist', '?team=b'), null],
-    [place('/my-teams', '?team=a'), place('/my-teams', '?team=b'), null],
-    [place('/my-teams'), place('/my-teams/new'), 'push'],
-    [place('/my-teams/new'), place('/my-teams', '?team=a'), 'pop'],
+    [place('/saved', '?team=a'), place('/saved', '?team=b'), null],
+    [place('/saved'), place('/saved/new'), 'push'],
+    [place('/saved/new'), place('/saved', '?team=a'), null],
   ];
   for (const [from, to, expected] of cases) {
     assert.equal(
