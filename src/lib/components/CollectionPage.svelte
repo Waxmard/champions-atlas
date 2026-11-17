@@ -100,13 +100,19 @@
   const sortKey = $derived(
     collection === 'saved' ? savedSortKey : wishlistSortKey
   );
-  const sortOptions = [
-    ['manual', 'Manual order'],
-    ['record', 'Win rate'],
-    ['vp', 'VP spend'],
-  ] as const;
+  const sortOptions = $derived(
+    (
+      [
+        ['manual', 'Manual order'],
+        ['record', 'Win rate'],
+        ['vp', 'VP spend'],
+      ] as const
+    ).filter(([key]) => key !== 'record' || collection === 'saved')
+  );
   const parseSort = (value: string | null): Sort =>
-    value === 'record' || value === 'vp' ? value : 'manual';
+    value === 'vp' || (value === 'record' && collection === 'saved')
+      ? value
+      : 'manual';
   const currentSets = createCurrentSetRegistry();
   const filtered = $derived(filters.length > 0 || favoritesOnly);
   const pickerTeams = $derived(entries.map(displaySavedTeam));

@@ -442,12 +442,12 @@ controls. Holding an arrow for half a second offers **Move to top** or
 order of existing bookmarks. Saved uses the same controls and order rules while
 Favorites and Pokémon filters are off. The order persists across reloads and
 syncs with the account.
-Saved and Wishlist each have a **Sort** menu offering **Manual order**, **Win
-rate**, and **VP spend**. Win rate puts the highest win percentage first, more
-games first on equal rates, and teams with no games last. VP spend puts the
-lowest expected VP spend first, ties in manual order. Reordering is paused
-unless Manual order is selected. Manual order is the default, and each list
-remembers its choice on this device.
+Saved and Wishlist each have a **Sort** menu offering **Manual order** and **VP
+spend**; Saved also offers **Win rate**. Win rate puts the highest win
+percentage first, more games first on equal rates, and teams with no games last.
+VP spend puts the lowest expected VP spend first, ties in manual order.
+Reordering is paused unless Manual order is selected. Manual order is the
+default, and each list remembers its choice on this device.
 
 Each Saved row has a swords toggle marking it as the **current team**. Marking
 a team moves it to the top of Saved and clears the marker on any other team.
