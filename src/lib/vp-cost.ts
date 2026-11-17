@@ -31,7 +31,6 @@ export interface SetVpCost {
 export interface TeamVpCost {
   total: number;
   unrecorded: number;
-  members: SetVpCost[];
 }
 
 export interface VpCatalog {
@@ -142,7 +141,6 @@ export function teamVpCost(
   return {
     total: costs.reduce((sum, cost) => sum + cost.vp, 0),
     unrecorded: costs.filter((cost) => !cost.recorded).length,
-    members: costs,
   };
 }
 

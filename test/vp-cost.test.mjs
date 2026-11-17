@@ -111,10 +111,6 @@ test('team VP cost looks up in-game sets by Browse identity', () => {
   );
   assert.equal(cost.total, 1750);
   assert.equal(cost.unrecorded, 1);
-  assert.deepEqual(
-    cost.members.map(({ vp }) => vp),
-    [250, 0, 1500]
-  );
   assert.equal(formatVp(9000), '9,000 VP');
   assert.equal(formatVp(0), '0 VP');
 });
