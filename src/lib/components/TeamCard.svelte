@@ -42,14 +42,6 @@
       ? teamVpCost(currentSets, team.members, catalogState.catalog)
       : null
   );
-  const context = $derived(
-    [
-      resolvedHeading.context,
-      cost ? `In-game setup: ${formatVp(cost.total)}` : '',
-    ]
-      .filter(Boolean)
-      .join(' · ')
-  );
   function open(event: MouseEvent) {
     if (
       event.defaultPrevented ||
@@ -71,7 +63,8 @@
 {#snippet content()}
   <TeamSummary
     name={resolvedHeading.title}
-    {context}
+    context={resolvedHeading.context}
+    spend={cost ? formatVp(cost.total) : ''}
     reserveTitleActions={!!titleActions}
     {isNew}
     members={team.members}

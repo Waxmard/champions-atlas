@@ -198,8 +198,9 @@ set. When Saved teams list the same unrecorded Pokémon with different sets, the
 first team in Saved order wins.
 
 Team cards show the expected VP spend to reach the team from the recorded
-in-game sets. A Pokémon with a recorded set whose team lists a different nature
-and no EVs is priced with the top catalog spread for that nature.
+in-game sets, labelled **Estimated spend** and right-aligned. A Pokémon with a
+recorded set whose team lists a different nature and no EVs is priced with the
+top catalog spread for that nature.
 
 When a snapshot exists, its item, ability, nature, and move values appear as
 subtly source-labelled choices in the corresponding editor suggestion surfaces.
