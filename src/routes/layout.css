@@ -306,12 +306,6 @@ textarea:focus-visible,
     font-variant-numeric: tabular-nums;
   }
 
-  .spend {
-    font-family: var(--font-display);
-    font-size: 0.6875rem;
-    font-weight: 600;
-  }
-
   .option-row {
     display: flex;
     min-height: 2.75rem;

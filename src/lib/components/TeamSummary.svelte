@@ -32,9 +32,10 @@
         class="me-2 inline-block size-2 rounded-full bg-primary align-middle"
       ></span>{/if}{name}
   </h2>
-  {#if context || spend}<p class="provenance mt-1 wrap-anywhere">
-      {context}{#if spend}{context ? ' · ' : ''}Estimated spend
-        <strong class="spend">{spend}</strong>{/if}
+  {#if context || spend}<p class="provenance mt-1 flex flex-wrap gap-x-2">
+      <span class="wrap-anywhere">{context}</span>{#if spend}<span
+          class="ms-auto">Estimated spend · {spend}</span
+        >{/if}
     </p>{/if}
 </div>
 <ul class="mt-3 grid grid-cols-3 gap-2" aria-label="Team members">
