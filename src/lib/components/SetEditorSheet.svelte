@@ -6,7 +6,10 @@
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
   import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
-  import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
+  import SetVpCost from '#lib/components/SetVpCost.svelte';
+  import SetEditorHeader, {
+    type EditorView,
+  } from '#lib/components/SetEditorHeader.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
   import { knownName } from '#lib/canonical-names.js';
@@ -30,7 +33,6 @@
     type CatalogSuggestion,
     type SavedTeam,
   } from '#lib/workbench.js';
-  type EditorView = 'pokemon' | 'details' | 'moves' | 'spread';
   interface Props {
     member: Member;
     teams: Team[];
@@ -65,12 +67,6 @@
     if (field === 'nature') return 'spread';
     return field;
   }
-  const EDITOR_SECTIONS: { id: EditorView; label: string }[] = [
-    { id: 'pokemon', label: 'Pokémon' },
-    { id: 'details', label: 'Details' },
-    { id: 'spread', label: 'EVs' },
-    { id: 'moves', label: 'Moves' },
-  ];
   const MOVE_SLOTS = [0, 1, 2, 3];
   const initialMember = (() => member)();
   const fieldOnOpen = (() => initialField)();
@@ -101,7 +97,7 @@
   let visibleAbilityCount = $state(10);
   let visibleMoveCount = $state(10);
   let visiblePokemonCount = $state(10);
-  let previewing = $state(false);
+  let stagedFrom = $state<Member | null>(null);
   let error = $state('');
   let errorField = $state<EditableSetField | null>(null);
   let closing = false;
@@ -124,6 +120,7 @@
     canonicalSnapshot(form) !== canonicalSnapshot(acceptedFields) ||
       replacement !== null
   );
+  const pending = $derived(dirty || stagedFrom !== null);
   const originalMember = $derived(
     originalMemberFor(draftMember, originalMembers)
   );
@@ -187,14 +184,6 @@
   const movePage = $derived(
     pageList(moveSuggestions(activeMoveSlot), visibleMoveCount)
   );
-  const subViewTitle = $derived(
-    {
-      pokemon: 'Pokémon',
-      details: 'Item and ability',
-      moves: 'Moves',
-      spread: 'EV spread',
-    }[currentView]
-  );
   const setSignature = (candidate: Member) =>
     memberSetSignature(candidate) ?? canonicalSnapshot(fields(candidate));
   const favoriteSlotSets = $derived.by(() => {
@@ -218,7 +207,7 @@
     }
     return rows;
   });
-  $effect(() => onpendingchange(dirty));
+  $effect(() => onpendingchange(pending));
   function clearError() {
     error = '';
     errorField = null;
@@ -256,7 +245,7 @@
     }
   }
   function accept(next: Member, preserveMoves = false) {
-    if (!onchange(next)) {
+    if (!stagedFrom && !onchange(next)) {
       showError(
         'set',
         'Could not save this input. Your edits are still here. Close and reopen the editor, then try again.'
@@ -271,25 +260,32 @@
     if (preserveMoves) form.moves = moves;
     acceptedFields = structuredClone($state.snapshot(form));
     clearError();
-    onpendingchange(false);
+    onpendingchange(stagedFrom !== null);
     return true;
   }
   function rosterError(next: Member) {
     return memberRosterError(next, accepted, teammates);
   }
-  function chooseSet(next: Member, trusted = false, moveSlots?: string[]) {
+  function chooseSet(
+    next: Member,
+    trusted = false,
+    moveSlots?: string[],
+    stage = false
+  ): boolean {
     const candidate = structuredClone($state.snapshot(next));
     const reason = rosterError(candidate);
     if (reason) {
       showError('pokemon', reason);
-      return;
+      return false;
     }
-    if (!trusted && !validateMember(candidate)) return;
+    if (!trusted && !validateMember(candidate)) return false;
+    if (stage) stagedFrom ??= structuredClone($state.snapshot(accepted));
     replacement = candidate;
     form = fields(candidate);
     if (moveSlots) form.moves = [...moveSlots];
-    if (accept(candidate, !!moveSlots))
-      (document.activeElement as HTMLElement | null)?.blur();
+    const ok = accept(candidate, !!moveSlots);
+    if (ok) (document.activeElement as HTMLElement | null)?.blur();
+    return ok;
   }
   function chooseInGame(choice: CurrentSetChoice, displayed: Member): void {
     const displayedSnapshot = canonicalSnapshot($state.snapshot(displayed));
@@ -400,8 +396,7 @@
           favMatch ??
           pokemonMatches.find((opt) => normalize(opt.pokemon) === targetKey);
         if (match) {
-          chooseSet(match.member, true);
-          return !error;
+          return chooseSet(match.member, true, undefined, true);
         }
         showError(
           'pokemon',
@@ -535,16 +530,30 @@
     requestAnimationFrame(focusTarget);
   }
   function done() {
-    if (flush() || undoFailed) {
-      closing = true;
-      onclose();
-    } else focusError();
+    if (!flush() && !undoFailed) return focusError();
+    if (stagedFrom) return;
+    closing = true;
+    onclose();
+  }
+  function unstage() {
+    if (stagedFrom && accept(stagedFrom)) stagedFrom = null;
+  }
+  function applySwap() {
+    if (!flush()) return focusError();
+    if (!onchange(structuredClone($state.snapshot(accepted))))
+      return showError(
+        'set',
+        'Could not save this swap. Your edits are still here. Close and reopen the editor, then try again.'
+      );
+    stagedFrom = null;
+    closing = true;
+    onclose();
   }
   export function requestClose(): boolean {
     closing = true;
     const opened = structuredClone($state.snapshot(initialMember));
     if (
-      canonicalSnapshot($state.snapshot(accepted)) ===
+      canonicalSnapshot($state.snapshot(stagedFrom ?? accepted)) ===
         canonicalSnapshot(opened) ||
       onchange(opened)
     )
@@ -588,46 +597,20 @@
 </script>
 
 <div bind:this={editorElement} class="flex min-h-0 grow flex-col">
-  <header
-    class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-4 pb-3 sm:px-6 sm:pt-5"
-  >
-    <div class="flex flex-wrap items-center justify-between gap-3">
-      <h2
-        bind:this={editorHeading}
-        class="min-w-[min(6rem,100%)] flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere sm:text-[1.375rem]"
-        tabindex="-1"
-        data-editor-section={currentView === 'details'
-          ? initialField === 'ability'
-            ? 'ability'
-            : 'item'
-          : currentView}
-      >
-        {subViewTitle}
-      </h2>
-      <div
-        class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
-      >
-        <SpeciesLabel
-          pokemon={accepted.pokemon}
-          spriteSize={20}
-          textClass="max-w-[120px] truncate text-xs font-medium"
-        />
-      </div>
-    </div>
-    <nav aria-label="Set sections" class="mt-2.5 flex flex-wrap gap-1">
-      {#each EDITOR_SECTIONS as section (section.id)}
-        <Button
-          variant={currentView === section.id ? 'primary' : 'quiet'}
-          size="dense"
-          aria-current={currentView === section.id ? 'page' : undefined}
-          onpointerdown={keepFocus}
-          onclick={() => switchView(section.id)}
-        >
-          {section.label}
-        </Button>
-      {/each}
-    </nav>
-  </header>
+  <SetEditorHeader
+    bind:heading={editorHeading}
+    view={currentView}
+    section={currentView === 'details'
+      ? initialField === 'ability'
+        ? 'ability'
+        : 'item'
+      : currentView}
+    pokemon={accepted.pokemon}
+    staged={stagedFrom !== null}
+    onswitch={switchView}
+    onapply={applySwap}
+    onpointerdown={keepFocus}
+  />
   <div
     bind:this={contentElement}
     class="min-h-0 flex-auto overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
@@ -738,16 +721,16 @@
     {:else if currentView === 'pokemon'}
       <SetEditorPokemonSuggestions
         bind:pokemon={form.pokemon}
-        bind:previewing
         query={pokemonQuery}
-        accepted={accepted.pokemon}
+        accepted={(stagedFrom ?? accepted).pokemon}
         options={pokemonPage.visible}
         hasMore={pokemonPage.hasMore}
         {favoriteSlotSets}
         {error}
         {errorField}
         onshowmore={() => (visiblePokemonCount += 5)}
-        onchoose={(next) => chooseSet(next, true)}
+        onchoose={(next) => chooseSet(next, true, undefined, true)}
+        onback={unstage}
         oninputchange={(value) => {
           pokemonQuery = value;
           form.pokemon = value.trim() || acceptedFields.pokemon;
@@ -760,7 +743,6 @@
     {/if}
   </div>
   <footer
-    hidden={currentView === 'pokemon' && previewing}
     class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-3 sm:px-6 sm:pb-4"
   >
     {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability'].includes(errorField || '')) || (currentView === 'spread' && (errorField === 'spread' || errorField === 'nature')) || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
@@ -771,8 +753,9 @@
       >
         {error}
       </p>{/if}
+    <SetVpCost member={draftMember} class="mb-1" />
     <p role="status" aria-live="polite" class="provenance mb-3">
-      {dirty ? 'Unsaved input.' : 'Saved on this device.'}
+      {pending ? 'Unsaved input.' : 'Saved on this device.'}
     </p>
     <div class="flex flex-wrap justify-end gap-2">
       <Button
@@ -782,9 +765,11 @@
           if (requestClose()) onclose();
         }}>Cancel</Button
       >
-      <Button variant="primary" onpointerdown={keepFocus} onclick={done}
-        >Done</Button
-      >
+      {#if !stagedFrom}
+        <Button variant="primary" onpointerdown={keepFocus} onclick={done}
+          >Done</Button
+        >
+      {/if}
     </div>
   </footer>
 </div>

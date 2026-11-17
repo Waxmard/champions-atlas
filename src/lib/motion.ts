@@ -40,14 +40,8 @@ let active: ViewTransition | undefined;
 
 let under: HTMLElement | null = null;
 
-export const pageUnder = () => under;
-
-function keep(kind: NavKind) {
-  under = null;
-  const main = kind === 'push' ? document.getElementById('main') : null;
-  if (!main) return;
-  const { left, top, width } = main.getBoundingClientRect();
-  const copy = main.cloneNode(true) as HTMLElement;
+function cover(main: HTMLElement, copy: HTMLElement, top: number): HTMLElement {
+  const { left, width } = main.getBoundingClientRect();
   copy.removeAttribute('id');
   copy.inert = true;
   Object.assign(copy.style, {
@@ -60,10 +54,36 @@ function keep(kind: NavKind) {
   copy.querySelectorAll('img').forEach((image) => {
     image.loading = 'eager';
   });
-  under = document.createElement('div');
-  under.dataset.swipeUnder = '';
-  under.ariaHidden = 'true';
-  under.append(copy);
+  const page = document.createElement('div');
+  page.dataset.swipeUnder = '';
+  page.ariaHidden = 'true';
+  page.append(copy);
+  return page;
+}
+
+function keep(kind: NavKind) {
+  const main = kind === 'push' ? document.getElementById('main') : null;
+  under =
+    main &&
+    cover(
+      main,
+      main.cloneNode(true) as HTMLElement,
+      main.getBoundingClientRect().top
+    );
+}
+
+export function pageUnder(): HTMLElement | null {
+  if (under) return under;
+  const main = document.getElementById('main');
+  const list = main?.querySelector<HTMLElement>(
+    ':scope > [data-page-under][hidden]'
+  );
+  if (!main || !list) return null;
+  const copy = main.cloneNode(false) as HTMLElement;
+  const page = list.cloneNode(true) as HTMLElement;
+  page.hidden = false;
+  copy.append(page);
+  return cover(main, copy, main.getBoundingClientRect().top + window.scrollY);
 }
 
 export function pageTransition({
@@ -74,7 +94,7 @@ export function pageTransition({
   if (!from || !to) return;
   const kind = navKind(from, to);
   if (!kind) return;
-  const swiped = !!under?.isConnected;
+  const swiped = !!document.querySelector('[data-swipe-under]');
   keep(kind);
   if (swiped || reduced() || !('startViewTransition' in document)) return;
   const root = document.documentElement;

@@ -10,6 +10,7 @@
     type EditableSetField,
   } from '#lib/components/MemberCard.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
+  import SetVpCost from '#lib/components/SetVpCost.svelte';
   import { activeSpreadSource } from '#lib/spread-provenance.js';
 
   let {
@@ -127,6 +128,7 @@
                 onCloseAutoFocus={restoreSetFocus}
                 class="popover-motion surface z-50 flex max-h-[calc(100dvh-1rem)] w-64 max-w-[calc(100vw-1rem)] min-w-0 flex-col gap-1 overflow-y-auto overscroll-contain p-2 text-base-content shadow-lg"
               >
+                <SetVpCost {member} class="min-w-0 px-1 wrap-anywhere" />
                 {#if canRecord}
                   <Button
                     variant="quiet"

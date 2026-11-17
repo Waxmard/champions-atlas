@@ -12,7 +12,6 @@
 
   let {
     pokemon = $bindable(),
-    previewing = $bindable(false),
     query,
     accepted,
     options,
@@ -22,11 +21,11 @@
     errorField = null,
     onshowmore,
     onchoose,
+    onback,
     oninputchange,
     oncommit,
   }: {
     pokemon: string;
-    previewing?: boolean;
     query: string;
     accepted: string;
     options: PokemonSuggestion[];
@@ -40,7 +39,8 @@
     error?: string;
     errorField?: EditableSetField | null;
     onshowmore?: () => void;
-    onchoose: (member: Member) => void;
+    onchoose: (member: Member) => boolean;
+    onback: () => void;
     oninputchange: (value: string) => void;
     oncommit: (blurOnSuccess?: boolean) => boolean;
   } = $props();
@@ -55,37 +55,29 @@
   let preview = $state.raw<{ member: Member; title: string } | null>(null);
   let section = $state<HTMLElement>();
   let listScroll = 0;
-  let typed = '';
   let opener: HTMLElement | null = null;
-
-  $effect(() => {
-    previewing = !!preview;
-  });
+  let listQuery = '';
 
   function openPreview(event: MouseEvent, member: Member, note: string) {
     opener = event.currentTarget as HTMLElement;
     listScroll = section?.parentElement?.scrollTop ?? 0;
-    typed = pokemon;
-    pokemon = accepted;
+    listQuery = query;
+    const replaced = accepted;
+    if (!onchoose(member)) return;
     preview = {
       member,
-      title: [`Replaces ${accepted}`, note].filter(Boolean).join(' · '),
+      title: [`Replaces ${replaced}`, note].filter(Boolean).join(' · '),
     };
   }
-  function closePreview(restore: boolean) {
+  function closePreview() {
     const scroller = section?.parentElement;
-    const top = restore ? listScroll : 0;
-    if (restore) pokemon = typed;
+    onback();
+    oninputchange(listQuery);
     preview = null;
     void tick().then(() => {
-      if (scroller) scroller.scrollTop = top;
-      if (restore) opener?.focus({ preventScroll: true });
+      if (scroller) scroller.scrollTop = listScroll;
+      opener?.focus({ preventScroll: true });
     });
-  }
-  function applyPreview() {
-    if (!preview) return;
-    onchoose(preview.member);
-    closePreview(false);
   }
 </script>
 
@@ -93,8 +85,7 @@
   <SetPreview
     title={preview.title}
     member={preview.member}
-    onback={() => closePreview(true)}
-    onapply={applyPreview}
+    onback={closePreview}
   />
 {/if}
 
@@ -137,8 +128,8 @@
     {/if}
   </label>
   <p class="provenance">
-    Type any Pokémon legal in this regulation, or tap a suggestion to preview
-    its set before applying it.
+    Type any Pokémon legal in this regulation, or tap a suggestion to try its
+    set here. Nothing is saved until Apply swap.
   </p>
   {#if favoriteSlotSets.length}
     <SuggestionList

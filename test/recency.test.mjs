@@ -181,3 +181,27 @@ test('teams of unknown regulation are counted but do not vote', () => {
     ]
   );
 });
+
+test('nature votes follow set similarity over a single top placement', () => {
+  const target = set('Incineroar', { nature: null, spread: null });
+  const placed = team(
+    'placed',
+    [
+      set('Incineroar', {
+        item: 'Life Orb',
+        ability: 'Blaze',
+        nature: 'Jolly',
+        moves: ['Close Combat', 'U-turn', 'Snarl', 'Taunt'],
+      }),
+    ],
+    { publishedAt: dayIn(W), reports: ranked('Champion Tier') }
+  );
+  const similar = dated('similar-', 2, W, [
+    set('Incineroar', { nature: 'Careful' }),
+  ]);
+  assert.equal(
+    catalogSuggestions(target, [placed, ...similar], 'M-C', []).natures[0]
+      .value,
+    'Careful'
+  );
+});

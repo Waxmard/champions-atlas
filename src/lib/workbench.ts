@@ -46,6 +46,7 @@ import {
 export const storageKey = 'champions-atlas:teams:v1';
 export const savedFavoritesKey = 'champions-atlas:saved-favorites:v1';
 export const savedSortKey = 'champions-atlas:saved-sort:v1';
+export const wishlistSortKey = 'champions-atlas:wishlist-sort:v1';
 export const browseStorageKey = 'champions-atlas:browse:v1';
 
 export function setText(member: Member) {
@@ -402,10 +403,16 @@ export function catalogSuggestions(
       const am = eq(targetMember.ability, member.ability) ? 2 : 0;
       const nm = eq(targetMember.nature, member.nature) ? 2 : 0;
       const sm = eq(targetMember.spread, member.spread) ? 3 : 0;
-      const mm =
-        (targetMember.moves?.filter((mv) =>
+      const sharedMoves =
+        targetMember.moves?.filter((mv) =>
           member.moves.some((om) => normalize(mv) === normalize(om))
-        ).length || 0) * 1.5;
+        ).length || 0;
+      const mm = sharedMoves * 1.5;
+      const natureScore =
+        (isSimple && !teammates.length) || teamWeight === 0
+          ? 0
+          : 4 ** (sharedMoves + (im ? 1 : 0) + (am ? 0.5 : 0)) *
+            (1 + Math.log1p(teamWeight));
 
       if (
         !teammateItems.has(normalize(member.item ?? '')) &&
@@ -428,12 +435,7 @@ export function catalogSuggestions(
         (baseScore + im + nm + sm + mm) * teamWeight,
         isCurrent
       );
-      add(
-        natures,
-        member.nature,
-        (baseScore + im + am + mm) * teamWeight,
-        isCurrent
-      );
+      add(natures, member.nature, natureScore, isCurrent);
       for (const move of member.moves) {
         add(
           moves,

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import Minus from '@lucide/svelte/icons/minus';
   import Plus from '@lucide/svelte/icons/plus';
   import Modal from '#lib/components/Modal.svelte';
@@ -12,11 +13,13 @@
     disabled: boolean;
     onstep: (key: keyof WinLossRecord, step: number) => boolean;
     onreset: () => boolean;
+    reminder?: Snippet;
   }
 
-  let { record, disabled, onstep, onreset }: Props = $props();
+  let { record, disabled, onstep, onreset, reminder }: Props = $props();
   let open = $state(false);
   let editing = $state(false);
+  let logged = $state<{ key: keyof WinLossRecord; id: number }>();
   const summary = $derived(recordSummary(record));
   const games = $derived(record.wins + record.losses);
   const digits = $derived(`${record.wins}${record.losses}`.length);
@@ -26,12 +29,16 @@
 
   function close() {
     open = editing = false;
+    logged = undefined;
   }
   function step(key: keyof WinLossRecord, by: number) {
-    if (!onstep(key, by)) close();
+    if (!onstep(key, by)) return close();
+    logged = by > 0 ? { key, id: (logged?.id ?? 0) + 1 } : undefined;
   }
   function reset() {
-    if (confirm('Reset this record to 0W – 0L?') && !onreset()) close();
+    if (!confirm('Reset this record to 0W – 0L?')) return;
+    logged = undefined;
+    if (!onreset()) close();
   }
 </script>
 
@@ -50,20 +57,23 @@
 {#if open}
   <Modal title="Record" onclose={close}>
     <div class="tabular-nums">
-      <p
-        aria-hidden="true"
-        class="flex min-w-0 items-baseline justify-center font-display leading-none font-bold tracking-tight {scoreSize}"
-      >
-        <span class="text-success-content"
-          >{record.wins}<span class="ms-0.5 text-[0.33em] opacity-60">W</span
-          ></span
+      {#key logged?.id}
+        <p
+          aria-hidden="true"
+          class="flex min-w-0 items-baseline justify-center font-display leading-none font-bold tracking-tight {scoreSize}"
         >
-        <span class="mx-[0.15em] opacity-30">–</span>
-        <span class="text-error-content"
-          >{record.losses}<span class="ms-0.5 text-[0.33em] opacity-60">L</span
-          ></span
-        >
-      </p>
+          <span class="text-success-content" class:win={logged?.key === 'wins'}
+            >{record.wins}<span class="ms-0.5 text-[0.33em] opacity-60">W</span
+            ></span
+          >
+          <span class="mx-[0.15em] opacity-30">–</span>
+          <span class="text-error-content" class:loss={logged?.key === 'losses'}
+            >{record.losses}<span class="ms-0.5 text-[0.33em] opacity-60"
+              >L</span
+            ></span
+          >
+        </p>
+      {/key}
       <p class="sr-only" role="status">{summary.label}</p>
       <div
         aria-hidden="true"
@@ -71,12 +81,12 @@
           ? 'bg-error'
           : 'bg-base-200'}"
       >
-        {#if summary.rate !== null}
-          <div
-            class="h-full rounded-full bg-success-content"
-            style:width={`${summary.rate}%`}
-          ></div>
-        {/if}
+        <div
+          class="h-full rounded-full bg-success-content {logged
+            ? 'transition-[width] duration-300 ease-out'
+            : ''}"
+          style:width={`${summary.rate ?? 0}%`}
+        ></div>
       </div>
       <p aria-hidden="true" class="term mt-2 text-center">
         {summary.rate === null
@@ -101,6 +111,11 @@
           </button>
         {/each}
       </div>
+      {#if logged && reminder}<div
+          class="mt-3 flex flex-col items-center gap-1 text-center"
+        >
+          {@render reminder()}
+        </div>{/if}
       <div class="mt-2 flex justify-end">
         <Button
           variant="quiet"
@@ -154,3 +169,78 @@
     </div>
   </Modal>
 {/if}
+
+<style>
+  .win,
+  .loss {
+    position: relative;
+    isolation: isolate;
+  }
+  .win {
+    animation: win-pop 450ms var(--motion-ease);
+  }
+  .loss {
+    animation: loss-shake 400ms ease-in-out;
+  }
+  .win::before {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    z-index: -1;
+    width: 0.09em;
+    height: 0.09em;
+    margin: -0.045em;
+    border-radius: 50%;
+    opacity: 0;
+    animation: win-burst 600ms var(--motion-ease);
+  }
+  @keyframes win-pop {
+    40% {
+      scale: 1.2;
+      translate: 0 -0.06em;
+    }
+  }
+  @keyframes loss-shake {
+    20% {
+      translate: -0.06em 0;
+    }
+    40% {
+      translate: 0.06em 0;
+    }
+    60% {
+      translate: -0.04em 0;
+    }
+    80% {
+      translate: 0.03em 0;
+    }
+  }
+  @keyframes win-burst {
+    from {
+      opacity: 1;
+      box-shadow:
+        0 0 currentColor,
+        0 0 currentColor,
+        0 0 currentColor,
+        0 0 currentColor,
+        0 0 currentColor,
+        0 0 currentColor,
+        0 0 currentColor,
+        0 0 currentColor;
+    }
+    60% {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+      box-shadow:
+        0 -0.55em currentColor,
+        0.45em -0.4em currentColor,
+        0.7em 0 currentColor,
+        0.45em 0.4em currentColor,
+        0 0.55em currentColor,
+        -0.45em 0.4em currentColor,
+        -0.7em 0 currentColor,
+        -0.45em -0.4em currentColor;
+    }
+  }
+</style>

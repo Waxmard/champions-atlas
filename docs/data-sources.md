@@ -367,11 +367,15 @@ time and team ID settle remaining ties.
 Recency uses each team's share date in fixed 28-day windows counted from the Unix
 epoch. Each window of age costs one achievement band, so a newer team can pass an
 older team with a better result. Popularity counts in suggestions (Pokémon
-support, assembled sets, item, ability, move, and Nature values, and spread
+support, assembled sets, item, ability, and move values, and spread
 frequency) halve a team's vote for each achievement band or window it trails the
 best team in the pool. Teams of Unknown regulation carry no vote on item,
 ability, move, and Nature values. A team without a valid share date ranks as
 oldest.
+
+Nature values rank by set similarity: each team's vote grows with the moves,
+item, and ability its Pokémon shares with the set being edited, and its
+placement only scales that vote mildly.
 
 Browse orders Unknown regulation last, the current regulation first, then other
 regulations newest first by name (M-B before M-A). Within a regulation, teams

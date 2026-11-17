@@ -59,6 +59,10 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Preserve Browse filters and scroll position when opening teams and returning.
   Back to teams stays visible while browsing a team.
 - Encode Browse filters in the URL so a refresh or shared link restores the selection.
+- The Browse **Sort** menu offers **Best results** (the default ordering) and
+  **VP spend** (`?sort=vp`, lowest expected VP spend first), remembered with
+  the Browse filters. When shown, **Clear filters** also resets the sort.
+  **VP spend** is unavailable until an in-game set is recorded.
 - Mark Browse cards from the latest catalog batch (the most recent publish that
   added teams) with a blue dot before the team name; the dot stays until a later
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
@@ -111,8 +115,11 @@ The Saved editor shows a **Record** row for the team, such as
 **3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
 number, and is omitted before the first game. Tapping the row opens a pop-up.
 **Win** and **Loss** each log one game and the pop-up stays open, so several
-games can be logged in a row. **Edit** reveals buttons to add or remove a win or
-a loss and **Reset**.
+games can be logged in a row. Logging a game animates the score: a win pops
+with a short burst, a loss shakes, and the win-rate bar glides to its new width.
+Removing a game or resetting does not animate. **Edit** reveals buttons to add
+or remove a win or a loss and **Reset**. After a game is logged, the pop-up
+reminds you when in-game sets differ from the team and offers to record them.
 Reset asks for confirmation and returns the record to 0W – 0L. The record never
 goes below zero and is unavailable while edits are pending or the team changed
 elsewhere. It is saved with the team, so it stays when the team moves between
@@ -186,6 +193,17 @@ Snapshots remain independent of teams. Team edits do not update them, and
 deleting a team does not delete them. The app does not auto-seed current sets
 from teams or create snapshot history during normal recording, and it keeps no
 in-game set backups.
+
+The Saved list offers **Record N in-game sets** when a Saved team has a Pokémon
+with no in-game set. It records only those Pokémon and never replaces a recorded
+set. When Saved teams list the same unrecorded Pokémon with different sets, the
+first team in Saved order wins.
+
+Team cards show the expected VP spend to reach the team from the recorded
+in-game sets, labelled **Estimated spend**. A Pokémon with a recorded set whose
+team lists a different nature and no EVs is priced with the top catalog spread
+for that nature. The set editor footer, full-set dialog, and member menu show
+the VP needed to change that Pokémon's in-game set to the shown set.
 
 When a snapshot exists, its item, ability, nature, and move values appear as
 subtly source-labelled choices in the corresponding editor suggestion surfaces.
@@ -307,9 +325,11 @@ teammate already holds are not offered. Move suggestions include the species'
 newest available movepool, which ranks after catalog observations. In the set
 editor's Pokémon suggestions, favorite teams' sets rank among catalog suggestions by
 shared teammates until a name is typed, then they list first. Tapping a row
-there shows the same full-set preview as Swaps, with **Back** and **Apply
-swap**; nothing changes until Apply swap, and applying returns to the Pokémon
-section. Teams of Unknown
+there loads that set into the pop-up only and shows the full-set preview with
+**Back**, which undoes it. While a swap is waiting, **Apply swap** appears in
+the pop-up header, the footer shows its VP cost, **Done** is hidden, and
+Details, EVs, and Moves edit the waiting set. Apply swap saves it and closes
+the pop-up; Cancel or swiping out discards it. Teams of Unknown
 regulation count toward item, ability, move, and Nature totals but carry no
 vote, so their values rank after every voted value.
 
@@ -426,11 +446,12 @@ controls. Holding an arrow for half a second offers **Move to top** or
 order of existing bookmarks. Saved uses the same controls and order rules while
 Favorites and Pokémon filters are off. The order persists across reloads and
 syncs with the account.
-The Saved **Sort** menu button, beside **Favorites**, offers **Manual order**
-and **Win rate**: highest win percentage first, more games first on equal
-rates, and teams with no games last. Reordering is paused while Win rate is
-selected. Manual order is the default, and the choice is remembered on this
-device.
+Saved and Wishlist each have a **Sort** menu offering **Manual order** and **VP
+spend**; Saved also offers **Win rate**. Win rate puts the highest win
+percentage first, more games first on equal rates, and teams with no games last.
+VP spend puts the lowest expected VP spend first, ties in manual order.
+Reordering is paused unless Manual order is selected. Manual order is the
+default, and each list remembers its choice on this device.
 
 Each Saved row has a swords toggle marking it as the **current team**. Marking
 a team moves it to the top of Saved and clears the marker on any other team.

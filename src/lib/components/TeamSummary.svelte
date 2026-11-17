@@ -8,12 +8,14 @@
   let {
     name,
     context = '',
+    spend = '',
     reserveTitleActions = false,
     isNew = false,
     members,
   }: {
     name: string;
     context?: string;
+    spend?: string;
     reserveTitleActions?: boolean;
     isNew?: boolean;
     members: readonly Pick<Member, 'pokemon' | 'item'>[];
@@ -30,7 +32,11 @@
         class="me-2 inline-block size-2 rounded-full bg-primary align-middle"
       ></span>{/if}{name}
   </h2>
-  {#if context}<p class="provenance mt-1 wrap-anywhere">{context}</p>{/if}
+  {#if context || spend}<p class="provenance mt-1 flex flex-wrap gap-x-2">
+      <span class="wrap-anywhere">{context}</span>{#if spend}<span
+          class="ms-auto">Estimated spend · {spend}</span
+        >{/if}
+    </p>{/if}
 </div>
 <ul class="mt-3 grid grid-cols-3 gap-2" aria-label="Team members">
   {#each members as member, index (index)}
