@@ -14,6 +14,7 @@
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { type Team } from '#lib/catalog.js';
   import { recordSummary, savedTeamHeading } from '#lib/team-collections.js';
+  import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
   import type { SavedTeam } from '#lib/workbench.js';
   import TeamCard from './TeamCard.svelte';
   import { Button } from './ui/button/index.js';
@@ -42,6 +43,7 @@
     oncurrent?: (entry: SavedTeam) => void;
   } = $props();
 
+  const currentSets = createCurrentSetRegistry();
   let list: HTMLUListElement;
   let jump = $state<{
     entry: SavedTeam;
@@ -202,6 +204,7 @@
       {/snippet}
       <TeamCard
         team={displayTeam(entry)}
+        currentSets={currentSets.sets}
         {heading}
         titleActions={sortable ? titleActions : undefined}
         leadingActions={onuse

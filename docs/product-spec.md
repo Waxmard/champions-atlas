@@ -309,9 +309,11 @@ teammate already holds are not offered. Move suggestions include the species'
 newest available movepool, which ranks after catalog observations. In the set
 editor's Pokémon suggestions, favorite teams' sets rank among catalog suggestions by
 shared teammates until a name is typed, then they list first. Tapping a row
-there shows the same full-set preview as Swaps, with **Back** and **Apply
-swap**; nothing changes until Apply swap, and applying returns to the Pokémon
-section. Teams of Unknown
+there loads that set into the pop-up only and shows the full-set preview with
+**Back**, which undoes it. While a swap is waiting, **Apply swap** appears in
+the pop-up header, the footer shows its VP cost, **Done** is hidden, and
+Details, EVs, and Moves edit the waiting set. Apply swap saves it and closes
+the pop-up; Cancel or swiping out discards it. Teams of Unknown
 regulation count toward item, ability, move, and Nature totals but carry no
 vote, so their values rank after every voted value.
 

@@ -9,7 +9,7 @@
     member: Member;
     disabled?: boolean;
     onback: () => void;
-    onapply: () => void;
+    onapply?: () => void;
   }
 
   let { title, member, disabled = false, onback, onapply }: Props = $props();
@@ -31,7 +31,9 @@
     </h3>
     <div class="flex gap-2">
       <Button variant="quiet" onclick={onback}>Back</Button>
-      <Button variant="primary" {disabled} onclick={onapply}>Apply swap</Button>
+      {#if onapply}<Button variant="primary" {disabled} onclick={onapply}
+          >Apply swap</Button
+        >{/if}
     </div>
   </div>
   <SetDetails {member} />

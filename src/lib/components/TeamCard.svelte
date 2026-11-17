@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { regulationLabel, teamHeading, type Team } from '#lib/catalog.js';
+  import type { CurrentSet } from '#lib/current-sets.js';
+  import { formatVp, teamVpCost } from '#lib/vp-cost.js';
   import TeamSummary from './TeamSummary.svelte';
 
   let {
@@ -17,6 +19,7 @@
     swipeLeft,
     swipeRight,
     isNew = false,
+    currentSets,
   }: {
     team: Team;
     heading?: { title: string; context: string };
@@ -29,9 +32,21 @@
     swipeLeft?: Snippet;
     swipeRight?: Snippet;
     isNew?: boolean;
+    currentSets?: readonly CurrentSet[] | null;
   } = $props();
   const resolvedHeading = $derived(heading ?? teamHeading(team.name, team));
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
+  const cost = $derived(
+    currentSets ? teamVpCost(currentSets, team.members) : null
+  );
+  const context = $derived(
+    [
+      resolvedHeading.context,
+      cost ? `In-game setup: ${formatVp(cost.total)}` : '',
+    ]
+      .filter(Boolean)
+      .join(' · ')
+  );
   function open(event: MouseEvent) {
     if (
       event.defaultPrevented ||
@@ -53,7 +68,7 @@
 {#snippet content()}
   <TeamSummary
     name={resolvedHeading.title}
-    context={resolvedHeading.context}
+    {context}
     reserveTitleActions={!!titleActions}
     {isNew}
     members={team.members}
