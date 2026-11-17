@@ -45,16 +45,9 @@
   {/each}
 </div>
 {#if cost}
-  <div class="mt-3 text-end" data-team-vp>
-    <p class="spend">
-      Estimated spend <strong>{formatVp(cost.total)}</strong>
-    </p>
-    {#if cost.unrecorded}
-      <p class="provenance">
-        {cost.unrecorded} without a recorded in-game set, estimated at {VP_COSTS.unrecorded.toLocaleString(
-          'en-US'
-        )} VP each
-      </p>
-    {/if}
-  </div>
+  <p class="provenance mt-3" data-team-vp>
+    Estimated spend <strong class="spend">{formatVp(cost.total)}</strong
+    >{#if cost.unrecorded}{` · ${cost.unrecorded}`} without a recorded in-game set,
+      estimated at {VP_COSTS.unrecorded.toLocaleString('en-US')} VP each{/if}
+  </p>
 {/if}

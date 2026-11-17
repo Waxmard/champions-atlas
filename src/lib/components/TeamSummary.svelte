@@ -32,11 +32,11 @@
         class="me-2 inline-block size-2 rounded-full bg-primary align-middle"
       ></span>{/if}{name}
   </h2>
-  {#if context}<p class="provenance mt-1 wrap-anywhere">{context}</p>{/if}
+  {#if context || spend}<p class="provenance mt-1 wrap-anywhere">
+      {context}{#if spend}{context ? ' · ' : ''}Estimated spend
+        <strong class="spend">{spend}</strong>{/if}
+    </p>{/if}
 </div>
-{#if spend}<p class="spend mt-2">
-    Estimated spend <strong>{spend}</strong>
-  </p>{/if}
 <ul class="mt-3 grid grid-cols-3 gap-2" aria-label="Team members">
   {#each members as member, index (index)}
     {@const types = getPokemonTypes(member.pokemon)}
