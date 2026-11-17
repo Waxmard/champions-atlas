@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.15.0](https://github.com/Waxmard/champions-atlas/compare/v0.14.0...v0.15.0) (2026-11-17)
+
+
+### Features
+
+* estimate VP spend to match in-game sets ([#119](https://github.com/Waxmard/champions-atlas/issues/119)) ([c748955](https://github.com/Waxmard/champions-atlas/commit/c7489557cafad53c41e63399939443996b49d044))
+
 ## [0.14.0](https://github.com/Waxmard/champions-atlas/compare/v0.13.0...v0.14.0) (2026-11-16)
 
 
