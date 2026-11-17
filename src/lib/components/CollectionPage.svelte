@@ -476,6 +476,7 @@
               value={sort}
               options={sortOptions}
               onchange={setSort}
+              disabled={currentSets.sets?.length ? undefined : 'vp'}
             />
             {#if setFavorite}
               <Button

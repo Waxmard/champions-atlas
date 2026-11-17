@@ -9,11 +9,13 @@
     value,
     options,
     onchange,
+    disabled,
   }: {
     label: string;
     value: string;
     options: readonly (readonly [string, string])[];
     onchange: (value: string) => void;
+    disabled?: string;
   } = $props();
 </script>
 
@@ -41,7 +43,11 @@
     >
       <DropdownMenu.RadioGroup {value} onValueChange={onchange}>
         {#each options as [key, text] (key)}
-          <DropdownMenu.RadioItem value={key} class="option-row">
+          <DropdownMenu.RadioItem
+            value={key}
+            disabled={key === disabled}
+            class="option-row data-disabled:opacity-50"
+          >
             {#snippet children({ checked })}
               <Check
                 class="size-4 {checked ? '' : 'invisible'}"

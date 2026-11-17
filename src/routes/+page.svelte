@@ -303,6 +303,7 @@
           value={sortByVp ? 'vp' : 'default'}
           options={browseSortOptions}
           onchange={(value) => changeOption('sort', value === 'vp' ? 'vp' : '')}
+          disabled={currentSets.sets?.length ? undefined : 'vp'}
         />
         {#if filters.length || unknownOnly || newOnly || filterState.error}<Button
             type="button"

@@ -61,7 +61,8 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Encode Browse filters in the URL so a refresh or shared link restores the selection.
 - The Browse **Sort** menu offers **Best results** (the default ordering) and
   **VP spend** (`?sort=vp`, lowest expected VP spend first), remembered with
-  the Browse filters. **Clear filters** also resets the sort.
+  the Browse filters. When shown, **Clear filters** also resets the sort.
+  **VP spend** is unavailable until an in-game set is recorded.
 - Mark Browse cards from the latest catalog batch (the most recent publish that
   added teams) with a blue dot before the team name; the dot stays until a later
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
