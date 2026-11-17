@@ -530,10 +530,10 @@
     requestAnimationFrame(focusTarget);
   }
   function done() {
-    if (flush() || undoFailed) {
-      closing = true;
-      onclose();
-    } else focusError();
+    if (!flush() && !undoFailed) return focusError();
+    if (stagedFrom) return;
+    closing = true;
+    onclose();
   }
   function unstage() {
     if (stagedFrom && accept(stagedFrom)) stagedFrom = null;
