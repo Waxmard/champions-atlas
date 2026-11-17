@@ -351,7 +351,7 @@
 {/snippet}
 
 <main id="main" class="app-container pt-2 pb-8 sm:pb-12">
-  <div bind:this={listRegion} hidden={selectedId !== null}>
+  <div bind:this={listRegion} data-page-under hidden={selectedId !== null}>
     <h1 class="sr-only">{label}</h1>
     {@render importForm?.()}
     {#if !inlineError && errorMessage}
