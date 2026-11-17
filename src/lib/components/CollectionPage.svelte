@@ -5,17 +5,27 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import Save from '@lucide/svelte/icons/save';
   import Star from '@lucide/svelte/icons/star';
-  import ArrowUpDown from '@lucide/svelte/icons/arrow-up-down';
-  import Check from '@lucide/svelte/icons/check';
-  import { DropdownMenu } from 'bits-ui';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SavedTeamEditor from '#lib/components/SavedTeamEditor.svelte';
   import WishlistList from '#lib/components/WishlistList.svelte';
   import WishlistTeamView from '#lib/components/WishlistTeamView.svelte';
+  import SortMenu from '#lib/components/SortMenu.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { matchesTeam, type MemberFilter } from '#lib/catalog.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
+  import {
+    createCurrentSetRegistry,
+    currentSetOwnerMatches,
+  } from '#lib/current-set-registry.svelte.js';
+  import {
+    currentSetsChangedEvent,
+    prepareCurrentSets,
+    readCurrentSets,
+    saveCurrentSets,
+    unrecordedMembers,
+  } from '#lib/current-sets.js';
   import { notify } from '#lib/notifications.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
@@ -29,8 +39,10 @@
     readSavedTeams,
     savedFavoritesKey,
     savedSortKey,
+    wishlistSortKey,
     type SavedTeam,
   } from '#lib/workbench.js';
+  import { sortByVpCost } from '#lib/vp-cost.js';
 
   let {
     collection,
@@ -83,7 +95,19 @@
   let entries = $state<SavedTeam[]>([]);
   let filters = $state<MemberFilter[]>([]);
   let favoritesOnly = $state(false);
-  let sort = $state<'manual' | 'record'>('manual');
+  type Sort = 'manual' | 'record' | 'vp';
+  let sort = $state<Sort>('manual');
+  const sortKey = $derived(
+    collection === 'saved' ? savedSortKey : wishlistSortKey
+  );
+  const sortOptions = [
+    ['manual', 'Manual order'],
+    ['record', 'Win rate'],
+    ['vp', 'VP spend'],
+  ] as const;
+  const parseSort = (value: string | null): Sort =>
+    value === 'record' || value === 'vp' ? value : 'manual';
+  const currentSets = createCurrentSetRegistry();
   const filtered = $derived(filters.length > 0 || favoritesOnly);
   const pickerTeams = $derived(entries.map(displaySavedTeam));
   const visibleEntries = $derived.by(() => {
@@ -92,8 +116,17 @@
         matchesTeam(entry, filters) &&
         (!favoritesOnly || entry.favorite || entry.current)
     );
-    return sort === 'record' ? sortByWinRate(matching) : matching;
+    return sort === 'record'
+      ? sortByWinRate(matching)
+      : sort === 'vp'
+        ? sortByVpCost(matching, currentSets.sets, catalogState.catalog)
+        : matching;
   });
+  const unrecorded = $derived(
+    collection === 'saved' && currentSets.sets
+      ? unrecordedMembers(currentSets.sets, entries)
+      : []
+  );
   let pendingId = $state('');
   let listRegion = $state<HTMLDivElement>();
   let listScroll: { x: number; y: number } | null = null;
@@ -160,20 +193,18 @@
     }
   }
 
-  function readSort(): 'manual' | 'record' {
+  function readSort(): Sort {
     try {
-      return localStorage.getItem(savedSortKey) === 'record'
-        ? 'record'
-        : 'manual';
+      return parseSort(localStorage.getItem(sortKey));
     } catch {
       return 'manual';
     }
   }
 
   function setSort(value: string) {
-    sort = value === 'record' ? 'record' : 'manual';
+    sort = parseSort(value);
     try {
-      localStorage.setItem(savedSortKey, sort);
+      localStorage.setItem(sortKey, sort);
     } catch {
       return;
     }
@@ -190,10 +221,8 @@
 
   onMount(() => {
     ready = true;
-    if (setFavorite) {
-      favoritesOnly = readFavoritesOnly();
-      sort = readSort();
-    }
+    sort = readSort();
+    if (setFavorite) favoritesOnly = readFavoritesOnly();
     refresh();
   });
 
@@ -217,6 +246,43 @@
           ? error.message
           : `Could not reorder ${label}. Existing saved teams have been left untouched.`;
       return false;
+    }
+  }
+
+  function recordUnrecorded() {
+    errorMessage = '';
+    inlineError = false;
+    try {
+      if (!currentSetOwnerMatches()) {
+        currentSets.refresh();
+        errorMessage = currentSets.error;
+        return;
+      }
+      const members = unrecordedMembers(
+        readCurrentSets(localStorage),
+        orderTeams(readSavedTeams(localStorage))
+      );
+      if (!members.length) {
+        currentSets.refresh();
+        notify('No in-game sets to record.');
+        return;
+      }
+      saveCurrentSets(
+        localStorage,
+        prepareCurrentSets(localStorage, members),
+        new Set()
+      );
+      void pushNow();
+      window.dispatchEvent(new Event(currentSetsChangedEvent));
+      notify(
+        `Recorded ${members.length} in-game ${members.length === 1 ? 'set' : 'sets'} on this device.`
+      );
+    } catch (error) {
+      currentSets.refresh();
+      errorMessage =
+        error instanceof Error
+          ? error.message
+          : 'Could not record in-game sets. Existing in-game sets were left untouched.';
     }
   }
 
@@ -354,6 +420,22 @@
   <div bind:this={listRegion} data-page-under hidden={selectedId !== null}>
     <h1 class="sr-only">{label}</h1>
     {@render importForm?.()}
+    {#if unrecorded.length}
+      <Button
+        type="button"
+        variant="quiet"
+        class="min-h-11"
+        disabled={!ready || !!pendingId || busy}
+        onclick={recordUnrecorded}
+      >
+        <Save class="size-4" aria-hidden="true" />
+        <span
+          >Record {unrecorded.length} in-game {unrecorded.length === 1
+            ? 'set'
+            : 'sets'}</span
+        >
+      </Button>
+    {/if}
     {#if !inlineError && errorMessage}
       {@render alert(errorMessage)}
     {/if}
@@ -383,48 +465,13 @@
               : 'teams'}
           </p>
           <div class="flex flex-wrap items-center gap-1">
+            <SortMenu
+              label={`Sort ${label}`}
+              value={sort}
+              options={sortOptions}
+              onchange={setSort}
+            />
             {#if setFavorite}
-              <DropdownMenu.Root>
-                <DropdownMenu.Trigger>
-                  {#snippet child({ props })}
-                    <Button
-                      {...props}
-                      type="button"
-                      variant="quiet"
-                      class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
-                      aria-label={`Sort Saved: ${sort === 'record' ? 'Win rate' : 'Manual order'}`}
-                    >
-                      <ArrowUpDown class="size-4" aria-hidden="true" />
-                      <span class="max-sm:sr-only">Sort</span>
-                    </Button>
-                  {/snippet}
-                </DropdownMenu.Trigger>
-                <DropdownMenu.Portal>
-                  <DropdownMenu.Content
-                    side="bottom"
-                    align="end"
-                    sideOffset={8}
-                    class="surface popover-motion z-50 min-w-48 p-1 text-base-content shadow-lg outline-none"
-                  >
-                    <DropdownMenu.RadioGroup
-                      value={sort}
-                      onValueChange={setSort}
-                    >
-                      {#each [['manual', 'Manual order'], ['record', 'Win rate']] as [value, text] (value)}
-                        <DropdownMenu.RadioItem {value} class="option-row">
-                          {#snippet children({ checked })}
-                            <Check
-                              class="size-4 {checked ? '' : 'invisible'}"
-                              aria-hidden="true"
-                            />
-                            {text}
-                          {/snippet}
-                        </DropdownMenu.RadioItem>
-                      {/each}
-                    </DropdownMenu.RadioGroup>
-                  </DropdownMenu.Content>
-                </DropdownMenu.Portal>
-              </DropdownMenu.Root>
               <Button
                 type="button"
                 variant="quiet"
@@ -447,10 +494,10 @@
             {/if}
           </div>
         </div>
-        {#if (filtered || sort === 'record') && entries.length > 1}
+        {#if (filtered || sort !== 'manual') && entries.length > 1}
           <p class="provenance mt-2">
-            {sort === 'record'
-              ? 'Switch to Manual order to reorder Saved.'
+            {sort !== 'manual'
+              ? `Switch to Manual order to reorder ${label}.`
               : favoritesOnly
                 ? 'Turn off Favorites to reorder Saved.'
                 : `Clear filters to reorder ${label}.`}

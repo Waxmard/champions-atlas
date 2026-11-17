@@ -140,6 +140,22 @@ export function currentSetsWouldChange(
   });
 }
 
+export function unrecordedMembers(
+  sets: readonly CurrentSet[],
+  teams: readonly { members: readonly Member[] }[]
+): Member[] {
+  const seen = new Set(sets.map(({ id }) => id));
+  const members: Member[] = [];
+  for (const team of teams)
+    for (const member of team.members) {
+      const id = pokemonId(member.pokemon);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      members.push(member);
+    }
+  return members;
+}
+
 export function readCurrentSets(
   storage: Pick<Storage, 'getItem'>
 ): CurrentSet[] {

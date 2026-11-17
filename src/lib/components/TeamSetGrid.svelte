@@ -3,6 +3,7 @@
   import type { Member } from '#lib/catalog.js';
   import MemberCard from '#lib/components/MemberCard.svelte';
   import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { formatVp, teamVpCost, VP_COSTS } from '#lib/vp-cost.js';
 
   let {
@@ -16,7 +17,9 @@
   } = $props();
   const currentSets = createCurrentSetRegistry();
   const cost = $derived(
-    currentSets.sets ? teamVpCost(currentSets.sets, members) : null
+    currentSets.sets
+      ? teamVpCost(currentSets.sets, members, catalogState.catalog)
+      : null
   );
 </script>
 

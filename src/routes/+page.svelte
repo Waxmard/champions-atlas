@@ -8,6 +8,7 @@
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
   import Filter from '@lucide/svelte/icons/filter';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
+  import SortMenu from '#lib/components/SortMenu.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
   import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import { notify } from '#lib/notifications.js';
@@ -28,7 +29,12 @@
     type MemberFilter,
     type Team,
   } from '#lib/catalog.js';
-  const browseKeys = ['member', 'page', 'new', 'unknown'];
+  import { sortByVpCost } from '#lib/vp-cost.js';
+  const browseKeys = ['member', 'page', 'new', 'unknown', 'sort'];
+  const browseSortOptions = [
+    ['default', 'Best results'],
+    ['vp', 'VP spend'],
+  ] as const;
   let storageError = $state(false);
   let filtersOpen = $state(false);
   let ready = $state(false);
@@ -68,18 +74,19 @@
       Number(unknownOnly) +
       Number(newOnly)
   );
-  const results = $derived(
-    filterState.error
-      ? []
-      : teams
-          .filter(
-            (team) =>
-              (!unknownOnly || team.regulation === 'Unknown') &&
-              (!newOnly || catalogState.freshIds.has(team.id)) &&
-              matchesTeam(team, filters)
-          )
-          .sort((a, b) => compareBrowseTeams(a, b, current))
-  );
+  const sortByVp = $derived(page.url.searchParams.get('sort') === 'vp');
+  const results = $derived.by(() => {
+    if (filterState.error) return [];
+    const ranked = teams
+      .filter(
+        (team) =>
+          (!unknownOnly || team.regulation === 'Unknown') &&
+          (!newOnly || catalogState.freshIds.has(team.id)) &&
+          matchesTeam(team, filters)
+      )
+      .sort((a, b) => compareBrowseTeams(a, b, current));
+    return sortByVp ? sortByVpCost(ranked, currentSets.sets, catalog) : ranked;
+  });
   const pageSize = 8;
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / pageSize)));
   const pageNumber = $derived(
@@ -105,6 +112,7 @@
 
     if (params.get('new') === '1') result.set('new', '1');
     if (params.get('unknown') === '1') result.set('unknown', '1');
+    if (params.get('sort') === 'vp') result.set('sort', 'vp');
 
     return result;
   }
@@ -289,12 +297,20 @@
         {results.length}
         {results.length === 1 ? 'team' : 'teams'}
       </p>
-      {#if filters.length || unknownOnly || newOnly || filterState.error}<Button
-          type="button"
-          variant="quiet"
-          disabled={!ready}
-          onclick={clearFilters}>Clear filters</Button
-        >{/if}
+      <div class="flex flex-wrap items-center gap-1">
+        <SortMenu
+          label="Sort teams"
+          value={sortByVp ? 'vp' : 'default'}
+          options={browseSortOptions}
+          onchange={(value) => changeOption('sort', value === 'vp' ? 'vp' : '')}
+        />
+        {#if filters.length || unknownOnly || newOnly || filterState.error}<Button
+            type="button"
+            variant="quiet"
+            disabled={!ready}
+            onclick={clearFilters}>Clear filters</Button
+          >{/if}
+      </div>
     </div>
     {#if results.length}
       {#key visibleKey}

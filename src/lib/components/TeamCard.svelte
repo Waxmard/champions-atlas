@@ -4,6 +4,7 @@
   import { resolve } from '$app/paths';
   import { regulationLabel, teamHeading, type Team } from '#lib/catalog.js';
   import type { CurrentSet } from '#lib/current-sets.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import { formatVp, teamVpCost } from '#lib/vp-cost.js';
   import TeamSummary from './TeamSummary.svelte';
 
@@ -37,7 +38,9 @@
   const resolvedHeading = $derived(heading ?? teamHeading(team.name, team));
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
   const cost = $derived(
-    currentSets ? teamVpCost(currentSets, team.members) : null
+    currentSets
+      ? teamVpCost(currentSets, team.members, catalogState.catalog)
+      : null
   );
   const context = $derived(
     [

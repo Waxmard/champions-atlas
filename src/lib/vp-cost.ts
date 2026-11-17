@@ -1,11 +1,18 @@
 import { resolveBattleForm } from './battle-forms.ts';
-import { isMegaSpecies, normalize, pokemonId, type Member } from './catalog.ts';
+import {
+  isMegaSpecies,
+  normalize,
+  pokemonId,
+  type Member,
+  type Team,
+} from './catalog.ts';
 import type { CurrentSet } from './current-sets.ts';
 import {
   CHAMPIONS_STATS,
   natureEffect,
   parseChampionsSpread,
 } from './paste.ts';
+import { catalogSpreadSuggestions } from './workbench.ts';
 
 export const VP_COSTS = {
   move: 250,
@@ -25,6 +32,11 @@ export interface TeamVpCost {
   total: number;
   unrecorded: number;
   members: SetVpCost[];
+}
+
+export interface VpCatalog {
+  teams: Team[];
+  currentRegulation: string;
 }
 
 function trainedAbility(member: Member): string {
@@ -80,21 +92,73 @@ export function setVpCost(from: Member | undefined, to: Member): SetVpCost {
   return { vp, recorded: true };
 }
 
+const estimateCache = new WeakMap<Team[], Map<string, string | null>>();
+
+function withEstimatedSpread(
+  from: Member,
+  member: Member,
+  members: readonly Member[],
+  catalog: VpCatalog
+): Member {
+  if (
+    member.spread?.trim() ||
+    !from.spread?.trim() ||
+    !member.nature?.trim() ||
+    normalize(member.nature) === normalize(from.nature ?? '')
+  )
+    return member;
+  let cache = estimateCache.get(catalog.teams);
+  if (!cache) estimateCache.set(catalog.teams, (cache = new Map()));
+  const key = `${members.indexOf(member)}:${JSON.stringify(members)}`;
+  let spread = cache.get(key);
+  if (spread === undefined) {
+    spread =
+      catalogSpreadSuggestions(
+        member,
+        catalog.teams,
+        catalog.currentRegulation,
+        1,
+        members.filter((other) => other !== member)
+      )[0]?.spread ?? null;
+    cache.set(key, spread);
+  }
+  return spread ? { ...member, spread } : member;
+}
+
 export function teamVpCost(
   sets: readonly CurrentSet[],
-  members: readonly Member[]
+  members: readonly Member[],
+  catalog: VpCatalog
 ): TeamVpCost {
-  const costs = members.map((member) =>
-    setVpCost(
-      sets.find((entry) => entry.id === pokemonId(member.pokemon))?.member,
-      member
-    )
-  );
+  const costs = members.map((member) => {
+    const from = sets.find(
+      (entry) => entry.id === pokemonId(member.pokemon)
+    )?.member;
+    return setVpCost(
+      from,
+      from ? withEstimatedSpread(from, member, members, catalog) : member
+    );
+  });
   return {
     total: costs.reduce((sum, cost) => sum + cost.vp, 0),
     unrecorded: costs.filter((cost) => !cost.recorded).length,
     members: costs,
   };
+}
+
+export function sortByVpCost<T extends { members: readonly Member[] }>(
+  teams: readonly T[],
+  sets: readonly CurrentSet[] | null,
+  catalog: VpCatalog
+): T[] {
+  if (!sets) return [...teams];
+  return teams
+    .map((team) => ({
+      team,
+      total: teamVpCost(sets, team.members, catalog).total,
+    }))
+    .sort((a, b) => a.total - b.total)
+    .map(({ team }) => team);
 }
 
 export const formatVp = (vp: number) => `${vp.toLocaleString('en-US')} VP`;

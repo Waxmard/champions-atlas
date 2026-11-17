@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { pokemonId } from '../src/lib/catalog.ts';
-import { formatVp, setVpCost, teamVpCost } from '../src/lib/vp-cost.ts';
+import { unrecordedMembers } from '../src/lib/current-sets.ts';
+import {
+  formatVp,
+  setVpCost,
+  sortByVpCost,
+  teamVpCost,
+} from '../src/lib/vp-cost.ts';
+import { set, team } from './fixtures/swap.mjs';
 
 const weavile = {
   pokemon: 'Weavile',
@@ -11,6 +18,7 @@ const weavile = {
   nature: 'Jolly',
   spread: '32 Atk / 32 Spe / 2 HP',
 };
+const emptyCatalog = { teams: [], currentRegulation: 'M-C' };
 
 test('set VP cost prices retraining from the in-game set', () => {
   assert.deepEqual(setVpCost(weavile, structuredClone(weavile)), {
@@ -98,7 +106,8 @@ test('team VP cost looks up in-game sets by Browse identity', () => {
       },
       { ...garchomp, pokemon: 'Garchomp-Mega' },
       pikachu,
-    ]
+    ],
+    emptyCatalog
   );
   assert.equal(cost.total, 1750);
   assert.equal(cost.unrecorded, 1);
@@ -108,4 +117,65 @@ test('team VP cost looks up in-game sets by Browse identity', () => {
   );
   assert.equal(formatVp(9000), '9,000 VP');
   assert.equal(formatVp(0), '0 VP');
+});
+
+test('VP sort orders teams cheapest first and keeps ties in order', () => {
+  const sets = [{ id: pokemonId('Weavile'), member: weavile }];
+  const a = { id: 'a', members: [{ ...weavile, pokemon: 'Pikachu' }] };
+  const b = { id: 'b', members: [weavile] };
+  const c = { id: 'c', members: [{ ...weavile, pokemon: 'Pikachu' }] };
+  const teams = [a, b, c];
+  assert.deepEqual(
+    sortByVpCost(teams, sets, emptyCatalog).map(({ id }) => id),
+    ['b', 'a', 'c']
+  );
+  assert.deepEqual(teams, [a, b, c]);
+  assert.deepEqual(
+    sortByVpCost(teams, null, emptyCatalog).map(({ id }) => id),
+    ['a', 'b', 'c']
+  );
+});
+
+test('team VP cost estimates stats for a new nature with no EVs listed', () => {
+  const sets = [{ id: pokemonId('Weavile'), member: weavile }];
+  const catalog = {
+    teams: [
+      team('source', [
+        set('Weavile', {
+          item: 'Focus Sash',
+          ability: 'Pressure',
+          moves: weavile.moves,
+          nature: 'Adamant',
+          spread: '32 HP / 32 Atk / 2 Spe',
+        }),
+      ]),
+    ],
+    currentRegulation: 'M-C',
+  };
+  const cost = (nature) =>
+    teamVpCost(sets, [{ ...weavile, nature, spread: null }], catalog).total;
+  assert.equal(cost('Adamant'), 650);
+  assert.equal(cost('Jolly'), 0);
+  assert.equal(cost(null), 0);
+});
+
+test('unrecorded members skip recorded Pokémon and take the first team', () => {
+  const pikachu = { ...weavile, pokemon: 'Pikachu', ability: 'Static' };
+  const garchomp = { ...weavile, pokemon: 'Garchomp-Mega' };
+  assert.deepEqual(
+    unrecordedMembers(
+      [{ id: pokemonId('Weavile'), member: weavile }],
+      [
+        { members: [weavile, pikachu] },
+        {
+          members: [
+            { ...pikachu, ability: 'Lightning Rod' },
+            garchomp,
+            { ...weavile, pokemon: 'Garchomp' },
+          ],
+        },
+      ]
+    ),
+    [pikachu, garchomp]
+  );
 });

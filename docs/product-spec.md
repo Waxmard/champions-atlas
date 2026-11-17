@@ -59,6 +59,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Preserve Browse filters and scroll position when opening teams and returning.
   Back to teams stays visible while browsing a team.
 - Encode Browse filters in the URL so a refresh or shared link restores the selection.
+- The Browse **Sort** menu offers **Best results** (the default ordering) and
+  **VP spend** (`?sort=vp`, lowest expected VP spend first), remembered with
+  the Browse filters. **Clear filters** also resets the sort.
 - Mark Browse cards from the latest catalog batch (the most recent publish that
   added teams) with a blue dot before the team name; the dot stays until a later
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
@@ -188,6 +191,15 @@ Snapshots remain independent of teams. Team edits do not update them, and
 deleting a team does not delete them. The app does not auto-seed current sets
 from teams or create snapshot history during normal recording, and it keeps no
 in-game set backups.
+
+The Saved list offers **Record N in-game sets** when a Saved team has a Pokémon
+with no in-game set. It records only those Pokémon and never replaces a recorded
+set. When Saved teams list the same unrecorded Pokémon with different sets, the
+first team in Saved order wins.
+
+Team cards show the expected VP spend to reach the team from the recorded
+in-game sets. A Pokémon with a recorded set whose team lists a different nature
+and no EVs is priced with the top catalog spread for that nature.
 
 When a snapshot exists, its item, ability, nature, and move values appear as
 subtly source-labelled choices in the corresponding editor suggestion surfaces.
@@ -430,11 +442,12 @@ controls. Holding an arrow for half a second offers **Move to top** or
 order of existing bookmarks. Saved uses the same controls and order rules while
 Favorites and Pokémon filters are off. The order persists across reloads and
 syncs with the account.
-The Saved **Sort** menu button, beside **Favorites**, offers **Manual order**
-and **Win rate**: highest win percentage first, more games first on equal
-rates, and teams with no games last. Reordering is paused while Win rate is
-selected. Manual order is the default, and the choice is remembered on this
-device.
+Saved and Wishlist each have a **Sort** menu offering **Manual order**, **Win
+rate**, and **VP spend**. Win rate puts the highest win percentage first, more
+games first on equal rates, and teams with no games last. VP spend puts the
+lowest expected VP spend first, ties in manual order. Reordering is paused
+unless Manual order is selected. Manual order is the default, and each list
+remembers its choice on this device.
 
 Each Saved row has a swords toggle marking it as the **current team**. Marking
 a team moves it to the top of Saved and clears the marker on any other team.
