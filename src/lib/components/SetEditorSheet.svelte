@@ -6,6 +6,7 @@
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
   import SetEditorDetails from '#lib/components/SetEditorDetails.svelte';
   import SetEditorMoves from '#lib/components/SetEditorMoves.svelte';
+  import SetVpCost from '#lib/components/SetVpCost.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { normalize, pokemonId, type Member, type Team } from '../catalog.js';
@@ -771,6 +772,7 @@
       >
         {error}
       </p>{/if}
+    <SetVpCost member={draftMember} class="mb-1" />
     <p role="status" aria-live="polite" class="provenance mb-3">
       {dirty ? 'Unsaved input.' : 'Saved on this device.'}
     </p>

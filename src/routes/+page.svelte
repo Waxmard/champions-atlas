@@ -17,7 +17,6 @@
   } from '#lib/saved-team-actions.js';
   import { wishlistedCatalogEntries } from '#lib/team-collections.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
-  import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
   import { sync } from '#lib/sync.svelte.js';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
@@ -36,7 +35,6 @@
   let savedError = $state('');
   let actionError = $state('');
   const pending = new SvelteSet<string>();
-  const currentSets = createCurrentSetRegistry();
   const catalog = $derived(catalogState.catalog);
   const teams: Team[] = $derived(catalog.teams);
   const current = $derived(catalog.currentRegulation);
@@ -304,7 +302,6 @@
               {team}
               query={page.url.search}
               isNew={catalogState.freshIds.has(team.id)}
-              currentSets={currentSets.sets}
             >
               {#snippet trailingActions()}
                 {@const busy =

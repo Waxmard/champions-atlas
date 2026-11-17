@@ -97,5 +97,4 @@ export function teamVpCost(
   };
 }
 
-export const formatVp = (vp: number, estimated: boolean) =>
-  `${estimated ? '≈ ' : ''}${vp.toLocaleString('en-US')} VP`;
+export const formatVp = (vp: number) => `${vp.toLocaleString('en-US')} VP`;

@@ -38,24 +38,12 @@
           onopen={() => onopen?.(index)}
         />
       {/if}
-      {#if cost}
-        {@const entry = cost.members[index]}
-        <p class="provenance mt-1 px-0.5">
-          <span class="sr-only">Cost to change in game: </span>{formatVp(
-            entry.vp,
-            !entry.recorded
-          )}{entry.recorded ? '' : ' · no in-game set'}
-        </p>
-      {/if}
     </section>
   {/each}
 </div>
 {#if cost}
   <p class="provenance mt-3" data-team-vp>
-    In-game setup: {formatVp(
-      cost.total,
-      cost.unrecorded > 0
-    )}{#if cost.unrecorded}
+    In-game setup: {formatVp(cost.total)}{#if cost.unrecorded}
       · {cost.unrecorded} without a recorded in-game set, estimated at {VP_COSTS.unrecorded.toLocaleString(
         'en-US'
       )} VP each{/if}
