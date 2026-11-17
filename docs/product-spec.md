@@ -117,7 +117,8 @@ number, and is omitted before the first game. Tapping the row opens a pop-up.
 games can be logged in a row. Logging a game animates the score: a win pops
 with a short burst, a loss shakes, and the win-rate bar glides to its new width.
 Removing a game or resetting does not animate. **Edit** reveals buttons to add
-or remove a win or a loss and **Reset**.
+or remove a win or a loss and **Reset**. After a game is logged, the pop-up
+reminds you when in-game sets differ from the team and offers to record them.
 Reset asks for confirmation and returns the record to 0W – 0L. The record never
 goes below zero and is unavailable while edits are pending or the team changed
 elsewhere. It is saved with the team, so it stays when the team moves between
@@ -200,7 +201,8 @@ first team in Saved order wins.
 Team cards show the expected VP spend to reach the team from the recorded
 in-game sets, labelled **Estimated spend**. A Pokémon with a recorded set whose
 team lists a different nature and no EVs is priced with the top catalog spread
-for that nature.
+for that nature. The set editor footer, full-set dialog, and member menu show
+the VP needed to change that Pokémon's in-game set to the shown set.
 
 When a snapshot exists, its item, ability, nature, and move values appear as
 subtly source-labelled choices in the corresponding editor suggestion surfaces.

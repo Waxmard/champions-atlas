@@ -56,10 +56,12 @@
   let section = $state<HTMLElement>();
   let listScroll = 0;
   let opener: HTMLElement | null = null;
+  let listQuery = '';
 
   function openPreview(event: MouseEvent, member: Member, note: string) {
     opener = event.currentTarget as HTMLElement;
     listScroll = section?.parentElement?.scrollTop ?? 0;
+    listQuery = query;
     const replaced = accepted;
     if (!onchoose(member)) return;
     preview = {
@@ -70,6 +72,7 @@
   function closePreview() {
     const scroller = section?.parentElement;
     onback();
+    oninputchange(listQuery);
     preview = null;
     void tick().then(() => {
       if (scroller) scroller.scrollTop = listScroll;
