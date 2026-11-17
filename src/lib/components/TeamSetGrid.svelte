@@ -2,6 +2,8 @@
   import type { Snippet } from 'svelte';
   import type { Member } from '#lib/catalog.js';
   import MemberCard from '#lib/components/MemberCard.svelte';
+  import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
+  import { formatVp, teamVpCost, VP_COSTS } from '#lib/vp-cost.js';
 
   let {
     members,
@@ -12,6 +14,10 @@
     renderMember?: Snippet<[number]>;
     onopen?: (index: number) => void;
   } = $props();
+  const currentSets = createCurrentSetRegistry();
+  const cost = $derived(
+    currentSets.sets ? teamVpCost(currentSets.sets, members) : null
+  );
 </script>
 
 <div
@@ -32,6 +38,26 @@
           onopen={() => onopen?.(index)}
         />
       {/if}
+      {#if cost}
+        {@const entry = cost.members[index]}
+        <p class="provenance mt-1 px-0.5">
+          <span class="sr-only">Cost to change in game: </span>{formatVp(
+            entry.vp,
+            !entry.recorded
+          )}{entry.recorded ? '' : ' · no in-game set'}
+        </p>
+      {/if}
     </section>
   {/each}
 </div>
+{#if cost}
+  <p class="provenance mt-3" data-team-vp>
+    In-game setup: {formatVp(
+      cost.total,
+      cost.unrecorded > 0
+    )}{#if cost.unrecorded}
+      · {cost.unrecorded} without a recorded in-game set, estimated at {VP_COSTS.unrecorded.toLocaleString(
+        'en-US'
+      )} VP each{/if}
+  </p>
+{/if}

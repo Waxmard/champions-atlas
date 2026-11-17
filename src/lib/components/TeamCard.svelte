@@ -3,6 +3,8 @@
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
   import { regulationLabel, teamHeading, type Team } from '#lib/catalog.js';
+  import type { CurrentSet } from '#lib/current-sets.js';
+  import { formatVp, teamVpCost } from '#lib/vp-cost.js';
   import TeamSummary from './TeamSummary.svelte';
 
   let {
@@ -17,6 +19,7 @@
     swipeLeft,
     swipeRight,
     isNew = false,
+    currentSets,
   }: {
     team: Team;
     heading?: { title: string; context: string };
@@ -29,9 +32,13 @@
     swipeLeft?: Snippet;
     swipeRight?: Snippet;
     isNew?: boolean;
+    currentSets?: readonly CurrentSet[] | null;
   } = $props();
   const resolvedHeading = $derived(heading ?? teamHeading(team.name, team));
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
+  const cost = $derived(
+    currentSets ? teamVpCost(currentSets, team.members) : null
+  );
   function open(event: MouseEvent) {
     if (
       event.defaultPrevented ||
@@ -91,6 +98,12 @@
       >
         <span class="term">{regulationLabel(team.regulation)}</span>
         {#if team.publishedAt}<span class="provenance">{team.publishedAt}</span
+          >{/if}
+        {#if cost}<span class="provenance"
+            ><span class="sr-only">In-game setup: </span>{formatVp(
+              cost.total,
+              cost.unrecorded > 0
+            )}</span
           >{/if}
       </div>
       {#if trailingActions}

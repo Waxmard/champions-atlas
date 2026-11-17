@@ -30,6 +30,7 @@
     pokemon?: string;
     memberIndex?: number;
     disabled?: boolean;
+    reminder?: boolean;
   }
 
   let {
@@ -39,7 +40,9 @@
     pokemon,
     memberIndex,
     disabled = false,
+    reminder = false,
   }: Props = $props();
+  const uid = $props.id();
   let alertMessage = $state('');
   let pendingPlan = $state.raw<CurrentSetSavePlan | null>(null);
   let checkedIds = $state<string[]>([]);
@@ -299,17 +302,21 @@
 
 <div class={memberIndex === undefined ? 'contents' : 'px-2.5'}>
   {#if memberIndex === undefined && canRecord()}
+    {#if reminder}<p class="provenance">
+        In-game sets differ from this team. Record them to keep VP estimates
+        accurate.
+      </p>{/if}
     <Button
       variant="quiet"
       {disabled}
-      aria-describedby={`in-game-sets-description-${teamId}`}
+      aria-describedby={`in-game-sets-description-${uid}`}
       onpointerdown={keepFocus}
       onclick={save}
     >
       <Save class="size-4" aria-hidden="true" />
       Record all in-game sets
     </Button>
-    <span id={`in-game-sets-description-${teamId}`} class="sr-only">
+    <span id={`in-game-sets-description-${uid}`} class="sr-only">
       Record the sets currently in your Pokémon Champions box—one per Pokémon.
       This doesn’t change anything in the game.
     </span>
@@ -328,23 +335,20 @@
       use:openDialog
       out:dialogOut
       oncancel={handleDialogCancel}
-      aria-labelledby={`current-set-save-title-${teamId}`}
-      aria-describedby={`current-set-save-description-${teamId}`}
+      aria-labelledby={`current-set-save-title-${uid}`}
+      aria-describedby={`current-set-save-description-${uid}`}
       class="dialog-motion fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
     >
       <header class="shrink-0 border-b border-base-300 p-5">
         <h2
           bind:this={dialogTitle}
-          id={`current-set-save-title-${teamId}`}
+          id={`current-set-save-title-${uid}`}
           tabindex="-1"
           class="font-display text-lg font-semibold tracking-tight"
         >
           Choose in-game sets to replace
         </h2>
-        <p
-          id={`current-set-save-description-${teamId}`}
-          class="provenance mt-2"
-        >
+        <p id={`current-set-save-description-${uid}`} class="provenance mt-2">
           Select the Pokémon sets to replace. Any new Pokémon sets will also be
           recorded. Unchecked Pokémon keep their recorded sets. This doesn’t
           change anything in Pokémon Champions.
@@ -354,7 +358,7 @@
         <ul class="space-y-1">
           {#each pendingPlan.overwritten as entry (entry.id)}
             {@const name = browsePokemon(entry.member.pokemon)}
-            {@const checkboxId = `replace-current-set-${teamId}-${entry.id}`}
+            {@const checkboxId = `replace-current-set-${uid}-${entry.id}`}
             <li>
               <label
                 for={checkboxId}
@@ -363,7 +367,7 @@
                 <input
                   id={checkboxId}
                   type="checkbox"
-                  name={`replace-current-set-${teamId}`}
+                  name={`replace-current-set-${uid}`}
                   value={entry.id}
                   aria-label={`Replace my in-game ${name} set`}
                   class="size-5 accent-primary"

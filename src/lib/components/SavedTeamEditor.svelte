@@ -7,6 +7,7 @@
   import Modal from '#lib/components/Modal.svelte';
   import SavedTeamActions from '#lib/components/SavedTeamActions.svelte';
   import RecordPanel from '#lib/components/RecordPanel.svelte';
+  import CurrentSetSaveButton from '#lib/components/CurrentSetSaveButton.svelte';
   import MemberCurrentSetControls from '#lib/components/MemberCurrentSetControls.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import SwapSuggestions from '#lib/components/SwapSuggestions.svelte';
@@ -387,6 +388,7 @@
       </p>{/if}
     {#if !storageError && draft}
       {@const heading = collections.savedTeamHeading(draft)}
+      {@const recordTeam = draft}
       <div class="flex min-w-0 items-start gap-1">
         <div class="min-w-0 flex-1">
           <h1
@@ -448,7 +450,17 @@
           disabled={changed || editing || busy || stale}
           onstep={changeRecord}
           onreset={resetRecord}
-        />
+        >
+          {#snippet reminder()}
+            <CurrentSetSaveButton
+              teamId={recordTeam.id}
+              {baseline}
+              members={recordTeam.members}
+              disabled={changed || editing || busy || stale}
+              reminder
+            />
+          {/snippet}
+        </RecordPanel>
         <SavedTeamActions
           teamId={draft.id}
           name={draft.name}

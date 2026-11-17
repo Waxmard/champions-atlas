@@ -1,4 +1,5 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import Minus from '@lucide/svelte/icons/minus';
   import Plus from '@lucide/svelte/icons/plus';
   import Modal from '#lib/components/Modal.svelte';
@@ -12,9 +13,10 @@
     disabled: boolean;
     onstep: (key: keyof WinLossRecord, step: number) => boolean;
     onreset: () => boolean;
+    reminder?: Snippet;
   }
 
-  let { record, disabled, onstep, onreset }: Props = $props();
+  let { record, disabled, onstep, onreset, reminder }: Props = $props();
   let open = $state(false);
   let editing = $state(false);
   let logged = $state<{ key: keyof WinLossRecord; id: number }>();
@@ -109,6 +111,11 @@
           </button>
         {/each}
       </div>
+      {#if logged && reminder}<div
+          class="mt-3 flex flex-col items-center gap-1 text-center"
+        >
+          {@render reminder()}
+        </div>{/if}
       <div class="mt-2 flex justify-end">
         <Button
           variant="quiet"
