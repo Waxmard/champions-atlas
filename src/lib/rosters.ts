@@ -1,5 +1,16 @@
-import { battleSpecies, resolveBattleForm } from './battle-forms.ts';
-import { isMegaSpecies, normalize, pokemonId, type Member } from './catalog.ts';
+import {
+  battleSpecies,
+  browsePokemonNames,
+  resolveBattleForm,
+} from './battle-forms.ts';
+import {
+  browsePokemon,
+  isMegaSpecies,
+  normalize,
+  pokemonId,
+  type Member,
+  type Team,
+} from './catalog.ts';
 import rosterA from '../../scripts/data/champions-m-a.json' with { type: 'json' };
 import rosterB from '../../scripts/data/champions-m-b.json' with { type: 'json' };
 import rosterC from '../../scripts/data/champions-m-c.json' with { type: 'json' };
@@ -49,3 +60,16 @@ export const legalRegulations = (
       return form.error === null && isRosterLegal(form.pokemon, regulation);
     })
   );
+
+export function notifiablePokemon(
+  teams: readonly Pick<Team, 'members'>[],
+  regulation: string
+): string[] {
+  const names = new Map<string, string>();
+  for (const name of [
+    ...rosterSpecies(regulation).map(browsePokemon),
+    ...browsePokemonNames(teams),
+  ])
+    names.set(pokemonId(name), name);
+  return [...names.values()].sort();
+}

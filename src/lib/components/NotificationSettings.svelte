@@ -3,7 +3,7 @@
   import PokemonPicker from './PokemonPicker.svelte';
   import SpeciesLabel from './SpeciesLabel.svelte';
   import RemovableChip from './RemovableChip.svelte';
-  import { browsePokemonNames } from '#lib/battle-forms.js';
+  import { notifiablePokemon } from '#lib/rosters.js';
   import { pokemonId } from '#lib/catalog.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import {
@@ -21,9 +21,10 @@
 
   const available = $derived.by(() => {
     const chosen = new Set(settings.pokemon.map(pokemonId));
-    return browsePokemonNames(catalogState.catalog.teams).filter(
-      (name) => !chosen.has(pokemonId(name))
-    );
+    return notifiablePokemon(
+      catalogState.catalog.teams,
+      catalogState.catalog.currentRegulation
+    ).filter((name) => !chosen.has(pokemonId(name)));
   });
 
   async function save(next: NotificationSettings) {
