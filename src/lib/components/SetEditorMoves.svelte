@@ -1,7 +1,7 @@
 <script lang="ts">
+  import Pencil from '@lucide/svelte/icons/pencil';
   import X from '@lucide/svelte/icons/x';
-  import type { Member } from '#lib/catalog.js';
-  import type { CurrentSetChoice } from '#lib/current-sets.js';
+  import { flushSync } from 'svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import TypeMark from '#lib/components/TypeMark.svelte';
@@ -12,33 +12,35 @@
   let {
     moves,
     activeMoveSlot,
+    editingMoveSlot,
+    query,
     moveOptions,
     hasMore = false,
     onshowmore,
-    inGameMember,
     error,
     errorField,
-    onfocus,
+    onselect,
+    onedit,
     onchange,
     onchoose,
-    oningame,
     onclear,
     oncommit,
   }: {
     moves: string[];
     activeMoveSlot: number;
+    editingMoveSlot: number | null;
+    query: string;
     moveOptions: CatalogSuggestion[];
     hasMore?: boolean;
     onshowmore?: () => void;
-    inGameMember?: Member;
     error: string;
     errorField: EditableSetField | null;
-    onfocus: (index: number) => void;
-    onchange: (index: number, value: string) => void;
-    onchoose: (index: number, value: string) => void;
-    oningame: (choice: CurrentSetChoice, displayed: Member) => void;
+    onselect: (index: number) => void;
+    onedit: (index: number) => void;
+    onchange: (value: string) => void;
+    onchoose: (option: CatalogSuggestion) => void;
     onclear: (index: number) => void;
-    oncommit: (blurOnSuccess?: boolean) => void;
+    oncommit: (pickFirst: boolean) => void;
   } = $props();
 </script>
 
@@ -50,6 +52,7 @@
         class="field"
         data-tint={type ?? undefined}
         style:--field-tint={type ? TYPE_COLORS[type] : undefined}
+        data-active={index === activeMoveSlot || undefined}
       >
         <span
           class="grid size-7 shrink-0 place-items-center"
@@ -57,25 +60,50 @@
         >
           <TypeMark {type} size="md" />
         </span>
-        <input
-          id={`set-move-${index + 1}`}
-          aria-label={`Move ${index + 1}`}
-          type="text"
-          tabindex={0}
-          class="grow bg-transparent text-sm focus:outline-none"
-          placeholder={`Move ${index + 1}`}
-          value={move}
-          onfocus={() => onfocus(index)}
-          onclick={() => onfocus(index)}
-          oninput={(event) => onchange(index, event.currentTarget.value)}
-          onblur={() => oncommit(false)}
-          onkeydown={(event) => {
-            if (event.key === 'Enter' && !event.isComposing) {
-              event.preventDefault();
-              oncommit(true);
-            }
-          }}
-        />
+        {#if editingMoveSlot === index}
+          <input
+            id={`set-move-${index + 1}`}
+            aria-label={`Move ${index + 1}`}
+            type="text"
+            autocomplete="off"
+            spellcheck="false"
+            enterkeyhint="done"
+            class="grow bg-transparent text-sm focus:outline-none"
+            placeholder={move || `Move ${index + 1}`}
+            value={query}
+            oninput={(event) => onchange(event.currentTarget.value)}
+            onblur={() => oncommit(false)}
+            onkeydown={(event) => {
+              if (event.key === 'Enter' && !event.isComposing) {
+                event.preventDefault();
+                oncommit(true);
+              }
+            }}
+          />
+        {:else}
+          <button
+            type="button"
+            id={`set-move-${index + 1}`}
+            class="min-h-11 min-w-0 grow truncate text-start text-sm {move
+              ? ''
+              : 'text-base-content/60'}"
+            aria-pressed={index === activeMoveSlot}
+            aria-label={`Select move ${index + 1}${move ? `: ${move}` : ''}`}
+            onclick={() => onselect(index)}
+            >{move || `Move ${index + 1}`}</button
+          >
+        {/if}
+        <Button
+          variant="quiet"
+          size="icon-compact"
+          aria-label={`Type move ${index + 1}`}
+          onpointerdown={(event) => event.preventDefault()}
+          onclick={() => {
+            onedit(index);
+            flushSync();
+            document.getElementById(`set-move-${index + 1}`)?.focus();
+          }}><Pencil class="size-4" /></Button
+        >
         <Button
           variant="quiet"
           size="icon-compact"
@@ -89,6 +117,11 @@
       </div>
     {/each}
   </div>
+  <p class="term">
+    {moves[activeMoveSlot]
+      ? `Replace ${moves[activeMoveSlot]}`
+      : `Choose move ${activeMoveSlot + 1}`}
+  </p>
   <SuggestionList
     id="set-move-suggestions"
     label={`Move ${activeMoveSlot + 1} suggestions`}
@@ -114,15 +147,7 @@
         ]
           .filter(Boolean)
           .join(' · ')}
-        onclick={() => {
-          if (option.inGame) {
-            if (inGameMember)
-              oningame(
-                { kind: 'move', index: activeMoveSlot, move: option.value },
-                inGameMember
-              );
-          } else onchoose(activeMoveSlot, option.value);
-        }}
+        onclick={() => onchoose(option)}
       />
     {/each}
   </SuggestionList>
