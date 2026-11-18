@@ -1,6 +1,12 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
-import { megaStoneTargets, normalize, type Member } from './catalog.ts';
+import {
+  browsePokemon,
+  megaStoneTargets,
+  normalize,
+  type Member,
+  type Team,
+} from './catalog.ts';
 
 const generation = Generations.get(0);
 const aliases: Record<string, string> = {
@@ -16,6 +22,7 @@ export const cosmeticForms: Record<string, string> = {
   sinisteaantique: 'sinistea',
   polteageistantique: 'polteageist',
   poltchageistartisan: 'poltchageist',
+  mausholdfour: 'maushold',
   vivillonfancy: 'vivillon',
   vivillonpokeball: 'vivillon',
 };
@@ -89,3 +96,14 @@ export function resolveBattleForm(
   const ability = isMega ? selected.abilities?.[0] || null : storedAbility;
   return { pokemon: selected.name, ability, error: null };
 }
+
+export const browsePokemonNames = (
+  teams: readonly Pick<Team, 'members'>[]
+): string[] =>
+  [
+    ...new Set(
+      teams.flatMap((team) =>
+        team.members.map((member) => browsePokemon(member.pokemon))
+      )
+    ),
+  ].sort();

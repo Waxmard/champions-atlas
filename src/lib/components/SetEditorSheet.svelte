@@ -93,6 +93,7 @@
     itemQuery = $state(''),
     abilityQuery = $state('');
   let moveQueries = $state(['', '', '', '']);
+  let editingMoveSlot = $state<number | null>(null);
   let visibleItemCount = $state(10);
   let visibleAbilityCount = $state(10);
   let visibleMoveCount = $state(10);
@@ -219,6 +220,7 @@
   function resetQueries() {
     pokemonQuery = itemQuery = abilityQuery = '';
     moveQueries = ['', '', '', ''];
+    editingMoveSlot = null;
     visibleItemCount =
       visibleAbilityCount =
       visibleMoveCount =
@@ -236,13 +238,6 @@
       normalize(form.ability) === normalize(acceptedFields.ability)
     )
       abilityQuery = '';
-    else if (field.startsWith('move-')) {
-      const index = Number(field.slice(5));
-      if (
-        normalize(form.moves[index]) === normalize(acceptedFields.moves[index])
-      )
-        moveQueries[index] = '';
-    }
   }
   function accept(next: Member, preserveMoves = false) {
     if (!stagedFrom && !onchange(next)) {
@@ -317,7 +312,7 @@
         choice
       );
       if (choice.kind === 'move') moveSlots[choice.index] = choice.move;
-      chooseSet(candidate, false, moveSlots);
+      chooseSet(candidate, choice.kind === 'move', moveSlots);
     } catch (caught) {
       showError(
         'set',
@@ -332,6 +327,38 @@
   function clearMove(index: number) {
     form.moves[index] = '';
     if (commit()) (document.activeElement as HTMLElement | null)?.blur();
+  }
+  function pickMove(index: number, option: CatalogSuggestion) {
+    if (!option.inGame) return chooseMove(index, option.value);
+    if (inGameMember)
+      chooseInGame({ kind: 'move', index, move: option.value }, inGameMember);
+  }
+  function commitMoveText(pickFirst: boolean): boolean {
+    const index = editingMoveSlot;
+    if (index === null) return true;
+    const text = normalize(moveQueries[index]);
+    const options = text ? moveSuggestions(index) : [];
+    const hit =
+      options.find((option) => normalize(option.value) === text) ??
+      (pickFirst ? options[0] : undefined);
+    if (text && pickFirst && !hit) {
+      showError('moves', 'Choose a known move.');
+      return false;
+    }
+    moveQueries[index] = '';
+    editingMoveSlot = null;
+    visibleMoveCount = 10;
+    clearError();
+    if (!hit) return true;
+    pickMove(index, hit);
+    return !error;
+  }
+  function selectMoveSlot(index: number, edit: boolean) {
+    if (edit && editingMoveSlot === index) return;
+    if (!commitMoveText(false)) return focusError();
+    activeMoveSlot = index;
+    editingMoveSlot = edit ? index : null;
+    visibleMoveCount = 10;
   }
   function moveSuggestions(index: number) {
     return suggestions.moves.filter(
@@ -357,6 +384,7 @@
   }
   export function flush(): boolean {
     evEditor?.flush();
+    if (!commitMoveText(false)) return false;
     return commit();
   }
   function finishInput(blurOnSuccess = false): boolean {
@@ -628,33 +656,25 @@
       <SetEditorMoves
         moves={form.moves}
         {activeMoveSlot}
+        {editingMoveSlot}
+        query={editingMoveSlot === null ? '' : moveQueries[editingMoveSlot]}
         moveOptions={movePage.visible}
         hasMore={movePage.hasMore}
         onshowmore={() => (visibleMoveCount += 5)}
-        {inGameMember}
-        oningame={chooseInGame}
         {error}
         {errorField}
-        onfocus={(index) => {
-          if (
-            index !== activeMoveSlot &&
-            normalize(form.moves[activeMoveSlot]) !==
-              normalize(acceptedFields.moves[activeMoveSlot])
-          ) {
-            if (!finishInput(false)) return;
-          }
-          activeMoveSlot = index;
-          resetQuery(`move-${index}`);
-        }}
-        onchange={(index, value) => {
-          form.moves[index] = moveQueries[index] = value;
-          activeMoveSlot = index;
+        onselect={(index) => selectMoveSlot(index, false)}
+        onedit={(index) => selectMoveSlot(index, true)}
+        onchange={(value) => {
+          moveQueries[activeMoveSlot] = value;
           visibleMoveCount = 10;
           clearError();
         }}
-        onchoose={chooseMove}
+        onchoose={(option) => pickMove(activeMoveSlot, option)}
         onclear={clearMove}
-        oncommit={finishInput}
+        oncommit={(pickFirst) => {
+          if (!closing && !commitMoveText(pickFirst)) focusError();
+        }}
       />
     {:else if currentView === 'details'}
       <SetEditorDetails

@@ -50,10 +50,18 @@ function resolvedForm(member: Member): string | null {
   return normalize(cosmeticForms[name] ?? name) || null;
 }
 
-export function memberSetSignature(member: Member): string | null {
+export function memberSetSignature(
+  member: Member,
+  allowIncompleteSpread = false
+): string | null {
   const form = resolvedForm(member);
   const spread = parseChampionsSpread(member.spread);
-  if (!form || !isCompleteSpread(spread) || !Array.isArray(member.moves))
+  if (
+    !form ||
+    !spread ||
+    !(allowIncompleteSpread || isCompleteSpread(spread)) ||
+    !Array.isArray(member.moves)
+  )
     return null;
   return JSON.stringify([
     form,

@@ -1,14 +1,24 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { EventEmitter } from 'node:events';
-import { deliver, newTeamsAlert } from '../scripts/notify-new-teams.mjs';
+import {
+  deliver,
+  devicePrefs,
+  newTeamsAlert,
+  pokemonAlert,
+} from '../scripts/notify-new-teams.mjs';
 
 const report = (event, rank = '', sourceUrl = '') => ({
   event,
   rank,
   sourceUrl,
 });
-const team = (id, reports, regulation = 'M-C') => ({ id, regulation, reports });
+const team = (id, reports, regulation = 'M-C', members = []) => ({
+  id,
+  regulation,
+  reports,
+  members,
+});
 const bundle = (teams, ids = teams.map(({ id }) => id)) => ({
   currentRegulation: 'M-C',
   teams,
@@ -29,7 +39,7 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
   assert.equal(newTeamsAlert(bundle([team('old', [regional], 'M-B')])), null);
   assert.deepEqual(
     newTeamsAlert(bundle([team('a', [report('Poch.ms collection')])])),
-    { title: '1 new Reg M-C team', body: 'Tap to see them' }
+    { title: '1 new Reg M-C team', body: 'Tap to see them', path: '?new=1' }
   );
   assert.deepEqual(
     newTeamsAlert(
@@ -50,6 +60,78 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
     {
       title: '6 new Reg M-C teams',
       body: 'Louisville Regional 2027, CybertronVGC, Nice Regional 2027 and 1 more',
+      path: '?new=1',
+    }
+  );
+});
+
+const members = (names, spread) =>
+  Array.from({ length: 6 }, (_, index) => ({
+    pokemon: names[index % names.length],
+    item: null,
+    ability: null,
+    moves: [],
+    nature: null,
+    spread,
+  }));
+
+test('pokemonAlert, the EV toggle and devicePrefs work per device', () => {
+  const complete = '32 HP / 32 Atk / 2 Spe';
+  const teams = [
+    team(
+      'a',
+      [regional],
+      'M-C',
+      members(['Incineroar', 'Rillaboom'], complete)
+    ),
+    team('b', [channel], 'M-C', members(['Charizard-Mega-Y'], null)),
+    team('c', [regional], 'M-B', members(['Incineroar'], complete)),
+    team('d', [regional], 'M-C', members(['Incineroar'], complete)),
+  ];
+  const batch = bundle(teams, ['a', 'b', 'c']);
+  const watched = ['Charizard', 'Incineroar', 'Rillaboom', 'Tornadus'];
+  assert.deepEqual(pokemonAlert(batch, watched), {
+    title: '2 new teams with Charizard, Incineroar and 1 more',
+    body: 'Louisville Regional 2027 and CybertronVGC',
+    path: '?new=1',
+  });
+  assert.deepEqual(pokemonAlert(batch, watched, false), {
+    title: '1 new team with Incineroar and Rillaboom',
+    body: 'Louisville Regional 2027',
+    path: '?new=1',
+  });
+  assert.equal(pokemonAlert(batch, ['Tornadus']), null);
+  const single = new URLSearchParams(
+    pokemonAlert(batch, ['Charizard']).path.slice(1)
+  );
+  assert.equal(single.get('new'), '1');
+  assert.deepEqual(single.getAll('member'), ['["Charizard","","",""]']);
+  assert.deepEqual(newTeamsAlert(batch, false), {
+    title: '1 new Reg M-C team',
+    body: 'Louisville Regional 2027',
+    path: '?new=1',
+  });
+  assert.deepEqual(devicePrefs(), {
+    newTeams: true,
+    newTeamsWithoutEvs: true,
+    pokemon: [],
+    pokemonWithoutEvs: true,
+  });
+  assert.deepEqual(
+    devicePrefs({
+      newTeams: { booleanValue: false },
+      pokemon: {
+        arrayValue: {
+          values: [{ stringValue: 'Incineroar' }, { integerValue: '7' }],
+        },
+      },
+      pokemonWithoutEvs: { booleanValue: false },
+    }),
+    {
+      newTeams: false,
+      newTeamsWithoutEvs: true,
+      pokemon: ['Incineroar'],
+      pokemonWithoutEvs: false,
     }
   );
 });

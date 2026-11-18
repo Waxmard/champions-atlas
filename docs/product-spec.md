@@ -67,11 +67,22 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   added teams) with a blue dot before the team name; the dot stays until a later
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
   those teams.
-- Signed-in iPhone users can turn off **Notifications → New teams** in the
-  account menu (on by default, stored on the device). The catalog refresh sends
-  one banner per batch counting its current-regulation teams, with a body naming
-  the tournaments and YouTubers they came from. Tapping it opens Browse with
-  **New teams only** on.
+- Signed-in iPhone users choose catalog notifications under **Notifications** in
+  the account menu; the choices are stored on the device. **New teams** (on by
+  default) sends one banner per batch counting its current-regulation teams,
+  with a body naming the tournaments and YouTubers they came from. Tapping it
+  opens Browse with **New teams only** on.
+- **Teams with your Pokémon** in the same dialog holds a list of Pokémon (empty
+  by default), chosen from the current regulation's roster and the Pokémon on
+  catalog teams. When a batch has a current-regulation team with any of them,
+  the catalog refresh sends a separate banner counting those teams and naming up
+  to two of the matched Pokémon. Tapping it opens Browse with **New teams only**
+  on, also filtered to that Pokémon when exactly one matched. It is sent whether
+  or not **New teams** is on.
+- Each of the two has its own **Include teams without EV spreads** option, on by
+  default and unavailable while **New teams** is off or the list is empty.
+  Turning it off leaves teams without EV spreads out of that banner's count; no
+  banner is sent when none remain.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
@@ -127,23 +138,29 @@ Saved and Wishlist and syncs like other team content. Saved
 and Wishlist cards show it read-only, with the percentage, once a team has a
 record. On iPhone, the **Log Game Result** shortcut action names the current
 team, or the first team in Saved order when none is current, asks for **Win** or
-**Loss**, and logs it without opening
-the app. Results logged this way join the record the next time the app is
-opened.
+**Loss**, and logs it without opening the app. A banner confirms the result with
+the team's updated record; tapping it opens that team in Saved. Results logged
+this way join the record the next time the app is opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain
-uncommitted, and editor text fields keep focus until a valid option is chosen or
-cleared. Item suggestions include all valid Pokémon Champions items for the
+uncommitted, and other editor text fields keep focus until a valid option is
+chosen or cleared. Item suggestions include all valid Pokémon Champions items for the
 Pokémon, ability suggestions include all legal species abilities, and nature
 suggestions include all 25 standard natures. There is no separate Apply step.
+
+Tapping a move slot selects it; its pencil button opens it for typing. Enter
+takes the exact match, or else the top suggestion, and shows an error when
+nothing matches. Blur, Done, view switches, and swaps keep an exact match and
+otherwise drop the typed text, leaving the slot's previous move.
 
 **Done** commits valid pending input. **Cancel** discards pending input and
 restores the set to how it was when the editor opened, undoing changes saved
 while it was open, without asking. If the set cannot be restored, the editor
 stays open and says so, and **Done** then closes it with the saved changes kept.
 **Advanced set text** explicitly replaces a set. Structured edits preserve
-nicknames and untouched supported lines; they never guess unknown values.
+nicknames and untouched supported lines; apart from Enter in a move slot, they
+never guess unknown values.
 
 **Save team text** replaces the current sets with the edited Showdown text;
 **Reset text** discards its unsaved changes. While team text is unsaved, team
@@ -223,7 +240,8 @@ offer a direct reuse action.
 
 Opening an editor focuses its section heading and never a text field, so no
 keyboard opens on a phone. Focus is shown as a fill rather than a ring or
-outline. Operation errors use alerts. Deliberate
+outline. The selected move slot in the set editor also has a primary-colour
+border. Operation errors use alerts. Deliberate
 actions, including Wishlist additions and removals, imports, collection moves,
 deletions, restorations, copying, and in-game recording, use one temporary status
 message below navigation for three seconds. The message survives navigation but
@@ -476,8 +494,11 @@ collections share the same storage ceiling and sync path (see
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when
-connected. A first sign-in may require connectivity. Native setup and signing
-are described in [iOS installation and Firebase sync](firebase.md).
+connected. A first sign-in may require connectivity. **Copy sync log** in the
+account menu copies the device's last 20 sync failures as JSON (time, step,
+error code and message, and whether the device was online and the app visible)
+for troubleshooting, and confirms with **Sync log copied.** Native setup and
+signing are described in [iOS installation and Firebase sync](firebase.md).
 
 ## Future scope
 

@@ -11,6 +11,31 @@ import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
 export const syncOwnerKey = 'champions-atlas:sync-owner:v2';
 export const syncRecordKey = (owner: string) =>
   `champions-atlas:sync:v2:${owner}`;
+export const syncLogKey = 'champions-atlas:sync-log:v1';
+
+export function readSyncLog(storage: Pick<Storage, 'getItem'>): unknown[] {
+  try {
+    const log: unknown = JSON.parse(storage.getItem(syncLogKey) ?? '[]');
+    return Array.isArray(log) ? log : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordSyncFailure(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  entry: Record<string, unknown>
+): boolean {
+  try {
+    storage.setItem(
+      syncLogKey,
+      JSON.stringify([...readSyncLog(storage), entry].slice(-20))
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const cacheReadError =
   'Sync cache could not be read. Existing data has been left untouched.';
@@ -121,32 +146,13 @@ export function readSyncCache(
   };
 }
 
-function preserveUnknownTeamFields(
-  previous: unknown,
-  next: SavedTeam[] | null
-): SavedTeam[] | null {
-  if (next === null || !Array.isArray(previous)) return next;
-  const byId = new Map(
-    previous.flatMap((team) =>
-      team &&
-      typeof team === 'object' &&
-      !Array.isArray(team) &&
-      'id' in team &&
-      typeof team.id === 'string'
-        ? [[team.id, team as Record<string, unknown>] as const]
-        : []
-    )
-  );
-  return next.map((team) => ({ ...byId.get(team.id), ...team }));
-}
-
 export function composeSyncCache(
   previous: SyncCacheSnapshot | null,
   values: Pick<SyncCacheRecord, 'base' | 'local' | 'setsBase' | 'setsLocal'>
 ): string {
   const root = previous ? { ...previous.root } : {};
-  root.base = preserveUnknownTeamFields(root.base, values.base);
-  root.local = preserveUnknownTeamFields(root.local, values.local);
+  root.base = values.base;
+  root.local = values.local;
   root.setsBase = values.setsBase;
   root.setsLocal = values.setsLocal;
   const raw = JSON.stringify(root);

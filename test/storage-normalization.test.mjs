@@ -13,6 +13,9 @@ import {
   migrateStoredData,
   readSyncCache,
   readSyncCacheSnapshot,
+  readSyncLog,
+  recordSyncFailure,
+  syncLogKey,
   syncRecordKey,
   writeSyncCache,
 } from '../src/lib/storage-migration.ts';
@@ -635,4 +638,26 @@ test('cloud decoding resolves aliases and stages one canonical child', () => {
     assert.throws(run, {
       message: /Cloud current Pokémon sets could not be read/,
     });
+});
+
+test('sync failure log keeps the newest 20 entries and survives bad storage', () => {
+  const target = fakeStorage({ [syncLogKey]: '{' });
+  for (let n = 0; n <= 20; n++)
+    assert.equal(recordSyncFailure(target.storage, { n }), true);
+  const log = readSyncLog(target.storage);
+  assert.equal(log.length, 20);
+  assert.deepEqual(log[0], { n: 1 });
+  assert.deepEqual(log[19], { n: 20 });
+  assert.equal(
+    recordSyncFailure(
+      {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('quota');
+        },
+      },
+      { n: 0 }
+    ),
+    false
+  );
 });

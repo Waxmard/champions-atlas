@@ -12,7 +12,7 @@
   } from '$app/navigation';
   import { page } from '$app/state';
   import { onMount, tick } from 'svelte';
-  import type { ResolvedPathname } from '$app/types';
+  import type { PathnameWithSearchOrHash, ResolvedPathname } from '$app/types';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Search from '@lucide/svelte/icons/search';
   import Folder from '@lucide/svelte/icons/folder';
@@ -23,7 +23,13 @@
     initCatalogRuntime,
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
-  import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
+  import {
+    copySyncLog,
+    initSync,
+    pushNow,
+    signOut,
+    sync,
+  } from '#lib/sync.svelte.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
   import {
     applyGameResults,
@@ -467,18 +473,21 @@
     }
   }
 
-  let newTeamsTapped = false;
+  let tappedPath: string | null = null;
 
-  async function openNewTeams() {
-    if (!newTeamsTapped || !startupSettled) return;
-    newTeamsTapped = false;
+  async function openTapped() {
+    if (tappedPath === null || !startupSettled) return;
+    const path = tappedPath;
+    tappedPath = null;
     if (sync.configured && !sync.user) return;
-    await initCatalogRuntime();
-    await Promise.race([
-      refreshCatalogNow(),
-      new Promise((done) => setTimeout(done, 5000)),
-    ]);
-    void goto(resolve('?new=1'));
+    if (path.startsWith('?')) {
+      await initCatalogRuntime();
+      await Promise.race([
+        refreshCatalogNow(),
+        new Promise((done) => setTimeout(done, 5000)),
+      ]);
+    }
+    void goto(resolve(path as PathnameWithSearchOrHash));
   }
 
   onMount(() => {
@@ -492,9 +501,9 @@
     void initCatalogRuntime();
     initSync();
     const tapListener = isNativeApp
-      ? AtlasNative.addListener('newTeamsTap', () => {
-          newTeamsTapped = true;
-          void openNewTeams();
+      ? AtlasNative.addListener('notificationTap', ({ path }) => {
+          tappedPath = path;
+          void openTapped();
         })
       : null;
     const onVisibility = () => {
@@ -545,7 +554,7 @@
       void sync.user;
       void checkSharedLinks();
       void syncGameResults().catch(() => {});
-      void openNewTeams();
+      void openTapped();
     }
   });
 
@@ -702,6 +711,11 @@
                       >Notifications</DropdownMenu.Item
                     >
                   {/if}
+                  <DropdownMenu.Item
+                    onSelect={copySyncLog}
+                    class="option-row min-h-9 px-2"
+                    >Copy sync log</DropdownMenu.Item
+                  >
                   <DropdownMenu.Item
                     onSelect={signOut}
                     class="option-row min-h-9 px-2">Sign out</DropdownMenu.Item

@@ -53,7 +53,7 @@ enum GameResultStore {
         }
     }
 
-    static func log(_ key: String) -> (name: String, wins: Int, losses: Int)? {
+    static func log(_ key: String) -> (id: String, name: String, wins: Int, losses: Int)? {
         lock.lock()
         defer { lock.unlock() }
         guard let team = UserDefaults.standard.dictionary(forKey: teamKey),
@@ -64,7 +64,7 @@ enum GameResultStore {
         pending[id] = tally
         UserDefaults.standard.set(pending, forKey: pendingKey)
         let total = { (k: String) in min(9999, (team[k] as? Int ?? 0) + (tally[k] ?? 0)) }
-        return (name, total("wins"), total("losses"))
+        return (id, name, total("wins"), total("losses"))
     }
 
     private static func readPending() -> [String: [String: Int]] {
@@ -113,6 +113,10 @@ struct LogGameResultIntent: AppIntent {
         let content = UNMutableNotificationContent()
         content.title = "\(result == .win ? "Win" : "Loss") logged for \(logged.name)"
         content.body = "\(logged.wins)W – \(logged.losses)L · \(Int((Double(logged.wins) / Double(games) * 100).rounded()))%"
+        var destination = URLComponents()
+        destination.path = "saved"
+        destination.queryItems = [URLQueryItem(name: "team", value: logged.id)]
+        content.userInfo = ["path": destination.string ?? "saved"]
         try? await UNUserNotificationCenter.current().add(
             UNNotificationRequest(identifier: GameResultStore.bannerId, content: content, trigger: nil)
         )

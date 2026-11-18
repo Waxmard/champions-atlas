@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import X from '@lucide/svelte/icons/x';
+  import { browsePokemonNames } from '#lib/battle-forms.js';
   import {
     browsePokemon,
     getMemberOptions,
@@ -11,6 +12,7 @@
   import Modal from '#lib/components/Modal.svelte';
   import PokemonPicker from '#lib/components/PokemonPicker.svelte';
   import SpeciesLabel from '#lib/components/SpeciesLabel.svelte';
+  import RemovableChip from '#lib/components/RemovableChip.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
 
   let {
@@ -21,6 +23,7 @@
     onclose,
     actions,
     controls,
+    toggles = [],
   }: {
     teams: Team[];
     filters: MemberFilter[];
@@ -29,18 +32,11 @@
     onclose?: () => void;
     actions?: Snippet;
     controls?: Snippet;
+    toggles?: { label: string; onremove: () => void }[];
   } = $props();
 
   const id = $props.id();
-  const allPokemon = $derived(
-    [
-      ...new Set(
-        teams.flatMap((team) =>
-          team.members.map((member) => browsePokemon(member.pokemon))
-        )
-      ),
-    ].sort()
-  );
+  const allPokemon = $derived(browsePokemonNames(teams));
   const selectedPokemon = $derived(
     new Set(filters.map((filter) => pokemonId(filter.pokemon)))
   );
@@ -81,54 +77,40 @@
   {@render actions?.()}
 </div>
 
-{#snippet selection(filter: MemberFilter, index: number)}
-  <div class="flex min-w-0 items-center gap-2">
-    <span class="min-w-0 text-sm font-semibold wrap-break-word">
-      <SpeciesLabel pokemon={filter.pokemon} spriteSize={24} />
-    </span>
-    <Button
-      type="button"
-      variant="quiet"
-      size="icon-compact"
-      class="shrink-0"
-      aria-label={`Remove ${filter.pokemon}`}
-      onclick={() => onchange(filters.filter((_, i) => i !== index))}
-      ><X class="size-4" aria-hidden="true" /></Button
-    >
-  </div>
-{/snippet}
-
-{#if filters.length}
-  <div class="mt-2 flex flex-wrap items-start gap-2">
+{#if filters.length || toggles.length}
+  <ul class="mt-2 flex flex-wrap items-center gap-2">
     {#each filters as filter, index (filter.pokemon)}
-      <div
-        role="group"
-        aria-label={`${filter.pokemon} constraints`}
-        class="max-w-full min-w-0 border border-base-300 bg-base-100 ps-2 pe-1"
-      >
-        {@render selection(filter, index)}
-        {#if filter.item || filter.ability || filter.move}
-          <div
-            class="flex flex-wrap gap-x-2 pe-1 pb-1 text-[0.8125rem] text-base-content/70"
-          >
-            {#if filter.item}
-              <span class="max-w-full wrap-break-word">Item: {filter.item}</span
-              >
-            {/if}
-            {#if filter.ability}
-              <span class="max-w-full wrap-break-word"
-                >Ability: {filter.ability}</span
-              >
-            {/if}
-            {#if filter.move}
-              <span class="max-w-full wrap-break-word">Move: {filter.move}</span
-              >
-            {/if}
-          </div>
-        {/if}
-      </div>
+      {@const count = [filter.item, filter.ability, filter.move].filter(
+        Boolean
+      ).length}
+      <li class="max-w-full min-w-0">
+        <RemovableChip
+          label={filter.pokemon}
+          onremove={() => onchange(filters.filter((_, i) => i !== index))}
+        >
+          <SpeciesLabel
+            pokemon={filter.pokemon}
+            spriteSize={24}
+            textClass="truncate"
+          />
+          {#if count}
+            <span class="shrink-0 font-normal text-base-content/70"
+              ><span aria-hidden="true">· {count}</span><span class="sr-only"
+                >, {count} {count === 1 ? 'constraint' : 'constraints'}</span
+              ></span
+            >
+          {/if}
+        </RemovableChip>
+      </li>
     {/each}
-  </div>
+    {#each toggles as toggle (toggle.label)}
+      <li class="max-w-full min-w-0">
+        <RemovableChip label={toggle.label} onremove={toggle.onremove}>
+          <span class="truncate">{toggle.label}</span>
+        </RemovableChip>
+      </li>
+    {/each}
+  </ul>
 {/if}
 
 {#if expanded && onclose}
@@ -142,10 +124,23 @@
         <div
           role="group"
           aria-label={`${filter.pokemon} constraints`}
-          class="min-w-0 border border-base-300 bg-base-100 ps-2 pe-1"
+          class="min-w-0 space-y-2 border-t border-base-300 pt-3 first:border-t-0 first:pt-0"
         >
-          {@render selection(filter, index)}
-          <div class="grid grid-cols-2 gap-2 pe-1 pb-2 sm:grid-cols-3">
+          <div class="flex min-w-0 items-center justify-between gap-2">
+            <span class="min-w-0 text-sm font-semibold wrap-break-word">
+              <SpeciesLabel pokemon={filter.pokemon} spriteSize={24} />
+            </span>
+            <Button
+              type="button"
+              variant="quiet"
+              size="icon-compact"
+              class="shrink-0"
+              aria-label={`Remove ${filter.pokemon}`}
+              onclick={() => onchange(filters.filter((_, i) => i !== index))}
+              ><X class="size-4" aria-hidden="true" /></Button
+            >
+          </div>
+          <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
             <label for={`${id}-item-${index}`} class="term min-w-0"
               >Held item
               <select

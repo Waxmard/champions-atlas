@@ -3,11 +3,18 @@ import { readFile } from 'node:fs/promises';
 import { connect } from 'node:http2';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { bestEvidence, youtubeChannelNames } from '../src/lib/catalog.ts';
+import {
+  bestEvidence,
+  pokemonId,
+  writeFilters,
+  youtubeChannelNames,
+} from '../src/lib/catalog.ts';
+import { hasCompleteEvs } from '../src/lib/paste.ts';
 
 const BUNDLE_ID = 'com.maxwellward.championsatlas';
 const APPLE_TEAM_ID = '48TY2FP59S';
 const COLLAPSE_ID = 'catalog-new-teams';
+const POKEMON_COLLAPSE_ID = 'catalog-pokemon-teams';
 const APNS_HOSTS = [
   'https://api.push.apple.com',
   'https://api.sandbox.push.apple.com',
@@ -17,13 +24,17 @@ const FIRESTORE = 'https://firestore.googleapis.com/v1/';
 
 const listFormat = new Intl.ListFormat('en-GB', { type: 'conjunction' });
 
-export function newTeamsAlert(bundle) {
+function batchTeams(bundle, withoutEvs) {
   const ids = new Set(bundle.latestBatch?.ids);
-  const current = bundle.currentRegulation;
-  const teams = bundle.teams.filter(
-    (team) => ids.has(team.id) && team.regulation === current
+  return bundle.teams.filter(
+    (team) =>
+      ids.has(team.id) &&
+      team.regulation === bundle.currentRegulation &&
+      (withoutEvs || hasCompleteEvs(team))
   );
-  if (!teams.length) return null;
+}
+
+function sourcesBody(teams, current) {
   const counts = new Map();
   for (const team of teams) {
     const best = bestEvidence(team, current);
@@ -37,9 +48,56 @@ export function newTeamsAlert(bundle) {
     .map(([source]) => source);
   const shown = sources.slice(0, 3);
   if (sources.length > 3) shown.push(`${sources.length - 3} more`);
+  return shown.length ? listFormat.format(shown) : 'Tap to see them';
+}
+
+export function newTeamsAlert(bundle, withoutEvs = true) {
+  const teams = batchTeams(bundle, withoutEvs);
+  if (!teams.length) return null;
+  const current = bundle.currentRegulation;
   return {
     title: `${teams.length} new Reg ${current} ${teams.length === 1 ? 'team' : 'teams'}`,
-    body: shown.length ? listFormat.format(shown) : 'Tap to see them',
+    body: sourcesBody(teams, current),
+    path: '?new=1',
+  };
+}
+
+export function pokemonAlert(bundle, pokemon, withoutEvs = true) {
+  const watched = new Map(pokemon.map((name) => [pokemonId(name), name]));
+  const found = new Set();
+  const teams = batchTeams(bundle, withoutEvs).filter((team) => {
+    const matched = team.members
+      .map((member) => pokemonId(member.pokemon))
+      .filter((id) => watched.has(id));
+    for (const id of matched) found.add(id);
+    return matched.length > 0;
+  });
+  if (!teams.length) return null;
+  const names = [...watched]
+    .filter(([id]) => found.has(id))
+    .map(([, name]) => name);
+  const shown = names.slice(0, 2);
+  if (names.length > 2) shown.push(`${names.length - 2} more`);
+  return {
+    title: `${teams.length} new ${teams.length === 1 ? 'team' : 'teams'} with ${listFormat.format(shown)}`,
+    body: sourcesBody(teams, bundle.currentRegulation),
+    path:
+      names.length === 1
+        ? `?${writeFilters(new URLSearchParams({ new: '1' }), [
+            { pokemon: names[0], item: '', ability: '', move: '' },
+          ])}`
+        : '?new=1',
+  };
+}
+
+export function devicePrefs(fields = {}) {
+  return {
+    newTeams: fields.newTeams?.booleanValue !== false,
+    newTeamsWithoutEvs: fields.newTeamsWithoutEvs?.booleanValue !== false,
+    pokemon: (fields.pokemon?.arrayValue?.values ?? [])
+      .map((value) => value.stringValue)
+      .filter(Boolean),
+    pokemonWithoutEvs: fields.pokemonWithoutEvs?.booleanValue !== false,
   };
 }
 
@@ -97,7 +155,7 @@ function failureReason(body) {
   }
 }
 
-function send(session, authorization, deviceToken, payload) {
+function send(session, authorization, deviceToken, payload, collapseId) {
   const { promise, resolve: done, reject } = Promise.withResolvers();
   const request = session.request({
     ':method': 'POST',
@@ -105,7 +163,7 @@ function send(session, authorization, deviceToken, payload) {
     authorization,
     'apns-topic': BUNDLE_ID,
     'apns-push-type': 'alert',
-    'apns-collapse-id': COLLAPSE_ID,
+    'apns-collapse-id': collapseId,
     'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400),
   });
   let status = 0;
@@ -123,13 +181,20 @@ function send(session, authorization, deviceToken, payload) {
   return promise;
 }
 
-export async function deliver(sessions, authorization, deviceToken, payload) {
+export async function deliver(
+  sessions,
+  authorization,
+  deviceToken,
+  payload,
+  collapseId
+) {
   for (const session of sessions) {
     const { status, reason } = await send(
       session,
       authorization,
       deviceToken,
-      payload
+      payload,
+      collapseId
     );
     if (status === 200) return 'sent';
     if (status === 410) return 'dead';
@@ -168,19 +233,23 @@ export async function notifyNewTeams({
   const state = await firestore(accessToken, `${documents}/pushState/catalog`);
   if (state?.fields?.announced?.stringValue === batch.addedAt)
     return 'No new teams; nothing sent.';
-  const alert = newTeamsAlert(bundle);
   let summary =
     'The latest batch has no current-regulation teams; nothing sent.';
 
-  if (alert) {
-    const names = [];
+  if (newTeamsAlert(bundle)) {
+    const devices = [];
     let pageToken = '';
     do {
       const page = await firestore(
         accessToken,
-        `${documents}/pushTokens?pageSize=300&mask.fieldPaths=uid&pageToken=${encodeURIComponent(pageToken)}`
+        `${documents}/pushTokens?pageSize=300&mask.fieldPaths=newTeams&mask.fieldPaths=newTeamsWithoutEvs&mask.fieldPaths=pokemon&mask.fieldPaths=pokemonWithoutEvs&pageToken=${encodeURIComponent(pageToken)}`
       );
-      names.push(...(page?.documents ?? []).map((document) => document.name));
+      devices.push(
+        ...(page?.documents ?? []).map((document) => ({
+          name: document.name,
+          prefs: devicePrefs(document.fields),
+        }))
+      );
       pageToken = page?.nextPageToken ?? '';
     } while (pageToken);
 
@@ -193,7 +262,6 @@ export async function notifyNewTeams({
           dsaEncoding: 'ieee-p1363',
         })
     )}`;
-    const payload = JSON.stringify({ aps: { alert } });
     const sessions = APNS_HOSTS.map((host) =>
       connect(host).on('error', (error) =>
         console.error(`APNs connection to ${host} failed: ${error.message}`)
@@ -201,25 +269,39 @@ export async function notifyNewTeams({
     );
     const counts = { sent: 0, dead: 0, rejected: 0, failed: 0 };
     try {
-      for (const name of names) {
-        const outcome = await deliver(
-          sessions,
-          authorization,
-          name.split('/').pop(),
-          payload
-        );
-        if (outcome === 'sent') counts.sent++;
-        else if (outcome === 'dead') {
-          counts.dead++;
-          await firestore(accessToken, `${FIRESTORE}${name}`, {
-            method: 'DELETE',
-          });
-        } else if (outcome.startsWith('rejected')) {
-          counts.rejected++;
-          console.error(`Notification ${outcome}`);
-        } else {
-          counts.failed++;
-          console.error(`Notification ${outcome}`);
+      for (const { name, prefs } of devices) {
+        const pushes = [
+          prefs.newTeams && [
+            COLLAPSE_ID,
+            newTeamsAlert(bundle, prefs.newTeamsWithoutEvs),
+          ],
+          prefs.pokemon.length > 0 && [
+            POKEMON_COLLAPSE_ID,
+            pokemonAlert(bundle, prefs.pokemon, prefs.pokemonWithoutEvs),
+          ],
+        ].filter((push) => push?.[1]);
+        for (const [collapseId, { path, ...alert }] of pushes) {
+          const outcome = await deliver(
+            sessions,
+            authorization,
+            name.split('/').pop(),
+            JSON.stringify({ aps: { alert }, path }),
+            collapseId
+          );
+          if (outcome === 'sent') counts.sent++;
+          else if (outcome === 'dead') {
+            counts.dead++;
+            await firestore(accessToken, `${FIRESTORE}${name}`, {
+              method: 'DELETE',
+            });
+            break;
+          } else if (outcome.startsWith('rejected')) {
+            counts.rejected++;
+            console.error(`Notification ${outcome}`);
+          } else {
+            counts.failed++;
+            console.error(`Notification ${outcome}`);
+          }
         }
       }
     } finally {
@@ -227,9 +309,9 @@ export async function notifyNewTeams({
     }
     if (counts.failed && !counts.sent)
       throw new Error(
-        `${counts.failed} of ${names.length} notifications failed and none were sent; the batch was not marked as announced.`
+        `${counts.failed} notification(s) failed and none were sent; the batch was not marked as announced.`
       );
-    summary = `Sent "${alert.title}" to ${counts.sent} device(s); removed ${counts.dead} stale token(s); ${counts.rejected} rejected; ${counts.failed} failed.`;
+    summary = `Sent ${counts.sent} notification(s) to ${devices.length} device(s); removed ${counts.dead} stale token(s); ${counts.rejected} rejected; ${counts.failed} failed.`;
   }
 
   await firestore(accessToken, `${documents}/pushState/catalog`, {

@@ -47,12 +47,16 @@ import { readNotificationSettings } from './catalog-news.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
   readSyncCache,
+  readSyncLog,
+  recordSyncFailure,
   saveSyncRebase,
   storeCurrentSetSyncCache as store,
   syncOwnerKey,
   syncRecordKey,
   wireCurrentSets,
 } from './storage-migration.ts';
+import { copyText } from './clipboard.ts';
+import { notify } from './notifications.ts';
 import { reloadRegulationOverrides } from './catalog-runtime.svelte.ts';
 import {
   mergeRegulationOverrides,
@@ -101,9 +105,24 @@ const cacheReadError =
 const switchInterruptedError =
   'Sync account switch was interrupted. Existing data has been preserved.';
 
-function fail(error: unknown) {
+const errorCode = (error: unknown) =>
+  error && typeof error === 'object' && 'code' in error
+    ? String(error.code)
+    : '';
+
+function fail(error: unknown, step: string) {
   sync.status = 'error';
   sync.error = error instanceof Error ? error.message : String(error);
+  const cause = error instanceof Error ? error.cause : undefined;
+  recordSyncFailure(localStorage, {
+    at: new Date().toISOString(),
+    step,
+    code: errorCode(error) || errorCode(cause),
+    message: sync.error,
+    cause: cause === undefined ? '' : String(cause),
+    online: navigator.onLine,
+    visible: document.visibilityState === 'visible',
+  });
 }
 
 function invalidate() {
@@ -256,8 +275,8 @@ async function drain(generation: number, id: string) {
             try {
               remote = validatedTeams(parent?.teams);
               validateTeamIds(remote.map((team) => team.id));
-            } catch {
-              throw new Error(cloudReadError);
+            } catch (cause) {
+              throw new Error(cloudReadError, { cause });
             }
           } else {
             if (
@@ -268,23 +287,23 @@ async function drain(generation: number, id: string) {
               throw new Error(cloudReadError);
             try {
               manifest = validateTeamIds(parent.teamIds);
-            } catch {
-              throw new Error(cloudReadError);
+            } catch (cause) {
+              throw new Error(cloudReadError, { cause });
             }
             for (const teamId of manifest) {
               if (!guarded()) throw new Error('Sync account changed.');
               const child = await transaction
                 .get(doc(firestore, 'users', id, 'teams', teamId))
-                .catch(() => {
-                  throw new Error(cloudReadError);
+                .catch((cause: unknown) => {
+                  throw new Error(cloudReadError, { cause });
                 });
               if (!guarded()) throw new Error('Sync account changed.');
               if (!child.exists() || child.data().id !== teamId)
                 throw new Error(cloudReadError);
               try {
                 remote.push(...validatedTeams([child.data()]));
-              } catch {
-                throw new Error(cloudReadError);
+              } catch (cause) {
+                throw new Error(cloudReadError, { cause });
               }
             }
           }
@@ -398,7 +417,7 @@ async function drain(generation: number, id: string) {
       if (generation === session && uid === id) {
         pending = false;
         savePending = false;
-        fail(error);
+        fail(error, 'teams');
       }
       return;
     }
@@ -437,7 +456,7 @@ export async function syncRegulations(): Promise<void> {
       );
     reloadRegulationOverrides();
   } catch (error) {
-    if (generation === session) fail(error);
+    if (generation === session) fail(error, 'regulations');
   }
 }
 
@@ -476,7 +495,7 @@ export function initSync(): void {
         doc(firestore, 'users', uid),
         () => valid(generation, user.uid),
         () => void request(),
-        (error) => generation === session && fail(error)
+        (error) => generation === session && fail(error, 'teams-listener')
       );
       unsubscribeSets = watchCurrentSetDocument(
         doc(firestore, 'users', uid, 'pokemonSetState', 'manifest'),
@@ -490,18 +509,18 @@ export function initSync(): void {
           setManifestSnapshot = next;
           void request();
         },
-        (error) => generation === session && fail(error)
+        (error) => generation === session && fail(error, 'sets-listener')
       );
       unsubscribeRegulations = watchCurrentSetDocument(
         doc(firestore, 'users', uid, 'catalogState', 'regulations'),
         () => valid(generation, user.uid),
         () => void syncRegulations(),
-        (error) => generation === session && fail(error)
+        (error) => generation === session && fail(error, 'regulations-listener')
       );
       void request();
       void syncPushToken();
     } catch (error) {
-      fail(error);
+      fail(error, 'activate');
     }
   }
   onAuthStateChanged(auth, (user) => {
@@ -525,16 +544,13 @@ export async function signIn(): Promise<void> {
     const { idToken } = await AtlasNative.signInWithGoogle();
     await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
   } catch (error) {
-    const code =
-      error && typeof error === 'object' && 'code' in error
-        ? String(error.code)
-        : '';
+    const code = errorCode(error);
     if (code === 'SIGN_IN_CANCELLED') {
       sync.status = 'off';
       sync.error = '';
       return;
     }
-    fail(error);
+    fail(error, 'sign-in');
   }
 }
 
@@ -562,13 +578,13 @@ export async function signOut(): Promise<void> {
   try {
     await signOutOfFirebase(auth);
     if (nativeError) {
-      fail(nativeError);
+      fail(nativeError, 'sign-out');
     } else {
       sync.status = 'off';
       sync.error = '';
     }
   } catch (error) {
-    fail(error);
+    fail(error, 'sign-out');
   }
 }
 
@@ -576,13 +592,14 @@ export async function syncPushToken(): Promise<PushRegistration | null> {
   if (!db || !uid) return null;
   const firestore = db;
   const owner = uid;
-  const enabled = readNotificationSettings(localStorage).newTeams;
+  const settings = readNotificationSettings(localStorage);
+  const enabled = settings.newTeams || settings.pokemon.length > 0;
   try {
     const result = await AtlasNative.registerPush({ authorize: enabled });
     if (result.token && owner === uid) {
       const ref = doc(firestore, 'pushTokens', result.token);
       await (enabled && result.granted
-        ? setDoc(ref, { uid: owner, updatedAt: serverTimestamp() })
+        ? setDoc(ref, { uid: owner, ...settings, updatedAt: serverTimestamp() })
         : deleteDoc(ref));
     }
     return result;
@@ -603,6 +620,13 @@ export async function pushNow(): Promise<void> {
     store(owner, base, local, setsBase, localSets);
     await request(true);
   } catch (error) {
-    fail(error);
+    fail(error, 'push');
   }
+}
+
+export async function copySyncLog(): Promise<void> {
+  const copied = await copyText(
+    JSON.stringify(readSyncLog(localStorage), null, 2)
+  );
+  notify(copied ? 'Sync log copied.' : 'Copy unavailable.');
 }

@@ -19,8 +19,8 @@ public class AtlasNativePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "registerPush", returnType: CAPPluginReturnPromise)
     ]
 
-    func announceNewTeamsTap() {
-        notifyListeners("newTeamsTap", data: [:], retainUntilConsumed: true)
+    func announceTap(_ path: String) {
+        notifyListeners("notificationTap", data: ["path": path], retainUntilConsumed: true)
     }
 
     @objc func signInWithGoogle(_ call: CAPPluginCall) {
@@ -125,6 +125,6 @@ extension AtlasNativePlugin: NotificationHandlerProtocol {
     }
 
     public func didReceive(response: UNNotificationResponse) {
-        announceNewTeamsTap()
+        announceTap(NewTeamPush.path(response))
     }
 }

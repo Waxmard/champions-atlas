@@ -62,6 +62,19 @@
   const filters = $derived(filterState.filters);
   const unknownOnly = $derived(page.url.searchParams.get('unknown') === '1');
   const newOnly = $derived(page.url.searchParams.get('new') === '1');
+  const toggles = $derived([
+    ...(newOnly
+      ? [{ label: 'New teams only', onremove: () => changeOption('new', '') }]
+      : []),
+    ...(unknownOnly
+      ? [
+          {
+            label: 'Unknown regulation only',
+            onremove: () => changeOption('unknown', ''),
+          },
+        ]
+      : []),
+  ]);
   const filterCount = $derived(
     filters.reduce(
       (count, { item, ability, move }) =>
@@ -236,6 +249,7 @@
   <PokemonFilters
     {teams}
     {filters}
+    {toggles}
     onchange={changeFilters}
     expanded={filtersOpen}
     onclose={() => (filtersOpen = false)}
@@ -279,13 +293,6 @@
       </label>
     {/snippet}
   </PokemonFilters>
-
-  {#if unknownOnly}<p class="mt-2 text-sm text-base-content/70">
-      Unknown regulation only
-    </p>{/if}
-  {#if newOnly}<p class="mt-2 text-sm text-base-content/70">
-      New teams only
-    </p>{/if}
 
   <section aria-label="Matching teams" class="mt-5 min-w-0">
     <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
