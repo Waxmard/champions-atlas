@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.16.0](https://github.com/Waxmard/champions-atlas/compare/v0.15.0...v0.16.0) (2026-11-18)
+
+
+### Features
+
+* add push alerts for watched Pokémon ([#121](https://github.com/Waxmard/champions-atlas/issues/121)) ([dad4011](https://github.com/Waxmard/champions-atlas/commit/dad40111086cf09d321bdd4d7a45249f20f568e8))
+
 ## [0.15.0](https://github.com/Waxmard/champions-atlas/compare/v0.14.0...v0.15.0) (2026-11-17)
 
 
