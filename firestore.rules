@@ -93,7 +93,7 @@ service cloud.firestore {
         && request.resource.data.get('newTeams', true) is bool
         && request.resource.data.get('newTeamsWithoutEvs', true) is bool
         && request.resource.data.get('pokemon', []) is list
-        && request.resource.data.get('pokemon', []).size() <= 20
+        && request.resource.data.get('pokemon', []).size() <= 500
         && request.resource.data.get('pokemonWithoutEvs', true) is bool;
       allow delete: if request.auth != null
         && (resource == null || resource.data.uid == request.auth.uid);

@@ -1,5 +1,4 @@
 export const notificationSettingsKey = 'champions-atlas:notifications:v1';
-export const MAX_NOTIFY_POKEMON = 20;
 
 export interface NotificationSettings {
   newTeams: boolean;
@@ -27,11 +26,9 @@ export function readNotificationSettings(
     newTeams: stored.newTeams !== false,
     newTeamsWithoutEvs: stored.newTeamsWithoutEvs !== false,
     pokemon: Array.isArray(stored.pokemon)
-      ? stored.pokemon
-          .filter(
-            (name): name is string => typeof name === 'string' && name !== ''
-          )
-          .slice(0, MAX_NOTIFY_POKEMON)
+      ? stored.pokemon.filter(
+          (name): name is string => typeof name === 'string' && name !== ''
+        )
       : [],
     pokemonWithoutEvs: stored.pokemonWithoutEvs !== false,
   };

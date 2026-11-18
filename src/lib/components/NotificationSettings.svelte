@@ -1,14 +1,12 @@
 <script lang="ts">
-  import X from '@lucide/svelte/icons/x';
   import Modal from './Modal.svelte';
   import PokemonPicker from './PokemonPicker.svelte';
   import SpeciesLabel from './SpeciesLabel.svelte';
-  import { Button } from '#lib/components/ui/button/index.js';
+  import RemovableChip from './RemovableChip.svelte';
   import { browsePokemonNames } from '#lib/battle-forms.js';
   import { pokemonId } from '#lib/catalog.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import {
-    MAX_NOTIFY_POKEMON,
     readNotificationSettings,
     writeNotificationSettings,
     type NotificationSettings,
@@ -105,37 +103,28 @@
         options={available}
         onselect={(pokemon) =>
           void save({ ...settings, pokemon: [...settings.pokemon, pokemon] })}
-        disabled={busy || settings.pokemon.length >= MAX_NOTIFY_POKEMON}
+        disabled={busy}
         label="Add a Pokémon to notify about"
         placeholder="Add a Pokémon…"
-        disabledPlaceholder={busy
-          ? 'Saving…'
-          : `${MAX_NOTIFY_POKEMON} Pokémon selected`}
+        disabledPlaceholder="Saving…"
       />
       {#if settings.pokemon.length}
-        <ul class="flex flex-wrap gap-2">
+        <ul class="flex flex-wrap items-center gap-2">
           {#each settings.pokemon as pokemon (pokemon)}
-            <li
-              class="flex min-w-0 items-center gap-2 border border-base-300 bg-base-100 ps-2 pe-1"
-            >
-              <span class="min-w-0 text-sm font-semibold wrap-break-word">
-                <SpeciesLabel {pokemon} spriteSize={24} />
-              </span>
-              <Button
-                type="button"
-                variant="quiet"
-                size="icon-compact"
-                class="shrink-0"
-                aria-label={`Remove ${pokemon}`}
+            <li class="max-w-full min-w-0">
+              <RemovableChip
+                label={pokemon}
                 disabled={busy}
-                onclick={() =>
+                onremove={() =>
                   void save({
                     ...settings,
                     pokemon: settings.pokemon.filter(
                       (name) => name !== pokemon
                     ),
-                  })}><X class="size-4" aria-hidden="true" /></Button
+                  })}
               >
+                <SpeciesLabel {pokemon} spriteSize={24} textClass="truncate" />
+              </RemovableChip>
             </li>
           {/each}
         </ul>
