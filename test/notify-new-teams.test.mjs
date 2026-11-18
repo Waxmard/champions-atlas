@@ -39,7 +39,7 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
   assert.equal(newTeamsAlert(bundle([team('old', [regional], 'M-B')])), null);
   assert.deepEqual(
     newTeamsAlert(bundle([team('a', [report('Poch.ms collection')])])),
-    { title: '1 new Reg M-C team', body: 'Tap to see them' }
+    { title: '1 new Reg M-C team', body: 'Tap to see them', path: '?new=1' }
   );
   assert.deepEqual(
     newTeamsAlert(
@@ -60,6 +60,7 @@ test('newTeamsAlert counts the latest batch in the current regulation and names 
     {
       title: '6 new Reg M-C teams',
       body: 'Louisville Regional 2027, CybertronVGC, Nice Regional 2027 and 1 more',
+      path: '?new=1',
     }
   );
 });
@@ -92,15 +93,23 @@ test('pokemonAlert, the EV toggle and devicePrefs work per device', () => {
   assert.deepEqual(pokemonAlert(batch, watched), {
     title: '2 new teams with Charizard, Incineroar and 1 more',
     body: 'Louisville Regional 2027 and CybertronVGC',
+    path: '?new=1',
   });
   assert.deepEqual(pokemonAlert(batch, watched, false), {
     title: '1 new team with Incineroar and Rillaboom',
     body: 'Louisville Regional 2027',
+    path: '?new=1',
   });
   assert.equal(pokemonAlert(batch, ['Tornadus']), null);
+  const single = new URLSearchParams(
+    pokemonAlert(batch, ['Charizard']).path.slice(1)
+  );
+  assert.equal(single.get('new'), '1');
+  assert.deepEqual(single.getAll('member'), ['["Charizard","","",""]']);
   assert.deepEqual(newTeamsAlert(batch, false), {
     title: '1 new Reg M-C team',
     body: 'Louisville Regional 2027',
+    path: '?new=1',
   });
   assert.deepEqual(devicePrefs(), {
     newTeams: true,

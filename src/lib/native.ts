@@ -22,8 +22,8 @@ interface AtlasNativePlugin {
   acknowledgeResults(options: { results: GameTally[] }): Promise<void>;
   registerPush(options: { authorize: boolean }): Promise<PushRegistration>;
   addListener(
-    eventName: 'newTeamsTap',
-    listener: () => void
+    eventName: 'notificationTap',
+    listener: (tap: { path: string }) => void
   ): Promise<PluginListenerHandle>;
 }
 

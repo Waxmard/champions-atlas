@@ -3,9 +3,13 @@ import UserNotifications
 
 @MainActor
 enum NewTeamPush {
-    static var launchedFromTap = false
+    static var launchPath: String?
     static let bannerIds = ["catalog-new-teams", "catalog-pokemon-teams"]
     private static var waiting: [UUID: CheckedContinuation<String?, Never>] = [:]
+
+    nonisolated static func path(_ response: UNNotificationResponse) -> String {
+        response.notification.request.content.userInfo["path"] as? String ?? "?new=1"
+    }
 
     static func authorize() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert])) ?? false

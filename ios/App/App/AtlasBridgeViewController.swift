@@ -6,8 +6,9 @@ class AtlasBridgeViewController: CAPBridgeViewController {
         let plugin = AtlasNativePlugin()
         bridge?.registerPluginInstance(plugin)
         bridge?.notificationRouter.pushNotificationHandler = plugin
-        if NewTeamPush.launchedFromTap {
-            plugin.announceNewTeamsTap()
+        bridge?.notificationRouter.localNotificationHandler = plugin
+        if let path = NewTeamPush.launchPath {
+            plugin.announceTap(path)
         }
         NotificationCenter.default.addObserver(
             self,

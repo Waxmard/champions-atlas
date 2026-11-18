@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
   bestEvidence,
   pokemonId,
+  writeFilters,
   youtubeChannelNames,
 } from '../src/lib/catalog.ts';
 import { hasCompleteEvs } from '../src/lib/paste.ts';
@@ -57,6 +58,7 @@ export function newTeamsAlert(bundle, withoutEvs = true) {
   return {
     title: `${teams.length} new Reg ${current} ${teams.length === 1 ? 'team' : 'teams'}`,
     body: sourcesBody(teams, current),
+    path: '?new=1',
   };
 }
 
@@ -79,6 +81,12 @@ export function pokemonAlert(bundle, pokemon, withoutEvs = true) {
   return {
     title: `${teams.length} new ${teams.length === 1 ? 'team' : 'teams'} with ${listFormat.format(shown)}`,
     body: sourcesBody(teams, bundle.currentRegulation),
+    path:
+      names.length === 1
+        ? `?${writeFilters(new URLSearchParams({ new: '1' }), [
+            { pokemon: names[0], item: '', ability: '', move: '' },
+          ])}`
+        : '?new=1',
   };
 }
 
@@ -272,12 +280,12 @@ export async function notifyNewTeams({
             pokemonAlert(bundle, prefs.pokemon, prefs.pokemonWithoutEvs),
           ],
         ].filter((push) => push?.[1]);
-        for (const [collapseId, alert] of pushes) {
+        for (const [collapseId, { path, ...alert }] of pushes) {
           const outcome = await deliver(
             sessions,
             authorization,
             name.split('/').pop(),
-            JSON.stringify({ aps: { alert } }),
+            JSON.stringify({ aps: { alert }, path }),
             collapseId
           );
           if (outcome === 'sent') counts.sent++;
