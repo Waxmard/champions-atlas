@@ -43,7 +43,7 @@
   const moveDisabled = $derived(
     disabled || dirty || pending || movedId === teamId
   );
-  const action = 'gap-1 px-2 landscape:md:justify-start';
+  const action = 'gap-1 px-2';
   $effect(() => {
     if (!edited && errorMessage === WISHLIST_EDITED_ERROR) errorMessage = '';
   });
@@ -84,7 +84,7 @@
 </script>
 
 <div
-  class="flex min-w-0 flex-wrap items-center gap-x-1 landscape:md:flex-col landscape:md:items-stretch [&>div>button]:order-1 [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:w-full [&>div>button]:max-w-full [&>div>button]:justify-start [&>div>button]:gap-1 [&>div>button]:px-2 [&>div>button]:text-start [&>div>button]:whitespace-normal [&>div>p]:px-2"
+  class="flex min-w-0 flex-wrap items-center gap-x-1 [&>div>button]:order-1 [&>div>button]:h-auto [&>div>button]:min-h-11 [&>div>button]:w-full [&>div>button]:max-w-full [&>div>button]:justify-start [&>div>button]:gap-1 [&>div>button]:px-2 [&>div>button]:text-start [&>div>button]:whitespace-normal [&>div>p]:px-2"
 >
   <Button
     variant="quiet"
@@ -98,7 +98,7 @@
   </Button>
   <Button
     variant="danger-quiet"
-    class="{action} ms-auto landscape:md:ms-0"
+    class="{action} ms-auto"
     aria-label="Delete team"
     data-preserve-team-name
     disabled={deleteDisabled || pending || movedId === teamId}

@@ -221,8 +221,8 @@
   <title>Champion's Atlas — Find your next team</title>
 </svelte:head>
 
-<main id="main" class="app-container py-6 sm:py-8">
-  <header>
+<main id="main" class="app-container py-6 sm:py-8 phone-landscape:py-2">
+  <header class="phone-landscape:sr-only">
     <h1
       class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
     >

@@ -57,7 +57,7 @@
     if (event.target === event.currentTarget) close();
   }}
   aria-labelledby={id}
-  class="dialog-motion fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
+  class="dialog-motion fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl phone-landscape:w-[calc(100%-2rem-env(safe-area-inset-left)-env(safe-area-inset-right))] phone-landscape:max-w-3xl"
 >
   <header
     class="flex shrink-0 items-center gap-2 border-b border-base-300 py-1 ps-4 pe-1"

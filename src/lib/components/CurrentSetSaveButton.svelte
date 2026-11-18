@@ -337,7 +337,7 @@
       oncancel={handleDialogCancel}
       aria-labelledby={`current-set-save-title-${uid}`}
       aria-describedby={`current-set-save-description-${uid}`}
-      class="dialog-motion fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
+      class="dialog-motion fixed inset-0 z-50 m-auto flex max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
     >
       <header class="shrink-0 border-b border-base-300 p-5">
         <h2

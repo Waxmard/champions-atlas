@@ -34,12 +34,12 @@
 </script>
 
 <header
-  class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-4 pb-3 sm:px-6 sm:pt-5"
+  class="max-h-[30dvh] shrink-0 overflow-y-auto overscroll-contain border-b border-base-300 px-5 pt-4 pb-3 sm:px-6 sm:pt-5 phone-landscape:max-h-none phone-landscape:border-r phone-landscape:border-b-0 phone-landscape:px-4 phone-landscape:pt-4"
 >
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h2
       bind:this={heading}
-      class="min-w-[min(6rem,100%)] flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere sm:text-[1.375rem]"
+      class="min-w-[min(6rem,100%)] flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere sm:text-[1.375rem] phone-landscape:text-lg"
       tabindex="-1"
       data-editor-section={section}
     >
@@ -60,7 +60,10 @@
       >
     {/if}
   </div>
-  <nav aria-label="Set sections" class="mt-2.5 flex flex-wrap gap-1">
+  <nav
+    aria-label="Set sections"
+    class="mt-2.5 flex flex-wrap gap-1 phone-landscape:grid phone-landscape:grid-cols-2"
+  >
     {#each SECTIONS as { id, label } (id)}
       <Button
         variant={view === id ? 'primary' : 'quiet'}

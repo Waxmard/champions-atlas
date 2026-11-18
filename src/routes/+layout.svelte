@@ -63,7 +63,7 @@
     isBrowse ? resolve(`?${page.url.searchParams}`) : resolve('?browse=all')
   );
   const tabClass = (active: boolean) =>
-    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none transition-[scale] duration-150 active:scale-95 landscape:md:flex-row landscape:md:gap-1.5 landscape:md:text-xs [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
+    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none transition-[scale] duration-150 active:scale-95 [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
 
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
   const userInitials = $derived(
@@ -533,7 +533,7 @@
       window.removeEventListener('hashchange', onHashChange);
       document.removeEventListener('visibilitychange', onVisibility);
       void tapListener?.then((handle) => handle.remove());
-      document.documentElement.style.removeProperty('--app-header-height');
+      document.documentElement.style.removeProperty('--app-header-measured');
     };
   });
 
@@ -592,10 +592,10 @@
   $effect(() => {
     if (headerHeight)
       document.documentElement.style.setProperty(
-        '--app-header-height',
+        '--app-header-measured',
         headerHeight + 'px'
       );
-    else document.documentElement.style.removeProperty('--app-header-height');
+    else document.documentElement.style.removeProperty('--app-header-measured');
   });
 </script>
 
@@ -627,7 +627,7 @@
 {:else}
   <header
     bind:clientHeight={headerHeight}
-    class="sticky top-0 z-40 border-b border-base-300 bg-base-100 [view-transition-name:app-header]"
+    class="sticky top-0 z-40 border-b border-base-300 bg-base-100 [view-transition-name:app-header] phone-landscape:static"
   >
     <div
       class="app-container flex items-center justify-between gap-2 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5"
@@ -736,7 +736,7 @@
     {@render children()}
   {/key}
   <footer
-    class="mx-auto mt-2 mb-[var(--app-tabbar-height)] max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
+    class="app-container mt-2 mb-[var(--app-tabbar-height)] border-t border-base-content/25 py-6"
   >
     <p class="provenance max-w-4xl">
       An independent fan project. Pokémon belongs to its respective owners. Team
@@ -765,9 +765,11 @@
   </footer>
   <nav
     aria-label="Main"
-    class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)] [view-transition-name:app-tabbar]"
+    class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)] [view-transition-name:app-tabbar] phone-landscape:inset-y-0 phone-landscape:right-auto phone-landscape:h-auto phone-landscape:w-[calc(var(--app-rail-width)+env(safe-area-inset-left))] phone-landscape:border-t-0 phone-landscape:border-r phone-landscape:pb-0 phone-landscape:pl-[env(safe-area-inset-left)]"
   >
-    <div class="app-container grid h-full grid-cols-3 items-center gap-1">
+    <div
+      class="app-container grid h-full grid-cols-3 items-center gap-1 phone-landscape:grid-cols-1 phone-landscape:content-center phone-landscape:px-1"
+    >
       <a
         href={brandHref}
         aria-current={isBrowse ? 'page' : undefined}

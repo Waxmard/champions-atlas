@@ -24,7 +24,7 @@
 </script>
 
 <div
-  class="team-sheet-grid grid min-w-0 [grid-template-columns:repeat(auto-fit,minmax(min(100%,max(9.5rem,45%)),1fr))] items-start gap-3 lg:grid-cols-3 landscape:md:grid-cols-3"
+  class="team-sheet-grid grid min-w-0 [grid-template-columns:repeat(auto-fit,minmax(min(100%,max(9.5rem,45%)),1fr))] items-start gap-3 lg:grid-cols-3 phone-landscape:grid-cols-3"
 >
   {#each members as member, index (index)}
     <section
