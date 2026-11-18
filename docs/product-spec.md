@@ -144,17 +144,23 @@ this way join the record the next time the app is opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain
-uncommitted, and editor text fields keep focus until a valid option is chosen or
-cleared. Item suggestions include all valid Pokémon Champions items for the
+uncommitted, and other editor text fields keep focus until a valid option is
+chosen or cleared. Item suggestions include all valid Pokémon Champions items for the
 Pokémon, ability suggestions include all legal species abilities, and nature
 suggestions include all 25 standard natures. There is no separate Apply step.
+
+Tapping a move slot selects it; its pencil button opens it for typing. Enter
+takes the exact match, or else the top suggestion, and shows an error when
+nothing matches. Blur keeps an exact match and otherwise drops the typed text,
+leaving the slot's previous move.
 
 **Done** commits valid pending input. **Cancel** discards pending input and
 restores the set to how it was when the editor opened, undoing changes saved
 while it was open, without asking. If the set cannot be restored, the editor
 stays open and says so, and **Done** then closes it with the saved changes kept.
 **Advanced set text** explicitly replaces a set. Structured edits preserve
-nicknames and untouched supported lines; they never guess unknown values.
+nicknames and untouched supported lines; apart from Enter in a move slot, they
+never guess unknown values.
 
 **Save team text** replaces the current sets with the edited Showdown text;
 **Reset text** discards its unsaved changes. While team text is unsaved, team
