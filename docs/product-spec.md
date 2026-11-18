@@ -151,8 +151,8 @@ suggestions include all 25 standard natures. There is no separate Apply step.
 
 Tapping a move slot selects it; its pencil button opens it for typing. Enter
 takes the exact match, or else the top suggestion, and shows an error when
-nothing matches. Blur keeps an exact match and otherwise drops the typed text,
-leaving the slot's previous move.
+nothing matches. Blur, Done, view switches, and swaps keep an exact match and
+otherwise drop the typed text, leaving the slot's previous move.
 
 **Done** commits valid pending input. **Cancel** discards pending input and
 restores the set to how it was when the editor opened, undoing changes saved

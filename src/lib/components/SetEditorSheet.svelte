@@ -354,6 +354,7 @@
     return !error;
   }
   function selectMoveSlot(index: number, edit: boolean) {
+    if (edit && editingMoveSlot === index) return;
     if (!commitMoveText(false)) return focusError();
     activeMoveSlot = index;
     editingMoveSlot = edit ? index : null;
