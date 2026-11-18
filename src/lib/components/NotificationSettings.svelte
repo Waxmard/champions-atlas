@@ -1,35 +1,55 @@
 <script lang="ts">
+  import X from '@lucide/svelte/icons/x';
   import Modal from './Modal.svelte';
+  import PokemonPicker from './PokemonPicker.svelte';
+  import SpeciesLabel from './SpeciesLabel.svelte';
+  import { Button } from '#lib/components/ui/button/index.js';
+  import { browsePokemonNames } from '#lib/battle-forms.js';
+  import { pokemonId } from '#lib/catalog.js';
+  import { catalogState } from '#lib/catalog-runtime.svelte.js';
   import {
+    MAX_NOTIFY_POKEMON,
     readNotificationSettings,
     writeNotificationSettings,
+    type NotificationSettings,
   } from '#lib/catalog-news.js';
   import { syncPushToken } from '#lib/sync.svelte.js';
 
   let { onclose }: { onclose: () => void } = $props();
 
-  let enabled = $state(readNotificationSettings(localStorage).newTeams);
+  let settings = $state.raw(readNotificationSettings(localStorage));
   let busy = $state(false);
   let message = $state('');
 
-  async function save(event: Event & { currentTarget: HTMLInputElement }) {
-    const wanted = event.currentTarget.checked;
+  const available = $derived.by(() => {
+    const chosen = new Set(settings.pokemon.map(pokemonId));
+    return browsePokemonNames(catalogState.catalog.teams).filter(
+      (name) => !chosen.has(pokemonId(name))
+    );
+  });
+
+  async function save(next: NotificationSettings) {
+    const previous = settings;
     busy = true;
     message = '';
     try {
-      writeNotificationSettings(localStorage, { newTeams: wanted });
+      settings = next;
+      writeNotificationSettings(localStorage, next);
       const result = await syncPushToken();
-      if (wanted && !(result?.granted && result.token)) {
-        writeNotificationSettings(localStorage, { newTeams: false });
+      if (
+        (next.newTeams || next.pokemon.length > 0) &&
+        !(result?.granted && result.token)
+      ) {
+        settings = previous;
+        writeNotificationSettings(localStorage, previous);
         if (result?.token) await syncPushToken();
-        enabled = false;
         message =
           result && !result.granted
             ? 'Notifications are turned off for this app. Allow them in iPhone Settings, then turn this on again.'
             : 'Notifications could not be turned on. Try again.';
       }
     } catch {
-      enabled = readNotificationSettings(localStorage).newTeams;
+      settings = readNotificationSettings(localStorage);
       message = 'This setting could not be saved.';
     } finally {
       busy = false;
@@ -37,29 +57,99 @@
   }
 </script>
 
-<Modal title="Notifications" {onclose}>
-  <label class="flex min-h-11 cursor-pointer items-center gap-3">
+{#snippet withoutEvs(
+  key: 'newTeamsWithoutEvs' | 'pokemonWithoutEvs',
+  off: boolean
+)}
+  <label class="flex min-h-11 cursor-pointer items-center gap-3 ps-8">
     <input
       type="checkbox"
       class="size-5 accent-primary"
-      bind:checked={enabled}
-      disabled={busy}
-      onchange={save}
+      checked={settings[key]}
+      disabled={busy || off}
+      onchange={(event) =>
+        void save({ ...settings, [key]: event.currentTarget.checked })}
     />
-    <span class="min-w-0">
-      <span class="block font-semibold">New teams</span>
-      <span class="provenance block"
-        >When teams are added to the current regulation.</span
-      >
-    </span>
+    <span>Include teams without EV spreads</span>
   </label>
-  {#if message}
-    <p
-      role="alert"
-      class="mt-3 text-sm"
-      style="color: var(--color-error-content)"
-    >
-      {message}
-    </p>
-  {/if}
+{/snippet}
+
+<Modal title="Notifications" {onclose}>
+  <div class="space-y-5">
+    <section>
+      <label class="flex min-h-11 cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          class="size-5 accent-primary"
+          checked={settings.newTeams}
+          disabled={busy}
+          onchange={(event) =>
+            void save({ ...settings, newTeams: event.currentTarget.checked })}
+        />
+        <span class="min-w-0">
+          <span class="block font-semibold">New teams</span>
+          <span class="provenance block"
+            >When teams are added to the current regulation.</span
+          >
+        </span>
+      </label>
+      {@render withoutEvs('newTeamsWithoutEvs', !settings.newTeams)}
+    </section>
+    <section class="space-y-2 border-t border-base-300 pt-4">
+      <h3 class="font-semibold">Teams with your Pokémon</h3>
+      <p class="provenance">
+        A separate notification when a new team has any of these Pokémon.
+      </p>
+      <PokemonPicker
+        portal={false}
+        options={available}
+        onselect={(pokemon) =>
+          void save({ ...settings, pokemon: [...settings.pokemon, pokemon] })}
+        disabled={busy || settings.pokemon.length >= MAX_NOTIFY_POKEMON}
+        label="Add a Pokémon to notify about"
+        placeholder="Add a Pokémon…"
+        disabledPlaceholder={busy
+          ? 'Saving…'
+          : `${MAX_NOTIFY_POKEMON} Pokémon selected`}
+      />
+      {#if settings.pokemon.length}
+        <ul class="flex flex-wrap gap-2">
+          {#each settings.pokemon as pokemon (pokemon)}
+            <li
+              class="flex min-w-0 items-center gap-2 border border-base-300 bg-base-100 ps-2 pe-1"
+            >
+              <span class="min-w-0 text-sm font-semibold wrap-break-word">
+                <SpeciesLabel {pokemon} spriteSize={24} />
+              </span>
+              <Button
+                type="button"
+                variant="quiet"
+                size="icon-compact"
+                class="shrink-0"
+                aria-label={`Remove ${pokemon}`}
+                disabled={busy}
+                onclick={() =>
+                  void save({
+                    ...settings,
+                    pokemon: settings.pokemon.filter(
+                      (name) => name !== pokemon
+                    ),
+                  })}><X class="size-4" aria-hidden="true" /></Button
+              >
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      {@render withoutEvs('pokemonWithoutEvs', settings.pokemon.length === 0)}
+    </section>
+    {#if message}
+      <p
+        role="alert"
+        class="mt-3 text-sm"
+        style="color: var(--color-error-content)"
+      >
+        {message}
+      </p>
+    {/if}
+  </div>
 </Modal>

@@ -4,12 +4,38 @@ import { readNotificationSettings } from '../src/lib/catalog-news.ts';
 
 const stored = (value) => ({ getItem: () => value });
 
-test('readNotificationSettings is off only for an explicit false', () => {
-  assert.deepEqual(readNotificationSettings(stored(null)), { newTeams: true });
-  assert.deepEqual(readNotificationSettings(stored('{"newTeams":"yes"}')), {
-    newTeams: true,
-  });
+const defaults = {
+  newTeams: true,
+  newTeamsWithoutEvs: true,
+  pokemon: [],
+  pokemonWithoutEvs: true,
+};
+
+test('readNotificationSettings decodes stored settings with safe defaults', () => {
+  assert.deepEqual(readNotificationSettings(stored(null)), defaults);
+  assert.deepEqual(
+    readNotificationSettings(stored('{"newTeams":"yes"}')),
+    defaults
+  );
   assert.deepEqual(readNotificationSettings(stored('{"newTeams":false}')), {
+    ...defaults,
     newTeams: false,
   });
+  assert.deepEqual(
+    readNotificationSettings(
+      stored(
+        '{"newTeams":false,"newTeamsWithoutEvs":false,"pokemon":["Incineroar",7,""],"pokemonWithoutEvs":false}'
+      )
+    ),
+    {
+      newTeams: false,
+      newTeamsWithoutEvs: false,
+      pokemon: ['Incineroar'],
+      pokemonWithoutEvs: false,
+    }
+  );
+  assert.deepEqual(
+    readNotificationSettings(stored('{"pokemon":"Incineroar"}')),
+    defaults
+  );
 });

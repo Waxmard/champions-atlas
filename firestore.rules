@@ -87,9 +87,14 @@ service cloud.firestore {
       allow create, update: if request.auth != null
         && token.matches('^[0-9a-f]{64,200}$')
         && request.resource.data.keys().hasAll(['uid', 'updatedAt'])
-        && request.resource.data.keys().hasOnly(['uid', 'updatedAt'])
+        && request.resource.data.keys().hasOnly(['uid', 'updatedAt', 'newTeams', 'newTeamsWithoutEvs', 'pokemon', 'pokemonWithoutEvs'])
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.get('newTeams', true) is bool
+        && request.resource.data.get('newTeamsWithoutEvs', true) is bool
+        && request.resource.data.get('pokemon', []) is list
+        && request.resource.data.get('pokemon', []).size() <= 20
+        && request.resource.data.get('pokemonWithoutEvs', true) is bool;
       allow delete: if request.auth != null
         && (resource == null || resource.data.uid == request.auth.uid);
     }

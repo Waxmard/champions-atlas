@@ -1,7 +1,7 @@
 import { Generations } from '@smogon/calc/dist/data/index.js';
 import type { ID } from '@smogon/calc/dist/data/interface.js';
 import { browseForms } from './battle-forms.ts';
-import { isCompleteSpread, parseChampionsSpread } from './paste.ts';
+import { hasCompleteEvs } from './paste.ts';
 import { recencyPeriod } from './recency.ts';
 import { splitTeamName, videoHeading, withoutDivision } from './team-name.ts';
 
@@ -706,11 +706,7 @@ const browseCache = new WeakMap<
 function browseRankingOf(team: Team, current: string) {
   const cached = browseCache.get(team);
   if (cached?.current === current) return cached;
-  const completeEvs =
-    team.members.length === 6 &&
-    team.members.every((member) =>
-      isCompleteSpread(parseChampionsSpread(member.spread))
-    );
+  const completeEvs = hasCompleteEvs(team);
   const hasVideo =
     team.reports.some((report) => isDirectYoutubeVideo(report.sourceUrl)) ||
     team.members.some((member) =>

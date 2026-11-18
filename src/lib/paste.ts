@@ -1,4 +1,4 @@
-import { normalize, type Member } from './catalog.ts';
+import { normalize, type Member, type Team } from './catalog.ts';
 import { canonicalName } from './canonical-names.ts';
 
 export const CHAMPIONS_STATS = [
@@ -63,6 +63,12 @@ export const isCompleteSpread = (
   CHAMPIONS_STATS.every(
     (stat) =>
       Number.isInteger(spread[stat]) && spread[stat] >= 0 && spread[stat] <= 32
+  );
+
+export const hasCompleteEvs = (team: Pick<Team, 'members'>) =>
+  team.members.length === 6 &&
+  team.members.every((member) =>
+    isCompleteSpread(parseChampionsSpread(member.spread))
   );
 
 export interface SpreadDelta {

@@ -4,7 +4,7 @@ import UserNotifications
 @MainActor
 enum NewTeamPush {
     static var launchedFromTap = false
-    static let bannerId = "catalog-new-teams"
+    static let bannerIds = ["catalog-new-teams", "catalog-pokemon-teams"]
     private static var waiting: [UUID: CheckedContinuation<String?, Never>] = [:]
 
     static func authorize() async -> Bool {
@@ -30,6 +30,6 @@ enum NewTeamPush {
     }
 
     static func clearBanner() {
-        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: [bannerId])
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: bannerIds)
     }
 }

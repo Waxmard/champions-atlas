@@ -576,13 +576,14 @@ export async function syncPushToken(): Promise<PushRegistration | null> {
   if (!db || !uid) return null;
   const firestore = db;
   const owner = uid;
-  const enabled = readNotificationSettings(localStorage).newTeams;
+  const settings = readNotificationSettings(localStorage);
+  const enabled = settings.newTeams || settings.pokemon.length > 0;
   try {
     const result = await AtlasNative.registerPush({ authorize: enabled });
     if (result.token && owner === uid) {
       const ref = doc(firestore, 'pushTokens', result.token);
       await (enabled && result.granted
-        ? setDoc(ref, { uid: owner, updatedAt: serverTimestamp() })
+        ? setDoc(ref, { uid: owner, ...settings, updatedAt: serverTimestamp() })
         : deleteDoc(ref));
     }
     return result;

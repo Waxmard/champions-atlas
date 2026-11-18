@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import X from '@lucide/svelte/icons/x';
+  import { browsePokemonNames } from '#lib/battle-forms.js';
   import {
     browsePokemon,
     getMemberOptions,
@@ -32,15 +33,7 @@
   } = $props();
 
   const id = $props.id();
-  const allPokemon = $derived(
-    [
-      ...new Set(
-        teams.flatMap((team) =>
-          team.members.map((member) => browsePokemon(member.pokemon))
-        )
-      ),
-    ].sort()
-  );
+  const allPokemon = $derived(browsePokemonNames(teams));
   const selectedPokemon = $derived(
     new Set(filters.map((filter) => pokemonId(filter.pokemon)))
   );
