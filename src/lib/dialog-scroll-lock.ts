@@ -7,7 +7,6 @@ export function lockBodyScroll(): () => void {
     top: body.style.top,
     left: body.style.left,
     width: body.style.width,
-    overflow: body.style.overflow,
   };
   body.style.position = 'fixed';
   body.style.top = `-${scrollY}px`;
@@ -20,7 +19,7 @@ export function lockBodyScroll(): () => void {
     body.style.top = styles.top;
     body.style.left = styles.left;
     body.style.width = styles.width;
-    body.style.overflow = styles.overflow;
+    body.style.overflow = '';
     window.scrollTo(scrollX, scrollY);
   };
 }
