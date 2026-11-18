@@ -36,7 +36,8 @@
       writeNotificationSettings(localStorage, next);
       const result = await syncPushToken();
       if (
-        (next.newTeams || next.pokemon.length > 0) &&
+        ((next.newTeams && !previous.newTeams) ||
+          next.pokemon.length > previous.pokemon.length) &&
         !(result?.granted && result.token)
       ) {
         settings = previous;
