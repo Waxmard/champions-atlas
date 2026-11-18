@@ -61,7 +61,14 @@
   key: 'newTeamsWithoutEvs' | 'pokemonWithoutEvs',
   off: boolean
 )}
-  <label class="flex min-h-11 cursor-pointer items-center gap-3 ps-8">
+  <label
+    class={[
+      'flex min-h-11 items-center gap-3 ps-8',
+      busy || off
+        ? 'cursor-not-allowed text-base-content/60'
+        : 'cursor-pointer',
+    ]}
+  >
     <input
       type="checkbox"
       class="size-5 accent-primary"
@@ -76,6 +83,11 @@
 
 <Modal title="Notifications" {onclose}>
   <div class="space-y-5">
+    {#if message}
+      <p role="alert" class="text-sm" style="color: var(--color-error-content)">
+        {message}
+      </p>
+    {/if}
     <section>
       <label class="flex min-h-11 cursor-pointer items-center gap-3">
         <input
@@ -133,14 +145,5 @@
       {/if}
       {@render withoutEvs('pokemonWithoutEvs', settings.pokemon.length === 0)}
     </section>
-    {#if message}
-      <p
-        role="alert"
-        class="mt-3 text-sm"
-        style="color: var(--color-error-content)"
-      >
-        {message}
-      </p>
-    {/if}
   </div>
 </Modal>
