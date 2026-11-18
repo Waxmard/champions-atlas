@@ -23,7 +23,13 @@
     initCatalogRuntime,
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
-  import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
+  import {
+    copySyncLog,
+    initSync,
+    pushNow,
+    signOut,
+    sync,
+  } from '#lib/sync.svelte.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
   import {
     applyGameResults,
@@ -705,6 +711,11 @@
                       >Notifications</DropdownMenu.Item
                     >
                   {/if}
+                  <DropdownMenu.Item
+                    onSelect={copySyncLog}
+                    class="option-row min-h-9 px-2"
+                    >Copy sync log</DropdownMenu.Item
+                  >
                   <DropdownMenu.Item
                     onSelect={signOut}
                     class="option-row min-h-9 px-2">Sign out</DropdownMenu.Item

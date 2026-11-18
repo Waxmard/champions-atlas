@@ -11,6 +11,31 @@ import { readSavedTeams, storageKey, type SavedTeam } from './workbench.ts';
 export const syncOwnerKey = 'champions-atlas:sync-owner:v2';
 export const syncRecordKey = (owner: string) =>
   `champions-atlas:sync:v2:${owner}`;
+export const syncLogKey = 'champions-atlas:sync-log:v1';
+
+export function readSyncLog(storage: Pick<Storage, 'getItem'>): unknown[] {
+  try {
+    const log: unknown = JSON.parse(storage.getItem(syncLogKey) ?? '[]');
+    return Array.isArray(log) ? log : [];
+  } catch {
+    return [];
+  }
+}
+
+export function recordSyncFailure(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  entry: Record<string, unknown>
+): boolean {
+  try {
+    storage.setItem(
+      syncLogKey,
+      JSON.stringify([...readSyncLog(storage), entry].slice(-20))
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 const cacheReadError =
   'Sync cache could not be read. Existing data has been left untouched.';
