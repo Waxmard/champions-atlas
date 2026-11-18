@@ -146,32 +146,13 @@ export function readSyncCache(
   };
 }
 
-function preserveUnknownTeamFields(
-  previous: unknown,
-  next: SavedTeam[] | null
-): SavedTeam[] | null {
-  if (next === null || !Array.isArray(previous)) return next;
-  const byId = new Map(
-    previous.flatMap((team) =>
-      team &&
-      typeof team === 'object' &&
-      !Array.isArray(team) &&
-      'id' in team &&
-      typeof team.id === 'string'
-        ? [[team.id, team as Record<string, unknown>] as const]
-        : []
-    )
-  );
-  return next.map((team) => ({ ...byId.get(team.id), ...team }));
-}
-
 export function composeSyncCache(
   previous: SyncCacheSnapshot | null,
   values: Pick<SyncCacheRecord, 'base' | 'local' | 'setsBase' | 'setsLocal'>
 ): string {
   const root = previous ? { ...previous.root } : {};
-  root.base = preserveUnknownTeamFields(root.base, values.base);
-  root.local = preserveUnknownTeamFields(root.local, values.local);
+  root.base = values.base;
+  root.local = values.local;
   root.setsBase = values.setsBase;
   root.setsLocal = values.setsLocal;
   const raw = JSON.stringify(root);

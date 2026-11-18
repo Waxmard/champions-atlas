@@ -142,11 +142,13 @@ export function mergeSavedTeams(
         'Recovered saved team ID already exists. Existing data has been preserved.'
       );
     used.add(id);
-    recovered.push({
+    const copy = {
       ...team,
       id,
       name: `${team.name.slice(0, 50_000 - ' (recovered)'.length)} (recovered)`,
-    });
+    };
+    delete copy.current;
+    recovered.push(copy);
   };
   for (const team of right) {
     const selected = choose(team.id);

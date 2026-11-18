@@ -98,7 +98,7 @@ test('current-set availability compares set-defining fields by Browse identity',
       [entry(member('Snorlax', { spread: '2 Atk', set: 'Old text' }))],
       [member('Snorlax', { spread: '2 Atk', set: 'New text' })]
     ),
-    true
+    false
   );
 
   const floette = member('Floette');

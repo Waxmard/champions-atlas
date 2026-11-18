@@ -760,3 +760,25 @@ test('current-set staging commits at most 350 sorted changes and rebases deferre
     currentSetsSnapshot(desired)
   );
 });
+
+test('current-set saves ignore move order and Maushold form without a full spread', () => {
+  const incoming = member('Pikachu', { spread: null });
+  const stored = { ...incoming, moves: ['Fake Out', 'Protect'] };
+  let store = memoryStorage(serialized(stored));
+  assert.deepEqual(
+    prepareCurrentSets(store.storage, [incoming]).overwritten,
+    []
+  );
+  assert.deepEqual(
+    prepareCurrentSets(store.storage, [
+      { ...incoming, moves: ['Protect', 'Thunderbolt'] },
+    ]).overwritten.map(({ id }) => id),
+    ['pikachu']
+  );
+
+  store = memoryStorage(serialized(member('Maushold')));
+  assert.deepEqual(
+    prepareCurrentSets(store.storage, [member('Maushold-Four')]).overwritten,
+    []
+  );
+});

@@ -121,8 +121,8 @@ function sameEntry(a: CurrentSet | undefined, b: CurrentSet | undefined) {
 }
 
 function sameSet(a: Member, b: Member) {
-  const signature = memberSetSignature(a);
-  return signature !== null && signature === memberSetSignature(b);
+  const signature = memberSetSignature(a, true);
+  return signature !== null && signature === memberSetSignature(b, true);
 }
 
 export function currentSetsWouldChange(

@@ -22,6 +22,7 @@ export const cosmeticForms: Record<string, string> = {
   sinisteaantique: 'sinistea',
   polteageistantique: 'polteageist',
   poltchageistartisan: 'poltchageist',
+  mausholdfour: 'maushold',
   vivillonfancy: 'vivillon',
   vivillonpokeball: 'vivillon',
 };

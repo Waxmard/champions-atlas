@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { mergeSavedTeams, teamsSnapshot } from '../src/lib/team-sync.ts';
 import { orderedWishlist } from '../src/lib/team-collections.ts';
+import { readSyncCache, writeSyncCache } from '../src/lib/storage-migration.ts';
 
 const promote = (entry) => {
   const rest = { ...entry };
@@ -459,6 +460,49 @@ test('concurrent current and favorite flags merge without recovery and keep one 
     [
       { id: 'a', name: 'a', current: true, favorite: undefined },
       { id: 'b', name: 'Edited', current: undefined, favorite: true },
+    ]
+  );
+});
+
+test('a Wishlist team moved to Saved is not recovered after a relaunch and an edit', () => {
+  const owner = 'demo:user';
+  const entries = new Map();
+  const storage = {
+    getItem: (key) => entries.get(key) ?? null,
+    setItem: (key, value) => entries.set(key, value),
+  };
+  const cache = (teams) =>
+    writeSyncCache(storage, owner, {
+      base: teams,
+      local: teams,
+      setsBase: null,
+      setsLocal: [],
+    });
+  const wished = [wishlisted('wish')];
+  cache(wished);
+  const saved = [promote(wished[0])];
+  cache(saved);
+  const base = readSyncCache(storage, owner).base;
+  assert.equal(base[0].collection, undefined);
+  const edited = [{ ...saved[0], record: { wins: 1, losses: 0 } }];
+  assert.deepEqual(
+    merge(base, edited, saved).map(({ name }) => name),
+    ['wish']
+  );
+});
+
+test('a recovered team never takes the Current marker', () => {
+  const base = [{ ...team('zz'), savedOrder: 0, current: true }];
+  const result = merge(
+    base,
+    [{ ...base[0], name: 'Local' }],
+    [{ ...base[0], name: 'Remote' }]
+  );
+  assert.deepEqual(
+    result.map(({ name, current }) => ({ name, current })),
+    [
+      { name: 'Local', current: true },
+      { name: 'Remote (recovered)', current: undefined },
     ]
   );
 });
