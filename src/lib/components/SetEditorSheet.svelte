@@ -312,7 +312,7 @@
         choice
       );
       if (choice.kind === 'move') moveSlots[choice.index] = choice.move;
-      chooseSet(candidate, false, moveSlots);
+      chooseSet(candidate, choice.kind === 'move', moveSlots);
     } catch (caught) {
       showError(
         'set',

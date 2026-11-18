@@ -371,6 +371,10 @@ textarea:focus-visible,
       color-mix(in oklab, var(--field-tint) 24%, transparent) 100%
     );
   }
+  .field[data-active] {
+    border-color: var(--color-primary);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+  }
 
   .nav-pill {
     display: inline-flex;

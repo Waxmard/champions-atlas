@@ -234,7 +234,8 @@ offer a direct reuse action.
 
 Opening an editor focuses its section heading and never a text field, so no
 keyboard opens on a phone. Focus is shown as a fill rather than a ring or
-outline. Operation errors use alerts. Deliberate
+outline. The selected move slot in the set editor also has a primary-colour
+border. Operation errors use alerts. Deliberate
 actions, including Wishlist additions and removals, imports, collection moves,
 deletions, restorations, copying, and in-game recording, use one temporary status
 message below navigation for three seconds. The message survives navigation but

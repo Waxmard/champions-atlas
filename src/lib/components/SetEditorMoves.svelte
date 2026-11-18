@@ -117,6 +117,16 @@
       </div>
     {/each}
   </div>
+  {#if error && errorField === 'moves'}
+    <p
+      role="alert"
+      tabindex="-1"
+      class="text-[0.9375rem] leading-relaxed"
+      style="color: var(--color-error-content)"
+    >
+      {error}
+    </p>
+  {/if}
   <p class="term">
     {moves[activeMoveSlot]
       ? `Replace ${moves[activeMoveSlot]}`
@@ -151,14 +161,4 @@
       />
     {/each}
   </SuggestionList>
-  {#if error && errorField === 'moves'}
-    <p
-      role="alert"
-      tabindex="-1"
-      class="text-[0.9375rem] leading-relaxed"
-      style="color: var(--color-error-content)"
-    >
-      {error}
-    </p>
-  {/if}
 </section>
