@@ -327,13 +327,20 @@ To provide the development identity:
 4. Delete the temporary P12 after storing the secrets. Keep the original
    identity in Keychain and leave the distribution secrets unchanged.
 
-The daily Refresh Catalog workflow sends the new-team push notification
+The daily Refresh Catalog workflow sends the new-team push notifications
 straight through Apple's push service after it deploys the catalog. It reads
 three more `preview` secrets: `APNS_KEY_ID` and `APNS_KEY_P8` (an APNs auth key
 for team `48TY2FP59S`, Sandbox & Production), and `FIREBASE_SERVICE_ACCOUNT` (a
 JSON key for a service account with the **Cloud Datastore User** role). The app
 stores each device token at `pushTokens/{token}` while **Notifications → New
-teams** is on. The publish step compares the new catalog with the live bundle at
+teams** is on or the **Teams with your Pokémon** list has at least one Pokémon,
+and deletes it when both are off or notification permission is denied. The
+document holds `uid`, `updatedAt`, and the device's notification settings:
+`newTeams`, `newTeamsWithoutEvs`, `pokemon` (a list of names, at most 500), and
+`pokemonWithoutEvs`. `firestore.rules` allows only those fields, and the
+workflow reads them to decide which banners each device gets; a missing boolean
+counts as on and a missing list as empty. The publish step compares the new
+catalog with the live bundle at
 `CATALOG_ORIGIN` and records added teams as `latestBatch` in the bundle; the
 workflow records the announced batch at `pushState/catalog` and sends nothing
 when the bundle has no batch or the batch was already announced. A push

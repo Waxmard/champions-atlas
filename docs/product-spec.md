@@ -67,11 +67,22 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   added teams) with a blue dot before the team name; the dot stays until a later
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
   those teams.
-- Signed-in iPhone users can turn off **Notifications → New teams** in the
-  account menu (on by default, stored on the device). The catalog refresh sends
-  one banner per batch counting its current-regulation teams, with a body naming
-  the tournaments and YouTubers they came from. Tapping it opens Browse with
-  **New teams only** on.
+- Signed-in iPhone users choose catalog notifications under **Notifications** in
+  the account menu; the choices are stored on the device. **New teams** (on by
+  default) sends one banner per batch counting its current-regulation teams,
+  with a body naming the tournaments and YouTubers they came from. Tapping it
+  opens Browse with **New teams only** on.
+- **Teams with your Pokémon** in the same dialog holds a list of Pokémon (empty
+  by default), chosen from the current regulation's roster and the Pokémon on
+  catalog teams. When a batch has a current-regulation team with any of them,
+  the catalog refresh sends a separate banner counting those teams and naming up
+  to two of the matched Pokémon. Tapping it opens Browse with **New teams only**
+  on, also filtered to that Pokémon when exactly one matched. It is sent whether
+  or not **New teams** is on.
+- Each of the two has its own **Include teams without EV spreads** option, on by
+  default and unavailable while **New teams** is off or the list is empty.
+  Turning it off leaves teams without EV spreads out of that banner's count; no
+  banner is sent when none remain.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
@@ -127,9 +138,9 @@ Saved and Wishlist and syncs like other team content. Saved
 and Wishlist cards show it read-only, with the percentage, once a team has a
 record. On iPhone, the **Log Game Result** shortcut action names the current
 team, or the first team in Saved order when none is current, asks for **Win** or
-**Loss**, and logs it without opening
-the app. Results logged this way join the record the next time the app is
-opened.
+**Loss**, and logs it without opening the app. A banner confirms the result with
+the team's updated record; tapping it opens that team in Saved. Results logged
+this way join the record the next time the app is opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain
@@ -476,8 +487,11 @@ collections share the same storage ceiling and sync path (see
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when
-connected. A first sign-in may require connectivity. Native setup and signing
-are described in [iOS installation and Firebase sync](firebase.md).
+connected. A first sign-in may require connectivity. **Copy sync log** in the
+account menu copies the device's last 20 sync failures as JSON (time, step,
+error code and message, and whether the device was online and the app visible)
+for troubleshooting, and confirms with **Sync log copied.** Native setup and
+signing are described in [iOS installation and Firebase sync](firebase.md).
 
 ## Future scope
 
