@@ -50,16 +50,19 @@ import { canonicalSnapshot } from './team-history.ts';
 import {
   readSyncCache,
   readSyncLog,
+  dropSentSyncFailures,
   recordSyncFailure,
   saveSyncRebase,
   storeCurrentSetSyncCache as store,
   syncOwnerKey,
   syncRecordKey,
+  syncOutboxKey,
   wireCurrentSets,
 } from './storage-migration.ts';
 import { copyText } from './clipboard.ts';
 import { notify } from './notifications.ts';
 import { deleteUserData } from './account-deletion.ts';
+import { uploadSyncFailures } from './sync-reports.ts';
 import { reloadRegulationOverrides } from './catalog-runtime.svelte.ts';
 import {
   mergeRegulationOverrides,
@@ -94,6 +97,7 @@ let setManifestSnapshot: string | null = null;
 let pending = false;
 let savePending = false;
 let running: Promise<void> | null = null;
+let reporting: Promise<void> | null = null;
 
 const account = (id: string) => `${projectId}:${id}`;
 const valid = (generation: number, id: string) =>
@@ -119,7 +123,7 @@ function fail(error: unknown, step: string) {
   sync.status = 'error';
   sync.error = message;
   const cause = error instanceof Error ? error.cause : undefined;
-  recordSyncFailure(localStorage, {
+  const entry = {
     at: new Date().toISOString(),
     step,
     code: errorCode(error) || errorCode(cause),
@@ -127,7 +131,25 @@ function fail(error: unknown, step: string) {
     cause: cause === undefined ? '' : String(cause),
     online: navigator.onLine,
     visible: document.visibilityState === 'visible',
-  });
+    version: __APP_VERSION__,
+  };
+  recordSyncFailure(localStorage, entry);
+  recordSyncFailure(localStorage, entry, syncOutboxKey);
+  reportFailures();
+}
+
+function reportFailures(): void {
+  if (reporting || !db || !uid) return;
+  const entries = readSyncLog(localStorage, syncOutboxKey);
+  if (!entries.length) return;
+  reporting = uploadSyncFailures(db, uid, entries)
+    .then(
+      () => void dropSentSyncFailures(localStorage, entries),
+      () => undefined
+    )
+    .finally(() => {
+      reporting = null;
+    });
 }
 
 function invalidate() {
@@ -417,7 +439,10 @@ async function drain(generation: number, id: string) {
       ) {
         pending = true;
         savePending = true;
-      } else if (!pending && !savePending) sync.status = 'synced';
+      } else if (!pending && !savePending) {
+        sync.status = 'synced';
+        reportFailures();
+      }
     } catch (error) {
       if (generation === session && uid === id) {
         pending = false;
@@ -629,6 +654,7 @@ export async function deleteAccount(): Promise<void> {
   localStorage.removeItem(syncOwnerKey);
   try {
     await inflight;
+    await reporting;
     await deleteUserData(firestore, user.uid);
     await deleteUser(user);
   } catch (error) {

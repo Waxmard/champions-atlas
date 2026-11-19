@@ -107,8 +107,9 @@
           </p>
           {#if sync.configured}
             <p>
-              Your teams sync to your account. No ads or analytics. To delete
-              your account, open Settings from the account menu.
+              Your teams sync to your account. No ads or analytics. Sync errors
+              are reported to help fix problems. To delete your account, open
+              Settings from the account menu.
             </p>
           {:else}
             <p>Everything you save stays on this device.</p>

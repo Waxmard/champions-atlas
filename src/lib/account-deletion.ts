@@ -13,15 +13,20 @@ export async function deleteUserData(
   id: string
 ): Promise<void> {
   const parent = doc(firestore, 'users', id);
-  const [teams, sets, tokens] = await Promise.all([
+  const [teams, sets, tokens, reports] = await Promise.all([
     getDocsFromServer(collection(parent, 'teams')),
     getDocsFromServer(collection(parent, 'pokemonSets')),
     getDocsFromServer(
       query(collection(firestore, 'pushTokens'), where('uid', '==', id))
     ),
+    getDocsFromServer(
+      query(collection(firestore, 'syncFailures'), where('uid', '==', id))
+    ),
   ]);
   const refs = [
-    ...[teams, sets, tokens].flatMap(({ docs }) => docs.map(({ ref }) => ref)),
+    ...[teams, sets, tokens, reports].flatMap(({ docs }) =>
+      docs.map(({ ref }) => ref)
+    ),
     doc(parent, 'pokemonSetState', 'manifest'),
     doc(parent, 'catalogState', 'regulations'),
     parent,

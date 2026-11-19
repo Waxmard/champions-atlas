@@ -15,6 +15,7 @@ import {
   where,
 } from 'firebase/firestore';
 import { deleteUserData } from '../src/lib/account-deletion.ts';
+import { uploadSyncFailures } from '../src/lib/sync-reports.ts';
 
 const host = process.env.FIRESTORE_EMULATOR_HOST;
 const skip = !host && 'needs the Firestore emulator: npm run test:rules';
@@ -91,6 +92,19 @@ const exists = async (...path) =>
 const size = async (ref) => (await getDocs(ref)).size;
 const tokensOf = (uid) =>
   query(collection(admin(), 'pushTokens'), where('uid', '==', uid));
+const reportsOf = (uid) =>
+  query(collection(admin(), 'syncFailures'), where('uid', '==', uid));
+const entry = {
+  at: '2026-11-19T10:00:00.000Z',
+  step: 'teams',
+  code: 'unavailable',
+  message: 'x'.repeat(3000),
+  cause: '',
+  online: false,
+  visible: true,
+  version: '1.2.3',
+};
+const day = 24 * 60 * 60 * 1000;
 
 test(
   'deletes every cloud document the account owns and nothing else',
@@ -154,4 +168,41 @@ test('refuses to touch another account', { skip }, async () => {
   await assert.rejects(getDocs(collection(client('anon'), 'pushTokens')), {
     code: 'permission-denied',
   });
+});
+
+test(
+  'uploads sync failure reports and deletes them with the account',
+  { skip },
+  async () => {
+    await uploadSyncFailures(as('frank'), 'frank', [entry, 'garbage']);
+    await uploadSyncFailures(as('grace'), 'grace', [entry]);
+
+    const reports = (await getDocs(reportsOf('frank'))).docs.map((report) =>
+      report.data()
+    );
+    assert.equal(reports.length, 2);
+    const full = reports.find(({ step }) => step === 'teams');
+    assert.equal(full.message.length, 2000);
+    assert.equal(full.online, false);
+    assert.equal(full.version, '1.2.3');
+    const ttl = full.expireAt.toMillis() - Date.now();
+    assert.ok(ttl > 89 * day && ttl < 91 * day);
+    const empty = reports.find(({ step }) => step === '');
+    assert.equal(empty.visible, false);
+
+    await deleteUserData(as('frank'), 'frank');
+
+    assert.equal(await size(reportsOf('frank')), 0);
+    assert.equal(await size(reportsOf('grace')), 1);
+  }
+);
+
+test('refuses sync failure reports for another account', { skip }, async () => {
+  await assert.rejects(uploadSyncFailures(as('heidi'), 'ivan', [entry]), {
+    code: 'permission-denied',
+  });
+  await assert.rejects(
+    getDocs(collection(client('anon-reports'), 'syncFailures')),
+    { code: 'permission-denied' }
+  );
 });

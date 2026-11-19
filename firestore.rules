@@ -100,5 +100,23 @@ service cloud.firestore {
       allow delete: if request.auth != null
         && (resource == null || resource.data.uid == request.auth.uid);
     }
+    match /syncFailures/{report} {
+      allow list: if request.auth != null && resource.data.uid == request.auth.uid;
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasAll(['uid', 'createdAt', 'expireAt', 'at', 'step', 'code', 'message', 'cause', 'version', 'online', 'visible'])
+        && request.resource.data.keys().hasOnly(['uid', 'createdAt', 'expireAt', 'at', 'step', 'code', 'message', 'cause', 'version', 'online', 'visible'])
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.expireAt is timestamp
+        && request.resource.data.at is string && request.resource.data.at.size() <= 40
+        && request.resource.data.step is string && request.resource.data.step.size() <= 40
+        && request.resource.data.code is string && request.resource.data.code.size() <= 100
+        && request.resource.data.message is string && request.resource.data.message.size() <= 2000
+        && request.resource.data.cause is string && request.resource.data.cause.size() <= 2000
+        && request.resource.data.version is string && request.resource.data.version.size() <= 40
+        && request.resource.data.online is bool
+        && request.resource.data.visible is bool;
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
   }
 }
