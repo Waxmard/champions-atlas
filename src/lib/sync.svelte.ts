@@ -134,13 +134,15 @@ function fail(error: unknown, step: string) {
     version: __APP_VERSION__,
   };
   recordSyncFailure(localStorage, entry);
-  recordSyncFailure(localStorage, entry, syncOutboxKey);
+  recordSyncFailure(localStorage, { ...entry, uid }, syncOutboxKey);
   reportFailures();
 }
 
 function reportFailures(): void {
   if (reporting || !db || !uid) return;
-  const entries = readSyncLog(localStorage, syncOutboxKey);
+  const entries = readSyncLog(localStorage, syncOutboxKey).filter(
+    (entry) => (entry as { uid?: unknown } | null)?.uid === uid
+  );
   if (!entries.length) return;
   reporting = uploadSyncFailures(db, uid, entries)
     .then(

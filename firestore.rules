@@ -108,6 +108,7 @@ service cloud.firestore {
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.createdAt is timestamp
         && request.resource.data.expireAt is timestamp
+        && request.resource.data.expireAt <= request.time + duration.value(91, 'd')
         && request.resource.data.at is string && request.resource.data.at.size() <= 40
         && request.resource.data.step is string && request.resource.data.step.size() <= 40
         && request.resource.data.code is string && request.resource.data.code.size() <= 100

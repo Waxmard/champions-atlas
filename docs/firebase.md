@@ -54,6 +54,13 @@ fails with a permission error:
 npx firebase-tools deploy --only firestore:rules --project champions-atlas-test
 ```
 
+Failure reports in `syncFailures` expire through a Firestore TTL policy on
+`expireAt`. Enable it once per project:
+
+```sh
+gcloud firestore fields ttls update expireAt --collection-group=syncFailures --enable-ttl --project champions-atlas-test
+```
+
 For a different Firebase project, register an iOS app with the same bundle ID in
 Firebase **Project settings** → **Your apps**, enable Google under
 **Authentication** → **Sign-in method**, and download `GoogleService-Info.plist`.
