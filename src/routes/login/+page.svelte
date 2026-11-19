@@ -33,7 +33,7 @@
         <p
           class="mb-4 text-center text-[0.9375rem] leading-relaxed text-base-content/70"
         >
-          Sign in so your teams are kept and sync between your devices.
+          Sign in to save and sync your teams.
         </p>
         <Button
           variant="primary"

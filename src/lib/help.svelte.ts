@@ -1,16 +1,5 @@
 export type HelpTopic =
-  | 'regulation'
-  | 'set'
-  | 'evs'
-  | 'nature'
-  | 'mega'
-  | 'vp'
-  | 'in-game'
-  | 'replica'
-  | 'pokepaste'
-  | 'showdown'
-  | 'record'
-  | 'new';
+  'regulation' | 'evs' | 'nature' | 'vp' | 'in-game' | 'replica';
 
 export const help = $state<{ open: boolean; topic: HelpTopic | null }>({
   open: false,

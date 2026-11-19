@@ -320,8 +320,7 @@
       id={`in-game-sets-description-${uid}`}
       class={reminder ? 'sr-only' : 'provenance order-2 basis-full'}
     >
-      This tells the app how these Pokémon are built in your game right now, so
-      VP estimates stay accurate. Nothing changes in Pokémon Champions.
+      Keeps VP estimates accurate. Doesn't change your game.
     </p>
   {/if}
   <p
