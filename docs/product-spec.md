@@ -68,11 +68,13 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
   those teams.
 - Signed-in iPhone users choose catalog notifications at the top of **Settings**
-  in the account menu; the choices are stored on the device. **New teams** (on by
-  default) sends one banner per batch counting its current-regulation teams,
-  with a body naming the tournaments and YouTubers they came from. Tapping it
-  opens Browse with **New teams only** on.
-- **Teams with your Pokémon** in the same dialog holds a list of Pokémon (empty
+  in the account menu; the choices are stored on the device. Under
+  **Notifications**, each of the two groups below is a collapsed row that shows
+  its state (**On**/**Off**, or the number of Pokémon chosen). **New teams** (on
+  by default, toggled by **Notify me** inside the row) sends one banner per batch
+  counting its current-regulation teams, with a body naming the tournaments and
+  YouTubers they came from. Tapping it opens Browse with **New teams only** on.
+- **Teams with your Pokémon** below it holds a list of Pokémon (empty
   by default), chosen from the current regulation's roster and the Pokémon on
   catalog teams. When a batch has a current-regulation team with any of them,
   the catalog refresh sends a separate banner counting those teams and naming up

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import Disclosure from '#lib/components/Disclosure.svelte';
   import Modal from '#lib/components/Modal.svelte';
   import NotificationSettings from '#lib/components/NotificationSettings.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
@@ -23,7 +23,7 @@
 <Modal title="Settings" {onclose}>
   <div class="space-y-5">
     {#if isNativeApp}
-      <section class="space-y-3">
+      <section class="space-y-1">
         <h3 class="term">Notifications</h3>
         <NotificationSettings />
       </section>
@@ -37,16 +37,7 @@
       </p>
       <Button onclick={copySyncLog}>Copy sync log</Button>
     </section>
-    <details class="group border-t border-base-300 pt-2">
-      <summary
-        class="option-row -mx-3 cursor-pointer list-none rounded-[var(--radius-field)] font-semibold [&::-webkit-details-marker]:hidden"
-      >
-        <span class="flex-1">Delete account</span>
-        <ChevronDown
-          class="size-4 transition-transform group-open:rotate-180"
-          aria-hidden="true"
-        />
-      </summary>
+    <Disclosure label="Delete account" class="border-t border-base-300 pt-2">
       <div class="space-y-3 pb-2 text-sm text-base-content/70">
         <p>
           Permanently deletes your account, your synced teams and in-game sets,
@@ -56,6 +47,6 @@
         <p>You'll be asked to sign in with Google again first.</p>
         <Button variant="danger-quiet" onclick={remove}>Delete account</Button>
       </div>
-    </details>
+    </Disclosure>
   </div>
 </Modal>

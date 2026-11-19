@@ -1,9 +1,9 @@
 <script lang="ts">
   import Bookmark from '@lucide/svelte/icons/bookmark';
-  import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import Folder from '@lucide/svelte/icons/folder';
   import Search from '@lucide/svelte/icons/search';
   import { onMount } from 'svelte';
+  import Disclosure from '#lib/components/Disclosure.svelte';
   import Modal from '#lib/components/Modal.svelte';
   import {
     closeHelp,
@@ -70,18 +70,6 @@
     href="mailto:maxward4@gmail.com">maxward4@gmail.com</a
   >{/snippet}
 
-{#snippet more(label: string)}
-  <summary
-    class="option-row -mx-3 cursor-pointer list-none rounded-[var(--radius-field)] font-semibold [&::-webkit-details-marker]:hidden"
-  >
-    <span class="flex-1">{label}</span>
-    <ChevronDown
-      class="size-4 transition-transform group-open:rotate-180"
-      aria-hidden="true"
-    />
-  </summary>
-{/snippet}
-
 {#if help.open}
   <Modal title={topic?.title ?? 'How it works'} onclose={closeHelp}>
     {#if topic}
@@ -101,8 +89,7 @@
           </li>
         {/each}
       </ul>
-      <details class="group mt-3">
-        {@render more('Glossary')}
+      <Disclosure label="Glossary" class="mt-3">
         <dl class="space-y-2 pb-2">
           {#each topics as { id, title, body } (id)}
             <div>
@@ -111,9 +98,8 @@
             </div>
           {/each}
         </dl>
-      </details>
-      <details class="group">
-        {@render more('About')}
+      </Disclosure>
+      <Disclosure label="About">
         <div class="space-y-2 text-sm text-base-content/70">
           <p>
             Independent fan project, not affiliated with Nintendo, Game Freak,
@@ -130,7 +116,7 @@
           <p>Feedback: {@render email()}</p>
           <p class="provenance">Version {__APP_VERSION__}</p>
         </div>
-      </details>
+      </Disclosure>
     {/if}
   </Modal>
 {/if}
