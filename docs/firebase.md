@@ -346,6 +346,12 @@ workflow records the announced batch at `pushState/catalog` and sends nothing
 when the bundle has no batch or the batch was already announced. A push
 misconfiguration fails only that last step, after the catalog is published.
 
+To check banners without waiting for a new batch, run **Actions** → **Send Test
+Notification** with comma-separated catalog team IDs. It downloads the live
+catalog, announces those teams to every registered device as if they were the
+latest batch, and leaves `pushState/catalog` unchanged, so the next real batch
+still sends.
+
 The release-please workflow reads the repository secret `RELEASE_PLEASE_TOKEN`
 instead, because its job declares no environment.
 

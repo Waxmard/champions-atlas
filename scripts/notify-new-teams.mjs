@@ -225,14 +225,31 @@ export async function notifyNewTeams({
       'utf8'
     )
   );
+  const testIds = (env.ANNOUNCE_TEAM_IDS ?? '')
+    .split(',')
+    .map((id) => id.trim())
+    .filter(Boolean);
+  if (testIds.length) {
+    const unknown = testIds.filter(
+      (id) => !bundle.teams.some((team) => team.id === id)
+    );
+    if (unknown.length)
+      throw new Error(`Unknown team ID(s): ${unknown.join(' ')}`);
+    bundle.latestBatch = { ids: testIds };
+  }
   const batch = bundle.latestBatch;
   if (!batch) return 'No batch of new teams yet; nothing sent.';
 
   const accessToken = await googleAccessToken(account);
   const documents = `${FIRESTORE}projects/${account.project_id}/databases/(default)/documents`;
-  const state = await firestore(accessToken, `${documents}/pushState/catalog`);
-  if (state?.fields?.announced?.stringValue === batch.addedAt)
-    return 'No new teams; nothing sent.';
+  if (!testIds.length) {
+    const state = await firestore(
+      accessToken,
+      `${documents}/pushState/catalog`
+    );
+    if (state?.fields?.announced?.stringValue === batch.addedAt)
+      return 'No new teams; nothing sent.';
+  }
   let summary =
     'The latest batch has no current-regulation teams; nothing sent.';
 
@@ -314,12 +331,13 @@ export async function notifyNewTeams({
     summary = `Sent ${counts.sent} notification(s) to ${devices.length} device(s); removed ${counts.dead} stale token(s); ${counts.rejected} rejected; ${counts.failed} failed.`;
   }
 
-  await firestore(accessToken, `${documents}/pushState/catalog`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      fields: { announced: { stringValue: batch.addedAt } },
-    }),
-  });
+  if (!testIds.length)
+    await firestore(accessToken, `${documents}/pushState/catalog`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        fields: { announced: { stringValue: batch.addedAt } },
+      }),
+    });
   return summary;
 }
 
