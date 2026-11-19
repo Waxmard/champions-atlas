@@ -1,23 +1,30 @@
 import { browser } from '$app/env';
 import { initializeApp } from 'firebase/app';
 import {
+  deleteUser,
   GoogleAuthProvider,
   indexedDBLocalPersistence,
   initializeAuth,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   signInWithCredential,
   signOut as signOutOfFirebase,
   type Auth,
   type User,
 } from 'firebase/auth';
 import {
+  collection,
   deleteDoc,
   doc,
+  getDocsFromServer,
   getFirestore,
+  query,
   runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
+  where,
+  writeBatch,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -590,6 +597,68 @@ export async function signOut(): Promise<void> {
   } catch (error) {
     fail(error, 'sign-out');
   }
+}
+
+async function deleteUserData(firestore: Firestore, id: string) {
+  const parent = doc(firestore, 'users', id);
+  const [teams, sets, tokens] = await Promise.all([
+    getDocsFromServer(collection(parent, 'teams')),
+    getDocsFromServer(collection(parent, 'pokemonSets')),
+    getDocsFromServer(
+      query(collection(firestore, 'pushTokens'), where('uid', '==', id))
+    ),
+  ]);
+  const refs = [
+    ...[teams, sets, tokens].flatMap(({ docs }) => docs.map(({ ref }) => ref)),
+    doc(parent, 'pokemonSetState', 'manifest'),
+    doc(parent, 'catalogState', 'regulations'),
+    parent,
+  ];
+  const batchSize = 500;
+  for (let start = 0; start < refs.length; start += batchSize) {
+    const batch = writeBatch(firestore);
+    for (const ref of refs.slice(start, start + batchSize)) batch.delete(ref);
+    await batch.commit();
+  }
+}
+
+const deleteError =
+  'Account deletion did not finish. Sign in with the same Google account and try again.';
+
+export async function deleteAccount(): Promise<void> {
+  const user = auth?.currentUser;
+  if (!user || !db) return;
+  const firestore = db;
+  try {
+    const { idToken } = await AtlasNative.signInWithGoogle();
+    await reauthenticateWithCredential(
+      user,
+      GoogleAuthProvider.credential(idToken)
+    );
+  } catch (error) {
+    if (errorCode(error) !== 'SIGN_IN_CANCELLED') {
+      fail(error, 'delete-account');
+      sync.error = deleteError;
+    }
+    return;
+  }
+  const inflight = running;
+  invalidate();
+  sync.user = null;
+  sync.status = 'syncing';
+  sync.error = '';
+  localStorage.removeItem(syncOwnerKey);
+  try {
+    await inflight;
+    await deleteUserData(firestore, user.uid);
+    await deleteUser(user);
+  } catch (error) {
+    await signOut();
+    fail(error, 'delete-account');
+    sync.error = deleteError;
+    return;
+  }
+  await signOut();
 }
 
 export async function syncPushToken(): Promise<PushRegistration | null> {

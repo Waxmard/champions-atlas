@@ -497,8 +497,11 @@ After a successful sign-in, it can open saved data offline; sync resumes when
 connected. A first sign-in may require connectivity. **Copy sync log** in the
 account menu copies the device's last 20 sync failures as JSON (time, step,
 error code and message, and whether the device was online and the app visible)
-for troubleshooting, and confirms with **Sync log copied.** Native setup and
-signing are described in [iOS installation and Firebase sync](firebase.md).
+for troubleshooting, and confirms with **Sync log copied.** **Delete account**
+in the same menu, after confirmation and a fresh Google sign-in, permanently
+deletes the account and its cloud teams, in-game sets, and notification
+registrations; saved data on the device stays. Native setup and signing are
+described in [iOS installation and Firebase sync](firebase.md).
 
 ## Future scope
 

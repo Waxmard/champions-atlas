@@ -189,9 +189,10 @@ schema versions stop sync and preserve existing data.
 Rules permit only the owner to read the parent and its team children. Parent
 creation requires the v2 manifest shape; legacy owner updates remain allowed
 only while both the stored and requested parent lack `schemaVersion`. After
-migration, rules reject legacy overwrites and downgrades. Parent deletion is
-denied; removing all teams writes an empty manifest. Child writes require the
-document ID to match the saved-team ID. Other nested paths remain inaccessible.
+migration, rules reject legacy overwrites and downgrades. Removing all teams
+writes an empty manifest; only account deletion deletes the parent. Child writes
+require the document ID to match the saved-team ID. Other nested paths remain
+inaccessible.
 
 The app listens for server changes and reconciles saved teams in Firestore
 transactions. Sequential saves update the same team ID without making copies.
@@ -216,8 +217,9 @@ The registry manifest lives at
 `schemaVersion: 1`, sorted unique `setIds`, and `updatedAt:
 serverTimestamp()`. Each listed `users/{uid}/pokemonSets/{id}` document
 contains exactly `{id, member}`, with `id` matching the document ID. Owner rules
-allow reads and valid writes to these paths; deletes are denied. A missing
-manifest means an empty registry; a new account creates its empty manifest.
+allow reads, valid writes, and deletes to these paths; only account deletion
+deletes. A missing manifest means an empty registry; a new account creates its
+empty manifest.
 Malformed manifests, missing or invalid children, and mismatched IDs stop sync
 without replacing either local working store or either sync baseline.
 
@@ -259,9 +261,10 @@ matches the member. A later sync pass writes the canonical child without
 blocking on that temporary local/cloud ID difference.
 
 Sync then writes the canonical child and a manifest that no longer lists the
-dropped legacy id. Old child documents remain unchanged and unlisted because the
-rules deny deletion. Without a connection, staging stops before any write and
-reports that cloud in-game sets need a connection.
+dropped legacy id. Old child documents remain unchanged and unlisted, because
+sync never deletes set documents; account deletion removes them. Without a
+connection, staging stops before any write and reports that cloud in-game sets
+need a connection.
 
 Reconciliation continues while a set editor is open, but its mounted form does
 not refresh underneath you. If another device changes or deletes that team,
@@ -276,6 +279,29 @@ without trusting the old last-push marker. When a pre-existing cloud team has
 the same ID but different content, the cloud copy keeps that ID and the local
 copy is recovered, because historical edit order cannot be inferred. Signing out
 preserves the account cache, and no migration clears app-local storage.
+
+## Account deletion
+
+**Delete account** in the account menu asks for confirmation and a fresh Google
+sign-in, then stops sync, clears `champions-atlas:sync-owner:v2`, deletes the
+cloud data, and deletes the Firebase Authentication user. The cloud data is
+`users/{uid}` with its teams, current sets, set manifest, and regulation labels,
+plus every `pushTokens` document whose `uid` is the account's. The rules let the
+owner list only their own tokens, so other devices' tokens go too.
+
+Saved teams and sets on the device stay. With the owner marker cleared, the next
+sign-in adopts them as it does on first use, so an interrupted deletion never
+lets a later sync erase them against an emptied cloud copy. If a step after the
+fresh sign-in fails, the device signs out and shows an error; sign in and delete
+again. Another device that is still signed in reconciles the emptied cloud copy
+as deletions until its session ends.
+
+Deploy the updated rules before using it, or the deletion fails with a
+permission error and signs the device out:
+
+```sh
+npx firebase-tools deploy --only firestore:rules --project champions-atlas-test
+```
 
 ## Secrets and continuous integration
 

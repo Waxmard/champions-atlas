@@ -28,6 +28,7 @@
   } from '#lib/catalog-runtime.svelte.js';
   import {
     copySyncLog,
+    deleteAccount,
     initSync,
     pushNow,
     signOut,
@@ -637,26 +638,17 @@
     >
       <a
         href={brandHref}
-        class="nav-pill -ms-3 justify-start text-base-content hover:bg-base-200"
+        class="nav-pill -ms-3 justify-start text-base-content hover:bg-base-200 max-sm:gap-0.5"
       >
         <img src="/favicon.svg" alt="" width="36" height="39" />
         <span
-          class="font-display text-xl leading-none font-bold tracking-tight whitespace-nowrap"
+          class="font-display text-lg leading-none font-bold tracking-tight whitespace-nowrap sm:text-xl"
           >Champion's Atlas</span
         >
       </a>
       <div class="flex min-w-0 items-center justify-end gap-1">
         <HelpButton label="Help" class="size-11 shrink-0" />
         {#if sync.configured}
-          {#if sync.status === 'error'}
-            <span
-              role="status"
-              aria-live="polite"
-              title={sync.error}
-              class="provenance max-w-16 text-center leading-tight font-semibold wrap-break-word"
-              style="color: var(--color-error-content)">Sync failed</span
-            >
-          {/if}
           {#if sync.user}
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
@@ -723,6 +715,18 @@
                   <DropdownMenu.Item
                     onSelect={signOut}
                     class="option-row min-h-9 px-2">Sign out</DropdownMenu.Item
+                  >
+                  <DropdownMenu.Item
+                    onSelect={() => {
+                      if (
+                        confirm(
+                          'Permanently delete your account and its synced teams and sets from the cloud? Teams on this device stay.'
+                        )
+                      )
+                        void deleteAccount();
+                    }}
+                    class="option-row min-h-9 px-2 text-error-content data-[highlighted]:bg-error data-[highlighted]:text-error-content"
+                    >Delete account</DropdownMenu.Item
                   >
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
