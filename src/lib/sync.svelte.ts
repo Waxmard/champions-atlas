@@ -76,6 +76,7 @@ export const sync = $state({
   user: null as User | null,
   status: 'off' as SyncStatus,
   error: '',
+  deletion: '' as '' | 'deleting' | 'deleted',
   revision: 0,
 });
 
@@ -544,6 +545,7 @@ export async function signIn(): Promise<void> {
   if (!auth) return;
   sync.status = 'syncing';
   sync.error = '';
+  sync.deletion = '';
   try {
     const { idToken } = await AtlasNative.signInWithGoogle();
     await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
@@ -623,6 +625,7 @@ export async function deleteAccount(): Promise<void> {
   sync.user = null;
   sync.status = 'syncing';
   sync.error = '';
+  sync.deletion = 'deleting';
   localStorage.removeItem(syncOwnerKey);
   try {
     await inflight;
@@ -630,13 +633,14 @@ export async function deleteAccount(): Promise<void> {
     await deleteUser(user);
   } catch (error) {
     await signOut();
+    sync.deletion = '';
     fail(error, 'delete-account');
     sync.error = deleteError;
     notify(deleteError);
     return;
   }
   await signOut();
-  notify('Account deleted.');
+  sync.deletion = 'deleted';
 }
 
 export async function syncPushToken(): Promise<PushRegistration | null> {
@@ -675,9 +679,9 @@ export async function pushNow(): Promise<void> {
   }
 }
 
-export async function copySyncLog(): Promise<void> {
+export async function copySyncLog(): Promise<string> {
   const copied = await copyText(
     JSON.stringify(readSyncLog(localStorage), null, 2)
   );
-  notify(copied ? 'Sync log copied.' : 'Copy unavailable.');
+  return copied ? 'Sync log copied.' : 'Copy unavailable.';
 }

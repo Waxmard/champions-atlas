@@ -124,7 +124,7 @@ opens the matching catalog team from a Saved team or a selected Wishlist team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
 restoration conflicts with the current roster.
 
-The Saved editor shows a **Record** row for the team, such as
+The Saved editor shows a **Win–loss record** row for the team, such as
 **3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
 number, and is omitted before the first game. Tapping the row opens a pop-up.
 **Win** and **Loss** each log one game and the pop-up stays open, so several
@@ -500,12 +500,19 @@ After a successful sign-in, it can open saved data offline; sync resumes when
 connected. A first sign-in may require connectivity. **Settings** in the account
 menu holds **Troubleshooting**, where **Copy sync log** copies the device's last
 20 sync failures as JSON (time, step, error code and message, and whether the
-device was online and the app visible) for troubleshooting and confirms with
-**Sync log copied.** A collapsed **Delete account** section at the bottom of
-Settings, after confirmation and a fresh Google sign-in, permanently deletes the
-account and its cloud teams, in-game sets, and notification registrations; saved
-data on the device stays. Native setup and signing are described in
+device was online and the app visible) for troubleshooting and shows
+**Sync log copied.** under the button. A collapsed **Delete account** section at
+the bottom of Settings, after confirmation and a fresh Google sign-in,
+permanently deletes the account and its cloud teams, in-game sets, and
+notification registrations; saved data on the device stays. The sign-in page
+then shows **Deleting account…** and, when done, **Account deleted.** Native
+setup and signing are described in
 [iOS installation and Firebase sync](firebase.md).
+
+A **Help** button in the header opens **How it works**: one line per tab, a
+**Glossary** of regulation, EVs, nature, VP, in-game, and replica terms, and
+**About**. It opens once on first launch. Small help buttons beside regulations,
+natures, EVs, and estimated spend open the matching glossary entry.
 
 ## Future scope
 

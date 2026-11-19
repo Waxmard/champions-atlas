@@ -3,7 +3,8 @@
   import { Button } from '#lib/components/ui/button/index.js';
   import { signIn, sync } from '#lib/sync.svelte.js';
 
-  const signingIn = $derived(sync.status === 'syncing');
+  const deleting = $derived(sync.deletion === 'deleting');
+  const signingIn = $derived(sync.status === 'syncing' && !deleting);
 </script>
 
 <svelte:head>
@@ -39,7 +40,7 @@
           variant="primary"
           class="w-full gap-3"
           onclick={signIn}
-          disabled={signingIn}
+          disabled={signingIn || deleting}
         >
           {#if signingIn}
             <LoaderCircle class="size-5 animate-spin" aria-hidden="true" />
@@ -71,6 +72,12 @@
         >
           Sign-in is not available in this build.
         </p>
+      {/if}
+
+      {#if deleting}
+        <p role="status" class="mt-4 text-center text-sm">Deleting account…</p>
+      {:else if sync.deletion === 'deleted'}
+        <p role="status" class="mt-4 text-center text-sm">Account deleted.</p>
       {/if}
 
       {#if sync.error}

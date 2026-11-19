@@ -7,6 +7,7 @@
   import { copySyncLog, deleteAccount } from '#lib/sync.svelte.js';
 
   let { onclose }: { onclose: () => void } = $props();
+  let copyStatus = $state('');
 
   function remove() {
     if (
@@ -36,7 +37,10 @@
         <p class="provenance">
           Copies this device's recent sync errors to send with a bug report.
         </p>
-        <Button onclick={copySyncLog}>Copy sync log</Button>
+        <Button onclick={async () => (copyStatus = await copySyncLog())}>
+          Copy sync log
+        </Button>
+        <p role="status" class="provenance">{copyStatus}</p>
       </div>
     </Disclosure>
     <Disclosure label="Delete account" class="border-t border-base-300 pt-2">
