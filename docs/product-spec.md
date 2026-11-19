@@ -501,10 +501,11 @@ connected. A first sign-in may require connectivity. **Settings** in the account
 menu holds **Troubleshooting**, where **Copy sync log** copies the device's last
 20 sync failures as JSON (time, step, error code and message, and whether the
 device was online and the app visible) for troubleshooting and shows
-**Sync log copied.** under the button. A collapsed **Delete account** section at
+**Sync log copied.** under the button. Sync failures are also reported to the
+account's cloud data for fixing bugs. A collapsed **Delete account** section at
 the bottom of Settings, after confirmation and a fresh Google sign-in,
-permanently deletes the account and its cloud teams, in-game sets, and
-notification registrations; saved data on the device stays. The sign-in page
+permanently deletes the account and its cloud teams, in-game sets, notification
+registrations, and sync failure reports; saved data on the device stays. The sign-in page
 then shows **Deleting account…** and, when done, **Account deleted.** Native
 setup and signing are described in
 [iOS installation and Firebase sync](firebase.md).

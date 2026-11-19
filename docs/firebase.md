@@ -54,8 +54,12 @@ fails with a permission error:
 npx firebase-tools deploy --only firestore:rules --project champions-atlas-test
 ```
 
-Failure reports in `syncFailures` expire through a Firestore TTL policy on
-`expireAt`. Enable it once per project:
+When sync fails, the app uploads the failure (time, step, error code and
+message, app version, and whether the device was online and the app visible) to
+`syncFailures` under the signed-in account. Up to 20 unsent reports wait on the
+device. The rules let owners create and list only their own reports. Each report
+sets `expireAt` 90 days out and is removed by a Firestore TTL policy on that
+field. Enable it once per project:
 
 ```sh
 gcloud firestore fields ttls update expireAt --collection-group=syncFailures --enable-ttl --project champions-atlas-test
@@ -294,8 +298,9 @@ account menu) asks for confirmation and a fresh Google
 sign-in, then stops sync, clears `champions-atlas:sync-owner:v2`, deletes the
 cloud data, and deletes the Firebase Authentication user. The cloud data is
 `users/{uid}` with its teams, current sets, set manifest, and regulation labels,
-plus every `pushTokens` document whose `uid` is the account's. The rules let the
-owner list only their own tokens, so other devices' tokens go too.
+plus every `pushTokens` and `syncFailures` document whose `uid` is the
+account's. The rules let the owner list only their own tokens and reports, so
+other devices' tokens and reports go too.
 
 Saved teams and sets on the device stay. With the owner marker cleared, the next
 sign-in adopts them as it does on first use, so an interrupted deletion never
