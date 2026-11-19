@@ -5,7 +5,6 @@
   import Search from '@lucide/svelte/icons/search';
   import { onMount } from 'svelte';
   import Modal from '#lib/components/Modal.svelte';
-  import { Button } from '#lib/components/ui/button/index.js';
   import {
     closeHelp,
     help,
@@ -102,10 +101,6 @@
           </li>
         {/each}
       </ul>
-      <p class="provenance mt-3">Nothing here changes your game.</p>
-      <Button variant="primary" class="mt-4 w-full" onclick={closeHelp}>
-        Got it
-      </Button>
       <details class="group mt-3">
         {@render more('Glossary')}
         <dl class="space-y-2 pb-2">
