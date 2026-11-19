@@ -28,15 +28,17 @@
         <NotificationSettings />
       </section>
     {/if}
-    <section
-      class={['space-y-2', isNativeApp && 'border-t border-base-300 pt-4']}
+    <Disclosure
+      label="Troubleshooting"
+      class={isNativeApp ? 'border-t border-base-300 pt-2' : undefined}
     >
-      <h3 class="term">Troubleshooting</h3>
-      <p class="provenance">
-        Copies this device's recent sync errors to send with a bug report.
-      </p>
-      <Button onclick={copySyncLog}>Copy sync log</Button>
-    </section>
+      <div class="space-y-2 pb-2">
+        <p class="provenance">
+          Copies this device's recent sync errors to send with a bug report.
+        </p>
+        <Button onclick={copySyncLog}>Copy sync log</Button>
+      </div>
+    </Disclosure>
     <Disclosure label="Delete account" class="border-t border-base-300 pt-2">
       <div class="space-y-3 pb-2 text-sm text-base-content/70">
         <p>
