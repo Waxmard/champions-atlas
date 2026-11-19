@@ -1,5 +1,4 @@
 <script lang="ts">
-  import Modal from './Modal.svelte';
   import PokemonPicker from './PokemonPicker.svelte';
   import SpeciesLabel from './SpeciesLabel.svelte';
   import RemovableChip from './RemovableChip.svelte';
@@ -12,8 +11,6 @@
     type NotificationSettings,
   } from '#lib/catalog-news.js';
   import { syncPushToken } from '#lib/sync.svelte.js';
-
-  let { onclose }: { onclose: () => void } = $props();
 
   let settings = $state.raw(readNotificationSettings(localStorage));
   let busy = $state(false);
@@ -81,69 +78,65 @@
   </label>
 {/snippet}
 
-<Modal title="Notifications" {onclose}>
-  <div class="space-y-5">
-    {#if message}
-      <p role="alert" class="text-sm" style="color: var(--color-error-content)">
-        {message}
-      </p>
-    {/if}
-    <section>
-      <label class="flex min-h-11 cursor-pointer items-center gap-3">
-        <input
-          type="checkbox"
-          class="size-5 accent-primary"
-          checked={settings.newTeams}
-          disabled={busy}
-          onchange={(event) =>
-            void save({ ...settings, newTeams: event.currentTarget.checked })}
-        />
-        <span class="min-w-0">
-          <span class="block font-semibold">New teams</span>
-          <span class="provenance block"
-            >When teams are added to the current regulation.</span
-          >
-        </span>
-      </label>
-      {@render withoutEvs('newTeamsWithoutEvs', !settings.newTeams)}
-    </section>
-    <section class="space-y-2 border-t border-base-300 pt-4">
-      <h3 class="font-semibold">Teams with your Pokémon</h3>
-      <p class="provenance">
-        A separate notification when a new team has any of these Pokémon.
-      </p>
-      <PokemonPicker
-        portal={false}
-        options={available}
-        onselect={(pokemon) =>
-          void save({ ...settings, pokemon: [...settings.pokemon, pokemon] })}
+<div class="space-y-5">
+  {#if message}
+    <p role="alert" class="text-sm" style="color: var(--color-error-content)">
+      {message}
+    </p>
+  {/if}
+  <section>
+    <label class="flex min-h-11 cursor-pointer items-center gap-3">
+      <input
+        type="checkbox"
+        class="size-5 accent-primary"
+        checked={settings.newTeams}
         disabled={busy}
-        label="Add a Pokémon to notify about"
-        placeholder="Add a Pokémon…"
-        disabledPlaceholder="Saving…"
+        onchange={(event) =>
+          void save({ ...settings, newTeams: event.currentTarget.checked })}
       />
-      {#if settings.pokemon.length}
-        <ul class="flex flex-wrap items-center gap-2">
-          {#each settings.pokemon as pokemon (pokemon)}
-            <li class="max-w-full min-w-0">
-              <RemovableChip
-                label={pokemon}
-                disabled={busy}
-                onremove={() =>
-                  void save({
-                    ...settings,
-                    pokemon: settings.pokemon.filter(
-                      (name) => name !== pokemon
-                    ),
-                  })}
-              >
-                <SpeciesLabel {pokemon} spriteSize={24} textClass="truncate" />
-              </RemovableChip>
-            </li>
-          {/each}
-        </ul>
-      {/if}
-      {@render withoutEvs('pokemonWithoutEvs', settings.pokemon.length === 0)}
-    </section>
-  </div>
-</Modal>
+      <span class="min-w-0">
+        <span class="block font-semibold">New teams</span>
+        <span class="provenance block"
+          >When teams are added to the current regulation.</span
+        >
+      </span>
+    </label>
+    {@render withoutEvs('newTeamsWithoutEvs', !settings.newTeams)}
+  </section>
+  <section class="space-y-2 border-t border-base-300 pt-4">
+    <h4 class="font-semibold">Teams with your Pokémon</h4>
+    <p class="provenance">
+      A separate notification when a new team has any of these Pokémon.
+    </p>
+    <PokemonPicker
+      portal={false}
+      options={available}
+      onselect={(pokemon) =>
+        void save({ ...settings, pokemon: [...settings.pokemon, pokemon] })}
+      disabled={busy}
+      label="Add a Pokémon to notify about"
+      placeholder="Add a Pokémon…"
+      disabledPlaceholder="Saving…"
+    />
+    {#if settings.pokemon.length}
+      <ul class="flex flex-wrap items-center gap-2">
+        {#each settings.pokemon as pokemon (pokemon)}
+          <li class="max-w-full min-w-0">
+            <RemovableChip
+              label={pokemon}
+              disabled={busy}
+              onremove={() =>
+                void save({
+                  ...settings,
+                  pokemon: settings.pokemon.filter((name) => name !== pokemon),
+                })}
+            >
+              <SpeciesLabel {pokemon} spriteSize={24} textClass="truncate" />
+            </RemovableChip>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    {@render withoutEvs('pokemonWithoutEvs', settings.pokemon.length === 0)}
+  </section>
+</div>

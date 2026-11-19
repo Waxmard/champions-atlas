@@ -282,7 +282,8 @@ preserves the account cache, and no migration clears app-local storage.
 
 ## Account deletion
 
-**Delete account** in the account menu asks for confirmation and a fresh Google
+**Delete account** in a collapsed section of **Settings** (opened from the
+account menu) asks for confirmation and a fresh Google
 sign-in, then stops sync, clears `champions-atlas:sync-owner:v2`, deletes the
 cloud data, and deletes the Firebase Authentication user. The cloud data is
 `users/{uid}` with its teams, current sets, set manifest, and regulation labels,
@@ -358,8 +359,9 @@ straight through Apple's push service after it deploys the catalog. It reads
 three more `preview` secrets: `APNS_KEY_ID` and `APNS_KEY_P8` (an APNs auth key
 for team `48TY2FP59S`, Sandbox & Production), and `FIREBASE_SERVICE_ACCOUNT` (a
 JSON key for a service account with the **Cloud Datastore User** role). The app
-stores each device token at `pushTokens/{token}` while **Notifications → New
-teams** is on or the **Teams with your Pokémon** list has at least one Pokémon,
+stores each device token at `pushTokens/{token}` while **Settings →
+Notifications → New teams** is on or the **Teams with your Pokémon** list has
+at least one Pokémon,
 and deletes it when both are off or notification permission is denied. The
 document holds `uid`, `updatedAt`, and the device's notification settings:
 `newTeams`, `newTeamsWithoutEvs`, `pokemon` (a list of names, at most 500), and

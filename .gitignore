@@ -8,6 +8,7 @@ src/lib/data/team-tags.json
 mise.local.toml
 /.omp/skills/
 firebase-debug.log
+firestore-debug.log
 
 # Output
 .output

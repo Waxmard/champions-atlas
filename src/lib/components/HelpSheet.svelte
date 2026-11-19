@@ -122,7 +122,7 @@
           {#if sync.configured}
             <p>
               Your teams sync to your account. No ads or analytics. To delete
-              your account, choose Delete account in the account menu.
+              your account, open Settings from the account menu.
             </p>
           {:else}
             <p>Everything you save stays on this device.</p>

@@ -13,18 +13,13 @@ import {
   type User,
 } from 'firebase/auth';
 import {
-  collection,
   deleteDoc,
   doc,
-  getDocsFromServer,
   getFirestore,
-  query,
   runTransaction,
   serverTimestamp,
   setDoc,
   Timestamp,
-  where,
-  writeBatch,
   type Firestore,
   type Unsubscribe,
 } from 'firebase/firestore';
@@ -64,6 +59,7 @@ import {
 } from './storage-migration.ts';
 import { copyText } from './clipboard.ts';
 import { notify } from './notifications.ts';
+import { deleteUserData } from './account-deletion.ts';
 import { reloadRegulationOverrides } from './catalog-runtime.svelte.ts';
 import {
   mergeRegulationOverrides,
@@ -599,29 +595,6 @@ export async function signOut(): Promise<void> {
   }
 }
 
-async function deleteUserData(firestore: Firestore, id: string) {
-  const parent = doc(firestore, 'users', id);
-  const [teams, sets, tokens] = await Promise.all([
-    getDocsFromServer(collection(parent, 'teams')),
-    getDocsFromServer(collection(parent, 'pokemonSets')),
-    getDocsFromServer(
-      query(collection(firestore, 'pushTokens'), where('uid', '==', id))
-    ),
-  ]);
-  const refs = [
-    ...[teams, sets, tokens].flatMap(({ docs }) => docs.map(({ ref }) => ref)),
-    doc(parent, 'pokemonSetState', 'manifest'),
-    doc(parent, 'catalogState', 'regulations'),
-    parent,
-  ];
-  const batchSize = 500;
-  for (let start = 0; start < refs.length; start += batchSize) {
-    const batch = writeBatch(firestore);
-    for (const ref of refs.slice(start, start + batchSize)) batch.delete(ref);
-    await batch.commit();
-  }
-}
-
 const deleteError =
   'Account deletion did not finish. Sign in with the same Google account and try again.';
 
@@ -639,6 +612,7 @@ export async function deleteAccount(): Promise<void> {
     if (errorCode(error) !== 'SIGN_IN_CANCELLED') {
       fail(error, 'delete-account');
       sync.error = deleteError;
+      notify(deleteError);
     }
     return;
   }
@@ -656,9 +630,11 @@ export async function deleteAccount(): Promise<void> {
     await signOut();
     fail(error, 'delete-account');
     sync.error = deleteError;
+    notify(deleteError);
     return;
   }
   await signOut();
+  notify('Account deleted.');
 }
 
 export async function syncPushToken(): Promise<PushRegistration | null> {

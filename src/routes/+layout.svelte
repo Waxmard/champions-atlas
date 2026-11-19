@@ -20,20 +20,13 @@
   import AppFooter from '#lib/components/AppFooter.svelte';
   import HelpButton from '#lib/components/HelpButton.svelte';
   import HelpSheet from '#lib/components/HelpSheet.svelte';
-  import NotificationSettings from '#lib/components/NotificationSettings.svelte';
+  import SettingsSheet from '#lib/components/SettingsSheet.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
     initCatalogRuntime,
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
-  import {
-    copySyncLog,
-    deleteAccount,
-    initSync,
-    pushNow,
-    signOut,
-    sync,
-  } from '#lib/sync.svelte.js';
+  import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
   import {
     applyGameResults,
@@ -101,7 +94,7 @@
   let checkingShares = false;
   let syncingResults = false;
   let notificationAccount: string | undefined;
-  let notificationSettingsOpen = $state(false);
+  let settingsOpen = $state(false);
 
   function validDestination(value: string | null): string | null {
     if (
@@ -700,33 +693,13 @@
                       >Retry sync</DropdownMenu.Item
                     >
                   {/if}
-                  {#if isNativeApp}
-                    <DropdownMenu.Item
-                      onSelect={() => (notificationSettingsOpen = true)}
-                      class="option-row min-h-9 px-2"
-                      >Notifications</DropdownMenu.Item
-                    >
-                  {/if}
                   <DropdownMenu.Item
-                    onSelect={copySyncLog}
-                    class="option-row min-h-9 px-2"
-                    >Copy sync log</DropdownMenu.Item
+                    onSelect={() => (settingsOpen = true)}
+                    class="option-row min-h-9 px-2">Settings</DropdownMenu.Item
                   >
                   <DropdownMenu.Item
                     onSelect={signOut}
                     class="option-row min-h-9 px-2">Sign out</DropdownMenu.Item
-                  >
-                  <DropdownMenu.Item
-                    onSelect={() => {
-                      if (
-                        confirm(
-                          'Permanently delete your account and its synced teams and sets from the cloud? Teams on this device stay.'
-                        )
-                      )
-                        void deleteAccount();
-                    }}
-                    class="option-row min-h-9 px-2 text-error-content data-[highlighted]:bg-error data-[highlighted]:text-error-content"
-                    >Delete account</DropdownMenu.Item
                   >
                 </DropdownMenu.Content>
               </DropdownMenu.Portal>
@@ -738,8 +711,8 @@
   </header>
   <ActionNotification />
   <HelpSheet />
-  {#if notificationSettingsOpen}
-    <NotificationSettings onclose={() => (notificationSettingsOpen = false)} />
+  {#if settingsOpen}
+    <SettingsSheet onclose={() => (settingsOpen = false)} />
   {/if}
   {#key sync.user?.uid}
     {@render children()}

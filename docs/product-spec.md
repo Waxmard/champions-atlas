@@ -67,8 +67,8 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   added teams) with a blue dot before the team name; the dot stays until a later
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
   those teams.
-- Signed-in iPhone users choose catalog notifications under **Notifications** in
-  the account menu; the choices are stored on the device. **New teams** (on by
+- Signed-in iPhone users choose catalog notifications at the top of **Settings**
+  in the account menu; the choices are stored on the device. **New teams** (on by
   default) sends one banner per batch counting its current-regulation teams,
   with a body naming the tournaments and YouTubers they came from. Tapping it
   opens Browse with **New teams only** on.
@@ -494,14 +494,15 @@ collections share the same storage ceiling and sync path (see
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when
-connected. A first sign-in may require connectivity. **Copy sync log** in the
-account menu copies the device's last 20 sync failures as JSON (time, step,
-error code and message, and whether the device was online and the app visible)
-for troubleshooting, and confirms with **Sync log copied.** **Delete account**
-in the same menu, after confirmation and a fresh Google sign-in, permanently
-deletes the account and its cloud teams, in-game sets, and notification
-registrations; saved data on the device stays. Native setup and signing are
-described in [iOS installation and Firebase sync](firebase.md).
+connected. A first sign-in may require connectivity. **Settings** in the account
+menu holds **Troubleshooting**, where **Copy sync log** copies the device's last
+20 sync failures as JSON (time, step, error code and message, and whether the
+device was online and the app visible) for troubleshooting and confirms with
+**Sync log copied.** A collapsed **Delete account** section at the bottom of
+Settings, after confirmation and a fresh Google sign-in, permanently deletes the
+account and its cloud teams, in-game sets, and notification registrations; saved
+data on the device stays. Native setup and signing are described in
+[iOS installation and Firebase sync](firebase.md).
 
 ## Future scope
 
