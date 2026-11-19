@@ -269,6 +269,12 @@ export async function notifyNewTeams({
       );
       pageToken = page?.nextPageToken ?? '';
     } while (pageToken);
+    const onlyDevice = env.ANNOUNCE_DEVICE?.trim();
+    if (
+      onlyDevice &&
+      !devices.some(({ name }) => name.endsWith(`/${onlyDevice}`))
+    )
+      throw new Error(`Unknown device: ${onlyDevice}`);
 
     const authorization = `bearer ${jwt(
       { alg: 'ES256', kid: env.APNS_KEY_ID },
@@ -287,6 +293,7 @@ export async function notifyNewTeams({
     const counts = { sent: 0, dead: 0, rejected: 0, failed: 0 };
     try {
       for (const { name, prefs } of devices) {
+        if (onlyDevice && !name.endsWith(`/${onlyDevice}`)) continue;
         const pushes = [
           prefs.newTeams && [
             COLLAPSE_ID,

@@ -210,7 +210,9 @@ test('rejects HTTP failures, redirects, non-JSON responses and network errors', 
       loadPokepaste(url, async () =>
         response(JSON.stringify({ paste }), contentType)
       ),
-      /non-JSON/
+      (caught) =>
+        caught instanceof PokepasteUnavailableError &&
+        /non-JSON/.test(caught.message)
     );
   }
   const loaded = await loadPokepaste(url, async () =>
@@ -246,7 +248,9 @@ test('rejects malformed JSON, invalid UTF-8 and non-object or missing paste data
   for (const body of ['{"paste":', new Uint8Array([0xff]), null]) {
     await assert.rejects(
       loadPokepaste(url, async () => response(body)),
-      /invalid JSON/
+      (caught) =>
+        caught instanceof PokepasteUnavailableError &&
+        /invalid JSON/.test(caught.message)
     );
   }
   for (const value of [
@@ -259,7 +263,9 @@ test('rejects malformed JSON, invalid UTF-8 and non-object or missing paste data
   ]) {
     await assert.rejects(
       loadPokepaste(url, jsonResponse(value)),
-      /invalid paste/
+      (caught) =>
+        caught instanceof PokepasteUnavailableError &&
+        /invalid paste/.test(caught.message)
     );
   }
 });

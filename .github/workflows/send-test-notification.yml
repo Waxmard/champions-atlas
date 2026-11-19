@@ -7,6 +7,10 @@ on:
         description: Comma-separated catalog team IDs to announce as a batch
         required: true
         type: string
+      device:
+        description: Optional pushTokens document ID to send to only that device
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -33,6 +37,7 @@ jobs:
         run: node scripts/notify-new-teams.mjs
         env:
           ANNOUNCE_TEAM_IDS: ${{ inputs.team_ids }}
+          ANNOUNCE_DEVICE: ${{ inputs.device }}
           APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
           APNS_KEY_P8: ${{ secrets.APNS_KEY_P8 }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
