@@ -353,7 +353,7 @@ test('a lone legacy Mega-Z slot normalizes without touching its member', () => {
 
 test('invalid registries reject without startup writes', () => {
   const error =
-    'Current Pokémon sets could not be read. Existing data has been left untouched.';
+    'In-game sets could not be read. Existing data has been left untouched.';
   const savedTeams = '{ "saved": ["must", "stay", "byte-for-byte"] }';
   const pikachu = (changes) => ({ id: 'pikachu', member: member(changes) });
   const invalid = [
@@ -636,7 +636,7 @@ test('cloud decoding resolves aliases and stages one canonical child', () => {
   ];
   for (const run of invalid)
     assert.throws(run, {
-      message: /Cloud current Pokémon sets could not be read/,
+      message: /Cloud in-game sets could not be read/,
     });
 });
 

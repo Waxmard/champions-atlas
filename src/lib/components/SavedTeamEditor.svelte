@@ -570,7 +570,7 @@
               </p>
             {/if}
             <p class="provenance">
-              Editing does not create a working rental code.
+              Editing a team does not create a new replica code.
             </p>
           </div>
         </div>

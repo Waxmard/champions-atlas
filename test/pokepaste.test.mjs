@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { canonicalPokepasteUrl, loadPokepaste } from '../src/lib/pokepaste.ts';
+import {
+  canonicalPokepasteUrl,
+  loadPokepaste,
+  PokepasteUnavailableError,
+} from '../src/lib/pokepaste.ts';
 import { newCustomTeam } from '../src/lib/workbench.ts';
 
 const url = 'https://pokepast.es/138b4ef886ba95e4';
@@ -196,7 +200,9 @@ test('rejects HTTP failures, redirects, non-JSON responses and network errors', 
   for (const status of [302, 404, 500]) {
     await assert.rejects(
       loadPokepaste(url, async () => new Response(null, { status })),
-      new RegExp(`HTTP ${status}`)
+      (caught) =>
+        caught instanceof PokepasteUnavailableError &&
+        new RegExp(`HTTP ${status}`).test(caught.message)
     );
   }
   for (const contentType of ['text/html', 'application/jsonp', '']) {
@@ -221,6 +227,18 @@ test('rejects HTTP failures, redirects, non-JSON responses and network errors', 
       throw error;
     }),
     (caught) => caught === error
+  );
+});
+
+test('keeps paste problems distinct from an unavailable Poképaste', async () => {
+  await assert.rejects(
+    loadPokepaste(
+      url,
+      jsonResponse({ paste: blocks.slice(0, 5).join('\n\n') })
+    ),
+    (caught) =>
+      !(caught instanceof PokepasteUnavailableError) &&
+      /six sets/.test(caught.message)
   );
 });
 

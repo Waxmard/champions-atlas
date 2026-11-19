@@ -6,7 +6,11 @@
   import CollectionPage from '#lib/components/CollectionPage.svelte';
   import Plus from '@lucide/svelte/icons/plus';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { canonicalPokepasteUrl, loadPokepaste } from '#lib/pokepaste.js';
+  import {
+    canonicalPokepasteUrl,
+    loadPokepaste,
+    PokepasteUnavailableError,
+  } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { notify } from '#lib/notifications.js';
@@ -208,9 +212,11 @@
         ? 'Poképaste request timed out. Try again.'
         : error instanceof TypeError
           ? 'Could not load this Poképaste. Check your connection and try again.'
-          : error instanceof Error
-            ? `${error.message.replace(/[.!?]$/, '')}. Check the link or paste and try again.`
-            : 'Could not load this Poképaste. Try again.';
+          : error instanceof PokepasteUnavailableError
+            ? 'Could not load this Poképaste. Check the link and try again.'
+            : error instanceof Error
+              ? `${error.message.replace(/[.!?]$/, '')}. Check the link or paste and try again.`
+              : 'Could not load this Poképaste. Try again.';
       return false;
     } finally {
       window.clearTimeout(timer);
@@ -356,8 +362,8 @@
         >
       </div>
       <p id="wishlist-share-hint" class="provenance mt-2">
-        From a Poképaste page, use Share → Champion’s Atlas, then open Atlas to
-        finish importing.
+        From a Poképaste page, use Share → Champion's Atlas, then open
+        Champion's Atlas to finish importing.
       </p>
       <form
         aria-label="Import Poképaste"

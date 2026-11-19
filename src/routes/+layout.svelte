@@ -17,6 +17,9 @@
   import Search from '@lucide/svelte/icons/search';
   import Folder from '@lucide/svelte/icons/folder';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
+  import AppFooter from '#lib/components/AppFooter.svelte';
+  import HelpButton from '#lib/components/HelpButton.svelte';
+  import HelpSheet from '#lib/components/HelpSheet.svelte';
   import NotificationSettings from '#lib/components/NotificationSettings.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
@@ -643,6 +646,7 @@
         >
       </a>
       <div class="flex min-w-0 items-center justify-end gap-1">
+        <HelpButton label="Help" class="size-11 shrink-0" />
         {#if sync.configured}
           {#if sync.status === 'error'}
             <span
@@ -729,40 +733,14 @@
     </div>
   </header>
   <ActionNotification />
+  <HelpSheet />
   {#if notificationSettingsOpen}
     <NotificationSettings onclose={() => (notificationSettingsOpen = false)} />
   {/if}
   {#key sync.user?.uid}
     {@render children()}
   {/key}
-  <footer
-    class="app-container mt-2 mb-[var(--app-tabbar-height)] border-t border-base-content/25 py-6"
-  >
-    <p class="provenance max-w-4xl">
-      An independent fan project. Pokémon belongs to its respective owners. Team
-      sources credited in each entry. Champions Pokémon sprites from
-      <a
-        class="underline underline-offset-2"
-        href="https://github.com/PokeAPI/sprites"
-        target="_blank"
-        rel="external noreferrer">PokéAPI sprites</a
-      >; see
-      <a
-        class="underline underline-offset-2"
-        href="https://github.com/PokeAPI/sprites/blob/master/LICENCE.txt"
-        target="_blank"
-        rel="external noreferrer">license notice</a
-      >. Champions sprite set and image rights belong to The Pokémon Company.
-      Item icons from
-      <a
-        class="underline underline-offset-2"
-        href="https://github.com/smogon/sprites"
-        target="_blank"
-        rel="external noreferrer">Smogon sprites</a
-      >. Item image rights belong to Nintendo, Game Freak, and The Pokémon
-      Company.
-    </p>
-  </footer>
+  <AppFooter />
   <nav
     aria-label="Main"
     class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)] [view-transition-name:app-tabbar] phone-landscape:inset-y-0 phone-landscape:right-auto phone-landscape:h-auto phone-landscape:w-[calc(var(--app-rail-width)+env(safe-area-inset-left))] phone-landscape:border-t-0 phone-landscape:border-r phone-landscape:pb-0 phone-landscape:pl-[env(safe-area-inset-left)]"

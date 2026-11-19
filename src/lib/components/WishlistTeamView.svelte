@@ -176,7 +176,8 @@
             Source status: {entry.original.replicaStatus}
           </p>{/if}
         <p class="provenance">
-          This code belongs to the original team. Availability may change.
+          Enter this code under Replica Teams in Pokémon Champions to copy this
+          team. It may stop working.
         </p>
       </div>
     {/if}

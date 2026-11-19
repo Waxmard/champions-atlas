@@ -53,10 +53,10 @@
   const registry = createCurrentSetRegistry();
 
   const teamError =
-    'This team changed elsewhere. Reopen the team before saving its current sets.';
-  const readErrorPrefix = 'Current Pokémon sets could not be read.';
+    'This team changed elsewhere. Reopen the team before recording its in-game sets.';
+  const readErrorPrefix = 'In-game sets could not be read.';
   const raceError =
-    'Current Pokémon sets changed while confirming. Try saving again.';
+    'In-game sets changed while confirming. Try recording again.';
 
   export function canRecord(): boolean {
     if (disabled || registry.sets === null) return false;
@@ -161,7 +161,7 @@
     alertMessage =
       detail.startsWith(readErrorPrefix) || detail === raceError
         ? detail
-        : `Could not save the current sets. Existing current-set data was not replaced. ${detail}`;
+        : `Could not record in-game sets. Your recorded sets were not changed. ${detail}`;
   }
 
   function record(
@@ -200,7 +200,7 @@
         notify("Recorded this team's in-game sets on this device.");
       } else {
         const incoming = plan.incoming[0];
-        if (!incoming) throw new Error('no incoming set to record');
+        if (!incoming) throw new Error('Nothing to record.');
         notify(
           `Recorded the in-game ${browsePokemon(pokemon ?? incoming.member.pokemon)} set on this device.`
         );
@@ -254,7 +254,7 @@
       const member =
         memberIndex === undefined ? undefined : latest.members[memberIndex];
       if (memberIndex !== undefined && !member)
-        throw new Error('member not found');
+        throw new Error('This Pokémon is no longer on the team.');
       const selectedMembers: Member[] = member ? [member] : latest.members;
       const plan = prepareCurrentSets(localStorage, selectedMembers);
       if (!plan.overwritten.length && !hasNewIncoming(plan)) {
@@ -316,10 +316,13 @@
       <Save class="size-4" aria-hidden="true" />
       Record all in-game sets
     </Button>
-    <span id={`in-game-sets-description-${uid}`} class="sr-only">
-      Record the sets currently in your Pokémon Champions box—one per Pokémon.
-      This doesn’t change anything in the game.
-    </span>
+    <p
+      id={`in-game-sets-description-${uid}`}
+      class={reminder ? 'sr-only' : 'provenance order-2 basis-full'}
+    >
+      This tells the app how these Pokémon are built in your game right now, so
+      VP estimates stay accurate. Nothing changes in Pokémon Champions.
+    </p>
   {/if}
   <p
     role="alert"

@@ -25,7 +25,7 @@ export type CurrentSetChoice =
   | { kind: 'move'; index: number; move: string };
 
 const readError =
-  'Current Pokémon sets could not be read. Existing data has been left untouched.';
+  'In-game sets could not be read. Existing data has been left untouched.';
 
 const idSchema = z.string().regex(/^[a-z0-9]{1,1500}$/);
 const rawCurrentSetSchema = z.strictObject({
@@ -242,7 +242,7 @@ export function saveCurrentSets(
       !sameEntry(latestEntry, entry)
     )
       throw new Error(
-        'Current Pokémon sets changed while confirming. Try saving again.'
+        'In-game sets changed while confirming. Try recording again.'
       );
   }
 

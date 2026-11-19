@@ -1,5 +1,6 @@
 declare global {
   const __LOCAL_IMAGE_ASSETS__: Readonly<Record<string, true>>;
+  const __APP_VERSION__: string;
 
   interface ImportMetaEnv {
     readonly VITE_CATALOG_URL?: string;

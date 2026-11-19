@@ -48,14 +48,14 @@
   aria-haspopup="dialog"
   onclick={() => (open = true)}
 >
-  <span class="term">Record</span>
+  <span class="term">Win–loss record</span>
   <span class="text-[0.9375rem] font-medium">
     <span aria-hidden="true">{summary.text}</span>
     <span class="sr-only">{summary.label}</span>
   </span>
 </button>
 {#if open}
-  <Modal title="Record" onclose={close}>
+  <Modal title="Win–loss record" onclose={close}>
     <div class="tabular-nums">
       {#key logged?.id}
         <p

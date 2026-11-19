@@ -110,15 +110,16 @@ const errorCode = (error: unknown) =>
     ? String(error.code)
     : '';
 
-function fail(error: unknown, step: string) {
+function fail(error: unknown, step: string, shown?: string) {
+  const message = error instanceof Error ? error.message : String(error);
   sync.status = 'error';
-  sync.error = error instanceof Error ? error.message : String(error);
+  sync.error = shown ?? message;
   const cause = error instanceof Error ? error.cause : undefined;
   recordSyncFailure(localStorage, {
     at: new Date().toISOString(),
     step,
     code: errorCode(error) || errorCode(cause),
-    message: sync.error,
+    message,
     cause: cause === undefined ? '' : String(cause),
     online: navigator.onLine,
     visible: document.visibilityState === 'visible',
@@ -550,7 +551,13 @@ export async function signIn(): Promise<void> {
       sync.error = '';
       return;
     }
-    fail(error, 'sign-in');
+    fail(
+      error,
+      'sign-in',
+      navigator.onLine
+        ? 'Sign-in did not finish. Try again.'
+        : 'You are offline. Connect to the internet, then try again.'
+    );
   }
 }
 

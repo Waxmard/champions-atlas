@@ -2,7 +2,7 @@ import adapter from '@sveltejs/adapter-static';
 import tailwindcss from '@tailwindcss/vite';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 
 function readLocalImages(directory: 'sprites' | 'items'): [string, true][] {
   try {
@@ -18,6 +18,10 @@ function readLocalImages(directory: 'sprites' | 'items'): [string, true][] {
   }
 }
 
+const { version } = JSON.parse(
+  readFileSync(new URL('./package.json', import.meta.url), 'utf8')
+) as { version: string };
+
 export default defineConfig({
   define: {
     __LOCAL_IMAGE_ASSETS__: JSON.stringify(
@@ -26,6 +30,7 @@ export default defineConfig({
         ...readLocalImages('items'),
       ])
     ),
+    __APP_VERSION__: JSON.stringify(version),
   },
   plugins: [
     tailwindcss(),

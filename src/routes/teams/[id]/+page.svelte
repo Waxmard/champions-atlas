@@ -13,6 +13,7 @@
   import Folder from '@lucide/svelte/icons/folder';
   import Modal from '#lib/components/Modal.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
+  import HelpButton from '#lib/components/HelpButton.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { copyText } from '#lib/clipboard.js';
@@ -200,6 +201,7 @@
         {:else}
           <span class="detail-badge">{regulationLabel(team.regulation)}</span>
         {/if}
+        <HelpButton topic="regulation" label="About regulations" />
         <span class="detail-badge" data-grade={evidenceGrade(strongest.level)}
           >{reason?.label ?? strongest.label}</span
         >

@@ -25,11 +25,16 @@
         Champion's Atlas
       </h1>
       <p class="provenance mt-2 text-center">
-        Sign in to browse and sync your teams
+        Find, save, and tune teams for Pokémon Champions doubles.
       </p>
       <div class="my-5 h-px bg-base-300" aria-hidden="true"></div>
 
       {#if sync.configured}
+        <p
+          class="mb-4 text-center text-[0.9375rem] leading-relaxed text-base-content/70"
+        >
+          Sign in so your teams are kept and sync between your devices.
+        </p>
         <Button
           variant="primary"
           class="w-full gap-3"
@@ -64,7 +69,7 @@
         <p
           class="text-center text-[0.9375rem] leading-relaxed text-base-content/70"
         >
-          Sign-in is not configured.
+          Sign-in is not available in this build.
         </p>
       {/if}
 
@@ -73,7 +78,8 @@
       {/if}
     </div>
     <p class="provenance mt-6 text-center">
-      An independent fan project. Pokémon belongs to its respective owners.
+      An independent fan project, not affiliated with Nintendo, Game Freak, or
+      The Pokémon Company.
     </p>
   </div>
 </main>

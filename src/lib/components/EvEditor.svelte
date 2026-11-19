@@ -1,5 +1,6 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
+  import HelpButton from '#lib/components/HelpButton.svelte';
   import {
     balanceChampionsStat,
     CHAMPIONS_STATS,
@@ -272,7 +273,10 @@
   <!-- Nature modifies the stats below -->
   <fieldset class="mb-4 grid min-w-0 gap-2 border-b pb-4">
     <legend class="sr-only">Nature</legend>
-    <label for="set-nature-input" class="term">Nature</label>
+    <div class="flex items-center gap-1">
+      <label for="set-nature-input" class="term">Nature</label>
+      <HelpButton topic="nature" label="About natures" />
+    </div>
     <div class="field">
       <input
         id="set-nature-input"
@@ -366,7 +370,10 @@
       {/each}
     </SuggestionList>
   </fieldset>
-  <p class="provenance mb-2 px-0.5">{allocation}</p>
+  <p class="provenance mb-2 flex items-center gap-1 px-0.5">
+    {allocation}
+    <HelpButton topic="evs" label="About EVs" />
+  </p>
   <Button
     variant="quiet"
     class="-ms-3"
