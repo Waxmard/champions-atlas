@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.17.0](https://github.com/Waxmard/champions-atlas/compare/v0.16.0...v0.17.0) (2026-11-19)
+
+
+### Features
+
+* add in-app account deletion ([#123](https://github.com/Waxmard/champions-atlas/issues/123)) ([38ffaad](https://github.com/Waxmard/champions-atlas/commit/38ffaad540b25ca4600d3d3141db5126ecf27401))
+
 ## [0.16.0](https://github.com/Waxmard/champions-atlas/compare/v0.15.0...v0.16.0) (2026-11-18)
 
 
