@@ -34,3 +34,9 @@ jobs:
           save-always: true
       - name: Run CI checks
         run: make ci
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Run Firestore rules tests
+        run: npm run test:rules

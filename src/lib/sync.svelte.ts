@@ -610,8 +610,10 @@ export async function deleteAccount(): Promise<void> {
     );
   } catch (error) {
     if (errorCode(error) !== 'SIGN_IN_CANCELLED') {
+      const { status, error: syncError } = sync;
       fail(error, 'delete-account');
-      sync.error = deleteError;
+      sync.status = status;
+      sync.error = syncError;
       notify(deleteError);
     }
     return;
