@@ -20,7 +20,7 @@ import {
 import { canonicalSnapshot } from './team-history.ts';
 
 export const currentSetCloudReadError =
-  'Cloud current Pokémon sets could not be read. Existing data has been left untouched.';
+  'Cloud in-game sets could not be read. Existing data has been left untouched.';
 
 const currentSetIdPattern = /^[a-z0-9]{1,1500}$/;
 

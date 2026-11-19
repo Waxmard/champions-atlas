@@ -562,12 +562,12 @@
       <h1 class="sr-only">{label}</h1>
     {/if}
     <div
-      class="sticky top-[var(--app-header-height,0px)] z-30 [margin-inline-start:calc(-1*(1rem+env(safe-area-inset-left)))] [margin-inline-end:calc(-1*(1rem+env(safe-area-inset-right)))] border-b border-base-300 bg-base-200 py-1 [padding-inline-start:calc(1rem+env(safe-area-inset-left))] [padding-inline-end:calc(1rem+env(safe-area-inset-right))] sm:[margin-inline-start:calc(-1*(2rem+env(safe-area-inset-left)))] sm:[margin-inline-end:calc(-1*(2rem+env(safe-area-inset-right)))] sm:[padding-inline-start:calc(2rem+env(safe-area-inset-left))] sm:[padding-inline-end:calc(2rem+env(safe-area-inset-right))]"
+      class="bleed sticky top-[var(--app-header-height,0px)] z-30 border-b border-base-300 bg-base-200 py-1 phone-landscape:py-0"
     >
       <a
         data-swipe-back
         href={resolve(collection)}
-        class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content"
+        class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content phone-landscape:min-h-9"
       >
         <ArrowLeft class="size-4" aria-hidden="true" />
         Back to {label}

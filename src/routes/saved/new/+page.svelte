@@ -75,8 +75,9 @@
     <div class="mt-4 flex flex-wrap items-center gap-3">
       <Button type="submit" variant="primary">Save custom team</Button>
       <p class="provenance">
-        Saves locally as {catalogState.catalog.currentRegulation}; legality
-        remains unverified.
+        Saved on this device as a Regulation {catalogState.catalog
+          .currentRegulation}
+        team. The app does not check legality.
       </p>
     </div>
   </form>

@@ -35,6 +35,8 @@ export function canonicalPokepasteUrl(input: string): string {
   return `https://pokepast.es/${match[1].toLowerCase()}`;
 }
 
+export class PokepasteUnavailableError extends Error {}
+
 export async function loadPokepaste(
   url: string,
   fetcher: typeof fetch = fetch,
@@ -49,7 +51,9 @@ export async function loadPokepaste(
   });
   if (!response.ok) {
     void response.body?.cancel().catch(() => undefined);
-    throw new Error(`Poképaste could not be loaded (HTTP ${response.status}).`);
+    throw new PokepasteUnavailableError(
+      `Poképaste could not be loaded (HTTP ${response.status}).`
+    );
   }
   const contentType = response.headers
     .get('content-type')
@@ -61,24 +65,27 @@ export async function loadPokepaste(
     !/^application\/[a-z0-9!#$&^_.+-]+\+json$/.test(contentType ?? '')
   ) {
     void response.body?.cancel().catch(() => undefined);
-    throw new Error('Poképaste returned non-JSON content.');
+    throw new PokepasteUnavailableError('Poképaste returned non-JSON content.');
   }
 
-  if (!response.body) throw new Error('Poképaste returned invalid JSON.');
+  if (!response.body)
+    throw new PokepasteUnavailableError('Poképaste returned invalid JSON.');
   let data: unknown;
   try {
     data = await readBoundedJson(response, 256 * 1024, 'Poképaste');
   } catch (error) {
     if (!(error instanceof SyntaxError) && !(error instanceof TypeError))
       throw error;
-    throw new Error('Poképaste returned invalid JSON.', { cause: error });
+    throw new PokepasteUnavailableError('Poképaste returned invalid JSON.', {
+      cause: error,
+    });
   }
   if (typeof data !== 'object' || data === null || Array.isArray(data)) {
-    throw new Error('Poképaste returned an invalid paste.');
+    throw new PokepasteUnavailableError('Poképaste returned an invalid paste.');
   }
   const payload = data as Record<string, unknown>;
   if (typeof payload.paste !== 'string') {
-    throw new Error('Poképaste returned an invalid paste.');
+    throw new PokepasteUnavailableError('Poképaste returned an invalid paste.');
   }
   if (payload.paste.length > 50_000) {
     throw new Error('Poképaste paste exceeds 50,000 characters.');

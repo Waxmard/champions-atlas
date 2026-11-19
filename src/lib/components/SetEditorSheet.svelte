@@ -624,7 +624,10 @@
   }
 </script>
 
-<div bind:this={editorElement} class="flex min-h-0 grow flex-col">
+<div
+  bind:this={editorElement}
+  class="flex min-h-0 grow flex-col phone-landscape:grid phone-landscape:grid-cols-[14rem_minmax(0,1fr)] phone-landscape:grid-rows-[minmax(0,1fr)_auto]"
+>
   <SetEditorHeader
     bind:heading={editorHeading}
     view={currentView}
@@ -641,7 +644,7 @@
   />
   <div
     bind:this={contentElement}
-    class="min-h-0 flex-auto overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6"
+    class="min-h-0 flex-auto overflow-y-auto overscroll-contain py-4 pr-7 pl-5 sm:pr-8.5 sm:pl-6 phone-landscape:row-span-2"
   >
     {#if currentSets.error}
       <p
@@ -763,7 +766,7 @@
     {/if}
   </div>
   <footer
-    class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-3 sm:px-6 sm:pb-4"
+    class="shrink-0 border-t border-base-300 bg-base-100 px-5 pt-3 pb-3 sm:px-6 sm:pb-4 phone-landscape:border-r"
   >
     {#if error && !((currentView === 'moves' && errorField === 'moves') || (currentView === 'details' && ['item', 'ability'].includes(errorField || '')) || (currentView === 'spread' && (errorField === 'spread' || errorField === 'nature')) || (currentView === 'pokemon' && errorField === 'pokemon'))}<p
         role="alert"

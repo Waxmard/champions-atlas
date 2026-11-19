@@ -127,7 +127,7 @@ final class ShareViewController: UIViewController {
                 DispatchQueue.main.async {
                     guard let self = self else { return }
                     self.saved = true
-                    self.message.text = "Link saved. Open Champion’s Atlas to finish importing."
+                    self.message.text = "Link saved. Open Champion's Atlas to finish importing."
                     self.action.setTitle("Done", for: .normal)
                     self.action.isEnabled = true
                     self.cancel.isHidden = true

@@ -10,6 +10,7 @@ import { canonicalMember } from '../src/lib/paste.ts';
 import {
   applyGuardedStorageWrites,
   composeSyncCache,
+  dropSentSyncFailures,
   migrateStoredData,
   readSyncCache,
   readSyncCacheSnapshot,
@@ -17,6 +18,7 @@ import {
   recordSyncFailure,
   syncLogKey,
   syncRecordKey,
+  syncOutboxKey,
   writeSyncCache,
 } from '../src/lib/storage-migration.ts';
 import { storageKey } from '../src/lib/workbench.ts';
@@ -353,7 +355,7 @@ test('a lone legacy Mega-Z slot normalizes without touching its member', () => {
 
 test('invalid registries reject without startup writes', () => {
   const error =
-    'Current Pokémon sets could not be read. Existing data has been left untouched.';
+    'In-game sets could not be read. Existing data has been left untouched.';
   const savedTeams = '{ "saved": ["must", "stay", "byte-for-byte"] }';
   const pikachu = (changes) => ({ id: 'pikachu', member: member(changes) });
   const invalid = [
@@ -636,7 +638,7 @@ test('cloud decoding resolves aliases and stages one canonical child', () => {
   ];
   for (const run of invalid)
     assert.throws(run, {
-      message: /Cloud current Pokémon sets could not be read/,
+      message: /Cloud in-game sets could not be read/,
     });
 });
 
@@ -657,6 +659,31 @@ test('sync failure log keeps the newest 20 entries and survives bad storage', ()
         },
       },
       { n: 0 }
+    ),
+    false
+  );
+});
+
+test('sent sync failures leave the upload queue and later ones stay', () => {
+  const target = fakeStorage();
+  recordSyncFailure(target.storage, { n: 1 });
+  recordSyncFailure(target.storage, { n: 1 }, syncOutboxKey);
+  recordSyncFailure(target.storage, { n: 2 }, syncOutboxKey);
+  const sent = readSyncLog(target.storage, syncOutboxKey);
+  assert.deepEqual(sent, [{ n: 1 }, { n: 2 }]);
+  recordSyncFailure(target.storage, { n: 3 }, syncOutboxKey);
+  assert.equal(dropSentSyncFailures(target.storage, sent), true);
+  assert.deepEqual(readSyncLog(target.storage, syncOutboxKey), [{ n: 3 }]);
+  assert.deepEqual(readSyncLog(target.storage), [{ n: 1 }]);
+  assert.equal(
+    dropSentSyncFailures(
+      {
+        getItem: () => null,
+        setItem: () => {
+          throw new Error('quota');
+        },
+      },
+      sent
     ),
     false
   );

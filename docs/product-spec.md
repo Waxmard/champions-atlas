@@ -67,12 +67,14 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   added teams) with a blue dot before the team name; the dot stays until a later
   batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
   those teams.
-- Signed-in iPhone users choose catalog notifications under **Notifications** in
-  the account menu; the choices are stored on the device. **New teams** (on by
-  default) sends one banner per batch counting its current-regulation teams,
-  with a body naming the tournaments and YouTubers they came from. Tapping it
-  opens Browse with **New teams only** on.
-- **Teams with your Pokémon** in the same dialog holds a list of Pokémon (empty
+- Signed-in iPhone users choose catalog notifications at the top of **Settings**
+  in the account menu; the choices are stored on the device. Under
+  **Notifications**, each of the two groups below is a collapsed row that shows
+  its state (**On**/**Off**, or the number of Pokémon chosen). **New teams** (on
+  by default, toggled by **Notify me** inside the row) sends one banner per batch
+  counting its current-regulation teams, with a body naming the tournaments and
+  YouTubers they came from. Tapping it opens Browse with **New teams only** on.
+- **Teams with your Pokémon** below it holds a list of Pokémon (empty
   by default), chosen from the current regulation's roster and the Pokémon on
   catalog teams. When a batch has a current-regulation team with any of them,
   the catalog refresh sends a separate banner counting those teams and naming up
@@ -122,7 +124,7 @@ opens the matching catalog team from a Saved team or a selected Wishlist team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
 restoration conflicts with the current roster.
 
-The Saved editor shows a **Record** row for the team, such as
+The Saved editor shows a **Win–loss record** row for the team, such as
 **3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
 number, and is omitted before the first game. Tapping the row opens a pop-up.
 **Win** and **Loss** each log one game and the pop-up stays open, so several
@@ -138,9 +140,10 @@ Saved and Wishlist and syncs like other team content. Saved
 and Wishlist cards show it read-only, with the percentage, once a team has a
 record. On iPhone, the **Log Game Result** shortcut action names the current
 team, or the first team in Saved order when none is current, asks for **Win** or
-**Loss**, and logs it without opening the app. A banner confirms the result with
-the team's updated record; tapping it opens that team in Saved. Results logged
-this way join the record the next time the app is opened.
+**Loss**, and logs it without opening the app. Shortcuts shows the result with
+the team's updated record, and a quiet entry in Notification Center (no banner)
+opens that team in Saved when tapped. Results logged this way join the record
+the next time the app is opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain
@@ -494,11 +497,23 @@ collections share the same storage ceiling and sync path (see
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when
-connected. A first sign-in may require connectivity. **Copy sync log** in the
-account menu copies the device's last 20 sync failures as JSON (time, step,
-error code and message, and whether the device was online and the app visible)
-for troubleshooting, and confirms with **Sync log copied.** Native setup and
-signing are described in [iOS installation and Firebase sync](firebase.md).
+connected. A first sign-in may require connectivity. **Settings** in the account
+menu holds **Troubleshooting**, where **Copy sync log** copies the device's last
+20 sync failures as JSON (time, step, error code and message, and whether the
+device was online and the app visible) for troubleshooting and shows
+**Sync log copied.** under the button. Sync failures are also reported to the
+account's cloud data for fixing bugs. A collapsed **Delete account** section at
+the bottom of Settings, after confirmation and a fresh Google sign-in,
+permanently deletes the account and its cloud teams, in-game sets, notification
+registrations, and sync failure reports; saved data on the device stays. The sign-in page
+then shows **Deleting account…** and, when done, **Account deleted.** Native
+setup and signing are described in
+[iOS installation and Firebase sync](firebase.md).
+
+A **Help** button in the header opens **How it works**: one line per tab, a
+**Glossary** of regulation, EVs, nature, VP, in-game, and replica terms, and
+**About**. It opens once on first launch. Small help buttons beside regulations,
+natures, EVs, and estimated spend open the matching glossary entry.
 
 ## Future scope
 

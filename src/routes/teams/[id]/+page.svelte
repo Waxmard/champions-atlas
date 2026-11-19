@@ -13,6 +13,7 @@
   import Folder from '@lucide/svelte/icons/folder';
   import Modal from '#lib/components/Modal.svelte';
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
+  import HelpButton from '#lib/components/HelpButton.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { copyText } from '#lib/clipboard.js';
@@ -151,15 +152,15 @@
   <title>{heading.title} — Champion's Atlas</title>
 </svelte:head>
 
-<main id="main" class="mx-auto max-w-5xl px-4 pt-2 pb-6 sm:px-8 sm:pb-10">
+<main id="main" class="app-container max-w-5xl pt-2 pb-6 sm:pb-10">
   <div
-    class="sticky top-[var(--app-header-height,0px)] z-30 -mx-4 border-b border-base-300 bg-base-200 px-4 py-1 sm:-mx-8 sm:px-8"
+    class="bleed sticky top-[var(--app-header-height,0px)] z-30 border-b border-base-300 bg-base-200 py-1 phone-landscape:py-0"
   >
     <a
       data-swipe-back
       href={resolve(`?${page.url.searchParams}`)}
       onclick={back}
-      class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content"
+      class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content phone-landscape:min-h-9"
     >
       <ArrowLeft class="size-4" aria-hidden="true" />
       Back to teams
@@ -200,6 +201,7 @@
         {:else}
           <span class="detail-badge">{regulationLabel(team.regulation)}</span>
         {/if}
+        <HelpButton topic="regulation" label="About regulations" />
         <span class="detail-badge" data-grade={evidenceGrade(strongest.level)}
           >{reason?.label ?? strongest.label}</span
         >

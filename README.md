@@ -24,7 +24,8 @@ make ci # Run lint, formatting, line-limit, types, build, and Node tests.
 ```
 
 `npm test` requires a build first. CI runs `make ci` on pull requests and
-pushes to `main`. See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration) for release delivery and configuration.
+pushes to `main`, plus `npm run test:rules`, which needs Java and the Firestore
+emulator. See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration) for release delivery and configuration.
 
 For daily iPhone updates, follow the [iPhone installation procedure](docs/firebase.md#install-updates-on-an-iphone), then run:
 
@@ -149,7 +150,7 @@ Pokémon Champions. Team edits do not update those snapshots. The **Log Game
 Result** action appears under Champion's Atlas in the Shortcuts app; run it from
 Back Tap, the Action Button, or Siri ("Log a game in Champion's Atlas") to log a
 win or a loss for your current team in Saved (the first team in Saved order when
-none is current) without leaving your game.
+none is current) without leaving your game. Shortcuts shows the updated record.
 
 Saving requires app-local storage; clearing it removes local saved data. With
 Firebase configured, native Google sign-in is required and syncs saved teams, their

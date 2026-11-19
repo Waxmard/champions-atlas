@@ -221,8 +221,8 @@
   <title>Champion's Atlas — Find your next team</title>
 </svelte:head>
 
-<main id="main" class="app-container py-6 sm:py-8">
-  <header>
+<main id="main" class="app-container py-6 sm:py-8 phone-landscape:py-2">
+  <header class="phone-landscape:sr-only">
     <h1
       class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
     >
@@ -320,6 +320,15 @@
           >{/if}
       </div>
     </div>
+    {#if visible.some((team) => catalogState.freshIds.has(team.id))}
+      <p class="provenance my-2 flex items-center gap-2">
+        <span
+          aria-hidden="true"
+          class="inline-block size-2 rounded-full bg-primary"
+        ></span>
+        Added in the latest update
+      </p>
+    {/if}
     {#if results.length}
       {#key visibleKey}
         <div class="enter-fade grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -401,7 +410,7 @@
               ? 'No new teams match. Turn off New teams only or remove a filter.'
               : unknownOnly
                 ? 'No teams with an unknown regulation match. Turn off Unknown regulation only or remove a filter.'
-                : 'Try removing an item constraint or a Pokémon. Filters are never silently relaxed.')}
+                : 'Try removing a Pokémon or one of its item, ability, or move filters.')}
         </p>
         <Button
           type="button"
@@ -413,7 +422,7 @@
       </div>
     {/if}
     <p class="provenance mt-8 max-w-3xl">
-      Catalog snapshot: {catalog.updatedAt.slice(0, 10)}. Teams and result
+      Teams last updated {catalog.updatedAt.slice(0, 10)}. Teams and result
       claims via {#each catalog.sources as source, index (source.url)}<a
           class="underline underline-offset-2"
           href={source.url}

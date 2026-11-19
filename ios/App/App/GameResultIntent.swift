@@ -103,16 +103,22 @@ struct LogGameResultIntent: AppIntent {
     @Parameter(title: "Result")
     var result: GameResult?
 
-    func perform() async throws -> some IntentResult {
+    func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let teamName = GameResultStore.activeTeamName() else { throw NoTeamError() }
-        guard let result = result else {
-            throw $result.needsValueError("\(teamName): win or loss?")
+        let result: GameResult
+        if let preset = self.result {
+            result = preset
+        } else {
+            result = try await $result.requestValue("\(teamName): win or loss?")
         }
         guard let logged = GameResultStore.log(result.rawValue) else { throw NoTeamError() }
         let games = logged.wins + logged.losses
+        let title = "\(result == .win ? "Win" : "Loss") logged for \(logged.name)"
+        let record = "\(logged.wins)W – \(logged.losses)L · \(Int((Double(logged.wins) / Double(games) * 100).rounded()))%"
         let content = UNMutableNotificationContent()
-        content.title = "\(result == .win ? "Win" : "Loss") logged for \(logged.name)"
-        content.body = "\(logged.wins)W – \(logged.losses)L · \(Int((Double(logged.wins) / Double(games) * 100).rounded()))%"
+        content.title = title
+        content.body = record
+        content.interruptionLevel = .passive
         var destination = URLComponents()
         destination.path = "saved"
         destination.queryItems = [URLQueryItem(name: "team", value: logged.id)]
@@ -120,7 +126,7 @@ struct LogGameResultIntent: AppIntent {
         try? await UNUserNotificationCenter.current().add(
             UNNotificationRequest(identifier: GameResultStore.bannerId, content: content, trigger: nil)
         )
-        return .result()
+        return .result(dialog: "\(title). \(record)")
     }
 }
 

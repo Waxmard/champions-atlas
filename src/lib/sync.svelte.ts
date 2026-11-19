@@ -1,10 +1,12 @@
 import { browser } from '$app/env';
 import { initializeApp } from 'firebase/app';
 import {
+  deleteUser,
   GoogleAuthProvider,
   indexedDBLocalPersistence,
   initializeAuth,
   onAuthStateChanged,
+  reauthenticateWithCredential,
   signInWithCredential,
   signOut as signOutOfFirebase,
   type Auth,
@@ -48,15 +50,19 @@ import { canonicalSnapshot } from './team-history.ts';
 import {
   readSyncCache,
   readSyncLog,
+  dropSentSyncFailures,
   recordSyncFailure,
   saveSyncRebase,
   storeCurrentSetSyncCache as store,
   syncOwnerKey,
   syncRecordKey,
+  syncOutboxKey,
   wireCurrentSets,
 } from './storage-migration.ts';
 import { copyText } from './clipboard.ts';
 import { notify } from './notifications.ts';
+import { deleteUserData } from './account-deletion.ts';
+import { uploadSyncFailures } from './sync-reports.ts';
 import { reloadRegulationOverrides } from './catalog-runtime.svelte.ts';
 import {
   mergeRegulationOverrides,
@@ -73,6 +79,7 @@ export const sync = $state({
   user: null as User | null,
   status: 'off' as SyncStatus,
   error: '',
+  deletion: '' as '' | 'deleting' | 'deleted',
   revision: 0,
 });
 
@@ -90,6 +97,7 @@ let setManifestSnapshot: string | null = null;
 let pending = false;
 let savePending = false;
 let running: Promise<void> | null = null;
+let reporting: Promise<void> | null = null;
 
 const account = (id: string) => `${projectId}:${id}`;
 const valid = (generation: number, id: string) =>
@@ -111,18 +119,39 @@ const errorCode = (error: unknown) =>
     : '';
 
 function fail(error: unknown, step: string) {
+  const message = error instanceof Error ? error.message : String(error);
   sync.status = 'error';
-  sync.error = error instanceof Error ? error.message : String(error);
+  sync.error = message;
   const cause = error instanceof Error ? error.cause : undefined;
-  recordSyncFailure(localStorage, {
+  const entry = {
     at: new Date().toISOString(),
     step,
     code: errorCode(error) || errorCode(cause),
-    message: sync.error,
+    message,
     cause: cause === undefined ? '' : String(cause),
     online: navigator.onLine,
     visible: document.visibilityState === 'visible',
-  });
+    version: __APP_VERSION__,
+  };
+  recordSyncFailure(localStorage, entry);
+  recordSyncFailure(localStorage, { ...entry, uid }, syncOutboxKey);
+  reportFailures();
+}
+
+function reportFailures(): void {
+  if (reporting || !db || !uid) return;
+  const entries = readSyncLog(localStorage, syncOutboxKey).filter(
+    (entry) => (entry as { uid?: unknown } | null)?.uid === uid
+  );
+  if (!entries.length) return;
+  reporting = uploadSyncFailures(db, uid, entries)
+    .then(
+      () => void dropSentSyncFailures(localStorage, entries),
+      () => undefined
+    )
+    .finally(() => {
+      reporting = null;
+    });
 }
 
 function invalidate() {
@@ -412,7 +441,10 @@ async function drain(generation: number, id: string) {
       ) {
         pending = true;
         savePending = true;
-      } else if (!pending && !savePending) sync.status = 'synced';
+      } else if (!pending && !savePending) {
+        sync.status = 'synced';
+        reportFailures();
+      }
     } catch (error) {
       if (generation === session && uid === id) {
         pending = false;
@@ -540,6 +572,7 @@ export async function signIn(): Promise<void> {
   if (!auth) return;
   sync.status = 'syncing';
   sync.error = '';
+  sync.deletion = '';
   try {
     const { idToken } = await AtlasNative.signInWithGoogle();
     await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
@@ -551,6 +584,9 @@ export async function signIn(): Promise<void> {
       return;
     }
     fail(error, 'sign-in');
+    sync.error = navigator.onLine
+      ? 'Sign-in did not finish. Try again.'
+      : 'You are offline. Connect to the internet, then try again.';
   }
 }
 
@@ -586,6 +622,53 @@ export async function signOut(): Promise<void> {
   } catch (error) {
     fail(error, 'sign-out');
   }
+}
+
+const deleteError =
+  'Account deletion did not finish. Sign in with the same Google account and try again.';
+
+export async function deleteAccount(): Promise<void> {
+  const user = auth?.currentUser;
+  if (!user || !db) return;
+  const firestore = db;
+  try {
+    const { idToken } = await AtlasNative.signInWithGoogle();
+    await reauthenticateWithCredential(
+      user,
+      GoogleAuthProvider.credential(idToken)
+    );
+  } catch (error) {
+    if (errorCode(error) !== 'SIGN_IN_CANCELLED') {
+      const { status, error: syncError } = sync;
+      fail(error, 'delete-account');
+      sync.status = status;
+      sync.error = syncError;
+      notify(deleteError);
+    }
+    return;
+  }
+  const inflight = running;
+  invalidate();
+  sync.user = null;
+  sync.status = 'syncing';
+  sync.error = '';
+  sync.deletion = 'deleting';
+  localStorage.removeItem(syncOwnerKey);
+  try {
+    await inflight;
+    await reporting;
+    await deleteUserData(firestore, user.uid);
+    await deleteUser(user);
+  } catch (error) {
+    await signOut();
+    sync.deletion = '';
+    fail(error, 'delete-account');
+    sync.error = deleteError;
+    notify(deleteError);
+    return;
+  }
+  await signOut();
+  sync.deletion = 'deleted';
 }
 
 export async function syncPushToken(): Promise<PushRegistration | null> {
@@ -624,9 +707,9 @@ export async function pushNow(): Promise<void> {
   }
 }
 
-export async function copySyncLog(): Promise<void> {
+export async function copySyncLog(): Promise<string> {
   const copied = await copyText(
     JSON.stringify(readSyncLog(localStorage), null, 2)
   );
-  notify(copied ? 'Sync log copied.' : 'Copy unavailable.');
+  return copied ? 'Sync log copied.' : 'Copy unavailable.';
 }

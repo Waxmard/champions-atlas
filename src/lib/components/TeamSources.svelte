@@ -123,8 +123,8 @@
         Source status: {team.original.replicaStatus}
       </p>{/if}
     <p class="provenance">
-      This code belongs to the original team, not your edited team. Availability
-      may change.
+      Enter under Replica Teams in the game. Copies the original team, not your
+      edits. May stop working.
     </p>
   </div>
 {/if}

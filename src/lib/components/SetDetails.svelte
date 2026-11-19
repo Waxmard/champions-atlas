@@ -36,7 +36,7 @@
   const spreadSource = $derived(activeSpreadSource(member));
 </script>
 
-<div class="grid min-w-0 gap-3.5">
+<div class="grid min-w-0 gap-3.5 phone-landscape:grid-cols-2">
   <section class="plate min-w-0 overflow-hidden">
     <div
       class="flex min-w-0 flex-wrap items-center gap-3 p-3.5"

@@ -3,7 +3,8 @@
   import { Button } from '#lib/components/ui/button/index.js';
   import { signIn, sync } from '#lib/sync.svelte.js';
 
-  const signingIn = $derived(sync.status === 'syncing');
+  const deleting = $derived(sync.deletion === 'deleting');
+  const signingIn = $derived(sync.status === 'syncing' && !deleting);
 </script>
 
 <svelte:head>
@@ -25,16 +26,21 @@
         Champion's Atlas
       </h1>
       <p class="provenance mt-2 text-center">
-        Sign in to browse and sync your teams
+        Find, save, and tune teams for Pokémon Champions doubles.
       </p>
       <div class="my-5 h-px bg-base-300" aria-hidden="true"></div>
 
       {#if sync.configured}
+        <p
+          class="mb-4 text-center text-[0.9375rem] leading-relaxed text-base-content/70"
+        >
+          Sign in to save and sync your teams.
+        </p>
         <Button
           variant="primary"
           class="w-full gap-3"
           onclick={signIn}
-          disabled={signingIn}
+          disabled={signingIn || deleting}
         >
           {#if signingIn}
             <LoaderCircle class="size-5 animate-spin" aria-hidden="true" />
@@ -64,8 +70,14 @@
         <p
           class="text-center text-[0.9375rem] leading-relaxed text-base-content/70"
         >
-          Sign-in is not configured.
+          Sign-in is not available in this build.
         </p>
+      {/if}
+
+      {#if deleting}
+        <p role="status" class="mt-4 text-center text-sm">Deleting account…</p>
+      {:else if sync.deletion === 'deleted'}
+        <p role="status" class="mt-4 text-center text-sm">Account deleted.</p>
       {/if}
 
       {#if sync.error}
@@ -73,7 +85,8 @@
       {/if}
     </div>
     <p class="provenance mt-6 text-center">
-      An independent fan project. Pokémon belongs to its respective owners.
+      An independent fan project, not affiliated with Nintendo, Game Freak, or
+      The Pokémon Company.
     </p>
   </div>
 </main>

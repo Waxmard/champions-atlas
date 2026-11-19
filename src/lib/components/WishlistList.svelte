@@ -224,7 +224,8 @@
               <span
                 class="provenance"
                 role="img"
-                aria-label={`Record: ${summary.label}`}>{summary.text}</span
+                aria-label={`Win–loss record: ${summary.label}`}
+                >{summary.text}</span
               >
             {/if}
             {#if onfavorite}

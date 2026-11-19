@@ -12,10 +12,14 @@ export const syncOwnerKey = 'champions-atlas:sync-owner:v2';
 export const syncRecordKey = (owner: string) =>
   `champions-atlas:sync:v2:${owner}`;
 export const syncLogKey = 'champions-atlas:sync-log:v1';
+export const syncOutboxKey = 'champions-atlas:sync-outbox:v1';
 
-export function readSyncLog(storage: Pick<Storage, 'getItem'>): unknown[] {
+export function readSyncLog(
+  storage: Pick<Storage, 'getItem'>,
+  key = syncLogKey
+): unknown[] {
   try {
-    const log: unknown = JSON.parse(storage.getItem(syncLogKey) ?? '[]');
+    const log: unknown = JSON.parse(storage.getItem(key) ?? '[]');
     return Array.isArray(log) ? log : [];
   } catch {
     return [];
@@ -24,12 +28,33 @@ export function readSyncLog(storage: Pick<Storage, 'getItem'>): unknown[] {
 
 export function recordSyncFailure(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
-  entry: Record<string, unknown>
+  entry: Record<string, unknown>,
+  key = syncLogKey
 ): boolean {
   try {
     storage.setItem(
-      syncLogKey,
-      JSON.stringify([...readSyncLog(storage), entry].slice(-20))
+      key,
+      JSON.stringify([...readSyncLog(storage, key), entry].slice(-20))
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function dropSentSyncFailures(
+  storage: Pick<Storage, 'getItem' | 'setItem'>,
+  sent: unknown[]
+): boolean {
+  const done = new Set(sent.map((entry) => JSON.stringify(entry)));
+  try {
+    storage.setItem(
+      syncOutboxKey,
+      JSON.stringify(
+        readSyncLog(storage, syncOutboxKey).filter(
+          (entry) => !done.has(JSON.stringify(entry))
+        )
+      )
     );
     return true;
   } catch {

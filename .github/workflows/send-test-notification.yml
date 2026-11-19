@@ -1,0 +1,43 @@
+name: Send Test Notification
+
+on:
+  workflow_dispatch:
+    inputs:
+      team_ids:
+        description: Comma-separated catalog team IDs to announce as a batch
+        required: true
+        type: string
+      device:
+        description: Optional pushTokens document ID to send to only that device
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  send-test-notification:
+    name: Send test notification
+    runs-on: ubuntu-24.04
+    environment: preview
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      - run: npm ci
+      - name: Download live catalog
+        run: |
+          mkdir -p .cache/hosting/catalog
+          cd .cache/hosting/catalog
+          curl -fsS -o manifest.json "$CATALOG_ORIGIN/catalog/manifest.json"
+          bundle="bundle-$(jq -r .bundleHash manifest.json).json"
+          curl -fsS -o "$bundle" "$CATALOG_ORIGIN/catalog/$bundle"
+        env:
+          CATALOG_ORIGIN: https://champions-atlas-test.web.app
+      - name: Notify devices about the chosen teams
+        run: node scripts/notify-new-teams.mjs
+        env:
+          ANNOUNCE_TEAM_IDS: ${{ inputs.team_ids }}
+          ANNOUNCE_DEVICE: ${{ inputs.device }}
+          APNS_KEY_ID: ${{ secrets.APNS_KEY_ID }}
+          APNS_KEY_P8: ${{ secrets.APNS_KEY_P8 }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

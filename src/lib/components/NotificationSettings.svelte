@@ -1,5 +1,5 @@
 <script lang="ts">
-  import Modal from './Modal.svelte';
+  import Disclosure from './Disclosure.svelte';
   import PokemonPicker from './PokemonPicker.svelte';
   import SpeciesLabel from './SpeciesLabel.svelte';
   import RemovableChip from './RemovableChip.svelte';
@@ -12,8 +12,6 @@
     type NotificationSettings,
   } from '#lib/catalog-news.js';
   import { syncPushToken } from '#lib/sync.svelte.js';
-
-  let { onclose }: { onclose: () => void } = $props();
 
   let settings = $state.raw(readNotificationSettings(localStorage));
   let busy = $state(false);
@@ -81,14 +79,18 @@
   </label>
 {/snippet}
 
-<Modal title="Notifications" {onclose}>
-  <div class="space-y-5">
-    {#if message}
-      <p role="alert" class="text-sm" style="color: var(--color-error-content)">
-        {message}
-      </p>
-    {/if}
-    <section>
+<div>
+  {#if message}
+    <p
+      role="alert"
+      class="pb-2 text-sm"
+      style="color: var(--color-error-content)"
+    >
+      {message}
+    </p>
+  {/if}
+  <Disclosure label="New teams" status={settings.newTeams ? 'On' : 'Off'}>
+    <div class="pb-2">
       <label class="flex min-h-11 cursor-pointer items-center gap-3">
         <input
           type="checkbox"
@@ -99,16 +101,22 @@
             void save({ ...settings, newTeams: event.currentTarget.checked })}
         />
         <span class="min-w-0">
-          <span class="block font-semibold">New teams</span>
+          <span class="block font-semibold">Notify me</span>
           <span class="provenance block"
             >When teams are added to the current regulation.</span
           >
         </span>
       </label>
       {@render withoutEvs('newTeamsWithoutEvs', !settings.newTeams)}
-    </section>
-    <section class="space-y-2 border-t border-base-300 pt-4">
-      <h3 class="font-semibold">Teams with your Pokémon</h3>
+    </div>
+  </Disclosure>
+  <Disclosure
+    label="Teams with your Pokémon"
+    status={settings.pokemon.length
+      ? `${settings.pokemon.length} Pokémon`
+      : 'None'}
+  >
+    <div class="space-y-2 pb-2">
       <p class="provenance">
         A separate notification when a new team has any of these Pokémon.
       </p>
@@ -144,6 +152,6 @@
         </ul>
       {/if}
       {@render withoutEvs('pokemonWithoutEvs', settings.pokemon.length === 0)}
-    </section>
-  </div>
-</Modal>
+    </div>
+  </Disclosure>
+</div>

@@ -368,17 +368,11 @@
 </script>
 
 <div
-  class="team-workspace mt-2 grid min-w-0 items-start gap-2 {hasTeam
-    ? 'team-band landscape:md:grid-cols-[minmax(0,4fr)_minmax(0,1fr)] landscape:md:[direction:ltr]'
-    : ready
-      ? 'pt-2'
-      : 'team-band'}"
+  class="team-workspace mt-2 grid min-w-0 items-start gap-2 {ready && !hasTeam
+    ? 'pt-2'
+    : 'team-band'}"
 >
-  <div
-    class="team-controls min-w-0 space-y-2 wrap-anywhere {hasTeam
-      ? 'landscape:md:col-start-2 landscape:md:row-start-1'
-      : ''}"
-  >
+  <div class="team-controls min-w-0 space-y-2 wrap-anywhere">
     {#if storageError || errorMessage}<p
         role="alert"
         class="plate max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
@@ -392,7 +386,7 @@
       <div class="flex min-w-0 items-start gap-1">
         <div class="min-w-0 flex-1">
           <h1
-            class="line-clamp-2 font-display text-xl leading-tight font-bold tracking-tight wrap-anywhere landscape:md:text-base"
+            class="line-clamp-2 font-display text-xl leading-tight font-bold tracking-tight wrap-anywhere"
           >
             {heading.title}
           </h1>
@@ -478,10 +472,7 @@
   {#if ready && !storageError && draft}
     {@const activeTeam = draft}
     {#key draft.id}
-      <section
-        aria-label="Your team"
-        class="enter-fade team-sheet min-w-0 landscape:md:col-start-1 landscape:md:row-start-1"
-      >
+      <section aria-label="Your team" class="enter-fade team-sheet min-w-0">
         <TeamSetGrid members={draft.members}>
           {#snippet renderMember(index)}
             <MemberCurrentSetControls
@@ -579,7 +570,7 @@
               </p>
             {/if}
             <p class="provenance">
-              Editing does not create a working rental code.
+              Editing a team does not create a new replica code.
             </p>
           </div>
         </div>
@@ -633,7 +624,7 @@
     out:dialogOut
     oncancel={handleDialogCancel}
     aria-label={`Edit ${editorMember.pokemon} set`}
-    class="dialog-motion fixed inset-0 z-50 m-auto flex h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[46rem] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl"
+    class="dialog-motion fixed inset-0 z-50 m-auto flex h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] max-h-[46rem] w-[calc(100%-2rem)] max-w-2xl flex-col overflow-hidden rounded-box border border-base-300 bg-base-100 p-0 text-base-content shadow-xl phone-landscape:w-[calc(100%-2rem-env(safe-area-inset-left)-env(safe-area-inset-right))] phone-landscape:max-w-4xl"
   >
     <SetEditorSheet
       bind:this={editorRef}

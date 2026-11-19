@@ -23,6 +23,7 @@
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings",
     "ci": "npm run check && npm run line-limit && npm run typecheck && npm run build && npm test",
     "test": "node --test test/*.test.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-champions-atlas \"node --test test/account-deletion.test.mjs\"",
     "preimport:catalog": "node scripts/sync-movepools.mjs --if-missing",
     "import:catalog": "node scripts/import-catalog.mjs",
     "prepublish:catalog": "node scripts/sync-movepools.mjs --if-missing",

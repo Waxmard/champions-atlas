@@ -176,7 +176,7 @@
             Source status: {entry.original.replicaStatus}
           </p>{/if}
         <p class="provenance">
-          This code belongs to the original team. Availability may change.
+          Enter under Replica Teams in the game. May stop working.
         </p>
       </div>
     {/if}

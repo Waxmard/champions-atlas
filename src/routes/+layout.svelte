@@ -17,19 +17,16 @@
   import Search from '@lucide/svelte/icons/search';
   import Folder from '@lucide/svelte/icons/folder';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
-  import NotificationSettings from '#lib/components/NotificationSettings.svelte';
+  import AppFooter from '#lib/components/AppFooter.svelte';
+  import HelpButton from '#lib/components/HelpButton.svelte';
+  import HelpSheet from '#lib/components/HelpSheet.svelte';
+  import SettingsSheet from '#lib/components/SettingsSheet.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
     initCatalogRuntime,
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
-  import {
-    copySyncLog,
-    initSync,
-    pushNow,
-    signOut,
-    sync,
-  } from '#lib/sync.svelte.js';
+  import { initSync, pushNow, signOut, sync } from '#lib/sync.svelte.js';
   import { migrateStoredData } from '#lib/storage-migration.js';
   import {
     applyGameResults,
@@ -63,7 +60,7 @@
     isBrowse ? resolve(`?${page.url.searchParams}`) : resolve('?browse=all')
   );
   const tabClass = (active: boolean) =>
-    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none transition-[scale] duration-150 active:scale-95 landscape:md:flex-row landscape:md:gap-1.5 landscape:md:text-xs [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
+    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none transition-[scale] duration-150 active:scale-95 [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
 
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
   const userInitials = $derived(
@@ -97,7 +94,7 @@
   let checkingShares = false;
   let syncingResults = false;
   let notificationAccount: string | undefined;
-  let notificationSettingsOpen = $state(false);
+  let settingsOpen = $state(false);
 
   function validDestination(value: string | null): string | null {
     if (
@@ -533,7 +530,7 @@
       window.removeEventListener('hashchange', onHashChange);
       document.removeEventListener('visibilitychange', onVisibility);
       void tapListener?.then((handle) => handle.remove());
-      document.documentElement.style.removeProperty('--app-header-height');
+      document.documentElement.style.removeProperty('--app-header-measured');
     };
   });
 
@@ -592,10 +589,10 @@
   $effect(() => {
     if (headerHeight)
       document.documentElement.style.setProperty(
-        '--app-header-height',
+        '--app-header-measured',
         headerHeight + 'px'
       );
-    else document.documentElement.style.removeProperty('--app-header-height');
+    else document.documentElement.style.removeProperty('--app-header-measured');
   });
 </script>
 
@@ -627,32 +624,24 @@
 {:else}
   <header
     bind:clientHeight={headerHeight}
-    class="sticky top-0 z-40 border-b border-base-300 bg-base-100 [view-transition-name:app-header]"
+    class="sticky top-0 z-40 border-b border-base-300 bg-base-100 [view-transition-name:app-header] phone-landscape:static"
   >
     <div
       class="app-container flex items-center justify-between gap-2 pt-[calc(0.625rem+env(safe-area-inset-top))] pb-2.5"
     >
       <a
         href={brandHref}
-        class="nav-pill -ms-3 justify-start text-base-content hover:bg-base-200"
+        class="nav-pill -ms-3 justify-start text-base-content hover:bg-base-200 max-sm:gap-0.5"
       >
         <img src="/favicon.svg" alt="" width="36" height="39" />
         <span
-          class="font-display text-xl leading-none font-bold tracking-tight whitespace-nowrap"
+          class="font-display text-lg leading-none font-bold tracking-tight whitespace-nowrap sm:text-xl"
           >Champion's Atlas</span
         >
       </a>
       <div class="flex min-w-0 items-center justify-end gap-1">
+        <HelpButton label="Help" class="size-11 shrink-0" />
         {#if sync.configured}
-          {#if sync.status === 'error'}
-            <span
-              role="status"
-              aria-live="polite"
-              title={sync.error}
-              class="provenance max-w-16 text-center leading-tight font-semibold wrap-break-word"
-              style="color: var(--color-error-content)">Sync failed</span
-            >
-          {/if}
           {#if sync.user}
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
@@ -704,17 +693,9 @@
                       >Retry sync</DropdownMenu.Item
                     >
                   {/if}
-                  {#if isNativeApp}
-                    <DropdownMenu.Item
-                      onSelect={() => (notificationSettingsOpen = true)}
-                      class="option-row min-h-9 px-2"
-                      >Notifications</DropdownMenu.Item
-                    >
-                  {/if}
                   <DropdownMenu.Item
-                    onSelect={copySyncLog}
-                    class="option-row min-h-9 px-2"
-                    >Copy sync log</DropdownMenu.Item
+                    onSelect={() => (settingsOpen = true)}
+                    class="option-row min-h-9 px-2">Settings</DropdownMenu.Item
                   >
                   <DropdownMenu.Item
                     onSelect={signOut}
@@ -729,45 +710,21 @@
     </div>
   </header>
   <ActionNotification />
-  {#if notificationSettingsOpen}
-    <NotificationSettings onclose={() => (notificationSettingsOpen = false)} />
+  <HelpSheet />
+  {#if settingsOpen}
+    <SettingsSheet onclose={() => (settingsOpen = false)} />
   {/if}
   {#key sync.user?.uid}
     {@render children()}
   {/key}
-  <footer
-    class="mx-auto mt-2 mb-[var(--app-tabbar-height)] max-w-7xl border-t border-base-content/25 px-4 py-6 sm:px-8"
-  >
-    <p class="provenance max-w-4xl">
-      An independent fan project. Pokémon belongs to its respective owners. Team
-      sources credited in each entry. Champions Pokémon sprites from
-      <a
-        class="underline underline-offset-2"
-        href="https://github.com/PokeAPI/sprites"
-        target="_blank"
-        rel="external noreferrer">PokéAPI sprites</a
-      >; see
-      <a
-        class="underline underline-offset-2"
-        href="https://github.com/PokeAPI/sprites/blob/master/LICENCE.txt"
-        target="_blank"
-        rel="external noreferrer">license notice</a
-      >. Champions sprite set and image rights belong to The Pokémon Company.
-      Item icons from
-      <a
-        class="underline underline-offset-2"
-        href="https://github.com/smogon/sprites"
-        target="_blank"
-        rel="external noreferrer">Smogon sprites</a
-      >. Item image rights belong to Nintendo, Game Freak, and The Pokémon
-      Company.
-    </p>
-  </footer>
+  <AppFooter />
   <nav
     aria-label="Main"
-    class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)] [view-transition-name:app-tabbar]"
+    class="fixed inset-x-0 bottom-0 z-40 h-[var(--app-tabbar-height)] border-t border-base-300 bg-base-100 pb-[env(safe-area-inset-bottom)] [view-transition-name:app-tabbar] phone-landscape:inset-y-0 phone-landscape:right-auto phone-landscape:h-auto phone-landscape:w-[calc(var(--app-rail-width)+env(safe-area-inset-left))] phone-landscape:border-t-0 phone-landscape:border-r phone-landscape:pb-0 phone-landscape:pl-[env(safe-area-inset-left)]"
   >
-    <div class="app-container grid h-full grid-cols-3 items-center gap-1">
+    <div
+      class="app-container grid h-full grid-cols-3 items-center gap-1 phone-landscape:grid-cols-1 phone-landscape:content-center phone-landscape:px-1"
+    >
       <a
         href={brandHref}
         aria-current={isBrowse ? 'page' : undefined}

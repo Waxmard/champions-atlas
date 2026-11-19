@@ -1,5 +1,6 @@
 <script lang="ts">
   import X from '@lucide/svelte/icons/x';
+  import HelpButton from '#lib/components/HelpButton.svelte';
   import {
     balanceChampionsStat,
     CHAMPIONS_STATS,
@@ -272,7 +273,10 @@
   <!-- Nature modifies the stats below -->
   <fieldset class="mb-4 grid min-w-0 gap-2 border-b pb-4">
     <legend class="sr-only">Nature</legend>
-    <label for="set-nature-input" class="term">Nature</label>
+    <div class="flex items-center gap-1">
+      <label for="set-nature-input" class="term">Nature</label>
+      <HelpButton topic="nature" label="About natures" />
+    </div>
     <div class="field">
       <input
         id="set-nature-input"
@@ -366,7 +370,10 @@
       {/each}
     </SuggestionList>
   </fieldset>
-  <p class="provenance mb-2 px-0.5">{allocation}</p>
+  <p class="provenance mb-2 flex items-center gap-1 px-0.5">
+    {allocation}
+    <HelpButton topic="evs" label="About EVs" />
+  </p>
   <Button
     variant="quiet"
     class="-ms-3"
@@ -377,12 +384,16 @@
   {#if manualOpen}
     <Modal title="Adjust EVs manually" onclose={() => (manualOpen = false)}>
       <p class="provenance mb-2">{allocation}</p>
-      <div class="grid divide-y">
+      <div
+        class="grid divide-y phone-landscape:grid-cols-2 phone-landscape:gap-x-6 phone-landscape:divide-y-0"
+      >
         {#each CHAMPIONS_STATS as stat (stat)}
           {@const currentVal = values[stat]}
           {@const target = balanceChampionsStat(values, stat)[stat]}
           {@const delta = target - currentVal}
-          <div class="space-y-2 py-2.5 first:pt-0 last:pb-0">
+          <div
+            class="space-y-2 py-2.5 first:pt-0 last:pb-0 phone-landscape:py-1.5 phone-landscape:first:pt-1.5 phone-landscape:last:pb-1.5"
+          >
             <div class="flex flex-wrap items-center justify-between gap-2">
               <div class="flex flex-wrap items-center gap-2">
                 <span class="term inline-flex w-12 justify-center">{stat}</span>

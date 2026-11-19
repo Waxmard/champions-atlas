@@ -16,7 +16,7 @@ import {
 } from '../src/lib/paste.ts';
 
 const readError =
-  'Current Pokémon sets could not be read. Existing data has been left untouched.';
+  'In-game sets could not be read. Existing data has been left untouched.';
 
 function member(pokemon, changes = {}) {
   return {
@@ -416,7 +416,7 @@ test('bulk current-set commits reject affected races without partial writes', ()
   const original = serialized(oldWeavile, ditto);
   const desired = member('Weavile', { item: 'New item' });
   const raceMessage =
-    'Current Pokémon sets changed while confirming. Try saving again.';
+    'In-game sets changed while confirming. Try recording again.';
   const cases = [
     [
       'changed selected slot',

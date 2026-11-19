@@ -102,7 +102,7 @@ export function isPasteUrl(value: string): boolean {
 }
 
 export const regulationLabel = (regulation: string) =>
-  regulation === 'Unknown' ? 'Regulation unknown' : `Reg ${regulation}`;
+  regulation === 'Unknown' ? 'Regulation unknown' : `Regulation ${regulation}`;
 
 export function teamHeading(
   name: string,
