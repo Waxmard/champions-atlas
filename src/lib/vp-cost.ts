@@ -195,14 +195,22 @@ export function teamVpCost(
 
 export function sortByVpCost<T extends { members: readonly Member[] }>(
   teams: readonly T[],
-  sets: readonly CurrentSet[] | null,
-  catalog: VpCatalog
+  sets: readonly CurrentSet[] | null
 ): T[] {
   if (!sets) return [...teams];
   return teams
     .map((team) => ({
       team,
-      total: teamVpCost(sets, team.members, catalog).total,
+      total: team.members.reduce(
+        (sum, member) =>
+          sum +
+          setVpCost(
+            sets.find((entry) => entry.id === pokemonId(member.pokemon))
+              ?.member,
+            member
+          ).vp,
+        0
+      ),
     }))
     .sort((a, b) => a.total - b.total)
     .map(({ team }) => team);

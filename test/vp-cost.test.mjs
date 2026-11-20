@@ -123,12 +123,12 @@ test('VP sort orders teams cheapest first and keeps ties in order', () => {
   const c = { id: 'c', members: [{ ...weavile, pokemon: 'Pikachu' }] };
   const teams = [a, b, c];
   assert.deepEqual(
-    sortByVpCost(teams, sets, emptyCatalog).map(({ id }) => id),
+    sortByVpCost(teams, sets).map(({ id }) => id),
     ['b', 'a', 'c']
   );
   assert.deepEqual(teams, [a, b, c]);
   assert.deepEqual(
-    sortByVpCost(teams, null, emptyCatalog).map(({ id }) => id),
+    sortByVpCost(teams, null).map(({ id }) => id),
     ['a', 'b', 'c']
   );
 });
