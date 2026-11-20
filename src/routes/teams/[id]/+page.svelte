@@ -215,8 +215,10 @@
             target="_blank"
             rel="external noreferrer"
           >
-            Regulation inferred from video date ({team.regulationInference
-              .publishedAt})
+            Regulation inferred from {team.regulationInference.method ===
+            'post-date'
+              ? 'post'
+              : 'video'} date ({team.regulationInference.publishedAt})
             <ExternalLink class="size-3.5" aria-hidden="true" />
           </a>
         {/if}

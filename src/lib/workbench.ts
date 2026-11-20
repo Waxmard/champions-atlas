@@ -11,6 +11,7 @@ import {
   type Member,
   type Team,
 } from './catalog.ts';
+import type { BattleFormat } from './battle-format.ts';
 import { battleSpecies, resolveBattleForm } from './battle-forms.ts';
 import { abilitiesFor, championsItemsFor, movepoolFor } from './movepools.ts';
 import {
@@ -101,7 +102,8 @@ export function newSavedTeam(team: Team): SavedTeam {
 export function newCustomTeam(
   name: string,
   currentRegulation: string,
-  paste: string
+  paste: string,
+  format: BattleFormat
 ): SavedTeam {
   if (!name.trim()) throw new Error('Give this team a name.');
   const id = generateUUID();
@@ -124,6 +126,7 @@ export function newCustomTeam(
       replicaStatus: '',
       reports: [],
       pasteNotes: null,
+      ...(format === 'singles' && { format }),
     }),
     origin: 'custom',
     members: structuredClone(members),
@@ -166,6 +169,7 @@ export const originalSchema = z.looseObject({
   pasteNotes: textSchema.nullable().optional(),
   pasteError: textSchema.optional(),
   regulationInference: regulationInferenceSchema.optional(),
+  format: z.literal('singles').optional(),
 });
 const storedTeamSchema = z.object({
   id: textSchema,

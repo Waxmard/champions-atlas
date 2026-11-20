@@ -15,7 +15,8 @@
       const saved = newCustomTeam(
         name,
         catalogState.catalog.currentRegulation,
-        paste
+        paste,
+        catalogState.format
       );
       saveTeam(localStorage, saved);
       void pushNow();
@@ -77,7 +78,7 @@
       <p class="provenance">
         Saved on this device as a Regulation {catalogState.catalog
           .currentRegulation}
-        team. The app does not check legality.
+        {catalogState.format} team. The app does not check legality.
       </p>
     </div>
   </form>

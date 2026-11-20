@@ -258,6 +258,14 @@ Labels are not partitioned per account: a device's labels merge into whichever
 account signs in there. A malformed document stops this sync without changing
 local labels.
 
+The battle format (Doubles or Singles) is stored on the device under
+`champions-atlas:battle-format:v1` and syncs through
+`users/{uid}/profile/settings`, which contains exactly `schemaVersion: 1`,
+`format`, `at`, and `updatedAt: serverTimestamp()`. The newest `at` wins. The
+setting stays on the device across account switches; the next sync then
+applies the newer of the two. A malformed document stops this sync without
+changing the local setting.
+
 Cloud set members are validated against their original document IDs before
 normalization. When a canonical slot and a legacy Mega-Z duplicate both exist,
 the canonical slot is kept and the duplicate is dropped without a prompt, in the
@@ -297,7 +305,8 @@ preserves the account cache, and no migration clears app-local storage.
 account menu) asks for confirmation and a fresh Google
 sign-in, then stops sync, clears `champions-atlas:sync-owner:v2`, deletes the
 cloud data, and deletes the Firebase Authentication user. The cloud data is
-`users/{uid}` with its teams, current sets, set manifest, and regulation labels,
+`users/{uid}` with its teams, current sets, set manifest, regulation labels, and
+battle format setting,
 plus every `pushTokens` and `syncFailures` document whose `uid` is the
 account's. The rules let the owner list only their own tokens and reports, so
 other devices' tokens and reports go too.
@@ -376,15 +385,19 @@ Notifications → New teams** is on or the **Teams with your Pokémon** list has
 at least one Pokémon,
 and deletes it when both are off or notification permission is denied. The
 document holds `uid`, `updatedAt`, and the device's notification settings:
-`newTeams`, `newTeamsWithoutEvs`, `pokemon` (a list of names, at most 500), and
-`pokemonWithoutEvs`. `firestore.rules` allows only those fields, and the
+`newTeams`, `newTeamsWithoutEvs`, `pokemon` (a list of names, at most 500),
+`pokemonWithoutEvs`, and optionally `format` (`doubles` or `singles`).
+`firestore.rules` allows only those fields, and the
 workflow reads them to decide which banners each device gets; a missing boolean
-counts as on and a missing list as empty. The publish step compares the new
-catalog with the live bundle at
-`CATALOG_ORIGIN` and records added teams as `latestBatch` in the bundle; the
-workflow records the announced batch at `pushState/catalog` and sends nothing
-when the bundle has no batch or the batch was already announced. A push
-misconfiguration fails only that last step, after the catalog is published.
+counts as on, a missing list as empty, and a missing format as doubles. The
+publish step compares the new catalog with the live bundle at
+`CATALOG_ORIGIN` and records added teams per format: doubles as `latestBatch`
+and singles as `singlesBatch`, each carried over from the live bundle until a
+later publish adds teams of that format. The workflow records the announced
+batch dates at `pushState/catalog` (`announced` for doubles, `announcedSingles`
+for singles) and sends nothing for a format whose bundle has no batch or whose
+batch was already announced. Each device gets banners only for its own format. A
+push misconfiguration fails only that last step, after the catalog is published.
 
 To check banners without waiting for a new batch, run **Actions** → **Send Test
 Notification** with comma-separated catalog team IDs. It downloads the live

@@ -1,7 +1,7 @@
 # Product specification
 
 Champion's Atlas is an iOS app that helps you choose Pokémon Champions doubles
-teams. Existing spreadsheets are awkward to browse, and missingNO loses filters
+and singles teams. Existing spreadsheets are awkward to browse, and missingNO loses filters
 when opening a team. The product focuses on reliable, fast discovery. Browser
 development, preview, and tests are local shared-UI tools, not a supported website
 or PWA.
@@ -16,6 +16,17 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 ## Discovery and browsing
 
 - Provide mobile-friendly browsing for personal use.
+- Choose a **Battle format**, **Doubles** or **Singles**, at the top of
+  **Settings**. Doubles is the default and the choice syncs with the account. It
+  limits Browse, Saved, Wishlist, suggestions, Swaps ladder pairings, the
+  current-team shortcut, new-team dots, and notifications to that format's teams.
+  Recorded in-game sets and VP costs are shared across both formats. Choosing a
+  format closes Settings, clears the Browse filters, opens Browse, and shows
+  "Switched to Singles." (or "Switched to Doubles."). If you keep unsaved edits
+  on the open page, the format does not change. A saved team stays in the format
+  it was saved or created in. Singles teams come from the Poch.ms ranked-ladder
+  posts; other sources hold doubles teams only (see
+  [data sources](data-sources.md)).
 - Browse teams with or without a Pokémon in mind.
 - Combine multiple Pokémon filters using AND: every selected Pokémon must occur
   on the team.
@@ -63,12 +74,13 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   **VP spend** (`?sort=vp`, lowest expected VP spend first), remembered with
   the Browse filters. When shown, **Clear filters** also resets the sort.
   **VP spend** is unavailable until an in-game set is recorded.
-- Mark Browse cards from the latest catalog batch (the most recent publish that
-  added teams) with a blue dot before the team name; the dot stays until a later
-  batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
-  those teams.
-- Signed-in iPhone users choose catalog notifications at the top of **Settings**
-  in the account menu; the choices are stored on the device. Under
+- Mark Browse cards from the latest catalog batch of the chosen format (the most
+  recent publish that added teams of that format) with a blue dot before the
+  team name; the dot stays until a later batch of that format replaces it.
+  **New teams only** in Browse filters (`?new=1`) shows just those teams.
+- Signed-in iPhone users choose catalog notifications in **Settings**, under
+  **Battle format**; the choices are stored on the device. Each device gets
+  banners only for its chosen format. Under
   **Notifications**, each of the two groups below is a collapsed row that shows
   its state (**On**/**Off**, or the number of Pokémon chosen). **New teams** (on
   by default, toggled by **Notify me** inside the row) sends one banner per batch
@@ -85,6 +97,10 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   default and unavailable while **New teams** is off or the list is empty.
   Turning it off leaves teams without EV spreads out of that banner's count; no
   banner is sent when none remain.
+- Banner titles read `N new Reg M-C teams` and `N new teams with ...` in
+  Doubles, and `N new Reg M-C singles teams` and `N new singles teams with ...`
+  in Singles. A device registers its chosen format with its notification
+  settings, so a batch of one format never notifies a device on the other.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
@@ -298,7 +314,7 @@ recency-adjusted results, regulation, and credentials. Inferred archetype and ro
 tags break only
 equally proven ties. Sources need not match the fixed five members exactly. Source
 result claims are not attributed to the user's edited team. Exact forms remain
-distinct.
+distinct. In Singles the role-tag tiebreak is off.
 
 - One Pokémon toggle replaces individual item, move, and ability locks.
 - Show concrete differences for the proposed single-slot replacement.
@@ -319,7 +335,7 @@ than wrapped. **Show 5 more** reveals further rows in ranked order, each Pokémo
 sharing three or more teammates come first, ranked by the weighted vote of
 those teams. The remaining rows follow by shared teammates, then by how often
 the suggested Pokémon is paired with the rest of the team on the current
-regulation's Smogon ladder, so a team that few catalog teams resemble still gets
+regulation's Smogon ladder for the chosen format, so a team that few catalog teams resemble still gets
 suggestions. A row that would lower the team's ladder pairing is dropped unless
 it is that slot's only idea. Sets from other favorite teams rank in the same list, count as much as
 the best-placed supporting team once they share three teammates, and are
@@ -474,11 +490,11 @@ Reordering is paused unless Manual order is selected. Manual order is the
 default, and each list remembers its choice on this device.
 
 Each Saved row has a swords toggle marking it as the **current team**. Marking
-a team moves it to the top of Saved and clears the marker on any other team.
+a team moves it to the top of Saved and clears the marker on any other team of the same format.
 When a team stops being current, by toggling it off or marking another team, it
 moves to just above the first team with a lower win rate (more games break
 ties), leaving the other teams in their order; a team that outranks no one goes
-last. Only one team is current at a time. The marker syncs with the account and
+last. Only one team per format is current at a time. The marker syncs with the account and
 is cleared when the team moves to Wishlist. The current team stays listed while
 Favorites is on, even when unstarred, but Pokémon filters still apply to it.
 
@@ -503,8 +519,8 @@ device was online and the app visible) for troubleshooting and shows
 **Sync log copied.** under the button. Sync failures are also reported to the
 account's cloud data for fixing bugs. A collapsed **Delete account** section at
 the bottom of Settings, after confirmation and a fresh Google sign-in,
-permanently deletes the account and its cloud teams, in-game sets, notification
-registrations, and sync failure reports; saved data on the device stays. The sign-in page
+permanently deletes the account and its cloud teams, in-game sets, battle format
+setting, notification registrations, and sync failure reports; saved data on the device stays. The sign-in page
 then shows **Deleting account…** and, when done, **Account deleted.** Native
 setup and signing are described in
 [iOS installation and Firebase sync](firebase.md).

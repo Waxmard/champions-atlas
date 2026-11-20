@@ -12,6 +12,11 @@ import {
   orderedWishlist,
   SavedTeamError,
   wishlistedCatalogEntries,
+  orderedSaved,
+  reorderSaved,
+  setCurrentTeam,
+  shortcutTeam,
+  liveSavedTeam,
 } from '../src/lib/team-collections.ts';
 import {
   newSavedTeam,
@@ -162,7 +167,7 @@ test('Wishlist deduplicates catalog IDs and promotion preserves the exact saved 
   saveTeam(s, changed);
   const before = readSavedTeams(s).find((x) => x.id === first.id);
   const promoted = useWishlistedTeam(s, first.id);
-  assert.deepEqual(orderedWishlist(readSavedTeams(s)), [other]);
+  assert.deepEqual(orderedWishlist(readSavedTeams(s), 'doubles'), [other]);
   assert.equal(promoted.collection, undefined);
   assert.equal(promoted.id, first.id);
   assert.deepEqual(promoted.original, before.original);
@@ -439,7 +444,7 @@ test('quota failure during promotion or removal leaves stored bytes unchanged', 
 
 test('Poképaste import saves a custom Wishlist record', () => {
   const s = storage();
-  const saved = addPokepasteToWishlist(s, payload, 'M-C', []);
+  const saved = addPokepasteToWishlist(s, payload, 'M-C', [], 'doubles');
   assert.equal(saved.collection, 'wishlist');
   assert.equal(saved.origin, 'custom');
   assert.equal(saved.original.pasteUrl, pasteUrl);
@@ -454,7 +459,7 @@ test('Poképaste import saves a custom Wishlist record', () => {
 
 test('duplicate Poképaste import re-reads and preserves edited Wishlist bytes', () => {
   const s = storage();
-  const original = addPokepasteToWishlist(s, payload, 'M-C', []);
+  const original = addPokepasteToWishlist(s, payload, 'M-C', [], 'doubles');
   const edited = {
     ...original,
     name: 'Edited name',
@@ -470,7 +475,8 @@ test('duplicate Poképaste import re-reads and preserves edited Wishlist bytes',
     s,
     { ...payload, title: 'Different title', paste: 'not a team' },
     'M-A',
-    []
+    [],
+    'doubles'
   );
   assert.deepEqual(result, readSavedTeams(s)[0]);
   assert.equal(result.id, original.id);
@@ -484,7 +490,7 @@ test('duplicate Poképaste import re-reads and preserves edited Wishlist bytes',
     { ...catalogTeam('second'), pasteUrl },
   ];
   assert.deepEqual(
-    addPokepasteToWishlist(s, payload, 'M-C', ambiguousCatalog),
+    addPokepasteToWishlist(s, payload, 'M-C', ambiguousCatalog, 'doubles'),
     result
   );
   assert.equal(s.data, before);
@@ -500,7 +506,7 @@ test('ambiguous catalog Poképaste imports fail without writing', () => {
   const before = s.data;
 
   assert.throws(
-    () => addPokepasteToWishlist(s, payload, 'M-C', catalog),
+    () => addPokepasteToWishlist(s, payload, 'M-C', catalog, 'doubles'),
     (error) =>
       error instanceof SavedTeamError &&
       /Multiple catalog teams/.test(error.message)
@@ -522,7 +528,7 @@ test('Poképaste catalog matches keep the catalog snapshot and My teams copy ind
   const inUse = useCatalogTeam(s, team);
   const before = JSON.stringify(readSavedTeams(s)[0]);
   assert.deepEqual(wishlistedCatalogEntries(readSavedTeams(s), team), []);
-  const bookmark = addPokepasteToWishlist(s, payload, 'M-C', [team]);
+  const bookmark = addPokepasteToWishlist(s, payload, 'M-C', [team], 'doubles');
   assert.notEqual(bookmark.id, inUse.id);
   assert.equal(bookmark.origin, 'catalog');
   assert.equal(bookmark.collection, 'wishlist');
@@ -539,10 +545,10 @@ test('Poképaste catalog matches keep the catalog snapshot and My teams copy ind
 
 test('a Poképaste in My teams never counts as an existing Wishlist copy', () => {
   const s = storage();
-  const bookmark = addPokepasteToWishlist(s, payload, 'M-C', []);
+  const bookmark = addPokepasteToWishlist(s, payload, 'M-C', [], 'doubles');
   const inUse = useWishlistedTeam(s, bookmark.id);
   const before = JSON.stringify(readSavedTeams(s)[0]);
-  const fresh = addPokepasteToWishlist(s, payload, 'M-C', []);
+  const fresh = addPokepasteToWishlist(s, payload, 'M-C', [], 'doubles');
   assert.notEqual(fresh.id, inUse.id);
   assert.equal(fresh.collection, 'wishlist');
   assert.equal(
@@ -561,7 +567,13 @@ test('catalog source ID matching preserves an existing bookmark when its URL cha
   const before = s.data;
   const writes = s.writes;
   const currentTeam = { ...oldTeam, pasteUrl };
-  const result = addPokepasteToWishlist(s, payload, 'M-C', [currentTeam]);
+  const result = addPokepasteToWishlist(
+    s,
+    payload,
+    'M-C',
+    [currentTeam],
+    'doubles'
+  );
   assert.equal(result.id, existing.id);
   assert.equal(s.data, before);
   assert.equal(s.writes, writes);
@@ -569,7 +581,7 @@ test('catalog source ID matching preserves an existing bookmark when its URL cha
 
 test('catalog Use promotes an imported bookmark by source URL without replacing edits', () => {
   const s = storage();
-  const imported = addPokepasteToWishlist(s, payload, 'M-C', []);
+  const imported = addPokepasteToWishlist(s, payload, 'M-C', [], 'doubles');
   saveTeam(s, {
     ...imported,
     name: 'Edited import',
@@ -643,18 +655,23 @@ test('Poképaste import failures leave saved bytes untouched', () => {
   const s = storage(initial);
   const before = s.data;
   const bad = { ...payload, paste: 'not a team' };
-  assert.throws(() => addPokepasteToWishlist(s, bad, 'M-C', []), /six sets/);
+  assert.throws(
+    () => addPokepasteToWishlist(s, bad, 'M-C', [], 'doubles'),
+    /six sets/
+  );
   assert.equal(s.data, before);
   assert.equal(s.writes, 0);
   const quota = failing(initial);
   assert.throws(
-    () => addPokepasteToWishlist(quota, payload, 'M-C', []),
+    () => addPokepasteToWishlist(quota, payload, 'M-C', [], 'doubles'),
     /quota/
   );
   assert.equal(quota.data, before);
   const full = storage(Array.from({ length: 50 }, (_, i) => snapshot(`t${i}`)));
   const fullBefore = full.data;
-  assert.throws(() => addPokepasteToWishlist(full, payload, 'M-C', []));
+  assert.throws(() =>
+    addPokepasteToWishlist(full, payload, 'M-C', [], 'doubles')
+  );
   assert.equal(full.data, fullBefore);
   assert.equal(full.writes, 0);
 });
@@ -677,4 +694,81 @@ test('at the 50-record cap promotion works but new bookmarks and copies fail unt
   assert.equal(saved.length, 50);
   assert.equal(saved.filter(isSavedTeam).length, 50);
   assert.equal(s.writes, 1);
+});
+
+const singlesSnapshot = (id) => ({
+  ...newSavedTeam({ ...catalogTeam(id), format: 'singles' }),
+  id,
+});
+
+test('Saved ordering, reordering and the current marker stay within one format', () => {
+  const s = storage([
+    snapshot('d1'),
+    snapshot('d2'),
+    singlesSnapshot('s1'),
+    singlesSnapshot('s2'),
+  ]);
+  const ids = (format) =>
+    orderedSaved(readSavedTeams(s), format).map(({ id }) => id);
+  assert.deepEqual(ids('singles').toSorted(), ['s1', 's2']);
+  assert.deepEqual(ids('doubles').toSorted(), ['d1', 'd2']);
+
+  const doublesBefore = ids('doubles');
+  reorderSaved(s, ids('singles').toReversed(), ids('singles'), 'singles');
+  assert.deepEqual(ids('doubles'), doublesBefore);
+  assert.deepEqual(
+    readSavedTeams(s)
+      .filter((team) => team.id.startsWith('d'))
+      .map((team) => team.savedOrder),
+    [undefined, undefined]
+  );
+
+  setCurrentTeam(s, 'd1', true);
+  setCurrentTeam(s, 's2', true);
+  assert.deepEqual(
+    readSavedTeams(s)
+      .filter((team) => team.current)
+      .map(({ id }) => id)
+      .sort(),
+    ['d1', 's2']
+  );
+  assert.equal(shortcutTeam(s, 'singles').id, 's2');
+  assert.equal(shortcutTeam(s, 'doubles').id, 'd1');
+  setCurrentTeam(s, 's2', false);
+  assert.equal(
+    readSavedTeams(s).find((team) => team.id === 'd1').current,
+    true
+  );
+});
+
+test('the current shortcut team ignores the other format', () => {
+  const s = storage([snapshot('d1')]);
+  setCurrentTeam(s, 'd1', true);
+  assert.equal(shortcutTeam(s, 'singles'), null);
+  assert.equal(shortcutTeam(s, 'doubles').id, 'd1');
+});
+
+test('Wishlist bookmarks and live Saved lookups ignore the other format', () => {
+  const team = { ...catalogTeam('published'), pasteUrl };
+  const singlesTeam = { ...team, format: 'singles' };
+  const s = storage();
+  const bookmark = addCatalogToWishlist(s, team);
+  assert.deepEqual(wishlistedCatalogEntries(readSavedTeams(s), team), [
+    bookmark,
+  ]);
+  assert.deepEqual(
+    wishlistedCatalogEntries(readSavedTeams(s), singlesTeam),
+    []
+  );
+  assert.equal(addCatalogToWishlist(s, singlesTeam).id !== bookmark.id, true);
+  const paste = storage();
+  addPokepasteToWishlist(paste, payload, 'M-C', [], 'doubles');
+  const imported = addPokepasteToWishlist(paste, payload, 'M-C', [], 'singles');
+  assert.equal(imported.original.format, 'singles');
+  assert.equal(readSavedTeams(paste).length, 2);
+
+  const saved = storage([snapshot('d1'), singlesSnapshot('s1')]);
+  assert.equal(liveSavedTeam(saved, 'd1', 'doubles').id, 'd1');
+  assert.equal(liveSavedTeam(saved, 'd1', 'singles'), null);
+  assert.equal(liveSavedTeam(saved, 'd1').id, 'd1');
 });

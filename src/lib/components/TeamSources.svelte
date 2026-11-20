@@ -57,7 +57,11 @@
     class="inline-flex min-h-11 link items-center"
     href={team.original.regulationInference.sourceUrl}
     target="_blank"
-    rel="external noreferrer">Regulation inferred from video date</a
+    rel="external noreferrer"
+    >Regulation inferred from {team.original.regulationInference.method ===
+    'post-date'
+      ? 'post'
+      : 'video'} date</a
   >{/if}
 {#if missingMetadata}<p class="provenance">
     Some original metadata was not retained when this team was saved.

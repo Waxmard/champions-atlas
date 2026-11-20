@@ -381,6 +381,46 @@ test('buildCatalogRelease batches teams missing from the previous release and ca
   }
 });
 
+test('buildCatalogRelease keeps a separate singles batch and carries the doubles batch', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'catalog-singles-batch-'));
+  try {
+    const { catalog, tags } = sampleFixture();
+    const doublesBatch = {
+      addedAt: '2026-10-01T00:00:00.000Z',
+      ids: ['gone'],
+    };
+    const singles = {
+      ...structuredClone(catalog.teams[1]),
+      id: 'singles-team',
+      format: 'singles',
+    };
+    const catalogPath = join(dir, 'catalog.json');
+    const tagsPath = join(dir, 'team-tags.json');
+    await writeFile(
+      catalogPath,
+      JSON.stringify({ ...catalog, teams: [...catalog.teams, singles] }),
+      'utf8'
+    );
+    await writeFile(tagsPath, JSON.stringify(tags), 'utf8');
+    const release = await buildCatalogRelease({
+      catalogPath,
+      tagsPath,
+      outDir: join(dir, 'out'),
+      previous: {
+        teams: catalog.teams,
+        latestBatch: doublesBatch,
+      },
+    });
+    assert.deepEqual(release.bundle.singlesBatch, {
+      addedAt: catalog.updatedAt,
+      ids: ['singles-team'],
+    });
+    assert.deepEqual(release.bundle.latestBatch, doublesBatch);
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
 test('YouTube copies fold only into the single earlier original with identical sets', () => {
   const members = (overrides = {}) =>
     [

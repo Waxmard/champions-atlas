@@ -116,6 +116,7 @@ test('pokemonAlert, the EV toggle and devicePrefs work per device', () => {
     newTeamsWithoutEvs: true,
     pokemon: [],
     pokemonWithoutEvs: true,
+    format: 'doubles',
   });
   assert.deepEqual(
     devicePrefs({
@@ -132,7 +133,42 @@ test('pokemonAlert, the EV toggle and devicePrefs work per device', () => {
       newTeamsWithoutEvs: true,
       pokemon: ['Incineroar'],
       pokemonWithoutEvs: false,
+      format: 'doubles',
     }
+  );
+  assert.equal(
+    devicePrefs({ format: { stringValue: 'singles' } }).format,
+    'singles'
+  );
+});
+
+test('singles alerts read the singles batch and leave doubles titles unchanged', () => {
+  const doubles = team('d', [regional], 'M-C', members(['Incineroar'], null));
+  const singles = {
+    ...team(
+      's',
+      [report('Poch.ms collection')],
+      'M-C',
+      members(['Incineroar'], null)
+    ),
+    format: 'singles',
+  };
+  const both = {
+    ...bundle([doubles, singles], ['d']),
+    singlesBatch: { addedAt: '2026-11-14T00:00:00.000Z', ids: ['s'] },
+  };
+  assert.equal(
+    newTeamsAlert(both, true, 'singles').title,
+    '1 new Reg M-C singles team'
+  );
+  assert.equal(newTeamsAlert(both).title, '1 new Reg M-C team');
+  assert.equal(
+    pokemonAlert(both, ['Incineroar'], true, 'singles').title,
+    '1 new singles team with Incineroar'
+  );
+  assert.equal(
+    pokemonAlert(both, ['Incineroar']).title,
+    '1 new team with Incineroar'
   );
 });
 

@@ -1,11 +1,12 @@
 # Catalog snapshot
 
-The catalog holds Pokémon Champions doubles teams from the VGCPastes M-C and M-B
+The catalog holds Pokémon Champions teams, mostly doubles, from the VGCPastes M-C and M-B
 spreadsheets, Victory Road's Champions replica-team page, DevonCorp's M-A
 collection, the published Poch.ms leaderboard, and direct paste links from the
 complete public upload histories of the configured YouTube VGC/Champions channels. Teams from a sheet
 or index include parsed paste sets, and Poch.ms records include the set details
-that page publishes. Missing fields remain unknown.
+that page publishes. Missing fields remain unknown. Singles teams come only from
+Poch.ms; every other source is doubles-only.
 
 Sources:
 
@@ -21,11 +22,17 @@ Sources:
   robots policy disallows.
 - [Poch.ms](https://poch.ms/en/leaderboard) publishes its leaderboard as inline
   structured JSON. The importer reads only that JSON and imports two record
-  sets: explicitly identified M-A, M-B, and M-C doubles tournament entries, and
-  doubles social teams. Regulation comes from the published format field only,
-  never from a season number, a publication date, or a tier claim. Reported
-  singles and other formats are excluded. Existing X-linked social coverage remains
-  on this free source; the ranking policy adds no paid API, scraper, or subscription.
+  sets: explicitly identified M-A, M-B, and M-C tournament entries, and social
+  teams, in doubles or singles. A tournament entry takes its regulation from the
+  published format field only, never from a season number, a publication date,
+  or a tier claim. A doubles social team stays `Unknown`. A singles social
+  ranked-ladder post takes its regulation from the post date, using the windows
+  below, and records `regulationInference.method: 'post-date'` with the X post
+  URL as its source; a singles event post, or a post dated outside the windows,
+  stays `Unknown`. Singles teams carry `format: 'singles'` and pass the same
+  roster and result gates as doubles teams. Other formats are excluded. Existing
+  X-linked social coverage remains on this free source; the ranking policy adds
+  no paid API, scraper, or subscription.
 - [pokeaimMD](https://www.youtube.com/@pokeaimMD),
   [Pokeaim+](https://www.youtube.com/@pokeaimplus),
   [CybertronVGC](https://www.youtube.com/@CybertronVGC),
@@ -99,7 +106,8 @@ provides the two 02:00 UTC transitions. The importer does not extrapolate beyond
 these windows. Explicit regulation takes precedence: a tournament can use older
 rules after a new regulation starts. Detail and saved-original views disclose
 date inference with the source video link. It estimates rules active when shared,
-not the tournament's actual rules or current legality.
+not the tournament's actual rules or current legality. Singles teams dated from a
+post disclose the post date with the X post link instead.
 
 Channel collection and video provenance remain attached. A video date is a
 sharing date, not a result claim. The presenter is not treated as the team
@@ -111,7 +119,7 @@ published game or format is incompatible, and `format_conflict` means explicit
 regulations disagree. `paste_unavailable` means fetching failed, including HTTP
 404; malformed content is `invalid_payload`.
 
-A Poch.ms record joins the catalog only when its rule is `double`, its species
+A Poch.ms record joins the catalog only when its rule is `double` or `single`, its species
 resolve, and every field it uses parses. A record with an unresolvable species, a
 malformed field it needs, or a conflicting duplicate source ID is skipped rather
 than guessed. A source parse that finds supported records but admits none fails
@@ -305,9 +313,11 @@ paste and fetches a missing one, and deleting `.cache/catalog/<paste-id>.json` i
 the way to request it again. YouTube discovery refreshes separately with
 `REFRESH=1` or `YOUTUBE_REFRESH=1`; `YOUTUBE_REFRESH=1` alone leaves warm
 ordinary source caches unchanged. `OFFLINE=1` requires the cache.
-The measured 2026-10-05 import holds 1713 teams; Poch.ms contributes 332
+The measured 2026-10-05 import, made before singles records were imported,
+held 1713 teams; Poch.ms contributed 332
 accepted records, 92 of them with regulation `Unknown`, and 194 skipped records
-(reported singles and unsupported formats). The displayed snapshot date
+(reported singles and unsupported formats). The 2026-11-05 offline import
+yields 175 singles teams, all M-C. The displayed snapshot date
 tracks catalog generation, not independent verification of source claims.
 By default only a paste missing from the cache is fetched, with three concurrent
 workers. Individual paste failures preserve compatible previous sets and expose
@@ -443,9 +453,11 @@ do not independently verify event identity, attendance, or results.
 
 ## Inferred tags
 
-`scripts/jev-enrich.mjs` asks a System One model for each catalog team's primary
-game plan, speed mode, and per-slot member posture, and writes the answers to the
-generated `src/lib/data/team-tags.json`. These tags are inference, never
+`scripts/jev-enrich.mjs` asks a System One model for each doubles catalog team's
+primary game plan, speed mode, and per-slot member posture, and writes the
+answers to the generated `src/lib/data/team-tags.json`. Singles teams are not
+tagged, because the questions are doubles role questions, and Singles runs with
+an empty tag index, so its tiebreak is off. These tags are inference, never
 evidence: they carry no result label and never outrank a sourced result. They only
 order teams that already share the same teammates and set details _and_ are
 equally proven; publication date and team ID settle whatever remains.

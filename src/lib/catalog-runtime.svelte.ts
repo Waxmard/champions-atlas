@@ -1,3 +1,9 @@
+import {
+  readBattleFormat,
+  teamFormat,
+  writeBattleFormat,
+  type BattleFormat,
+} from './battle-format.ts';
 import bundledCatalog, {
   fetchCatalogUpdate,
   tags as bundledTags,
@@ -7,6 +13,7 @@ import bundledCatalog, {
   type CatalogData,
 } from './catalog-data.ts';
 import { admittedTeams } from './catalog.ts';
+import { ladderShares } from './ladder.ts';
 import {
   mergeRegulationOverrides,
   readRegulationOverrides,
@@ -37,10 +44,27 @@ class CatalogRuntimeState {
       ? []
       : (readRegulationOverrides(localStorage) ?? [])
   );
-  catalog = $derived(withRegulationOverrides(this.base, this.overrides));
-  tags = $state.raw<TeamTagsIndex>(bundledTags);
+  format = $state<BattleFormat>(
+    typeof localStorage === 'undefined'
+      ? 'doubles'
+      : readBattleFormat(localStorage).format
+  );
+  catalog = $derived.by(() => {
+    const catalog = withRegulationOverrides(this.base, this.overrides);
+    const format = this.format;
+    return {
+      ...catalog,
+      teams: catalog.teams.filter((team) => teamFormat(team) === format),
+    };
+  });
+  allTags = $state.raw<TeamTagsIndex>(bundledTags);
+  tags = $derived(this.format === 'singles' ? { teams: {} } : this.allTags);
   ready = $state(false);
-  freshIds = $state.raw<ReadonlySet<string>>(new Set());
+  batchIds = $state.raw<Record<BattleFormat, readonly string[]>>({
+    doubles: [],
+    singles: [],
+  });
+  freshIds = $derived(new Set(this.batchIds[this.format]));
 }
 
 export const catalogState = new CatalogRuntimeState();
@@ -67,6 +91,23 @@ export function setRegulationOverride(
 export function reloadRegulationOverrides(): void {
   catalogState.overrides = readRegulationOverrides(localStorage) ?? [];
 }
+
+export function setBattleFormat(format: BattleFormat): boolean {
+  try {
+    writeBattleFormat(localStorage, { format, at: Date.now() });
+    catalogState.format = format;
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+export function reloadBattleFormat(): void {
+  catalogState.format = readBattleFormat(localStorage).format;
+}
+
+export const ladderFor = (regulation: string) =>
+  ladderShares(regulation, catalogState.format);
 
 let activeBundleHash: string | undefined;
 let initPromise: Promise<void> | null = null;
@@ -151,9 +192,12 @@ function applyValidatedBundle(
   bundleHash?: string
 ): void {
   catalogState.base = admittedCatalog(bundle);
-  catalogState.tags = bundle.tags;
+  catalogState.allTags = bundle.tags;
   activeBundleHash = bundleHash ?? bundle.bundleHash;
-  catalogState.freshIds = new Set(bundle.latestBatch?.ids);
+  catalogState.batchIds = {
+    doubles: bundle.latestBatch?.ids ?? [],
+    singles: bundle.singlesBatch?.ids ?? [],
+  };
 }
 
 export function refreshCatalogNow(options?: {

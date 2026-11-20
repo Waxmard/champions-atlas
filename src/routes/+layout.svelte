@@ -11,7 +11,7 @@
     type NavigationTarget,
   } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import type { PathnameWithSearchOrHash, ResolvedPathname } from '$app/types';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Search from '@lucide/svelte/icons/search';
@@ -23,6 +23,7 @@
   import SettingsSheet from '#lib/components/SettingsSheet.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
+    catalogState,
     initCatalogRuntime,
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
@@ -155,6 +156,14 @@
     }
   }
 
+  function liveTeamId(id: string): string | null {
+    try {
+      return liveSavedTeam(localStorage, id, catalogState.format) ? id : null;
+    } catch {
+      return null;
+    }
+  }
+
   function trackSavedTeam(from: NavigationTarget | null, to: NavigationTarget) {
     let id = savedTeamId;
     if (!from) {
@@ -165,13 +174,7 @@
       }
     }
     if (to.route.id === '/saved') id = to.url.searchParams.get('team') || null;
-    else if (id && from?.route.id !== to.route.id) {
-      try {
-        if (!liveSavedTeam(localStorage, id)) id = null;
-      } catch {
-        id = null;
-      }
-    }
+    else if (id && from?.route.id !== to.route.id) id = liveTeamId(id);
     savedTeamId = id;
     updateStorage('local', savedTeamKey, id);
   }
@@ -443,7 +446,9 @@
 
   async function publishShortcutTeam() {
     if (isNativeApp)
-      await AtlasNative.setActiveTeam({ team: shortcutTeam(localStorage) });
+      await AtlasNative.setActiveTeam({
+        team: shortcutTeam(localStorage, catalogState.format),
+      });
   }
 
   async function syncGameResults() {
@@ -593,6 +598,17 @@
         headerHeight + 'px'
       );
     else document.documentElement.style.removeProperty('--app-header-measured');
+  });
+
+  $effect(() => {
+    void catalogState.format;
+    untrack(() => {
+      if (savedTeamId && !liveTeamId(savedTeamId)) {
+        savedTeamId = null;
+        updateStorage('local', savedTeamKey, null);
+      }
+      if (startupSettled) void publishShortcutTeam().catch(() => {});
+    });
   });
 </script>
 

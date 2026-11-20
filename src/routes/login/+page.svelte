@@ -26,7 +26,7 @@
         Champion's Atlas
       </h1>
       <p class="provenance mt-2 text-center">
-        Find, save, and tune teams for Pokémon Champions doubles.
+        Find, save, and tune teams for Pokémon Champions singles and doubles.
       </p>
       <div class="my-5 h-px bg-base-300" aria-hidden="true"></div>
 

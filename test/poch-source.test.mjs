@@ -311,10 +311,48 @@ test('published display names map only to their explicitly named forms', () => {
     assert.equal(member.spread, null);
     assert.equal(team.regulation, 'Unknown');
   }
-  assert.throws(
-    () => socialTeam('Unpublishedmon'),
-    /Every supported doubles record/
-  );
+  assert.throws(() => socialTeam('Unpublishedmon'), /Every supported record/);
+});
+
+test('singles ranked-ladder posts infer the regulation from the post date', () => {
+  const singles = (fields = {}) =>
+    parsePoch(
+      page(
+        [],
+        [
+          socialRow({
+            rule: 'single',
+            date: '2026-11-04T10:00:00.000Z',
+            ...fields,
+          }),
+        ]
+      )
+    ).teams[0];
+  const team = singles();
+  assert.equal(team.regulation, 'M-C');
+  assert.equal(team.format, 'singles');
+  assert.deepEqual(team.regulationInference, {
+    method: 'post-date',
+    publishedAt: '2026-11-04T10:00:00.000Z',
+    sourceUrl: social.postUrl,
+  });
+  assert.equal(team.name, 'エルム — Champions singles team');
+  for (const fields of [
+    { event: 'Some event' },
+    { date: '2027-01-01T00:00:00.000Z' },
+    { date: '2026-11-04' },
+  ]) {
+    const unknown = singles(fields);
+    assert.equal(unknown.regulation, 'Unknown');
+    assert.equal(unknown.format, 'singles');
+    assert.equal('regulationInference' in unknown, false);
+  }
+  const doubles = parsePoch(
+    page([], [socialRow({ date: '2026-11-04T10:00:00.000Z' })])
+  ).teams[0];
+  assert.equal(doubles.regulation, 'Unknown');
+  assert.equal('format' in doubles, false);
+  assert.equal('regulationInference' in doubles, false);
 });
 
 test('social ladder reports keep every published claim without inferring peak, finish, or global rank', () => {
@@ -413,15 +451,8 @@ test('tournament ordinal labels preserve placement without inferring top cut or 
     );
 });
 
-test('admission checks ids and rule before excluding singles and unsupported formats', () => {
+test('admission checks ids and rule before excluding unsupported formats', () => {
   const entries = [
-    {
-      id: 'single-event',
-      rule: 'single',
-      format: null,
-      team: '$bad',
-      date: 'not a date',
-    },
     {
       id: 'unsupported-event',
       rule: 'double',
@@ -430,22 +461,9 @@ test('admission checks ids and rule before excluding singles and unsupported for
       player: {},
     },
   ];
-  const x = [
-    {
-      id: 'single-post',
-      rule: 'single',
-      mons: [null],
-      postUrl: 'javascript:bad',
-      rank: -1,
-    },
-  ];
-  assert.deepEqual(parsePoch(page(entries, x)), {
+  assert.deepEqual(parsePoch(page(entries)), {
     teams: [],
-    skipped: [
-      skip('single-event', 'entries', 'unsupported_rule'),
-      skip('unsupported-event', 'entries', 'unsupported_format'),
-      skip('single-post', 'x', 'unsupported_rule'),
-    ],
+    skipped: [skip('unsupported-event', 'entries', 'unsupported_format')],
   });
   for (const id of [
     '',
@@ -511,7 +529,7 @@ test('six unique resolved canonical species are required', () => {
   const duplicateName = new Map([['dragonite', 'Gholdengo']]);
   assert.throws(
     () => parsePoch(page([], [social]), duplicateName),
-    /Every supported doubles record/
+    /Every supported record/
   );
   const conflict = clone(tournament);
   conflict.id = 'conflicting-stone';
@@ -755,23 +773,26 @@ test('missing, malformed, and conflicting containers fail source validation', ()
   assert.equal(globalThis.pochExecuted, undefined);
 });
 
-test('all-invalid supported doubles and malformed unsupported admissions cannot publish', () => {
+test('all-invalid supported records and malformed unsupported admissions cannot publish', () => {
   const invalidTournament = { ...clone(tournament), team: [] };
   const invalidSocial = { ...clone(social), mons: [] };
   assert.throws(
     () => parsePoch(page([invalidTournament])),
-    /Every supported doubles record/
+    /Every supported record/
   );
   assert.throws(
     () => parsePoch(page([], [invalidSocial])),
-    /Every supported doubles record/
+    /Every supported record/
   );
   assert.throws(
     () =>
       parsePoch(
-        page([invalidTournament], [{ id: 'valid-single', rule: 'single' }])
+        page([
+          invalidTournament,
+          { id: 'valid-unsupported', rule: 'double', format: 'M-D' },
+        ])
       ),
-    /Every supported doubles record/
+    /Every supported record/
   );
   const invalidRows = [
     null,
@@ -784,7 +805,12 @@ test('all-invalid supported doubles and malformed unsupported admissions cannot 
     assert.throws(() => parsePoch(page([], [invalid])), /malformed admission/);
     assert.throws(
       () =>
-        parsePoch(page([], [{ id: 'valid-single', rule: 'single' }, invalid])),
+        parsePoch(
+          page(
+            [{ id: 'valid-unsupported', rule: 'double', format: 'M-D' }],
+            [invalid]
+          )
+        ),
       /malformed admission/
     );
   }

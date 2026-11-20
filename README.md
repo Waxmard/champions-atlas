@@ -1,9 +1,10 @@
 # Champion's Atlas
 
-Champion's Atlas is an iOS app for browsing and editing Pokémon Champions doubles
-teams from multiple published sources, without claiming legality validation. Its
-packaged UI uses SvelteKit and TypeScript, daisyUI with Tailwind CSS, bits-ui
-primitives, and locally bundled Nunito Variable and Unbounded Variable.
+Champion's Atlas is an iOS app for browsing and editing Pokémon Champions
+doubles and singles teams from multiple published sources, without claiming
+legality validation. Its packaged UI uses SvelteKit and TypeScript, daisyUI
+with Tailwind CSS, bits-ui primitives, and locally bundled Nunito Variable and
+Unbounded Variable.
 
 ## Development
 
@@ -71,8 +72,9 @@ and the dev, build, typecheck, and test hooks generate it when missing. See
 [data sources](docs/data-sources.md#species-movepools).
 
 `npm run sync:ladder` refreshes the checked-in `src/lib/data/ladder-partners.json`
-from the latest Smogon M-C ladder stats, which rank Pokémon suggestions that no
-close catalog team supports.
+from the latest Smogon M-C doubles ladder stats and
+`src/lib/data/ladder-partners-singles.json` from the `gen9championsbssregmc`
+singles file. Both rank Pokémon suggestions that no close catalog team supports.
 
 A full refresh replaces historical records that sources change or remove.
 Offline imports require cached source files and do not disable asset downloads.
@@ -157,6 +159,10 @@ Firebase configured, native Google sign-in is required and syncs saved teams, th
 originals, and current-set snapshots across devices. Without configuration, the
 app runs local-only. Browse preferences remain device-local. Check offline access
 on the device; synchronization requires a connection.
+
+**Settings** holds a **Battle format** choice, **Doubles** or **Singles**, that
+syncs with your account. It switches Browse, Saved, Wishlist, suggestions, and
+notifications to one format; in-game sets are shared.
 
 See the [product specification](docs/product-spec.md) for editing, restoration,
 export, and snapshot contracts.

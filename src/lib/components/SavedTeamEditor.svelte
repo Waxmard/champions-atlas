@@ -95,7 +95,7 @@
         (team) => team.id === teamId && collections.isSavedTeam(team)
       );
       if (!entry) return;
-      favorites = collections.favoriteTeams(allSaved);
+      favorites = collections.favoriteTeams(allSaved, catalogState.format);
       storageError = '';
       draft = structuredClone(entry);
       pasteText = exportPaste(draft.members);
@@ -192,7 +192,7 @@
       const next = patch(latest);
       const pendingName = draft.name;
       const allSaved = saveTeam(localStorage, next);
-      favorites = collections.favoriteTeams(allSaved);
+      favorites = collections.favoriteTeams(allSaved, catalogState.format);
       const persisted = allSaved.find(({ id }) => id === next.id);
       if (!persisted) throw new Error('saved team is missing after saving');
       baseline = contentSnapshot(persisted);

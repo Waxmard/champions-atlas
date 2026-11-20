@@ -24,6 +24,7 @@
     reorderWishlist,
     removeWishlistedTeam,
     resolveCatalogTeam,
+    savedFormat,
     SavedTeamError,
     useWishlistedTeam,
     wishlistedCatalogEntries,
@@ -130,7 +131,9 @@
       if (
         saved.some(
           (entry) =>
-            entry.collection === 'wishlist' && entry.original.pasteUrl === url
+            entry.collection === 'wishlist' &&
+            savedFormat(entry) === catalogState.format &&
+            entry.original.pasteUrl === url
         )
       ) {
         refresh();
@@ -194,7 +197,8 @@
           localStorage,
           payload,
           catalogState.catalog.currentRegulation,
-          catalogState.catalog.teams
+          catalogState.catalog.teams,
+          catalogState.format
         );
         void pushNow();
         refresh();

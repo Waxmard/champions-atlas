@@ -3,6 +3,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateCatalogBundle } from '../src/lib/catalog-data.ts';
+import { teamFormat } from '../src/lib/battle-format.ts';
 import { admittedTeams } from '../src/lib/catalog.ts';
 import { teamEligibilityError } from './champions-eligibility.mjs';
 
@@ -22,15 +23,14 @@ async function writeAtomic(targetPath, contents) {
   await rename(tempPath, targetPath);
 }
 
-function latestBatch(previous, catalog) {
+function latestBatch(previous, catalog, format, key) {
   if (!previous) return undefined;
   const before = new Set(previous.teams.map((team) => team.id));
   const ids = admittedTeams(catalog.teams, catalog.currentRegulation)
+    .filter((team) => teamFormat(team) === format)
     .map((team) => team.id)
     .filter((id) => !before.has(id));
-  return ids.length
-    ? { addedAt: catalog.updatedAt, ids }
-    : previous.latestBatch;
+  return ids.length ? { addedAt: catalog.updatedAt, ids } : previous[key];
 }
 
 async function publishedBundle(origin) {
@@ -101,7 +101,13 @@ export async function buildCatalogRelease({
       );
   }
 
-  const batch = latestBatch(previous, catalog);
+  const doublesBatch = latestBatch(previous, catalog, 'doubles', 'latestBatch');
+  const singlesBatch = latestBatch(
+    previous,
+    catalog,
+    'singles',
+    'singlesBatch'
+  );
   const bundle = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
@@ -110,7 +116,8 @@ export async function buildCatalogRelease({
     sources: catalog.sources,
     teams: catalog.teams,
     tags: { teams: tags.teams },
-    ...(batch && { latestBatch: batch }),
+    ...(doublesBatch && { latestBatch: doublesBatch }),
+    ...(singlesBatch && { singlesBatch }),
   };
   validateCatalogBundle(bundle);
   const bundleJson = JSON.stringify(bundle);

@@ -147,7 +147,10 @@
         target="_blank"
         rel="external noreferrer"
       >
-        Regulation inferred from video date
+        Regulation inferred from {entry.original.regulationInference.method ===
+        'post-date'
+          ? 'post'
+          : 'video'} date
       </a>
     {/if}
     {#if entry.original.pasteUrl}

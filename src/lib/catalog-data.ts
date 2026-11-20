@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import rawCatalog from './data/catalog.json' with { type: 'json' };
 import rawTags from './data/team-tags.json' with { type: 'json' };
+import { teamFormat } from './battle-format.ts';
 import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
 import { normalize, youtubeChannelNames, type Team } from './catalog.ts';
@@ -34,6 +35,7 @@ export interface CatalogBundle extends CatalogData {
   schemaVersion: 1;
   bundleHash?: string;
   latestBatch?: { addedAt: string; ids: string[] };
+  singlesBatch?: { addedAt: string; ids: string[] };
   tags: TeamTagsIndex;
 }
 
@@ -105,6 +107,9 @@ const bundleSchema = z
     sourceHash: hashSchema,
     bundleHash: hashSchema.optional(),
     latestBatch: z
+      .object({ addedAt: isoTimestampSchema, ids: z.array(textSchema) })
+      .optional(),
+    singlesBatch: z
       .object({ addedAt: isoTimestampSchema, ids: z.array(textSchema) })
       .optional(),
     sources: z.array(catalogSourceSchema).min(1),
@@ -281,6 +286,7 @@ function isYoutubeCopy(team: Team): boolean {
 const setsKey = (team: Team) =>
   [
     team.regulation,
+    teamFormat(team),
     ...team.members
       .map((member) =>
         [

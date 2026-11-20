@@ -18,7 +18,7 @@
     memberRosterError,
     memberValidationError,
   } from '#lib/member-validation.js';
-  import { ladderShares } from '#lib/ladder.js';
+  import { ladderFor } from '#lib/catalog-runtime.svelte.js';
   import { memberSetSignature } from '#lib/spread-provenance.js';
   import {
     pokemonSuggestions,
@@ -165,7 +165,7 @@
       accepted.pokemon,
       tagIndex,
       pokemonQuery,
-      { limit: SLOT_SUGGESTION_LIMIT, ladder: ladderShares(currentRegulation) },
+      { limit: SLOT_SUGGESTION_LIMIT, ladder: ladderFor(currentRegulation) },
       favoriteTeams
     )
   );

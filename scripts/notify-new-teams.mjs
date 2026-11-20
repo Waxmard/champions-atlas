@@ -9,6 +9,7 @@ import {
   writeFilters,
   youtubeChannelNames,
 } from '../src/lib/catalog.ts';
+import { battleFormats, teamFormat } from '../src/lib/battle-format.ts';
 import { hasCompleteEvs } from '../src/lib/paste.ts';
 
 const BUNDLE_ID = 'com.maxwellward.championsatlas';
@@ -24,11 +25,13 @@ const FIRESTORE = 'https://firestore.googleapis.com/v1/';
 
 const listFormat = new Intl.ListFormat('en-GB', { type: 'conjunction' });
 
-function batchTeams(bundle, withoutEvs) {
-  const ids = new Set(bundle.latestBatch?.ids);
+function batchTeams(bundle, withoutEvs, format) {
+  const batch = format === 'singles' ? bundle.singlesBatch : bundle.latestBatch;
+  const ids = new Set(batch?.ids);
   return bundle.teams.filter(
     (team) =>
       ids.has(team.id) &&
+      teamFormat(team) === format &&
       team.regulation === bundle.currentRegulation &&
       (withoutEvs || hasCompleteEvs(team))
   );
@@ -51,21 +54,26 @@ function sourcesBody(teams, current) {
   return shown.length ? listFormat.format(shown) : 'Tap to see them';
 }
 
-export function newTeamsAlert(bundle, withoutEvs = true) {
-  const teams = batchTeams(bundle, withoutEvs);
+export function newTeamsAlert(bundle, withoutEvs = true, format = 'doubles') {
+  const teams = batchTeams(bundle, withoutEvs, format);
   if (!teams.length) return null;
   const current = bundle.currentRegulation;
   return {
-    title: `${teams.length} new Reg ${current} ${teams.length === 1 ? 'team' : 'teams'}`,
+    title: `${teams.length} new Reg ${current}${format === 'singles' ? ' singles' : ''} ${teams.length === 1 ? 'team' : 'teams'}`,
     body: sourcesBody(teams, current),
     path: '?new=1',
   };
 }
 
-export function pokemonAlert(bundle, pokemon, withoutEvs = true) {
+export function pokemonAlert(
+  bundle,
+  pokemon,
+  withoutEvs = true,
+  format = 'doubles'
+) {
   const watched = new Map(pokemon.map((name) => [pokemonId(name), name]));
   const found = new Set();
-  const teams = batchTeams(bundle, withoutEvs).filter((team) => {
+  const teams = batchTeams(bundle, withoutEvs, format).filter((team) => {
     const matched = team.members
       .map((member) => pokemonId(member.pokemon))
       .filter((id) => watched.has(id));
@@ -79,7 +87,7 @@ export function pokemonAlert(bundle, pokemon, withoutEvs = true) {
   const shown = names.slice(0, 2);
   if (names.length > 2) shown.push(`${names.length - 2} more`);
   return {
-    title: `${teams.length} new ${teams.length === 1 ? 'team' : 'teams'} with ${listFormat.format(shown)}`,
+    title: `${teams.length} new${format === 'singles' ? ' singles' : ''} ${teams.length === 1 ? 'team' : 'teams'} with ${listFormat.format(shown)}`,
     body: sourcesBody(teams, bundle.currentRegulation),
     path:
       names.length === 1
@@ -98,6 +106,7 @@ export function devicePrefs(fields = {}) {
       .map((value) => value.stringValue)
       .filter(Boolean),
     pokemonWithoutEvs: fields.pokemonWithoutEvs?.booleanValue !== false,
+    format: fields.format?.stringValue === 'singles' ? 'singles' : 'doubles',
   };
 }
 
@@ -236,30 +245,35 @@ export async function notifyNewTeams({
     if (unknown.length)
       throw new Error(`Unknown team ID(s): ${unknown.join(' ')}`);
     bundle.latestBatch = { ids: testIds };
+    bundle.singlesBatch = { ids: testIds };
   }
-  const batch = bundle.latestBatch;
-  if (!batch) return 'No batch of new teams yet; nothing sent.';
+  const batches = { doubles: bundle.latestBatch, singles: bundle.singlesBatch };
+  const withBatch = battleFormats.filter((format) => batches[format]);
+  if (!withBatch.length) return 'No batch of new teams yet; nothing sent.';
 
   const accessToken = await googleAccessToken(account);
   const documents = `${FIRESTORE}projects/${account.project_id}/databases/(default)/documents`;
-  if (!testIds.length) {
-    const state = await firestore(
-      accessToken,
-      `${documents}/pushState/catalog`
-    );
-    if (state?.fields?.announced?.stringValue === batch.addedAt)
-      return 'No new teams; nothing sent.';
-  }
+  const state = testIds.length
+    ? null
+    : await firestore(accessToken, `${documents}/pushState/catalog`);
+  const announced = {
+    doubles: state?.fields?.announced?.stringValue,
+    singles: state?.fields?.announcedSingles?.stringValue,
+  };
+  const due = withBatch.filter(
+    (format) => testIds.length || announced[format] !== batches[format].addedAt
+  );
+  if (!due.length) return 'No new teams; nothing sent.';
   let summary =
     'The latest batch has no current-regulation teams; nothing sent.';
 
-  if (newTeamsAlert(bundle)) {
+  if (due.some((format) => newTeamsAlert(bundle, true, format))) {
     const devices = [];
     let pageToken = '';
     do {
       const page = await firestore(
         accessToken,
-        `${documents}/pushTokens?pageSize=300&mask.fieldPaths=newTeams&mask.fieldPaths=newTeamsWithoutEvs&mask.fieldPaths=pokemon&mask.fieldPaths=pokemonWithoutEvs&pageToken=${encodeURIComponent(pageToken)}`
+        `${documents}/pushTokens?pageSize=300&mask.fieldPaths=newTeams&mask.fieldPaths=newTeamsWithoutEvs&mask.fieldPaths=pokemon&mask.fieldPaths=pokemonWithoutEvs&mask.fieldPaths=format&pageToken=${encodeURIComponent(pageToken)}`
       );
       devices.push(
         ...(page?.documents ?? []).map((document) => ({
@@ -294,14 +308,20 @@ export async function notifyNewTeams({
     try {
       for (const { name, prefs } of devices) {
         if (onlyDevice && !name.endsWith(`/${onlyDevice}`)) continue;
+        if (!due.includes(prefs.format)) continue;
         const pushes = [
           prefs.newTeams && [
             COLLAPSE_ID,
-            newTeamsAlert(bundle, prefs.newTeamsWithoutEvs),
+            newTeamsAlert(bundle, prefs.newTeamsWithoutEvs, prefs.format),
           ],
           prefs.pokemon.length > 0 && [
             POKEMON_COLLAPSE_ID,
-            pokemonAlert(bundle, prefs.pokemon, prefs.pokemonWithoutEvs),
+            pokemonAlert(
+              bundle,
+              prefs.pokemon,
+              prefs.pokemonWithoutEvs,
+              prefs.format
+            ),
           ],
         ].filter((push) => push?.[1]);
         for (const [collapseId, { path, ...alert }] of pushes) {
@@ -342,7 +362,14 @@ export async function notifyNewTeams({
     await firestore(accessToken, `${documents}/pushState/catalog`, {
       method: 'PATCH',
       body: JSON.stringify({
-        fields: { announced: { stringValue: batch.addedAt } },
+        fields: {
+          ...(batches.doubles && {
+            announced: { stringValue: batches.doubles.addedAt },
+          }),
+          ...(batches.singles && {
+            announcedSingles: { stringValue: batches.singles.addedAt },
+          }),
+        },
       }),
     });
   return summary;

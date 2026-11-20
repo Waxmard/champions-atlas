@@ -1,11 +1,18 @@
 import { battleSpecies } from './battle-forms.ts';
 import { normalize } from './catalog.ts';
-import data from './data/ladder-partners.json' with { type: 'json' };
+import type { BattleFormat } from './battle-format.ts';
+import doubles from './data/ladder-partners.json' with { type: 'json' };
+import singles from './data/ladder-partners-singles.json' with { type: 'json' };
 
 export type LadderShares = Record<string, Record<string, number> | undefined>;
 
-export const ladderShares = (regulation: string): LadderShares | undefined =>
-  data.regulation === regulation ? data.partners : undefined;
+export const ladderShares = (
+  regulation: string,
+  format: BattleFormat
+): LadderShares | undefined => {
+  const data = format === 'singles' ? singles : doubles;
+  return data.regulation === regulation ? data.partners : undefined;
+};
 
 const speciesKey = (name: string) =>
   normalize(battleSpecies(name)?.baseSpecies ?? name);

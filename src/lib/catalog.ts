@@ -14,7 +14,7 @@ export interface SpreadSource {
   borrowedNature: boolean;
 }
 export interface RegulationInference {
-  method: 'video-date';
+  method: 'video-date' | 'post-date';
   publishedAt: string;
   sourceUrl: string;
 }
@@ -57,6 +57,7 @@ export interface Team {
   pasteError?: string;
   regulationInference?: RegulationInference;
   regulationSetByUser?: true;
+  format?: 'singles';
   mergedIds?: string[];
 }
 

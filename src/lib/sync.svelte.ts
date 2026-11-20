@@ -63,13 +63,21 @@ import { copyText } from './clipboard.ts';
 import { notify } from './notifications.ts';
 import { deleteUserData } from './account-deletion.ts';
 import { uploadSyncFailures } from './sync-reports.ts';
-import { reloadRegulationOverrides } from './catalog-runtime.svelte.ts';
+import {
+  reloadBattleFormat,
+  reloadRegulationOverrides,
+} from './catalog-runtime.svelte.ts';
 import {
   mergeRegulationOverrides,
   parseRegulationOverrides,
   readRegulationOverrides,
   writeRegulationOverrides,
 } from './regulation-overrides.ts';
+import {
+  parseBattleFormat,
+  readBattleFormat,
+  writeBattleFormat,
+} from './battle-format.ts';
 
 type SyncStatus = 'off' | 'syncing' | 'synced' | 'error';
 
@@ -91,6 +99,7 @@ let uid = '';
 let unsubscribe: Unsubscribe | null = null;
 let unsubscribeSets: Unsubscribe | null = null;
 let unsubscribeRegulations: Unsubscribe | null = null;
+let unsubscribeProfile: Unsubscribe | null = null;
 let base: SavedTeam[] | null = null;
 let setsBase: CurrentSet[] | null = null;
 let setManifestSnapshot: string | null = null;
@@ -162,6 +171,8 @@ function invalidate() {
   unsubscribeSets = null;
   unsubscribeRegulations?.();
   unsubscribeRegulations = null;
+  unsubscribeProfile?.();
+  unsubscribeProfile = null;
   uid = '';
   base = null;
   setsBase = null;
@@ -492,6 +503,39 @@ export async function syncRegulations(): Promise<void> {
   }
 }
 
+export async function syncProfile(): Promise<void> {
+  if (!db || !uid) return;
+  const generation = session;
+  const id = uid;
+  const ref = doc(db, 'users', id, 'profile', 'settings');
+  try {
+    const next = await runTransaction(db, async (transaction) => {
+      const snapshot = await transaction.get(ref);
+      const remote = snapshot.exists()
+        ? parseBattleFormat(snapshot.data())
+        : null;
+      const local = readBattleFormat(localStorage);
+      const newest = remote && remote.at >= local.at ? remote : local;
+      if (newest.at > 0 && newest !== remote)
+        transaction.set(ref, {
+          schemaVersion: 1,
+          format: newest.format,
+          at: newest.at,
+          updatedAt: serverTimestamp(),
+        });
+      return newest;
+    });
+    if (!valid(generation, id)) return;
+    const local = readBattleFormat(localStorage);
+    if (next.at <= local.at) return;
+    writeBattleFormat(localStorage, next);
+    reloadBattleFormat();
+    if (next.format !== local.format) void syncPushToken();
+  } catch (error) {
+    if (generation === session) fail(error, 'profile');
+  }
+}
+
 function firebaseConfig() {
   const apiKey = import.meta.env.VITE_FIREBASE_API_KEY;
   const authDomain = import.meta.env.VITE_FIREBASE_AUTH_DOMAIN;
@@ -548,6 +592,12 @@ export function initSync(): void {
         () => valid(generation, user.uid),
         () => void syncRegulations(),
         (error) => generation === session && fail(error, 'regulations-listener')
+      );
+      unsubscribeProfile = watchCurrentSetDocument(
+        doc(firestore, 'users', uid, 'profile', 'settings'),
+        () => valid(generation, user.uid),
+        () => void syncProfile(),
+        (error) => generation === session && fail(error, 'profile-listener')
       );
       void request();
       void syncPushToken();
@@ -682,7 +732,12 @@ export async function syncPushToken(): Promise<PushRegistration | null> {
     if (result.token && owner === uid) {
       const ref = doc(firestore, 'pushTokens', result.token);
       await (enabled && result.granted
-        ? setDoc(ref, { uid: owner, ...settings, updatedAt: serverTimestamp() })
+        ? setDoc(ref, {
+            uid: owner,
+            ...settings,
+            format: readBattleFormat(localStorage).format,
+            updatedAt: serverTimestamp(),
+          })
         : deleteDoc(ref));
     }
     return result;

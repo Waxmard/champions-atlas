@@ -385,10 +385,16 @@ const pasteFor = (evs) =>
 
 test('custom teams validate paste and preserve independent snapshots and empty source metadata through storage', () => {
   const paste = pasteFor('32 HP');
-  const custom = newCustomTeam('  Mine  ', 'M-C', paste);
-  assert.throws(() => newCustomTeam('  ', 'M-C', paste), /name/);
+  const custom = newCustomTeam('  Mine  ', 'M-C', paste, 'doubles');
+  assert.throws(() => newCustomTeam('  ', 'M-C', paste, 'doubles'), /name/);
   assert.throws(
-    () => newCustomTeam('Mine', 'M-C', paste.replace('EVs: 32 HP\n', '')),
+    () =>
+      newCustomTeam(
+        'Mine',
+        'M-C',
+        paste.replace('EVs: 32 HP\n', ''),
+        'doubles'
+      ),
     /missing EVs/
   );
   assert.equal(custom.name, 'Mine');
@@ -412,7 +418,7 @@ test('custom teams validate paste and preserve independent snapshots and empty s
 
 test('legacy Favorites read as starred Saved teams and Saved order survives legacy moves', () => {
   const paste = pasteFor('32 HP / 32 Atk / 2 Spe');
-  const base = newCustomTeam('Fav', 'M-C', paste);
+  const base = newCustomTeam('Fav', 'M-C', paste, 'doubles');
   let raw = JSON.stringify([
     { ...base, collection: 'favorites', favoriteOrder: 2 },
   ]);

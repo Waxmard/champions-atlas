@@ -194,7 +194,9 @@ async function main() {
   let fetched = 0;
   let model = stub.model;
 
-  const taggable = catalog.teams.filter(publishesSets);
+  const taggable = catalog.teams.filter(
+    (team) => publishesSets(team) && team.format !== 'singles'
+  );
   await pooled(taggable, 4, async (team) => {
     const cachePath = resolve(cacheDir, `${team.id}.json`);
     let answer = null;

@@ -149,7 +149,7 @@ test('real Poképaste payload retains raw text and uses existing EV normalizatio
   );
   assert.deepEqual(payload, { url, title, paste });
 
-  const team = newCustomTeam(payload.title, 'M-A', payload.paste);
+  const team = newCustomTeam(payload.title, 'M-A', payload.paste, 'doubles');
   assert.deepEqual(
     team.members.map((member) => member.pokemon),
     [
@@ -171,7 +171,12 @@ test('real Poképaste payload retains raw text and uses existing EV normalizatio
     url,
     jsonResponse({ paste: withRawLines })
   );
-  const rawTeam = newCustomTeam(rawPayload.title, 'M-A', rawPayload.paste);
+  const rawTeam = newCustomTeam(
+    rawPayload.title,
+    'M-A',
+    rawPayload.paste,
+    'doubles'
+  );
   assert.match(
     rawTeam.original.paste,
     /^Blaze \(Charizard\) @ Charizardite Y/m

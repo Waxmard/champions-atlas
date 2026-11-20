@@ -7,6 +7,7 @@
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Save from '@lucide/svelte/icons/save';
   import Star from '@lucide/svelte/icons/star';
+  import type { BattleFormat } from '#lib/battle-format.js';
   import HelpButton from '#lib/components/HelpButton.svelte';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SavedTeamEditor from '#lib/components/SavedTeamEditor.svelte';
@@ -66,11 +67,12 @@
     shareRecovery,
   }: {
     collection: 'wishlist' | 'saved';
-    orderTeams: (teams: SavedTeam[]) => SavedTeam[];
+    orderTeams: (teams: SavedTeam[], format: BattleFormat) => SavedTeam[];
     reorderTeams: (
       storage: Storage,
       orderedIds: string[],
-      expectedIds: string[]
+      expectedIds: string[],
+      format: BattleFormat
     ) => SavedTeam[] | null;
     useTeam?: (storage: Storage, id: string) => SavedTeam;
     removeTeam: (storage: Storage, id: string) => void;
@@ -186,7 +188,7 @@
 
   export function refresh() {
     try {
-      entries = orderTeams(readSavedTeams(localStorage));
+      entries = orderTeams(readSavedTeams(localStorage), catalogState.format);
       storageError = '';
     } catch {
       entries = [];
@@ -257,6 +259,7 @@
 
   $effect(() => {
     void sync.revision;
+    void catalogState.format;
     if (ready) untrack(refresh);
   });
 
@@ -264,7 +267,12 @@
     errorMessage = '';
     inlineError = false;
     try {
-      const next = reorderTeams(localStorage, orderedIds, expectedIds);
+      const next = reorderTeams(
+        localStorage,
+        orderedIds,
+        expectedIds,
+        catalogState.format
+      );
       refresh();
       if (next) void pushNow();
       return true;
@@ -289,7 +297,7 @@
       }
       const members = unrecordedMembers(
         readCurrentSets(localStorage),
-        orderTeams(readSavedTeams(localStorage))
+        orderTeams(readSavedTeams(localStorage), catalogState.format)
       );
       if (!members.length) {
         currentSets.refresh();

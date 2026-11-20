@@ -6,7 +6,7 @@
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import { regulationLabel, type Member, type Team } from '#lib/catalog.js';
-  import { ladderShares } from '#lib/ladder.js';
+  import { ladderFor } from '#lib/catalog-runtime.svelte.js';
   import {
     swapSuggestions,
     type SwapSuggestion,
@@ -48,7 +48,7 @@
       tags,
       4,
       favoriteTeams,
-      ladderShares(currentRegulation),
+      ladderFor(currentRegulation),
       true
     )
   );
