@@ -350,7 +350,19 @@
     </div>
   {/if}
 {/snippet}
-{#snippet importForm()}
+{#snippet addPaste(className: string)}
+  <Button
+    id="wishlist-actions"
+    variant="quiet"
+    class={className}
+    onclick={() =>
+      void goto(resolve('wishlist#import-pokepaste'), { reset: false })}
+  >
+    <Plus class="size-4" aria-hidden="true" />
+    Add a Poképaste
+  </Button>
+{/snippet}
+{#snippet importForm(empty: boolean)}
   {#if page.url.hash === '#import-pokepaste'}
     <section
       id="import-pokepaste"
@@ -431,20 +443,12 @@
         </div>
       </form>
     </section>
-  {:else}
-    <div>
-      <Button
-        id="wishlist-actions"
-        variant="quiet"
-        class="-ms-2 gap-1 px-2"
-        onclick={() =>
-          void goto(resolve('wishlist#import-pokepaste'), { reset: false })}
-      >
-        <Plus class="size-4" aria-hidden="true" />
-        Add a Poképaste
-      </Button>
-    </div>
+  {:else if !empty}
+    <div>{@render addPaste('-ms-2 gap-1 px-2')}</div>
   {/if}
+{/snippet}
+{#snippet emptyAction()}
+  {#if page.url.hash !== '#import-pokepaste'}{@render addPaste('gap-1')}{/if}
 {/snippet}
 <CollectionPage
   bind:this={collectionPage}
@@ -459,7 +463,9 @@
   useTeam={useWishlistedTeam}
   removeTeam={removeWishlistedTeam}
   busy={importPending || queuePending}
-  empty="No teams in Wishlist yet. Share a Poképaste or choose Wishlist on a team in Browse."
+  emptyTitle="No teams in Wishlist yet"
+  empty="Choose Wishlist on a team in Browse, or add a Poképaste."
   {importForm}
+  {emptyAction}
   {shareRecovery}
 />
