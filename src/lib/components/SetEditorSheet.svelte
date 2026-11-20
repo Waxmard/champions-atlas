@@ -25,7 +25,6 @@
     SLOT_SUGGESTION_LIMIT,
   } from '#lib/swap-suggestions.js';
   import { canonicalSnapshot } from '#lib/team-history.js';
-  import type { TeamTagsIndex } from '#lib/tags.js';
   import {
     catalogSuggestions,
     favoriteMembersFor,
@@ -40,7 +39,6 @@
     initialField: EditableSetField;
     initialMoveSlot?: number;
     teammates?: Member[];
-    tagIndex?: TeamTagsIndex;
     originalMembers?: Member[];
     favoriteTeams?: SavedTeam[];
     onchange: (member: Member) => boolean;
@@ -54,7 +52,6 @@
     initialField,
     initialMoveSlot = 0,
     teammates = [],
-    tagIndex,
     originalMembers = [],
     favoriteTeams = [],
     onchange,
@@ -163,7 +160,6 @@
       teams,
       currentRegulation,
       accepted.pokemon,
-      tagIndex,
       pokemonQuery,
       { limit: SLOT_SUGGESTION_LIMIT, ladder: ladderFor(currentRegulation) },
       favoriteTeams

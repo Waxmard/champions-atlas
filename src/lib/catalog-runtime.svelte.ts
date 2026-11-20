@@ -6,7 +6,6 @@ import {
 } from './battle-format.ts';
 import bundledCatalog, {
   fetchCatalogUpdate,
-  tags as bundledTags,
   mergeYoutubeCopies,
   selectStoredCatalogBundle,
   type CatalogBundle,
@@ -21,7 +20,6 @@ import {
   writeRegulationOverrides,
   type RegulationOverride,
 } from './regulation-overrides.ts';
-import type { TeamTagsIndex } from './tags.ts';
 
 const DB_NAME = 'champions-atlas-catalog';
 const STORE_NAME = 'bundles';
@@ -62,8 +60,6 @@ class CatalogRuntimeState {
     allTeams: this.all.teams,
     currentRegulation: this.catalog.currentRegulation,
   });
-  allTags = $state.raw<TeamTagsIndex>(bundledTags);
-  tags = $derived(this.format === 'singles' ? { teams: {} } : this.allTags);
   ready = $state(false);
   batchIds = $state.raw<Record<BattleFormat, readonly string[]>>({
     doubles: [],
@@ -197,7 +193,6 @@ function applyValidatedBundle(
   bundleHash?: string
 ): void {
   catalogState.base = admittedCatalog(bundle);
-  catalogState.allTags = bundle.tags;
   activeBundleHash = bundleHash ?? bundle.bundleHash;
   catalogState.batchIds = {
     doubles: bundle.latestBatch?.ids ?? [],

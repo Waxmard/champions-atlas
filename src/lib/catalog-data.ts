@@ -1,12 +1,10 @@
 import { z } from 'zod';
 import rawCatalog from './data/catalog.json' with { type: 'json' };
-import rawTags from './data/team-tags.json' with { type: 'json' };
 import { teamFormat } from './battle-format.ts';
 import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
 import { normalize, youtubeChannelNames, type Team } from './catalog.ts';
 import { reportSchema, textSchema } from './spread-provenance.ts';
-import type { TeamTagsIndex } from './tags.ts';
 import { originalSchema } from './workbench.ts';
 
 export interface CatalogSource {
@@ -36,13 +34,9 @@ export interface CatalogBundle extends CatalogData {
   bundleHash?: string;
   latestBatch?: { addedAt: string; ids: string[] };
   singlesBatch?: { addedAt: string; ids: string[] };
-  tags: TeamTagsIndex;
 }
 
 const bundledCatalog = rawCatalog as CatalogData;
-export const tags: TeamTagsIndex = {
-  teams: (rawTags as TeamTagsIndex).teams ?? {},
-};
 export default bundledCatalog;
 
 export const MANIFEST_MAX_BYTES = 64 * 1024;
@@ -93,12 +87,6 @@ const catalogTeamSchema = originalSchema
     team.members.every((member) => resolveBattleForm(member).error === null)
   );
 
-const teamTagSchema = z.looseObject({
-  archetype: textSchema,
-  speedMode: textSchema.optional(),
-  roles: z.record(textSchema, textSchema),
-});
-
 const bundleSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -114,9 +102,6 @@ const bundleSchema = z
       .optional(),
     sources: z.array(catalogSourceSchema).min(1),
     teams: z.array(catalogTeamSchema).min(1),
-    tags: z.object({
-      teams: z.record(textSchema, teamTagSchema),
-    }),
   })
   .refine(
     (bundle) =>

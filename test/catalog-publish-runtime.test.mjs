@@ -11,7 +11,6 @@ import bundledCatalog, {
   MANIFEST_MAX_BYTES,
   defaultCatalogEndpoint,
   fetchCatalogUpdate,
-  tags as bundledTags,
   mergeYoutubeCopies,
   selectStoredCatalogBundle,
   validateCatalogBundle,
@@ -28,21 +27,30 @@ function sampleFixture() {
     sources: structuredClone(bundledCatalog.sources.slice(0, 2)),
     teams: [firstTeam, secondTeam],
   };
-  const tags = {
-    teams: {
-      [firstTeam.id]: bundledTags.teams[firstTeam.id] ?? {
-        archetype: 'balance',
-        roles: { 1: 'support' },
-      },
-    },
-  };
-  return { catalog, tags };
+  return { catalog };
 }
 test('stored catalog selection rejects invalid or older bundles', () => {
-  const { catalog, tags } = sampleFixture();
-  const bundle = { schemaVersion: 1, ...catalog, tags };
+  const { catalog } = sampleFixture();
+  const bundle = { schemaVersion: 1, ...catalog };
   const baseline = '2026-10-24T06:17:00.000Z';
   assert.deepEqual(selectStoredCatalogBundle(bundle, baseline), bundle);
+  assert.deepEqual(
+    selectStoredCatalogBundle(
+      {
+        ...bundle,
+        tags: {
+          teams: {
+            [catalog.teams[0].id]: {
+              archetype: 'balance',
+              roles: { 1: 'support' },
+            },
+          },
+        },
+      },
+      baseline
+    ),
+    bundle
+  );
   assert.equal(
     selectStoredCatalogBundle({ ...bundle, teams: [] }, baseline),
     null
@@ -59,15 +67,13 @@ test('stored catalog selection rejects invalid or older bundles', () => {
 test('buildCatalogRelease writes valid manifest and content-addressed bundle and rejects invalid inputs', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'catalog-publish-'));
   try {
-    const { catalog, tags } = sampleFixture();
+    const { catalog } = sampleFixture();
     const catalogPath = join(dir, 'catalog.json');
-    const tagsPath = join(dir, 'team-tags.json');
     const outDir = join(dir, 'out');
     await writeFile(catalogPath, JSON.stringify(catalog), 'utf8');
-    await writeFile(tagsPath, JSON.stringify(tags), 'utf8');
 
     const { manifest, bundle, manifestPath, bundleFilePath } =
-      await buildCatalogRelease({ catalogPath, tagsPath, outDir });
+      await buildCatalogRelease({ catalogPath, outDir });
 
     const writtenManifest = JSON.parse(await readFile(manifestPath, 'utf8'));
     const writtenBundleText = await readFile(bundleFilePath, 'utf8');
@@ -79,7 +85,13 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
     assert.equal(manifest.bundleHash, expectedHash);
     assert.equal(manifest.bundlePath, `/catalog/bundle-${expectedHash}.json`);
     assert.deepEqual(validateCatalogManifest(writtenManifest), manifest);
-    assert.deepEqual(validateCatalogBundle(writtenBundle), bundle);
+    const { tags: legacyTags, ...current } = bundle;
+    assert.deepEqual(
+      legacyTags,
+      { teams: {} },
+      'installed app versions reject a bundle without tags'
+    );
+    assert.deepEqual(validateCatalogBundle(writtenBundle), current);
 
     const emptyCatalogPath = join(dir, 'empty-catalog.json');
     await writeFile(
@@ -91,7 +103,6 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
       () =>
         buildCatalogRelease({
           catalogPath: emptyCatalogPath,
-          tagsPath,
           outDir: join(dir, 'out-empty'),
         }),
       /non-empty array/
@@ -105,7 +116,6 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
       () =>
         buildCatalogRelease({
           catalogPath: ineligiblePath,
-          tagsPath,
           outDir: join(dir, 'out-ineligible'),
         }),
       /Ineligible catalog team/
@@ -116,7 +126,7 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
 });
 
 test('validateCatalogManifest and validateCatalogBundle enforce schema, uniqueness, battle forms, and byte limits', async () => {
-  const { catalog, tags } = sampleFixture();
+  const { catalog } = sampleFixture();
   const bundle = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
@@ -124,7 +134,6 @@ test('validateCatalogManifest and validateCatalogBundle enforce schema, uniquene
     sourceHash: catalog.sourceHash,
     sources: catalog.sources,
     teams: catalog.teams,
-    tags,
   };
   const bundleHash = createHash('sha256')
     .update(JSON.stringify(bundle))
@@ -180,7 +189,7 @@ test('validateCatalogManifest and validateCatalogBundle enforce schema, uniquene
 });
 
 test('fetchCatalogUpdate skips matching hash, rejects older bundles, ignores failures, and returns newer catalog', async () => {
-  const { catalog, tags } = sampleFixture();
+  const { catalog } = sampleFixture();
   const bundle = {
     schemaVersion: 1,
     updatedAt: '2026-10-25T06:17:00.000Z',
@@ -188,7 +197,6 @@ test('fetchCatalogUpdate skips matching hash, rejects older bundles, ignores fai
     sourceHash: 'b'.repeat(64),
     sources: catalog.sources,
     teams: catalog.teams,
-    tags,
   };
   const bundleJson = JSON.stringify(bundle);
   const bundleHash = createHash('sha256').update(bundleJson).digest('hex');
@@ -274,7 +282,6 @@ test('fetchCatalogUpdate skips matching hash, rejects older bundles, ignores fai
   assert.equal(updated.bundleHash, bundleHash);
   assert.equal(updated.bundle.updatedAt, bundle.updatedAt);
   assert.equal(updated.bundle.teams.length, 2);
-  assert.deepEqual(updated.bundle.tags, tags);
 });
 
 test('writeCatalog keeps the previous timestamp when content is unchanged', async () => {
@@ -304,8 +311,8 @@ test('writeCatalog keeps the previous timestamp when content is unchanged', asyn
 });
 
 test('fetchCatalogUpdate discards a bundle that disagrees with its manifest', async () => {
-  const { catalog, tags } = sampleFixture();
-  const bundle = { schemaVersion: 1, ...catalog, tags };
+  const { catalog } = sampleFixture();
+  const bundle = { schemaVersion: 1, ...catalog };
   const bundleJson = JSON.stringify(bundle);
   const manifest = {
     schemaVersion: 1,
@@ -340,15 +347,12 @@ test('defaultCatalogEndpoint disables updates when nothing is configured', () =>
 test('buildCatalogRelease batches teams missing from the previous release and carries the batch forward', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'catalog-batch-'));
   try {
-    const { catalog, tags } = sampleFixture();
+    const { catalog } = sampleFixture();
     const catalogPath = join(dir, 'catalog.json');
-    const tagsPath = join(dir, 'team-tags.json');
     await writeFile(catalogPath, JSON.stringify(catalog), 'utf8');
-    await writeFile(tagsPath, JSON.stringify(tags), 'utf8');
     const build = (previous, name) =>
       buildCatalogRelease({
         catalogPath,
-        tagsPath,
         outDir: join(dir, name),
         previous,
       });
@@ -384,7 +388,7 @@ test('buildCatalogRelease batches teams missing from the previous release and ca
 test('buildCatalogRelease keeps a separate singles batch and carries the doubles batch', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'catalog-singles-batch-'));
   try {
-    const { catalog, tags } = sampleFixture();
+    const { catalog } = sampleFixture();
     const doublesBatch = {
       addedAt: '2026-10-01T00:00:00.000Z',
       ids: ['gone'],
@@ -395,16 +399,13 @@ test('buildCatalogRelease keeps a separate singles batch and carries the doubles
       format: 'singles',
     };
     const catalogPath = join(dir, 'catalog.json');
-    const tagsPath = join(dir, 'team-tags.json');
     await writeFile(
       catalogPath,
       JSON.stringify({ ...catalog, teams: [...catalog.teams, singles] }),
       'utf8'
     );
-    await writeFile(tagsPath, JSON.stringify(tags), 'utf8');
     const release = await buildCatalogRelease({
       catalogPath,
-      tagsPath,
       outDir: join(dir, 'out'),
       previous: {
         teams: catalog.teams,

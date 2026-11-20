@@ -19,7 +19,6 @@ import {
   type FavoriteTeamSource,
   type SwapSuggestion,
 } from './swap-suggestions.ts';
-import type { TeamTagsIndex } from './tags.ts';
 
 export function swapTargets(
   members: Member[],
@@ -75,7 +74,6 @@ export function swapIdeas(
   members: Member[],
   teams: Team[],
   currentRegulation: string,
-  tags?: TeamTagsIndex,
   limit = 4,
   favoriteTeams: readonly FavoriteTeamSource[] = [],
   ladder?: LadderShares,
@@ -91,7 +89,6 @@ export function swapIdeas(
       teams,
       currentRegulation,
       replaced.pokemon,
-      tags,
       '',
       { limit: SLOT_SUGGESTION_LIMIT, ladder },
       favoriteTeams

@@ -310,11 +310,9 @@ favor better-placed and recent teams through a weighted vote (see
 another teammate holds is never reused, and a suggested Mega keeps its own Mega
 Stone. Candidates rank by shared teammates, then by the form's weighted vote,
 then by matching details for those teammates, then by
-recency-adjusted results, regulation, and credentials. Inferred archetype and role
-tags break only
-equally proven ties. Sources need not match the fixed five members exactly. Source
-result claims are not attributed to the user's edited team. Exact forms remain
-distinct. In Singles the role-tag tiebreak is off.
+recency-adjusted results, regulation, and credentials. Sources need not match the
+fixed five members exactly. Source result claims are not attributed to the
+user's edited team. Exact forms remain distinct.
 
 - One Pokémon toggle replaces individual item, move, and ability locks.
 - Show concrete differences for the proposed single-slot replacement.
@@ -408,12 +406,6 @@ Each spread shows its own unmodified level-50 Speed, without item, ability,
 weather, or other battle modifiers. The app ranks recorded sets rather than
 solving survive, KO, or outspeed benchmarks. It does not show a catalog Speed
 percentile or offer a calculator handoff.
-
-Inferred archetype and role tags are enrichment, never evidence: they carry no
-result label and never outrank a sourced result. They break ties among teams that
-already share the same teammates and set details and are equally proven; the
-keyword half of that tiebreak works without them. See
-[data sources](data-sources.md) for how they are generated and validated.
 
 Custom text import starts from **Add custom team** in Saved with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,

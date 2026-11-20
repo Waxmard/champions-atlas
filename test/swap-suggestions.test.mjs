@@ -400,7 +400,6 @@ test('search filters Pokémon before the six-result limit', () => {
       [source],
       'M-C',
       undefined,
-      undefined,
       'Tyranitar'
     )[0].pokemon,
     'Tyranitar'
@@ -513,7 +512,6 @@ test("swap ideas come from each slot's Pokémon suggestions, close fits first", 
       [strong, weak],
       'M-C',
       draft[idea.slot].pokemon,
-      undefined,
       '',
       { limit: SLOT_SUGGESTION_LIMIT }
     );
@@ -555,64 +553,6 @@ test('unknown source names are skipped instead of suggested', () => {
     for (const move of member.moves) assert.ok(knownName('move', move));
     assert.equal(resolveBattleForm(member).error, null);
   }
-});
-
-test('the role tiebreak never outranks a sourced result', () => {
-  const tags = {
-    teams: { role: { archetype: 'balance', speedMode: 'faster', roles: {} } },
-  };
-  const teammates = [set('Sneasler')];
-  const fillsRole = team('role', [
-    set('Sneasler'),
-    set('Incineroar', { item: 'Life Orb', moves: ['Tailwind', 'Fake Out'] }),
-  ]);
-  const proven = team(
-    'evidence',
-    [
-      set('Sneasler'),
-      set('Rillaboom', { item: 'Life Orb', ability: 'Grassy Surge' }),
-    ],
-    { reports: [{ event: 'Worlds', rank: 'Champion', sourceUrl: '' }] }
-  );
-  const ranked = pokemonSuggestions(
-    teammates,
-    [fillsRole, proven],
-    'M-C',
-    undefined,
-    tags
-  );
-  assert.deepEqual(
-    ranked.map((s) => s.pokemon),
-    ['Rillaboom', 'Incineroar']
-  );
-
-  const unproven = team('evidence-tied', [
-    set('Sneasler'),
-    set('Rillaboom', { item: 'Life Orb', ability: 'Grassy Surge' }),
-  ]);
-  const tied = pokemonSuggestions(
-    teammates,
-    [fillsRole, unproven],
-    'M-C',
-    undefined,
-    tags
-  );
-  assert.equal(tied[0].member.pokemon, 'Incineroar');
-  assert.equal(tied[0].roleFill, true);
-  assert.equal(tied[0].role, null);
-
-  const withStub = pokemonSuggestions(
-    teammates,
-    [fillsRole, unproven],
-    'M-C',
-    undefined,
-    { teams: {} }
-  );
-  assert.equal(withStub[0].member.pokemon, 'Rillaboom');
-  assert.deepEqual(
-    withStub.map((s) => [s.role, s.archetype, s.roleFill]),
-    withStub.map(() => [null, null, false])
-  );
 });
 
 test('swap targets list current-regulation forms the team is missing', () => {
@@ -786,7 +726,7 @@ test('swap ideas keep the best-backed replacement through the per-slot limit', (
       reports: champion,
     })
   );
-  const ideas = swapIdeas(draft, [...closest, ...backed], 'M-C', undefined, 1);
+  const ideas = swapIdeas(draft, [...closest, ...backed], 'M-C', 1);
   assert.deepEqual(
     ideas.map(({ pokemon }) => pokemon),
     ['Gardevoir']

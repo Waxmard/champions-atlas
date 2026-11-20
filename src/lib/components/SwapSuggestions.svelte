@@ -12,14 +12,12 @@
     type SwapSuggestion,
   } from '#lib/swap-suggestions.js';
   import { swapIdeas, swapTargets } from '#lib/swap-ideas.js';
-  import type { TeamTagsIndex } from '#lib/tags.js';
   import type { SavedTeam } from '#lib/workbench.js';
 
   interface Props {
     members: Member[];
     teams: Team[];
     currentRegulation: string;
-    tags?: TeamTagsIndex;
     favoriteTeams?: SavedTeam[];
     disabled: boolean;
     onapply: (slot: number, member: Member) => boolean;
@@ -29,7 +27,6 @@
     members,
     teams,
     currentRegulation,
-    tags,
     favoriteTeams = [],
     disabled,
     onapply,
@@ -45,7 +42,6 @@
       members,
       teams,
       currentRegulation,
-      tags,
       4,
       favoriteTeams,
       ladderFor(currentRegulation),
@@ -54,14 +50,7 @@
   );
   const searched = $derived(
     query
-      ? swapSuggestions(
-          members,
-          teams,
-          currentRegulation,
-          query,
-          tags,
-          favoriteTeams
-        )
+      ? swapSuggestions(members, teams, currentRegulation, query, favoriteTeams)
       : []
   );
   const options = $derived(

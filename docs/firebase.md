@@ -339,7 +339,7 @@ The TestFlight workflow uses the GitHub `preview` environment and
 `VITE_FIREBASE_APP_ID`, and `FIREBASE_TOKEN` from that environment. Create
 `FIREBASE_TOKEN` with `npx firebase-tools login:ci` using an account with access
 to the test project. The build inlines the four Firebase configuration values.
-The same environment supplies `YOUTUBE_API_KEY`, `TYPESAFE_API_KEY`,
+The same environment supplies `YOUTUBE_API_KEY`,
 `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`,
 `APPLE_CERTIFICATE_P12_BASE64`, `APPLE_CERTIFICATE_PASSWORD`,
 `APPLE_DEVELOPMENT_CERTIFICATE_P12_BASE64`, and

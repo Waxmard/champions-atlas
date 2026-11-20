@@ -49,16 +49,10 @@ async function publishedBundle(origin) {
 
 export async function buildCatalogRelease({
   catalogPath = 'src/lib/data/catalog.json',
-  tagsPath = 'src/lib/data/team-tags.json',
   outDir = '.cache/hosting',
   previous = null,
 } = {}) {
-  const [catalogRaw, tagsRaw] = await Promise.all([
-    readFile(catalogPath, 'utf8'),
-    readFile(tagsPath, 'utf8'),
-  ]);
-  const catalog = JSON.parse(catalogRaw);
-  const tags = JSON.parse(tagsRaw);
+  const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 
   if (!isPlainObject(catalog))
     throw new Error('Catalog JSON must be an object.');
@@ -84,8 +78,6 @@ export async function buildCatalogRelease({
     throw new Error('Catalog sources must be a non-empty array.');
   if (!Array.isArray(catalog.teams) || !catalog.teams.length)
     throw new Error('Catalog teams must be a non-empty array.');
-  if (!isPlainObject(tags) || !isPlainObject(tags.teams))
-    throw new Error('Team tags must contain a plain teams object.');
 
   const ids = new Set();
   for (const team of catalog.teams) {
@@ -115,7 +107,7 @@ export async function buildCatalogRelease({
     sourceHash: catalog.sourceHash,
     sources: catalog.sources,
     teams: catalog.teams,
-    tags: { teams: tags.teams },
+    tags: { teams: {} },
     ...(doublesBatch && { latestBatch: doublesBatch }),
     ...(singlesBatch && { singlesBatch }),
   };

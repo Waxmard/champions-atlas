@@ -24,7 +24,6 @@ jobs:
         with:
           path: |
             .cache/catalog
-            .cache/jev
             src/lib/data/catalog.json
             static/sprites
             static/items

@@ -463,34 +463,3 @@ Poképaste imports. This exclusion does not establish standard-format legality.
 Cached catalogs without entrant metadata remain readable and use unknown field
 size conservatively. Event aliases and result labels describe source claims; they
 do not independently verify event identity, attendance, or results.
-
-## Inferred tags
-
-`scripts/jev-enrich.mjs` asks a System One model for each doubles catalog team's
-primary game plan, speed mode, and per-slot member posture, and writes the
-answers to the generated `src/lib/data/team-tags.json`. Singles teams are not
-tagged, because the questions are doubles role questions, and Singles runs with
-an empty tag index, so its tiebreak is off. These tags are inference, never
-evidence: they carry no result label and never outrank a sourced result. They only
-order teams that already share the same teammates and set details _and_ are
-equally proven; publication date and team ID settle whatever remains.
-
-The tiebreak has two halves: keyword role flags computed in code, and the
-inferred postures carried by the tags. An empty stub disables the whole
-tiebreak, so an untagged build is identical to the pre-feature baseline. With
-generated tags, the tiebreak reorders about 9% of suggestion lists.
-
-Both deploy workflows require `TYPESAFE_API_KEY` and refuse to deploy untagged.
-Dev, CI, and typecheck still write the stub when no credential is present, so
-those paths stay hermetic. `npm run enrich:tags` reuses `.cache/jev`, so a warm
-cache performs no requests at all; it fails when a run tags nothing, or when
-every team it had to fetch came back unusable, so a dead credential or a changed
-response shape cannot ship silently.
-
-Role flags used by that tiebreak are computed in code from move and ability
-names, not asked of the model, because counting and matching are what code does
-reliably. `scripts/jev-eval.mjs` scores run-to-run stability and checks
-structural invariants before the tags may be consumed; a failing evaluation
-leaves the tags empty. Its setter invariants are objective (a Trick Room team
-must run Trick Room), but the `support` invariant only measures how many support
-moves its vocabulary recognizes, so read its rate as coverage, not accuracy.

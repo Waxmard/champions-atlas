@@ -579,7 +579,6 @@
           members={team.members}
           {teams}
           currentRegulation={current}
-          tags={catalogState.tags}
           favoriteTeams={favoriteSources}
           disabled={changed || editing || busy || stale}
           onapply={applySwap}
@@ -635,7 +634,6 @@
       initialField={activeEditField}
       initialMoveSlot={activeEditMoveSlot}
       teammates={draft.members.filter((_, i) => i !== editIndex)}
-      tagIndex={catalogState.tags}
       favoriteTeams={favoriteSources}
       onchange={(next) => saveMember(editIndex, next)}
       onclose={closeSetEdit}

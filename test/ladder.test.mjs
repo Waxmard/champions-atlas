@@ -71,7 +71,6 @@ test('ladder pairings admit and rank Pokémon without a close catalog team', () 
       teams,
       'M-C',
       'Dragonite',
-      undefined,
       '',
       options
     ).map(({ pokemon, sharedTeammates }) => [pokemon, sharedTeammates]);
@@ -90,7 +89,7 @@ test('swap ideas replace the member the ladder pairs least with the rest', () =>
   const teams = [team('far', [set('Torkoal', { item: 'Life Orb' })])];
   const ladder = { incineroar: { rillaboom: 0.5, torkoal: 0.5 } };
   assert.deepEqual(
-    swapIdeas(draft, teams, 'M-C', undefined, 4, [], ladder).map(
+    swapIdeas(draft, teams, 'M-C', 4, [], ladder).map(
       ({ pokemon, slot, sharedTeammates }) => [pokemon, slot, sharedTeammates]
     ),
     [['Torkoal', 2, 0]]
@@ -113,9 +112,10 @@ test('extended swap ideas keep the first rows and list each Pokémon once', () =
     ]),
   ];
   const rows = (...rest) =>
-    swapIdeas(draft, teams, 'M-C', undefined, ...rest).map(
-      ({ pokemon, slot }) => [pokemon, slot]
-    );
+    swapIdeas(draft, teams, 'M-C', ...rest).map(({ pokemon, slot }) => [
+      pokemon,
+      slot,
+    ]);
   assert.deepEqual(rows(1), [['Garchomp', 3]]);
   assert.deepEqual(rows(1, [], undefined, true), [
     ['Garchomp', 3],
