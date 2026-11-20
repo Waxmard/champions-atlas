@@ -140,10 +140,9 @@ Saved and Wishlist and syncs like other team content. Saved
 and Wishlist cards show it read-only, with the percentage, once a team has a
 record. On iPhone, the **Log Game Result** shortcut action names the current
 team, or the first team in Saved order when none is current, asks for **Win** or
-**Loss**, and logs it without opening the app. Shortcuts shows the result with
-the team's updated record, and a quiet entry in Notification Center (no banner)
-opens that team in Saved when tapped. Results logged this way join the record
-the next time the app is opened.
+**Loss**, and logs it without opening the app. A banner confirms the result with
+the team's updated record; tapping it opens that team in Saved. Results logged
+this way join the record the next time the app is opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain
