@@ -28,7 +28,7 @@
     {
       id: 'ev-spreads',
       title: 'EV spreads',
-      body: "Some shared teams don't list EVs. Turn on With EVs in Browse or Wishlist to list only teams where all six Pokémon have them.",
+      body: "Some shared teams don't list EVs. Open Filters in Browse or Wishlist and turn on With EVs only to list only teams where all six Pokémon have them.",
     },
     {
       id: 'nature',

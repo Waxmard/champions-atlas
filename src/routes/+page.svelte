@@ -6,7 +6,6 @@
   import { onMount } from 'svelte';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
-  import Filter from '@lucide/svelte/icons/filter';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SortMenu from '#lib/components/SortMenu.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
@@ -38,7 +37,6 @@
     ['vp', 'VP spend'],
   ] as const;
   let storageError = $state(false);
-  let filtersOpen = $state(false);
   let ready = $state(false);
   let saved = $state.raw<SavedTeam[]>([]);
   let savedError = $state('');
@@ -77,19 +75,10 @@
           },
         ]
       : []),
+    ...(withEvsOnly
+      ? [{ label: 'With EVs only', onremove: () => changeOption('evs', '') }]
+      : []),
   ]);
-  const filterCount = $derived(
-    filters.reduce(
-      (count, { item, ability, move }) =>
-        count +
-        Number(!!item.trim()) +
-        Number(!!ability.trim()) +
-        Number(!!move.trim()),
-      0
-    ) +
-      Number(unknownOnly) +
-      Number(newOnly)
-  );
   const sortByVp = $derived(page.url.searchParams.get('sort') === 'vp');
   const results = $derived.by(() => {
     if (filterState.error) return [];
@@ -253,28 +242,7 @@
       {savedError || actionError}
     </p>{/if}
 
-  <PokemonFilters
-    {teams}
-    {filters}
-    {toggles}
-    onchange={changeFilters}
-    expanded={filtersOpen}
-    onclose={() => (filtersOpen = false)}
-  >
-    {#snippet actions()}
-      <Button
-        type="button"
-        variant="quiet"
-        class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
-        aria-haspopup="dialog"
-        onclick={() => (filtersOpen = true)}
-      >
-        <Filter class="size-4" aria-hidden="true" />
-        <span class="max-sm:sr-only">Filters</span>
-        {#if filterCount}<span class="badge badge-primary">{filterCount}</span
-          >{/if}
-      </Button>
-    {/snippet}
+  <PokemonFilters {teams} {filters} {toggles} onchange={changeFilters}>
     {#snippet controls()}
       {#if catalogState.freshIds.size || newOnly}
         <label class="flex min-h-11 cursor-pointer items-center gap-3">
@@ -298,6 +266,10 @@
         />
         <span class="font-semibold">Unknown regulation only</span>
       </label>
+      <WithEvsToggle
+        pressed={withEvsOnly}
+        onchange={(value) => changeOption('evs', value ? '1' : '')}
+      />
     {/snippet}
   </PokemonFilters>
 
@@ -318,11 +290,6 @@
           options={browseSortOptions}
           onchange={(value) => changeOption('sort', value === 'vp' ? 'vp' : '')}
           disabled={currentSets.sets?.length ? undefined : 'vp'}
-        />
-        <WithEvsToggle
-          pressed={withEvsOnly}
-          disabled={!ready}
-          onchange={(value) => changeOption('evs', value ? '1' : '')}
         />
         {#if filters.length || unknownOnly || newOnly || withEvsOnly || filterState.error}<Button
             type="button"

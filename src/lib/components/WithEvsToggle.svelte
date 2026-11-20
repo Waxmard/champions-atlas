@@ -1,28 +1,24 @@
 <script lang="ts">
   import HelpButton from '#lib/components/HelpButton.svelte';
-  import { Button } from '#lib/components/ui/button/index.js';
 
   let {
     pressed,
     onchange,
-    disabled = false,
   }: {
     pressed: boolean;
     onchange: (pressed: boolean) => void;
-    disabled?: boolean;
   } = $props();
 </script>
 
-<Button
-  type="button"
-  variant="quiet"
-  class={pressed
-    ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
-    : ''}
-  aria-pressed={pressed}
-  {disabled}
-  onclick={() => onchange(!pressed)}
->
-  With EVs
-</Button>
-<HelpButton topic="ev-spreads" label="About the With EVs filter" />
+<div class="flex items-center gap-1">
+  <label class="flex min-h-11 flex-1 cursor-pointer items-center gap-3">
+    <input
+      type="checkbox"
+      class="size-5 accent-primary"
+      checked={pressed}
+      onchange={(event) => onchange(event.currentTarget.checked)}
+    />
+    <span class="font-semibold">With EVs only</span>
+  </label>
+  <HelpButton topic="ev-spreads" label="About the With EVs filter" />
+</div>

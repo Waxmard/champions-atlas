@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
+  import Filter from '@lucide/svelte/icons/filter';
   import X from '@lucide/svelte/icons/x';
   import { browsePokemonNames } from '#lib/battle-forms.js';
   import {
@@ -19,18 +20,12 @@
     teams,
     filters,
     onchange,
-    expanded = false,
-    onclose,
-    actions,
     controls,
     toggles = [],
   }: {
     teams: Team[];
     filters: MemberFilter[];
     onchange: (filters: MemberFilter[]) => void;
-    expanded?: boolean;
-    onclose?: () => void;
-    actions?: Snippet;
     controls?: Snippet;
     toggles?: { label: string; onremove: () => void }[];
   } = $props();
@@ -42,6 +37,17 @@
   );
   const availablePokemon = $derived(
     allPokemon.filter((pokemon) => !selectedPokemon.has(pokemonId(pokemon)))
+  );
+  let open = $state(false);
+  const count = $derived(
+    filters.reduce(
+      (sum, { item, ability, move }) =>
+        sum +
+        Number(!!item.trim()) +
+        Number(!!ability.trim()) +
+        Number(!!move.trim()),
+      0
+    ) + toggles.length
   );
 
   function addPokemon(pokemon: string) {
@@ -74,7 +80,17 @@
       disabled={filters.length >= 6}
     />
   </div>
-  {@render actions?.()}
+  <Button
+    type="button"
+    variant="quiet"
+    class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
+    aria-haspopup="dialog"
+    onclick={() => (open = true)}
+  >
+    <Filter class="size-4" aria-hidden="true" />
+    <span class="max-sm:sr-only">Filters</span>
+    {#if count}<span class="badge badge-primary">{count}</span>{/if}
+  </Button>
 </div>
 
 {#if filters.length || toggles.length}
@@ -113,8 +129,8 @@
   </ul>
 {/if}
 
-{#if expanded && onclose}
-  <Modal title="Filters" {onclose}>
+{#if open}
+  <Modal title="Filters" onclose={() => (open = false)}>
     <div class="space-y-3">
       {@render controls?.()}
       {#each filters as filter, index (filter.pokemon)}

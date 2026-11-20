@@ -128,6 +128,11 @@
       : 'manual';
   const currentSets = createCurrentSetRegistry();
   const filtered = $derived(filters.length > 0 || favoritesOnly || withEvsOnly);
+  const toggles = $derived(
+    withEvsOnly
+      ? [{ label: 'With EVs only', onremove: () => setWithEvsOnly(false) }]
+      : []
+  );
   const pickerTeams = $derived(entries.map(displaySavedTeam));
   const visibleEntries = $derived.by(() => {
     const matching = entries.filter(
@@ -508,8 +513,15 @@
         <PokemonFilters
           teams={pickerTeams}
           {filters}
+          {toggles}
           onchange={(next) => (filters = next)}
-        />
+        >
+          {#snippet controls()}
+            {#if collection === 'wishlist'}
+              <WithEvsToggle pressed={withEvsOnly} onchange={setWithEvsOnly} />
+            {/if}
+          {/snippet}
+        </PokemonFilters>
         <div
           class="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-1.5"
         >
@@ -530,9 +542,6 @@
               onchange={setSort}
               disabled={currentSets.sets?.length ? undefined : 'vp'}
             />
-            {#if collection === 'wishlist'}
-              <WithEvsToggle pressed={withEvsOnly} onchange={setWithEvsOnly} />
-            {/if}
             {#if setFavorite}
               <Button
                 type="button"
