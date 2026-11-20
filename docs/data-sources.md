@@ -3,11 +3,12 @@
 The catalog holds Pokémon Champions teams, mostly doubles, from the VGCPastes M-C and M-B
 spreadsheets, Victory Road's Champions replica-team page, DevonCorp's M-A
 collection, the published Poch.ms leaderboard, Battle Database Champions' open
-ranked-singles data, and direct paste links from the
+ranked-singles data, Smogon's singles sample-team threads, and direct paste links from the
 complete public upload histories of the configured YouTube VGC/Champions channels. Teams from a sheet
 or index include parsed paste sets, and Poch.ms records include the set details
 that page publishes. Missing fields remain unknown. Singles teams come only from
-Poch.ms and Battle Database Champions; every other source is doubles-only.
+Poch.ms, Battle Database Champions, and the Smogon sample teams; every other
+source is doubles-only.
 
 Sources:
 
@@ -46,6 +47,17 @@ Sources:
   moves, abilities, natures, or spreads, so those stay unknown, and these teams
   are never merged with Poch.ms teams. Add a row to `pokedbSeasons` when a new
   season starts.
+- Smogon sample teams come from two forum threads,
+  [Battle Stadium Singles sample teams](https://www.smogon.com/forums/threads/battle-stadium-singles-sample-teams-all-gens.3746122/)
+  and
+  [Champions OU sample teams](https://www.smogon.com/forums/threads/champions-ou-sample-teams.3783102/).
+  The importer does not read the threads. `scripts/data/smogon-samples.json`
+  lists each team's name, creator, regulation, PokéPaste or Pokémon Showdown
+  team link, and optional rental code, and is edited by hand. The importer
+  fetches only those team links and imports the full sets with
+  `format: 'singles'`. A link that cannot be fetched is skipped and logged,
+  and a Showdown team whose format does not match its listed regulation is
+  skipped. Add a row to that file to add a team.
 - [pokeaimMD](https://www.youtube.com/@pokeaimMD),
   [Pokeaim+](https://www.youtube.com/@pokeaimplus),
   [CybertronVGC](https://www.youtube.com/@CybertronVGC),

@@ -24,13 +24,13 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   format closes Settings, clears the Browse filters and the Saved and Wishlist
   Pokémon search, keeps you on the tab you are on (Browse, or the Saved or
   Wishlist list), opens the Saved list from any other page, and shows "Switched
-  to Singles." (or "Switched to Doubles."). Switching
-  with a saved team open opens the saved team last open in the other format, or
-  the Saved list when there is none. If you keep unsaved edits on the open page,
-  the format does not change. A saved team stays in the format it was saved or
-  created in. Singles teams come from the Poch.ms ranked-ladder posts and Battle
-  Database Champions' season-final ranked teams; other sources hold doubles
-  teams only (see [data sources](data-sources.md)).
+  to Singles." (or "Switched to Doubles."). Switching with a saved team open
+  opens the saved team last open in the other format, or the Saved list when
+  there is none. If you keep unsaved edits on the open page, the format does not
+  change. A saved team stays in the format it was saved or created in. Singles
+  teams come from the Poch.ms ranked-ladder posts, Battle Database Champions'
+  season-final ranked teams, and Smogon's singles sample teams; other sources
+  hold doubles teams only (see [data sources](data-sources.md)).
 - Browse teams with or without a Pokémon in mind.
 - Combine multiple Pokémon filters using AND: every selected Pokémon must occur
   on the team.
@@ -83,11 +83,11 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   recent publish that added teams of that format) with a blue dot before the
   team name; the dot stays until a later batch of that format replaces it.
   **New teams only** in Browse filters (`?new=1`) shows just those teams.
-- Signed-in iPhone users choose catalog notifications in **Settings**, under
-  **Battle format**; the choices are stored on the device. Each device gets
-  banners only for its chosen format. Under
-  **Notifications**, each of the two groups below is a collapsed row that shows
-  its state (**On**/**Off**, or the number of Pokémon chosen). **New teams** (on
+- Signed-in iPhone users choose catalog notifications under **Notifications**
+  in **Settings**; the choices are stored on the device. Each device gets
+  banners only for its chosen format. Each of the two groups below is a
+  collapsed row that shows its state (**On**/**Off**, or the number of Pokémon
+  chosen). **New teams** (on
   by default, toggled by **Notify me** inside the row) sends one banner per batch
   counting its current-regulation teams, with a body naming the tournaments and
   YouTubers they came from. Tapping it opens Browse with **New teams only** on.
@@ -104,8 +104,7 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   banner is sent when none remain.
 - Banner titles read `N new Reg M-C teams` and `N new teams with ...` in
   Doubles, and `N new Reg M-C singles teams` and `N new singles teams with ...`
-  in Singles. A device registers its chosen format with its notification
-  settings, so a batch of one format never notifies a device on the other.
+  in Singles.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
@@ -241,9 +240,12 @@ first team in Saved order wins.
 
 Team cards show the expected VP spend to reach the team from the recorded
 in-game sets, labelled **Estimated spend**. A Pokémon with a recorded set whose
-team lists a different nature and no EVs is priced with the top catalog spread
-for that nature. The set editor footer, full-set dialog, and member menu show
-the VP needed to change that Pokémon's in-game set to the shown set.
+team leaves out its ability, nature, a move, or EVs is priced from the most
+common catalog set for the missing details, and the team's set list says how
+many Pokémon were priced that way. The **VP spend** sort uses listed details
+only, so its order can differ slightly from the totals on cards. The set
+editor footer, full-set dialog, and member menu show the VP needed to change
+that Pokémon's in-game set to the shown set.
 
 When a snapshot exists, its item, ability, nature, and move values appear as
 subtly source-labelled choices in the corresponding editor suggestion surfaces.
