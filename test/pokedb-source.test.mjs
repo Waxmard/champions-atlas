@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { compareBrowseTeams } from '../src/lib/catalog.ts';
 import { parsePokedb, pokedbUrl } from '../scripts/pokedb-source.mjs';
 import { pokedbFile, pokedbRoster } from './fixtures/catalog-import.mjs';
 
@@ -24,6 +25,7 @@ test('maps a ranked singles file to a catalog team', () => {
   assert.equal(team.format, 'singles');
   assert.equal(team.regulation, 'M-C');
   assert.equal(team.creator, '');
+  assert.equal(team.publishedAt, '2026-11-19');
   const event = 'Champions ranked battles — Season M-7';
   assert.deepEqual(team.reports, [
     { event, rank: 'Season finish #1', sourceUrl: pokedbUrl },
@@ -77,6 +79,31 @@ test('rejects a file for another season or rule', () => {
     () => parsePokedb(JSON.stringify(doubles), entry),
     (error) => error.reason === 'invalid_source'
   );
+  for (const value of [undefined, '2026-11-19', '2026-02-30 00:00:00']) {
+    const file = JSON.parse(pokedbFile());
+    file.updated_at = value;
+    assert.throws(
+      () => parsePokedb(JSON.stringify(file), entry),
+      (error) => error.reason === 'invalid_source'
+    );
+  }
+});
+
+test('a dated season finish outranks a newer unranked post in Browse', () => {
+  const [team] = parsePokedb(pokedbFile(), entry).teams;
+  const post = {
+    ...team,
+    id: 'post',
+    publishedAt: '2026-11-20',
+    reports: [
+      {
+        event: 'Champions ranked battles',
+        rank: '',
+        sourceUrl: 'https://x.com/a/status/1',
+      },
+    ],
+  };
+  assert.ok(compareBrowseTeams(team, post, 'M-C') < 0);
 });
 
 test('gives shared ranks distinct ids and drops exact duplicates', () => {

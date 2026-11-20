@@ -70,7 +70,12 @@ function memberFrom(row, regulation, canonicalNames) {
   return member;
 }
 
-function catalogTeam(row, { season, regulation }, id, canonicalNames) {
+function catalogTeam(
+  row,
+  { season, regulation, publishedAt },
+  id,
+  canonicalNames
+) {
   const rating = row.rating_value;
   if (
     rating !== null &&
@@ -106,7 +111,7 @@ function catalogTeam(row, { season, regulation }, id, canonicalNames) {
     name: `Season M-${season} singles — Rank ${row.rank}`,
     creator: '',
     regulation,
-    publishedAt: '',
+    publishedAt,
     pasteUrl: '',
     replicaCode: null,
     replicaStatus: '',
@@ -137,6 +142,18 @@ export function parsePokedb(
     !Array.isArray(data.teams)
   )
     fail('invalid_source', `File is not the season ${season} singles file`);
+  const publishedAt = /^(\d{4}-\d{2}-\d{2}) \d{2}:\d{2}:\d{2}$/.exec(
+    data.updated_at
+  )?.[1];
+  if (
+    !publishedAt ||
+    Number.isNaN(Date.parse(publishedAt)) ||
+    new Date(publishedAt).toISOString().slice(0, 10) !== publishedAt
+  )
+    fail(
+      'invalid_source',
+      'updated_at must be a YYYY-MM-DD HH:MM:SS timestamp'
+    );
   const teams = [];
   const skipped = [];
   const seen = new Map();
@@ -152,7 +169,14 @@ export function parsePokedb(
       const id =
         `pokedb-single-s${season}-${rank}` +
         (rows.length > 1 ? `-${rows.length}` : '');
-      teams.push(catalogTeam(row, { season, regulation }, id, canonicalNames));
+      teams.push(
+        catalogTeam(
+          row,
+          { season, regulation, publishedAt },
+          id,
+          canonicalNames
+        )
+      );
     } catch (error) {
       skipped.push({
         id: String(row?.rank ?? ''),
