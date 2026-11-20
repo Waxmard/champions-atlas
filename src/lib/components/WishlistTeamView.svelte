@@ -147,10 +147,10 @@
         target="_blank"
         rel="external noreferrer"
       >
-        Regulation inferred from {entry.original.regulationInference.method ===
-        'post-date'
-          ? 'post'
-          : 'video'} date
+        Regulation inferred from {entry.original.regulationInference.method.replace(
+          '-date',
+          ''
+        )} date
       </a>
     {/if}
     {#if entry.original.pasteUrl}
