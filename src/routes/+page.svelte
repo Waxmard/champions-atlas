@@ -279,6 +279,7 @@
         class="value font-semibold tracking-wide"
       >
         {results.length}
+        {catalogState.format}
         {results.length === 1 ? 'team' : 'teams'}
       </p>
       <div class="flex flex-wrap items-center gap-1">
@@ -388,7 +389,7 @@
               : unknownOnly
                 ? 'No teams with an unknown regulation match. Turn off Unknown regulation only or remove a filter.'
                 : withEvsOnly
-                  ? 'No teams with EV spreads match. Turn off With EVs or remove a filter.'
+                  ? 'No teams with EV spreads match. Turn off With EVs only or remove a filter.'
                   : 'Try removing a Pokémon or one of its item, ability, or move filters.')}
         </p>
         <Button

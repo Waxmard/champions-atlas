@@ -534,9 +534,8 @@
             aria-atomic="true"
             class="value font-semibold tracking-wide"
           >
-            {visibleEntries.length} matching {visibleEntries.length === 1
-              ? 'team'
-              : 'teams'}
+            {visibleEntries.length} matching {catalogState.format}
+            {visibleEntries.length === 1 ? 'team' : 'teams'}
           </p>
           <div class="flex flex-wrap items-center gap-1">
             <SortMenu
@@ -576,7 +575,7 @@
               : favoritesOnly
                 ? 'Turn off Favorites to reorder Saved.'
                 : withEvsOnly
-                  ? 'Turn off With EVs to reorder Wishlist.'
+                  ? 'Turn off With EVs only to reorder Wishlist.'
                   : `Clear filters to reorder ${label}.`}
           </p>
         {/if}
@@ -614,7 +613,7 @@
               No teams with EV spreads
             </h2>
             <p class="mt-2 text-[0.9375rem] leading-relaxed">
-              Turn off With EVs to see every team.
+              Turn off With EVs only to see every team.
             </p>
             <Button
               type="button"
