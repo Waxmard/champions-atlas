@@ -34,6 +34,7 @@ export async function fetchCached(
     allowStale = false,
     fetchOptions = { redirect: 'error' },
     missingMessage = `Missing cached file: ${name}`,
+    optional = false,
   }
 ) {
   const path = resolve(cache, name);
@@ -51,12 +52,16 @@ export async function fetchCached(
       if (offline && error.code !== 'ENOENT') throw error;
     }
   }
-  if (offline) throw new Error(missingMessage);
+  if (offline) {
+    if (optional) return null;
+    throw new Error(missingMessage);
+  }
 
   let response;
   let text;
   try {
     response = await fetchWithRetry(address, fetchOptions);
+    if (optional && response.status === 404) return null;
     if (!response.ok) throw new Error(`${response.status} fetching ${address}`);
     text = await response.text();
   } catch (refreshError) {

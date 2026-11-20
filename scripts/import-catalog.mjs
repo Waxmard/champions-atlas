@@ -8,6 +8,7 @@ import { restoreCatalogAssets } from './sync-assets.mjs';
 import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { admittedTeams, normalize } from '../src/lib/catalog.ts';
 import {
+  admitSourceTeams,
   eligibilitySourceTexts,
   rejectIneligibleTeam,
   teamEligibilityError,
@@ -33,6 +34,12 @@ import {
   linkedSpreadPairs,
 } from './catalog-enrichment.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
+import {
+  admitPokedb,
+  loadPokedb,
+  pokedbName,
+  pokedbUrl,
+} from './pokedb-source.mjs';
 import {
   loadYoutubeSource,
   youtubeImportRows,
@@ -380,7 +387,7 @@ async function main() {
     address,
     validate,
     refresh = false,
-    { fetchOptions, missingMessage } = {}
+    { fetchOptions, missingMessage, optional } = {}
   ) {
     return fetchCachedSource(name, address, {
       cache,
@@ -390,6 +397,7 @@ async function main() {
       allowStale: process.env.ALLOW_STALE_SOURCE_CACHE === '1',
       fetchOptions,
       missingMessage,
+      optional,
     });
   }
   if (process.argv.includes('--if-missing') && !checkSheet) {
@@ -500,6 +508,11 @@ async function main() {
     parsePoch,
     indexRefresh
   );
+  const pokedbFiles = await loadPokedb(fetchCached, {
+    fullHistory,
+    currentRegulation,
+    refresh: indexRefresh,
+  });
   const devonCorp = fullHistory
     ? parseDevonCorp(devonCorpHtml)
     : { candidates: [], skipped: [] };
@@ -517,6 +530,7 @@ async function main() {
     victoryRoadHtml,
     devonCorpHtml,
     pochHtml,
+    ...pokedbFiles.map(({ text }) => text),
     youtubeHash,
     currentRegulation,
     JSON.stringify(frozenTeams),
@@ -710,34 +724,21 @@ async function main() {
     }
   }
   await writeYoutubeDecisions(cache, decisions);
-  const parsedPoch = parsePoch(pochHtml, canonicalNames);
-  const pochInScope = fullHistory
-    ? parsedPoch.teams
-    : parsedPoch.teams.filter((team) => team.regulation === currentRegulation);
-  for (const team of parsedPoch.teams)
-    if (!fullHistory && team.regulation !== currentRegulation)
-      noteReason('outside_current_regulation');
-  const pochTeams = pochInScope.filter((team) => {
-    if (!fullHistory && frozenIds.has(team.id)) {
-      noteReason('frozen_history_conflict');
-      console.warn(`Poch.ms: skipped ID ${team.id} (frozen history conflict)`);
-      return false;
-    }
-    return !rejectIneligibleTeam('Poch.ms', team, noteReason);
-  });
-  const pochCounts = {
-    discovered: parsedPoch.teams.length + parsedPoch.skipped.length,
-    accepted: pochTeams.length,
-    priorRetained: 0,
-    skipped:
-      parsedPoch.skipped.length + parsedPoch.teams.length - pochTeams.length,
-    merged: 0,
+  const direct = {
+    fullHistory,
+    currentRegulation,
+    frozenIds,
+    noteReason,
+    sourceStats,
   };
-  for (const entry of parsedPoch.skipped)
-    noteReason(entry.reason || 'invalid_record');
-  sourceStats.push({ name: 'Poch.ms', counts: pochCounts });
+  const pochTeams = admitSourceTeams(
+    'Poch.ms',
+    parsePoch(pochHtml, canonicalNames),
+    direct
+  );
+  const pokedbTeams = admitPokedb(pokedbFiles, canonicalNames, direct);
   const linked = enrichLinkedSpreads(
-    deduplicate([...unique, ...publicTeams, ...pochTeams]),
+    deduplicate([...unique, ...publicTeams, ...pochTeams, ...pokedbTeams]),
     linkedSpreadPairs(admittedYoutubeCandidates),
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
@@ -755,6 +756,7 @@ async function main() {
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
       { name: 'Poch.ms', url: pochUrl },
+      { name: pokedbName, url: pokedbUrl },
       ...youtubeRows
         .filter(
           ({ retainedTeams }) => youtubeSource.active || retainedTeams.length

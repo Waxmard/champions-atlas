@@ -420,6 +420,7 @@ async function importerFixture(
         throw new TypeError('fetch failed', {cause: Object.assign(new Error('connect timeout'), {code: 'UND_ERR_CONNECT_TIMEOUT'})});
       }
       if (Object.hasOwn(responses, address)) return new Response(responses[address]);
+      if (String(address).startsWith('https://champs.pokedb.tokyo/opendata/')) return new Response('', {status: 404});
       if (assetRoots.some((root) => String(address).startsWith(root))) {
         return new Response(Uint8Array.from([137,80,78,71,13,10,26,10]), {headers: {'content-type': 'image/png'}});
       }

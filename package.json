@@ -29,6 +29,7 @@
     "prepublish:catalog": "node scripts/sync-movepools.mjs --if-missing",
     "sync:stats": "node scripts/sync-stats.mjs",
     "sync:ladder": "node scripts/sync-ladder.mjs",
+    "sync:pokedb-items": "node scripts/sync-pokedb-items.mjs",
     "enrich:tags": "node scripts/jev-enrich.mjs",
     "eval:tags": "node scripts/jev-eval.mjs",
     "publish:catalog": "node scripts/publish-catalog.mjs",

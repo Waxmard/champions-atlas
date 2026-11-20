@@ -25,8 +25,8 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   "Switched to Singles." (or "Switched to Doubles."). If you keep unsaved edits
   on the open page, the format does not change. A saved team stays in the format
   it was saved or created in. Singles teams come from the Poch.ms ranked-ladder
-  posts; other sources hold doubles teams only (see
-  [data sources](data-sources.md)).
+  posts and Battle Database Champions' season-final ranked teams; other sources
+  hold doubles teams only (see [data sources](data-sources.md)).
 - Browse teams with or without a Pokémon in mind.
 - Combine multiple Pokémon filters using AND: every selected Pokémon must occur
   on the team.
