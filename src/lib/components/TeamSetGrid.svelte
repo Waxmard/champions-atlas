@@ -19,7 +19,7 @@
   const currentSets = createCurrentSetRegistry();
   const cost = $derived(
     currentSets.sets
-      ? teamVpCost(currentSets.sets, members, catalogState.catalog)
+      ? teamVpCost(currentSets.sets, members, catalogState.vpCatalog)
       : null
   );
 </script>
@@ -54,6 +54,11 @@
     <p class="provenance">
       {cost.unrecorded} without a recorded in-game set, estimated at
       {VP_COSTS.unrecorded.toLocaleString('en-US')} VP each
+    </p>
+  {/if}
+  {#if cost.estimated}
+    <p class="provenance">
+      {cost.estimated} with missing details, priced from the most common catalog set
     </p>
   {/if}
 {/if}

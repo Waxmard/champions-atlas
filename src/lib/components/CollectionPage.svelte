@@ -10,7 +10,7 @@
   import Save from '@lucide/svelte/icons/save';
   import Star from '@lucide/svelte/icons/star';
   import { battleFormats, type BattleFormat } from '#lib/battle-format.js';
-  import HelpButton from '#lib/components/HelpButton.svelte';
+  import WithEvsToggle from '#lib/components/WithEvsToggle.svelte';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SavedTeamEditor from '#lib/components/SavedTeamEditor.svelte';
   import WishlistList from '#lib/components/WishlistList.svelte';
@@ -139,7 +139,7 @@
     return sort === 'record'
       ? sortByWinRate(matching)
       : sort === 'vp'
-        ? sortByVpCost(matching, currentSets.sets, catalogState.catalog)
+        ? sortByVpCost(matching, currentSets.sets, catalogState.vpCatalog)
         : matching;
   });
   const unrecorded = $derived(
@@ -531,21 +531,7 @@
               disabled={currentSets.sets?.length ? undefined : 'vp'}
             />
             {#if collection === 'wishlist'}
-              <Button
-                type="button"
-                variant="quiet"
-                class={withEvsOnly
-                  ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
-                  : ''}
-                aria-pressed={withEvsOnly}
-                onclick={() => setWithEvsOnly(!withEvsOnly)}
-              >
-                With EVs
-              </Button>
-              <HelpButton
-                topic="ev-spreads"
-                label="About the With EVs filter"
-              />
+              <WithEvsToggle pressed={withEvsOnly} onchange={setWithEvsOnly} />
             {/if}
             {#if setFavorite}
               <Button

@@ -49,13 +49,18 @@ class CatalogRuntimeState {
       ? 'doubles'
       : readBattleFormat(localStorage).format
   );
+  all = $derived(withRegulationOverrides(this.base, this.overrides));
   catalog = $derived.by(() => {
-    const catalog = withRegulationOverrides(this.base, this.overrides);
     const format = this.format;
     return {
-      ...catalog,
-      teams: catalog.teams.filter((team) => teamFormat(team) === format),
+      ...this.all,
+      teams: this.all.teams.filter((team) => teamFormat(team) === format),
     };
+  });
+  vpCatalog = $derived({
+    teams: this.catalog.teams,
+    allTeams: this.all.teams,
+    currentRegulation: this.catalog.currentRegulation,
   });
   allTags = $state.raw<TeamTagsIndex>(bundledTags);
   tags = $derived(this.format === 'singles' ? { teams: {} } : this.allTags);

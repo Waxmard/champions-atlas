@@ -12,7 +12,11 @@ import {
   natureEffect,
   parseChampionsSpread,
 } from './paste.ts';
-import { catalogSpreadSuggestions } from './workbench.ts';
+import {
+  catalogSpreadSuggestions,
+  catalogSuggestions,
+  type CatalogSuggestion,
+} from './workbench.ts';
 
 export const VP_COSTS = {
   move: 250,
@@ -31,10 +35,12 @@ export interface SetVpCost {
 export interface TeamVpCost {
   total: number;
   unrecorded: number;
+  estimated: number;
 }
 
 export interface VpCatalog {
   teams: Team[];
+  allTeams?: Team[];
   currentRegulation: string;
 }
 
@@ -91,37 +97,72 @@ export function setVpCost(from: Member | undefined, to: Member): SetVpCost {
   return { vp, recorded: true };
 }
 
-const estimateCache = new WeakMap<Team[], Map<string, string | null>>();
+const estimateCache = new WeakMap<Team[], Map<string, Member>>();
 
-function withEstimatedSpread(
-  from: Member,
+const listed = (value: string | null | undefined) => Boolean(value?.trim());
+const incomplete = (member: Member) =>
+  !listed(member.ability) ||
+  !listed(member.nature) ||
+  !listed(member.spread) ||
+  member.moves.filter(listed).length < 4;
+const seen = (values: CatalogSuggestion[]) =>
+  values.filter(({ totalCount }) => totalCount > 0).map(({ value }) => value);
+
+function filled(
+  member: Member,
+  teams: Team[],
+  regulation: string,
+  teammates: Member[]
+): Member {
+  const options = catalogSuggestions(member, teams, regulation, teammates);
+  const ability = listed(member.ability)
+    ? member.ability
+    : (seen(options.abilities)[0] ?? null);
+  const nature = listed(member.nature)
+    ? member.nature
+    : (seen(options.natures)[0] ?? null);
+  const moves = member.moves.filter(listed);
+  const known = new Set(moves.map(normalize));
+  for (const move of seen(options.moves)) {
+    if (moves.length >= 4) break;
+    if (!known.has(normalize(move))) moves.push(move);
+  }
+  const spread = listed(member.spread)
+    ? member.spread
+    : (catalogSpreadSuggestions(
+        { ...member, nature },
+        teams,
+        regulation,
+        1,
+        teammates
+      )[0]?.spread ?? null);
+  return { ...member, ability, nature, moves, spread };
+}
+
+function estimatedMember(
   member: Member,
   members: readonly Member[],
   catalog: VpCatalog
 ): Member {
-  if (
-    member.spread?.trim() ||
-    !from.spread?.trim() ||
-    !member.nature?.trim() ||
-    normalize(member.nature) === normalize(from.nature ?? '')
-  )
-    return member;
+  if (!incomplete(member)) return member;
   let cache = estimateCache.get(catalog.teams);
   if (!cache) estimateCache.set(catalog.teams, (cache = new Map()));
   const key = `${members.indexOf(member)}:${JSON.stringify(members)}`;
-  let spread = cache.get(key);
-  if (spread === undefined) {
-    spread =
-      catalogSpreadSuggestions(
-        member,
-        catalog.teams,
-        catalog.currentRegulation,
-        1,
-        members.filter((other) => other !== member)
-      )[0]?.spread ?? null;
-    cache.set(key, spread);
+  let estimate = cache.get(key);
+  if (!estimate) {
+    const teammates = members.filter((other) => other !== member);
+    estimate = member;
+    for (const teams of [catalog.teams, catalog.allTeams ?? []])
+      if (incomplete(estimate))
+        estimate = filled(
+          estimate,
+          teams,
+          catalog.currentRegulation,
+          teammates
+        );
+    cache.set(key, estimate);
   }
-  return spread ? { ...member, spread } : member;
+  return estimate;
 }
 
 export function teamVpCost(
@@ -129,18 +170,26 @@ export function teamVpCost(
   members: readonly Member[],
   catalog: VpCatalog
 ): TeamVpCost {
+  let estimated = 0;
   const costs = members.map((member) => {
     const from = sets.find(
       (entry) => entry.id === pokemonId(member.pokemon)
     )?.member;
-    return setVpCost(
-      from,
-      from ? withEstimatedSpread(from, member, members, catalog) : member
-    );
+    if (!from) return setVpCost(from, member);
+    const to = estimatedMember(member, members, catalog);
+    if (
+      to.ability !== member.ability ||
+      to.nature !== member.nature ||
+      to.spread !== member.spread ||
+      to.moves.filter(listed).length !== member.moves.filter(listed).length
+    )
+      estimated++;
+    return setVpCost(from, to);
   });
   return {
     total: costs.reduce((sum, cost) => sum + cost.vp, 0),
     unrecorded: costs.filter((cost) => !cost.recorded).length,
+    estimated,
   };
 }
 

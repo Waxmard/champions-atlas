@@ -39,7 +39,7 @@
   const destination = $derived(href ?? (`teams/${team.id}${query}` as const));
   const cost = $derived(
     currentSets
-      ? teamVpCost(currentSets, team.members, catalogState.catalog)
+      ? teamVpCost(currentSets, team.members, catalogState.vpCatalog)
       : null
   );
   function open(event: MouseEvent) {

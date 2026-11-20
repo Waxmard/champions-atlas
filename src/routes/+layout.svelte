@@ -274,7 +274,7 @@
   function canonicalizing(from: URL, to: URL): boolean {
     if (from.pathname !== to.pathname) return false;
     if (from.pathname === resolve('/'))
-      return !['member', 'page', 'new', 'unknown', 'sort'].some((key) =>
+      return !['member', 'page', 'new', 'unknown', 'evs', 'sort'].some((key) =>
         from.searchParams.has(key)
       );
     return false;
