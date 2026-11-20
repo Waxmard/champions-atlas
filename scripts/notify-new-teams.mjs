@@ -5,6 +5,7 @@ import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   bestEvidence,
+  catalogManifestPath,
   pokemonId,
   writeFilters,
   youtubeChannelNames,
@@ -236,7 +237,7 @@ export async function notifyNewTeams({
     );
   const account = JSON.parse(env.FIREBASE_SERVICE_ACCOUNT);
   const manifest = JSON.parse(
-    await readFile(join(hostingDir, 'catalog', 'manifest.json'), 'utf8')
+    await readFile(join(hostingDir, catalogManifestPath), 'utf8')
   );
   const bundle = JSON.parse(
     await readFile(

@@ -85,13 +85,8 @@ test('buildCatalogRelease writes valid manifest and content-addressed bundle and
     assert.equal(manifest.bundleHash, expectedHash);
     assert.equal(manifest.bundlePath, `/catalog/bundle-${expectedHash}.json`);
     assert.deepEqual(validateCatalogManifest(writtenManifest), manifest);
-    const { tags: legacyTags, ...current } = bundle;
-    assert.deepEqual(
-      legacyTags,
-      { teams: {} },
-      'installed app versions reject a bundle without tags'
-    );
-    assert.deepEqual(validateCatalogBundle(writtenBundle), current);
+    assert.equal(manifestPath, join(outDir, 'catalog', 'manifest-v2.json'));
+    assert.deepEqual(validateCatalogBundle(writtenBundle), bundle);
 
     const emptyCatalogPath = join(dir, 'empty-catalog.json');
     await writeFile(
@@ -385,7 +380,7 @@ test('buildCatalogRelease batches teams missing from the previous release and ca
   }
 });
 
-test('buildCatalogRelease keeps a separate singles batch and carries the doubles batch', async () => {
+test('buildCatalogRelease keeps singles out of the legacy release and batches them separately', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'catalog-singles-batch-'));
   try {
     const { catalog } = sampleFixture();
@@ -399,6 +394,7 @@ test('buildCatalogRelease keeps a separate singles batch and carries the doubles
       format: 'singles',
     };
     const catalogPath = join(dir, 'catalog.json');
+    const outDir = join(dir, 'out');
     await writeFile(
       catalogPath,
       JSON.stringify({ ...catalog, teams: [...catalog.teams, singles] }),
@@ -406,7 +402,7 @@ test('buildCatalogRelease keeps a separate singles batch and carries the doubles
     );
     const release = await buildCatalogRelease({
       catalogPath,
-      outDir: join(dir, 'out'),
+      outDir,
       previous: {
         teams: catalog.teams,
         latestBatch: doublesBatch,
@@ -417,6 +413,36 @@ test('buildCatalogRelease keeps a separate singles batch and carries the doubles
       ids: ['singles-team'],
     });
     assert.deepEqual(release.bundle.latestBatch, doublesBatch);
+    assert.equal('tags' in release.bundle, false);
+    assert.ok(release.bundle.teams.some((team) => team.id === 'singles-team'));
+
+    const legacyManifest = JSON.parse(
+      await readFile(join(outDir, 'catalog', 'manifest.json'), 'utf8')
+    );
+    assert.deepEqual(
+      validateCatalogManifest(legacyManifest),
+      release.legacyManifest
+    );
+    const legacyText = await readFile(
+      join(outDir, 'catalog', `bundle-${legacyManifest.bundleHash}.json`),
+      'utf8'
+    );
+    assert.equal(
+      createHash('sha256').update(legacyText).digest('hex'),
+      legacyManifest.bundleHash
+    );
+    const legacy = JSON.parse(legacyText);
+    assert.deepEqual(
+      legacy.teams.map((team) => team.id),
+      catalog.teams.map((team) => team.id)
+    );
+    assert.deepEqual(
+      legacy.tags,
+      { teams: {} },
+      'installed app versions reject a bundle without tags'
+    );
+    assert.deepEqual(legacy.latestBatch, doublesBatch);
+    assert.equal('singlesBatch' in legacy, false);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

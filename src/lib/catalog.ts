@@ -80,6 +80,7 @@ export function normalize(text: string): string {
 export const megaStoneTargets = (item: string) =>
   Generations.get(0).items.get(normalize(item) as ID)?.megaStone;
 
+export const catalogManifestPath = '/catalog/manifest-v2.json';
 export const MAX_TEAM_MEGAS = 2;
 export const isMegaSpecies = (pokemon: string) =>
   /-Mega(-[XYZ])?$/i.test(pokemon.trim());

@@ -3,7 +3,12 @@ import rawCatalog from './data/catalog.json' with { type: 'json' };
 import { teamFormat } from './battle-format.ts';
 import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
-import { normalize, youtubeChannelNames, type Team } from './catalog.ts';
+import {
+  catalogManifestPath,
+  normalize,
+  youtubeChannelNames,
+  type Team,
+} from './catalog.ts';
 import { reportSchema, textSchema } from './spread-provenance.ts';
 import { originalSchema } from './workbench.ts';
 
@@ -169,7 +174,7 @@ export function defaultCatalogEndpoint(): string {
   if (typeof catalogUrl === 'string') return catalogUrl.trim();
   const projectId = import.meta.env?.VITE_FIREBASE_PROJECT_ID?.trim();
   if (!projectId) return '';
-  return `https://${projectId}.web.app/catalog/manifest.json`;
+  return `https://${projectId}.web.app${catalogManifestPath}`;
 }
 
 async function fetchJsonWithLimit(

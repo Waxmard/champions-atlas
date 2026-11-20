@@ -28,8 +28,8 @@ jobs:
         run: |
           mkdir -p .cache/hosting/catalog
           cd .cache/hosting/catalog
-          curl -fsS -o manifest.json "$CATALOG_ORIGIN/catalog/manifest.json"
-          bundle="bundle-$(jq -r .bundleHash manifest.json).json"
+          curl -fsS -o manifest-v2.json "$CATALOG_ORIGIN/catalog/manifest-v2.json"
+          bundle="bundle-$(jq -r .bundleHash manifest-v2.json).json"
           curl -fsS -o "$bundle" "$CATALOG_ORIGIN/catalog/$bundle"
         env:
           CATALOG_ORIGIN: https://champions-atlas-test.web.app
