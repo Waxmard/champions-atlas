@@ -5,7 +5,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { writeCatalog } from '../scripts/import-catalog.mjs';
-import { buildCatalogRelease } from '../scripts/publish-catalog.mjs';
+import {
+  buildCatalogRelease,
+  publishedBundle,
+} from '../scripts/publish-catalog.mjs';
 import { readBoundedJson } from '../src/lib/bounded-json.ts';
 import bundledCatalog, {
   MANIFEST_MAX_BYTES,
@@ -418,6 +421,29 @@ test('buildCatalogRelease batches singles separately from doubles', async () => 
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test('publishedBundle prefers the current manifest and falls back to the previous path', async (t) => {
+  const origin = 'https://example.test';
+  const previous = { teams: [], latestBatch: { ids: ['carried'] } };
+  const current = { teams: [], singlesBatch: { ids: ['current'] } };
+  const served = {};
+  t.mock.method(globalThis, 'fetch', async (url) => {
+    const body = served[String(url).slice(origin.length)];
+    return body ? Response.json(body) : new Response('', { status: 404 });
+  });
+
+  assert.equal(await publishedBundle(origin), null);
+
+  served['/catalog/manifest.json'] = { bundlePath: '/catalog/bundle-a.json' };
+  served['/catalog/bundle-a.json'] = previous;
+  assert.deepEqual(await publishedBundle(origin), previous);
+
+  served['/catalog/manifest-v2.json'] = {
+    bundlePath: '/catalog/bundle-b.json',
+  };
+  served['/catalog/bundle-b.json'] = current;
+  assert.deepEqual(await publishedBundle(origin), current);
 });
 
 test('YouTube copies fold only into the single earlier original with identical sets', () => {

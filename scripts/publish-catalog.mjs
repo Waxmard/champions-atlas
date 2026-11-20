@@ -7,6 +7,8 @@ import { teamFormat } from '../src/lib/battle-format.ts';
 import { admittedTeams, catalogManifestPath } from '../src/lib/catalog.ts';
 import { teamEligibilityError } from './champions-eligibility.mjs';
 
+const previousManifestPath = '/catalog/manifest.json';
+
 function isPlainObject(value) {
   return (
     typeof value === 'object' &&
@@ -33,18 +35,23 @@ function latestBatch(previous, catalog, format, key) {
   return ids.length ? { addedAt: catalog.updatedAt, ids } : previous[key];
 }
 
-async function publishedBundle(origin) {
-  const manifest = await fetch(`${origin}${catalogManifestPath}`);
-  if (manifest.status === 404) return null;
-  if (!manifest.ok)
-    throw new Error(
-      `Published manifest request failed: HTTP ${manifest.status}.`
-    );
-  const { bundlePath } = await manifest.json();
-  const bundle = await fetch(`${origin}${bundlePath}`);
-  if (!bundle.ok)
-    throw new Error(`Published bundle request failed: HTTP ${bundle.status}.`);
-  return bundle.json();
+export async function publishedBundle(origin) {
+  for (const path of [catalogManifestPath, previousManifestPath]) {
+    const manifest = await fetch(`${origin}${path}`);
+    if (manifest.status === 404) continue;
+    if (!manifest.ok)
+      throw new Error(
+        `Published manifest request failed: HTTP ${manifest.status}.`
+      );
+    const { bundlePath } = await manifest.json();
+    const bundle = await fetch(`${origin}${bundlePath}`);
+    if (!bundle.ok)
+      throw new Error(
+        `Published bundle request failed: HTTP ${bundle.status}.`
+      );
+    return bundle.json();
+  }
+  return null;
 }
 
 export async function buildCatalogRelease({
