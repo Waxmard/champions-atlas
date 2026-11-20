@@ -4,6 +4,13 @@ import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import { exportPaste, setText } from '../src/lib/workbench.ts';
 import {
+  attr,
+  classHas,
+  descendants,
+  text as nodeText,
+} from './catalog-sources.mjs';
+import { parse } from 'parse5';
+import {
   admitSourceTeams,
   officialPokemonKeys,
 } from './champions-eligibility.mjs';
@@ -70,9 +77,80 @@ function memberFrom(row, regulation, canonicalNames) {
   return member;
 }
 
+const articleKey = (rank, rating, ids) =>
+  `${rank}|${rating}|${[...ids].sort().join(',')}`;
+
+export const pokedbArticlesUrl = (season, page) =>
+  `https://champs.pokedb.tokyo/article/search?rule=0&season_start=${season}&season_end=${season}&per_page=100&page=${page}`;
+
+const element = (node, name, ...classes) =>
+  node.nodeName === name && classes.every((value) => classHas(node, value));
+
+export function parsePokedbArticles(html, season) {
+  const document = parse(html);
+  let total = null;
+  for (const node of descendants(document, (n) =>
+    element(n, 'span', 'tag', 'is-light')
+  )) {
+    const match = /^([\d,]+)件$/.exec(nodeText(node).trim());
+    if (match) {
+      total = Number(match[1].replaceAll(',', ''));
+      break;
+    }
+  }
+  if (total === null)
+    fail('invalid_source', 'Article search page has no result count');
+  const articles = [];
+  for (const card of descendants(document, (n) =>
+    element(n, 'article', 'article-card')
+  )) {
+    const spans = descendants(card, (n) => n.nodeName === 'span');
+    const tagged = spans.some(
+      (n) =>
+        classHas(n, 'tag') &&
+        classHas(n, 'is-primary') &&
+        nodeText(n).trim() === `シーズンM-${season}`
+    );
+    const rank = spans
+      .map((n) => /^(\d+)位$/.exec(nodeText(n).trim()))
+      .find(Boolean)?.[1];
+    const part = (name) =>
+      nodeText(descendants(card, (n) => classHas(n, name))[0]).trim();
+    const rating = `${part('rating-integer')}${part('rating-decimal')}`;
+    const ids = descendants(card, (n) => n.nodeName === 'a')
+      .map((n) => /^\/pokemon\/show\/(\d{4}-\d{2})\?/.exec(attr(n, 'href')))
+      .filter(Boolean)
+      .map((match) => match[1]);
+    if (!tagged || !rank || !/^\d+\.\d+$/.test(rating) || ids.length !== 6)
+      continue;
+    const trainer = descendants(card, (n) =>
+      classHas(n, 'article-card-trainer')
+    )[0];
+    const name = nodeText(
+      trainer && descendants(trainer, (n) => n.nodeName === 'p')[0]
+    ).trim();
+    const href = attr(
+      descendants(card, (n) => element(n, 'a', 'card-footer-item'))[0] ?? {},
+      'href'
+    );
+    let url = '';
+    try {
+      if (['https:', 'http:'].includes(new URL(href).protocol)) url = href;
+    } catch {
+      url = '';
+    }
+    articles.push({
+      key: articleKey(Number(rank), Number(rating), ids),
+      creator: name.length > 60 || /\p{Cc}/u.test(name) ? '' : name,
+      url,
+    });
+  }
+  return { total, articles };
+}
+
 function catalogTeam(
   row,
-  { season, regulation, publishedAt },
+  { season, regulation, publishedAt, articles },
   id,
   canonicalNames
 ) {
@@ -94,12 +172,18 @@ function catalogTeam(
   );
   if (new Set(members.map((member) => normalize(member.pokemon))).size !== 6)
     fail('invalid_roster', 'Roster contains duplicate canonical species');
+  const article = articles.get(
+    articleKey(
+      row.rank,
+      rating,
+      row.team.map((member) => member.id)
+    )
+  );
+  const sourceUrl = article?.url || pokedbUrl;
   const event = `Champions ranked battles — Season M-${season}`;
-  const reports = [
-    { event, rank: `Season finish #${row.rank}`, sourceUrl: pokedbUrl },
-  ];
+  const reports = [{ event, rank: `Season finish #${row.rank}`, sourceUrl }];
   if (rating !== null && rating !== undefined)
-    reports.push({ event, rank: `${rating} rating`, sourceUrl: pokedbUrl });
+    reports.push({ event, rank: `${rating} rating`, sourceUrl });
   reports.push({
     event: 'Battle Database Champions collection',
     rank: '',
@@ -109,7 +193,7 @@ function catalogTeam(
     id,
     sheetIds: [],
     name: `Season M-${season} singles — Rank ${row.rank}`,
-    creator: '',
+    creator: article?.creator ?? '',
     regulation,
     publishedAt,
     pasteUrl: '',
@@ -126,7 +210,8 @@ function catalogTeam(
 export function parsePokedb(
   text,
   { season, regulation },
-  canonicalNames = new Map()
+  canonicalNames = new Map(),
+  articles = new Map()
 ) {
   let data;
   try {
@@ -172,7 +257,7 @@ export function parsePokedb(
       teams.push(
         catalogTeam(
           row,
-          { season, regulation, publishedAt },
+          { season, regulation, publishedAt, articles },
           id,
           canonicalNames
         )
@@ -191,6 +276,34 @@ export function parsePokedb(
   return { teams, skipped };
 }
 
+async function loadArticles(fetchCached, season, text) {
+  const pages = [];
+  try {
+    const stamp = JSON.parse(text).updated_at.replace(/\D/g, '');
+    let total = 1;
+    for (let page = 1; page <= Math.min(20, Math.ceil(total / 100)); page++) {
+      const html = await fetchCached(
+        `pokedb-s${season}-articles-${stamp}-${page}.html`,
+        pokedbArticlesUrl(season, page),
+        (value) => {
+          const parsed = parsePokedbArticles(value, season);
+          if (page === 1) total = parsed.total;
+        },
+        false,
+        { optional: true }
+      );
+      if (html === null) break;
+      pages.push(html);
+    }
+  } catch (error) {
+    console.warn(
+      `${pokedbName}: write-up links unavailable for season ${season} (${error.message})`
+    );
+    return [];
+  }
+  return pages;
+}
+
 export async function loadPokedb(
   fetchCached,
   { fullHistory, currentRegulation, refresh }
@@ -205,7 +318,9 @@ export async function loadPokedb(
       refresh,
       { optional: true }
     );
-    if (text !== null) files.push({ ...entry, text });
+    if (text === null) continue;
+    const articles = await loadArticles(fetchCached, entry.season, text);
+    files.push({ ...entry, text, articles });
   }
   return files;
 }
@@ -214,7 +329,16 @@ export function admitPokedb(files, canonicalNames, options) {
   const teams = [];
   const skipped = [];
   for (const file of files) {
-    const parsed = parsePokedb(file.text, file, canonicalNames);
+    const articles = new Map();
+    const repeated = new Set();
+    for (const html of file.articles ?? [])
+      for (const { key, creator, url } of parsePokedbArticles(html, file.season)
+        .articles) {
+        if (articles.has(key)) repeated.add(key);
+        articles.set(key, { creator, url });
+      }
+    for (const key of repeated) articles.delete(key);
+    const parsed = parsePokedb(file.text, file, canonicalNames, articles);
     teams.push(...parsed.teams);
     skipped.push(...parsed.skipped);
   }

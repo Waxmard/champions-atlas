@@ -1,0 +1,216 @@
+{
+  "lists": [
+    {
+      "id": "bss",
+      "name": "Smogon BSS sample teams",
+      "url": "https://www.smogon.com/forums/threads/battle-stadium-singles-sample-teams-all-gens.3746122/",
+      "teams": [
+        {
+          "name": "Salamence Lucario Offense",
+          "creator": "DerpySuX",
+          "regulation": "M-C",
+          "url": "https://teams.pokemonshowdown.com/view/2053188",
+          "replicaCode": "A7FWQSH1KU"
+        },
+        {
+          "name": "Charizard Y Offense",
+          "creator": "StarkGod",
+          "regulation": "M-C",
+          "url": "https://teams.pokemonshowdown.com/view/2053196",
+          "replicaCode": "S337AEHGUF"
+        },
+        {
+          "name": "Baxcalibur Gyarados Balance",
+          "creator": "StarkGod",
+          "regulation": "M-C",
+          "url": "https://teams.pokemonshowdown.com/view/2053199",
+          "replicaCode": "FHAH4NBBBW"
+        },
+        {
+          "name": "Raichu Raptor Offense",
+          "creator": "greilmercenary9",
+          "regulation": "M-B",
+          "url": "https://teams.pokemonshowdown.com/view/1899582",
+          "replicaCode": "K6J21FSSQL"
+        },
+        {
+          "name": "Mega Starmie Offense",
+          "creator": "DerpySuX",
+          "regulation": "M-B",
+          "url": "https://teams.pokemonshowdown.com/view/1899556",
+          "replicaCode": "M0L3CRMHT0"
+        },
+        {
+          "name": "Charm Floette Offense",
+          "creator": "DerpySuX",
+          "regulation": "M-B",
+          "url": "https://teams.pokemonshowdown.com/view/1899595",
+          "replicaCode": "1YP0LRTG5H"
+        }
+      ]
+    },
+    {
+      "id": "ou",
+      "name": "Smogon Champions OU sample teams",
+      "url": "https://www.smogon.com/forums/threads/champions-ou-sample-teams.3783102/",
+      "teams": [
+        {
+          "name": "Mega Golisopod HO",
+          "creator": "Ultraman1",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/e6478ba89e795fd8"
+        },
+        {
+          "name": "Mega Lopunny Offense",
+          "creator": "fluff!!",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/a3d6fec1467ae783"
+        },
+        {
+          "name": "Mega Delphox BO",
+          "creator": "Mr Zangler",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/6e4a34b2b639df94"
+        },
+        {
+          "name": "Mega Absol Z BO",
+          "creator": "swordisbored",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/a7e5a3aea5bbc8cd"
+        },
+        {
+          "name": "Mega Floette BO",
+          "creator": "swordisbored",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/12aba4a23512e325"
+        },
+        {
+          "name": "Mega Dragalge Balance",
+          "creator": "swordisbored",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/7e1383e608030b3b"
+        },
+        {
+          "name": "Mega Golisopod Rain",
+          "creator": "Ultraman1",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/ede85b8b4ba4c33a"
+        },
+        {
+          "name": "Mega Sableye Stall",
+          "creator": "ezra",
+          "regulation": "M-C",
+          "url": "https://pokepast.es/8681a0929e66aef6"
+        },
+        {
+          "name": "Mega Greninja HO",
+          "creator": "swordisbored",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/858f78574f7dac02"
+        },
+        {
+          "name": "Mega Floette BO",
+          "creator": "swordisbored",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/0b6cbea8efcfe9b5"
+        },
+        {
+          "name": "Mega Meganium BO",
+          "creator": "Amaske",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/063baa1aeb331675"
+        },
+        {
+          "name": "Mega Glimmora BO",
+          "creator": "Amaske",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/459bd7a55451811f"
+        },
+        {
+          "name": "Mega Lopunny Balance",
+          "creator": "swordisbored",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/91ec98d2ff55da8d"
+        },
+        {
+          "name": "Mega Delphox Balance",
+          "creator": "xGinesect",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/546b4ed3e94f12d4"
+        },
+        {
+          "name": "Charizard X Balance",
+          "creator": "S1nn0hC0nfirm3d",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/dc27f39ecdc9f2b7"
+        },
+        {
+          "name": "Mega Clefable Stall",
+          "creator": "S1nn0hC0nfirm3d",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/fcff7761894bead3"
+        },
+        {
+          "name": "Archaludon Rain",
+          "creator": "S1nn0hC0nfirm3d",
+          "regulation": "M-A",
+          "url": "https://pokepast.es/4d9171c9f2ca45b5"
+        },
+        {
+          "name": "Mega Garchomp Webs",
+          "creator": "Zerotti",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/ae2c01e5c6b9eed9"
+        },
+        {
+          "name": "Mega Staraptor Webs",
+          "creator": "Amaske",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/c7e3606ff0ba8e94"
+        },
+        {
+          "name": "Mega Lopunny Offense",
+          "creator": "fluff!!",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/1797963baacbb119"
+        },
+        {
+          "name": "Mega Metagross BO",
+          "creator": "Amaske",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/b2d8d50ac6ad843e"
+        },
+        {
+          "name": "Mega Delphox BO",
+          "creator": "Mr Zangler",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/b8a99b611eda9dbc"
+        },
+        {
+          "name": "Mega Floette BO",
+          "creator": "swordisbored",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/12aba4a23512e325"
+        },
+        {
+          "name": "Mega Dragalge Balance",
+          "creator": "swordisbored",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/ba3088bab6aaceb5"
+        },
+        {
+          "name": "Mega Altaria Semi Stall",
+          "creator": "NemmieJM",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/5d0e181bcda05a33"
+        },
+        {
+          "name": "Mega Clefable Stall",
+          "creator": "OatIsHere",
+          "regulation": "M-B",
+          "url": "https://pokepast.es/9aa77e0915f83ed5"
+        }
+      ]
+    }
+  ]
+}

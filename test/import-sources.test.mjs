@@ -31,11 +31,8 @@ import {
   writeCache,
   writeFetchMock,
 } from './fixtures/catalog-import.mjs';
-import {
-  deduplicate,
-  parseSheet,
-  teamFromIndex,
-} from '../scripts/import-catalog.mjs';
+import { deduplicate, parseSheet } from '../scripts/import-catalog.mjs';
+import { teamFromIndex } from '../scripts/catalog-payloads.mjs';
 import {
   devonCorpUrl,
   parseVrPaste,
@@ -105,6 +102,8 @@ test('imports public index teams alongside the sheets and accounts for every row
         'DevonCorp',
         'Poch.ms',
         'Battle Database Champions',
+        'Smogon BSS sample teams',
+        'Smogon Champions OU sample teams',
       ]
     );
     assert.equal(catalog.teams.length, 5);

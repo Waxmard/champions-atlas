@@ -36,6 +36,7 @@ import {
   youtubeRow,
   youtubeSnapshot,
 } from './fixtures/catalog-import.mjs';
+import { smogonEntries } from '../scripts/smogon-source.mjs';
 import { youtubeChannels } from '../scripts/youtube-source.mjs';
 
 test('discovers both complete multi-page upload histories and canonical direct paste links', async (t) => {
@@ -629,9 +630,12 @@ test('YouTube-only refresh recrawls discovery without refreshing other sources',
       assert.match(output, /Imported \d+ teams;/);
       const catalog = await readCatalog(directory);
       assert.ok(Array.isArray(catalog.teams));
+      const smogonAddresses = new Set(
+        smogonEntries.map(({ address }) => address)
+      );
       const requests = JSON.parse(
         await readFile(mockEnv.MOCK_FETCH_LOG, 'utf8')
-      );
+      ).filter((address) => !smogonAddresses.has(address));
       const urls = requests.map((address) => new URL(address));
       const youtubeRequests = urls.filter(
         ({ hostname }) => hostname === 'www.googleapis.com'

@@ -5,7 +5,7 @@ import {
   youtubeChannels,
 } from '../../scripts/youtube-source.mjs';
 import { youtubeCandidate } from '../../scripts/youtube-admission.mjs';
-import { teamFromIndex } from '../../scripts/import-catalog.mjs';
+import { teamFromIndex } from '../../scripts/catalog-payloads.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';

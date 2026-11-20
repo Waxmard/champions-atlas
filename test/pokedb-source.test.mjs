@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compareBrowseTeams } from '../src/lib/catalog.ts';
-import { parsePokedb, pokedbUrl } from '../scripts/pokedb-source.mjs';
+import {
+  parsePokedb,
+  parsePokedbArticles,
+  pokedbUrl,
+} from '../scripts/pokedb-source.mjs';
 import { pokedbFile, pokedbRoster } from './fixtures/catalog-import.mjs';
 
 const entry = { season: 7, regulation: 'M-C' };
@@ -121,6 +125,54 @@ test('gives shared ranks distinct ids and drops exact duplicates', () => {
 test('throws when every row is rejected', () => {
   assert.throws(
     () => parsePokedb(pokedbFile([row(1, pokedbRoster.slice(1))]), entry),
+    (error) => error.reason === 'invalid_source'
+  );
+});
+
+const articleCard = ({
+  tag = 'シーズンM-7',
+  rank = 1,
+  whole = '2548',
+  fraction = '.304',
+  player = 'Claire',
+  ids = pokedbRoster.map(({ id }) => id),
+  href = 'https://example.com/report',
+} = {}) =>
+  `<article class="card article-card"><span class="tag is-primary">${tag}</span><span>${rank}位</span><span class="rating-integer">${whole}</span><span class="rating-decimal">${fraction}</span><div class="article-card-trainer"><p>${player}</p></div>${ids.map((id) => `<a href="/pokemon/show/${id}?rule=0"></a>`).join('')}<footer><a class="card-footer-item" href="${href}"></a></footer></article>`;
+const articlePage = (cards, total = cards.length) =>
+  `<span class="tag is-light">${total}件</span>${cards.map(articleCard).join('')}`;
+const withArticles = (cards) => {
+  const { articles } = parsePokedbArticles(articlePage(cards), 7);
+  const map = new Map(articles.map(({ key, ...rest }) => [key, rest]));
+  return parsePokedb(pokedbFile(), entry, new Map(), map).teams[0];
+};
+
+test('attaches the player and write-up to the matching team', () => {
+  const page = articlePage([{}]);
+  assert.equal(parsePokedbArticles(page, 7).total, 1);
+  const team = withArticles([{}]);
+  assert.equal(team.creator, 'Claire');
+  assert.equal(team.reports[0].sourceUrl, 'https://example.com/report');
+  assert.equal(team.reports[1].sourceUrl, 'https://example.com/report');
+  assert.equal(team.reports.at(-1).sourceUrl, pokedbUrl);
+});
+
+test('ignores cards that do not match the team', () => {
+  const team = withArticles([
+    { tag: '公式大会' },
+    { fraction: '.305' },
+    { rank: 2 },
+  ]);
+  assert.equal(team.creator, '');
+  assert.ok(team.reports.every(({ sourceUrl }) => sourceUrl === pokedbUrl));
+  const unsafe = withArticles([{ href: 'javascript:alert(1)' }]);
+  assert.equal(unsafe.creator, 'Claire');
+  assert.ok(unsafe.reports.every(({ sourceUrl }) => sourceUrl === pokedbUrl));
+});
+
+test('rejects a page without a result count', () => {
+  assert.throws(
+    () => parsePokedbArticles('<html></html>', 7),
     (error) => error.reason === 'invalid_source'
   );
 });

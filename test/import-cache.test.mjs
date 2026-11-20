@@ -16,6 +16,7 @@ import { fetchCached } from '../scripts/catalog-cache.mjs';
 import { parseSheet, sheet } from '../scripts/import-catalog.mjs';
 import { victoryRoadUrl, devonCorpUrl } from '../scripts/catalog-sources.mjs';
 import { pochUrl } from '../scripts/poch-source.mjs';
+import { smogonEntries } from '../scripts/smogon-source.mjs';
 import {
   resolveItemIcon,
   resolveSprite,
@@ -413,6 +414,7 @@ async function importerFixture(
     import { appendFileSync } from 'node:fs';
     import { pathToFileURL } from 'node:url';
     const responses = ${JSON.stringify(responses)};
+    const smogonAddresses = ${JSON.stringify(smogonEntries.map(({ address }) => address))};
     const assetRoots = ['https://raw.githubusercontent.com/PokeAPI/sprites/master/', 'https://raw.githubusercontent.com/smogon/sprites/master/'];
     globalThis.fetch = async (address, options) => {
       appendFileSync('requests.jsonl', JSON.stringify({address: String(address), redirect: options?.redirect}) + '\\n');
@@ -421,6 +423,7 @@ async function importerFixture(
       }
       if (Object.hasOwn(responses, address)) return new Response(responses[address]);
       if (String(address).startsWith('https://champs.pokedb.tokyo/opendata/')) return new Response('', {status: 404});
+      if (smogonAddresses.includes(String(address))) return new Response('', {status: 404});
       if (assetRoots.some((root) => String(address).startsWith(root))) {
         return new Response(Uint8Array.from([137,80,78,71,13,10,26,10]), {headers: {'content-type': 'image/png'}});
       }

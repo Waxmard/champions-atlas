@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
   battleSpecies,
   cosmeticForms,
@@ -159,6 +160,97 @@ export function rosterMatches(members, expectedSpecies) {
     );
   return true;
 }
+
+export const catalogId = (regulation, pasteUrl, members) =>
+  `${regulation.toLowerCase()}-${createHash('sha256')
+    .update(
+      JSON.stringify([
+        regulation,
+        pasteUrl,
+        members.map(({ pokemon, item }) => [pokemon, item]).sort(),
+      ])
+    )
+    .digest('hex')
+    .slice(0, 16)}`;
+
+export function teamFromIndex(candidate, payload, canonicalNames) {
+  if (
+    !candidate ||
+    !payload ||
+    typeof payload !== 'object' ||
+    Array.isArray(payload)
+  )
+    throw errorWithReason(
+      'invalid_payload',
+      'Invalid index candidate or paste payload'
+    );
+  validateIndexFormat(candidate, payload);
+  if (typeof payload.paste !== 'string' || !payload.paste)
+    throw errorWithReason('invalid_payload', 'Paste payload is missing sets');
+  if (
+    payload.notes !== undefined &&
+    payload.notes !== null &&
+    typeof payload.notes !== 'string'
+  )
+    throw errorWithReason('invalid_payload', 'Paste notes must be a string');
+  let parsed;
+  try {
+    parsed = parsePaste(payload.paste);
+  } catch (error) {
+    throw errorWithReason('invalid_payload', error.message);
+  }
+  rosterMatches(parsed, candidate.expectedSpecies);
+  const members = parsed.map((member) => {
+    const pokemon = resolvedPokemon(member);
+    return {
+      ...member,
+      pokemon: canonicalNames.get(normalize(pokemon)) || pokemon,
+    };
+  });
+  if (
+    !Array.isArray(candidate.reports) ||
+    candidate.reports.some(
+      (report) =>
+        !report ||
+        typeof report.event !== 'string' ||
+        typeof report.rank !== 'string' ||
+        typeof report.sourceUrl !== 'string'
+    )
+  )
+    throw errorWithReason('invalid_payload', 'Index reports are invalid');
+  if (
+    payload.publishedAt !== undefined &&
+    typeof payload.publishedAt !== 'string'
+  )
+    throw errorWithReason('invalid_payload', 'Published date must be a string');
+  candidate = {
+    ...candidate,
+    reports: reportsWithLadderNotes(
+      candidate.reports,
+      payload.notes,
+      candidate.pasteUrl
+    ),
+  };
+  return {
+    id: catalogId(candidate.regulation, candidate.pasteUrl, members),
+    sheetIds: [],
+    name: candidate.name,
+    creator: candidate.creator,
+    regulation: candidate.regulation,
+    ...(candidate.regulationInference
+      ? { regulationInference: candidate.regulationInference }
+      : {}),
+    publishedAt: payload.publishedAt || '',
+    pasteUrl: candidate.pasteUrl,
+    replicaCode: candidate.replicaCode || null,
+    replicaStatus: '',
+    reports: candidate.reports.map((report) => ({ ...report })),
+    members,
+    paste: payload.paste,
+    pasteNotes: payload.notes || null,
+  };
+}
+
 export function enrich(team, data) {
   const sets = parsePaste(data.paste);
   const members = team.members.map((member) => {
