@@ -7,6 +7,7 @@
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import Save from '@lucide/svelte/icons/save';
   import Star from '@lucide/svelte/icons/star';
+  import HelpButton from '#lib/components/HelpButton.svelte';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SavedTeamEditor from '#lib/components/SavedTeamEditor.svelte';
   import WishlistList from '#lib/components/WishlistList.svelte';
@@ -26,6 +27,7 @@
     saveCurrentSets,
     unrecordedMembers,
   } from '#lib/current-sets.js';
+  import { hasCompleteEvs } from '#lib/paste.js';
   import { notify } from '#lib/notifications.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
@@ -39,6 +41,7 @@
     readSavedTeams,
     savedFavoritesKey,
     savedSortKey,
+    wishlistEvsKey,
     wishlistSortKey,
     type SavedTeam,
   } from '#lib/workbench.js';
@@ -95,6 +98,7 @@
   let entries = $state<SavedTeam[]>([]);
   let filters = $state<MemberFilter[]>([]);
   let favoritesOnly = $state(false);
+  let withEvsOnly = $state(false);
   type Sort = 'manual' | 'record' | 'vp';
   let sort = $state<Sort>('manual');
   const sortKey = $derived(
@@ -114,13 +118,14 @@
       ? value
       : 'manual';
   const currentSets = createCurrentSetRegistry();
-  const filtered = $derived(filters.length > 0 || favoritesOnly);
+  const filtered = $derived(filters.length > 0 || favoritesOnly || withEvsOnly);
   const pickerTeams = $derived(entries.map(displaySavedTeam));
   const visibleEntries = $derived.by(() => {
     const matching = entries.filter(
       (entry) =>
         matchesTeam(entry, filters) &&
-        (!favoritesOnly || entry.favorite || entry.current)
+        (!favoritesOnly || entry.favorite || entry.current) &&
+        (!withEvsOnly || hasCompleteEvs(entry))
     );
     return sort === 'record'
       ? sortByWinRate(matching)
@@ -225,10 +230,28 @@
     }
   }
 
+  function readWithEvsOnly(): boolean {
+    try {
+      return localStorage.getItem(wishlistEvsKey) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function setWithEvsOnly(value: boolean) {
+    withEvsOnly = value;
+    try {
+      localStorage.setItem(wishlistEvsKey, value ? '1' : '0');
+    } catch {
+      return;
+    }
+  }
+
   onMount(() => {
     ready = true;
     sort = readSort();
     if (setFavorite) favoritesOnly = readFavoritesOnly();
+    if (collection === 'wishlist') withEvsOnly = readWithEvsOnly();
     refresh();
   });
 
@@ -478,6 +501,23 @@
               onchange={setSort}
               disabled={currentSets.sets?.length ? undefined : 'vp'}
             />
+            {#if collection === 'wishlist'}
+              <Button
+                type="button"
+                variant="quiet"
+                class={withEvsOnly
+                  ? 'bg-primary text-primary-content hover:bg-primary hover:text-primary-content'
+                  : ''}
+                aria-pressed={withEvsOnly}
+                onclick={() => setWithEvsOnly(!withEvsOnly)}
+              >
+                With EVs
+              </Button>
+              <HelpButton
+                topic="ev-spreads"
+                label="About the With EVs filter"
+              />
+            {/if}
             {#if setFavorite}
               <Button
                 type="button"
@@ -507,7 +547,9 @@
               ? `Switch to Manual order to reorder ${label}.`
               : favoritesOnly
                 ? 'Turn off Favorites to reorder Saved.'
-                : `Clear filters to reorder ${label}.`}
+                : withEvsOnly
+                  ? 'Turn off With EVs to reorder Wishlist.'
+                  : `Clear filters to reorder ${label}.`}
           </p>
         {/if}
         {#if visibleEntries.length}
@@ -536,6 +578,21 @@
               variant="quiet"
               class="-ms-2 mt-1 min-h-11"
               onclick={() => setFavoritesOnly(false)}>Show all</Button
+            >
+          </div>
+        {:else if withEvsOnly && !filters.length}
+          <div class="plate mt-2 max-w-xl px-4 py-3">
+            <h2 class="text-lg leading-tight font-extrabold">
+              No teams with EV spreads
+            </h2>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed">
+              Turn off With EVs to see every team.
+            </p>
+            <Button
+              type="button"
+              variant="quiet"
+              class="-ms-2 mt-1 min-h-11"
+              onclick={() => setWithEvsOnly(false)}>Show all</Button
             >
           </div>
         {:else}

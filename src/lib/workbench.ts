@@ -47,6 +47,7 @@ export const storageKey = 'champions-atlas:teams:v1';
 export const savedFavoritesKey = 'champions-atlas:saved-favorites:v1';
 export const savedSortKey = 'champions-atlas:saved-sort:v1';
 export const wishlistSortKey = 'champions-atlas:wishlist-sort:v1';
+export const wishlistEvsKey = 'champions-atlas:wishlist-evs:v1';
 export const browseStorageKey = 'champions-atlas:browse:v1';
 
 export function setText(member: Member) {
