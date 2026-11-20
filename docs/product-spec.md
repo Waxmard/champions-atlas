@@ -21,9 +21,10 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   limits Browse, Saved, Wishlist, suggestions, Swaps ladder pairings, the
   current-team shortcut, new-team dots, and notifications to that format's teams.
   Recorded in-game sets and VP costs are shared across both formats. Choosing a
-  format closes Settings, clears the Browse filters, keeps you on the tab you are
-  on (Browse, or the Saved or Wishlist list), opens the Saved list from any other
-  page, and shows "Switched to Singles." (or "Switched to Doubles."). Switching
+  format closes Settings, clears the Browse filters and the Saved and Wishlist
+  Pokémon search, keeps you on the tab you are on (Browse, or the Saved or
+  Wishlist list), opens the Saved list from any other page, and shows "Switched
+  to Singles." (or "Switched to Doubles."). Switching
   with a saved team open opens the saved team last open in the other format, or
   the Saved list when there is none. If you keep unsaved edits on the open page,
   the format does not change. A saved team stays in the format it was saved or
@@ -49,8 +50,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Browse lists every regulation, newest first, with each card labelled by
   regulation. Selected Pokémon stay compact on the page; **Filters** opens a
   pop-up with item, ability, and move controls for each selection, plus
-  **Unknown regulation only** (`?unknown=1`). Older links and saved filters
-  that carry a regulation choice are ignored.
+  **Unknown regulation only** (`?unknown=1`) and **With EVs only** (`?evs=1`),
+  which lists only teams whose six Pokémon all have complete EV spreads. Older
+  links and saved filters that carry a regulation choice are ignored.
 - A team of Unknown regulation shows a regulation picker on its page, offering
   only regulations whose roster the whole team is legal in. The choice is saved
   on the device, marked "Set by you", synced with a signed-in account, and
@@ -470,6 +472,18 @@ roster. All selected Pokémon must match, using the same
 base and Mega identities as Browse. Search does not change saved records. It
 stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
+
+Wishlist has the same **Filters** pop-up as Browse for item, ability, and move
+constraints on each selected Pokémon, plus **With EVs only**. The With EVs
+choice is remembered on this device, shows as a removable chip, and pauses
+reordering while on. When it is on and no bookmark has complete EV spreads,
+Wishlist offers **Show all**. Saved has the Pokémon search but no **Filters**
+button.
+
+An empty Saved or Wishlist list offers **Browse teams** and the page's own add
+action (**Add custom team** on Saved, **Add a Poképaste** on Wishlist). When
+the other battle format has teams in that list, it also says to set Battle
+format to that format in Settings.
 
 With no Wishlist filters active, reorder bookmarks using the move up and down
 controls. Holding an arrow for half a second offers **Move to top** or

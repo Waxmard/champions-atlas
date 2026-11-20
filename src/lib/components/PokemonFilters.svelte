@@ -80,17 +80,19 @@
       disabled={filters.length >= 6}
     />
   </div>
-  <Button
-    type="button"
-    variant="quiet"
-    class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
-    aria-haspopup="dialog"
-    onclick={() => (open = true)}
-  >
-    <Filter class="size-4" aria-hidden="true" />
-    <span class="max-sm:sr-only">Filters</span>
-    {#if count}<span class="badge badge-primary">{count}</span>{/if}
-  </Button>
+  {#if controls}
+    <Button
+      type="button"
+      variant="quiet"
+      class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
+      aria-haspopup="dialog"
+      onclick={() => (open = true)}
+    >
+      <Filter class="size-4" aria-hidden="true" />
+      <span class="max-sm:sr-only">Filters</span>
+      {#if count}<span class="badge badge-primary">{count}</span>{/if}
+    </Button>
+  {/if}
 </div>
 
 {#if filters.length || toggles.length}

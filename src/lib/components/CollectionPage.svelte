@@ -286,6 +286,11 @@
     if (ready) untrack(refresh);
   });
 
+  $effect(() => {
+    void catalogState.format;
+    untrack(() => (filters = []));
+  });
+
   function reorder(orderedIds: string[], expectedIds: string[]): boolean {
     errorMessage = '';
     inlineError = false;
@@ -462,6 +467,10 @@
   >
 </svelte:head>
 
+{#snippet evControls()}
+  <WithEvsToggle pressed={withEvsOnly} onchange={setWithEvsOnly} />
+{/snippet}
+
 {#snippet alert(message: string)}
   <p
     role="alert"
@@ -515,13 +524,8 @@
           {filters}
           {toggles}
           onchange={(next) => (filters = next)}
-        >
-          {#snippet controls()}
-            {#if collection === 'wishlist'}
-              <WithEvsToggle pressed={withEvsOnly} onchange={setWithEvsOnly} />
-            {/if}
-          {/snippet}
-        </PokemonFilters>
+          controls={collection === 'wishlist' ? evControls : undefined}
+        />
         <div
           class="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-1.5"
         >
