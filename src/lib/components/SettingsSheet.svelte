@@ -48,8 +48,14 @@
     if (format === catalogState.format) return;
     onclose();
     forgetBrowseFilters();
-    await goto(resolve('/')).catch(() => {});
-    if (page.route.id !== '/') return;
+    const route =
+      page.route.id === '/'
+        ? '/'
+        : page.route.id === '/wishlist'
+          ? '/wishlist'
+          : '/saved';
+    await goto(resolve(route)).catch(() => {});
+    if (page.route.id !== route || page.url.searchParams.has('team')) return;
     if (!setBattleFormat(format)) {
       notify('Battle format could not be saved on this device.');
       return;
