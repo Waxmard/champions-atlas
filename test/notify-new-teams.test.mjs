@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import {
   deliver,
   devicePrefs,
+  dueFormats,
   newTeamsAlert,
   pokemonAlert,
 } from '../scripts/notify-new-teams.mjs';
@@ -139,6 +140,33 @@ test('pokemonAlert, the EV toggle and devicePrefs work per device', () => {
   assert.equal(
     devicePrefs({ format: { stringValue: 'singles' } }).format,
     'singles'
+  );
+});
+
+test('dueFormats announces each format batch once', () => {
+  const batches = {
+    doubles: { addedAt: 'd1' },
+    singles: { addedAt: 's1' },
+  };
+  const state = (fields) => ({
+    fields: Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [
+        key,
+        { stringValue: value },
+      ])
+    ),
+  });
+  assert.deepEqual(dueFormats(batches, null), ['doubles', 'singles']);
+  assert.deepEqual(dueFormats(batches, state({ announced: 'd1' })), [
+    'singles',
+  ]);
+  assert.deepEqual(
+    dueFormats(batches, state({ announced: 'd1', announcedSingles: 's1' })),
+    []
+  );
+  assert.deepEqual(
+    dueFormats({ doubles: batches.doubles }, state({ announced: 'd0' })),
+    ['doubles']
   );
 });
 

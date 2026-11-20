@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { compareBrowseTeams } from '../src/lib/catalog.ts';
 import {
+  admitPokedb,
   parsePokedb,
   parsePokedbArticles,
   pokedbUrl,
@@ -168,6 +169,23 @@ test('ignores cards that do not match the team', () => {
   const unsafe = withArticles([{ href: 'javascript:alert(1)' }]);
   assert.equal(unsafe.creator, 'Claire');
   assert.ok(unsafe.reports.every(({ sourceUrl }) => sourceUrl === pokedbUrl));
+});
+
+test('drops write-ups when two article cards match the same team', () => {
+  const file = {
+    ...entry,
+    text: pokedbFile(),
+    articles: [articlePage([{}, { player: 'Mallow' }])],
+  };
+  const [team] = admitPokedb([file], new Map(), {
+    fullHistory: true,
+    currentRegulation: 'M-C',
+    frozenIds: new Set(),
+    noteReason: () => {},
+    sourceStats: [],
+  });
+  assert.equal(team.creator, '');
+  assert.ok(team.reports.every(({ sourceUrl }) => sourceUrl === pokedbUrl));
 });
 
 test('rejects a page without a result count', () => {

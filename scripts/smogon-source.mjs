@@ -172,7 +172,10 @@ export async function admitSmogon(fetchCached, canonicalNames, options) {
           optional: true,
         }
       );
-    } catch {
+    } catch (error) {
+      console.warn(
+        `${smogonName}: ${entry.url} unavailable (${error.message})`
+      );
       text = null;
     }
     if (text === null) {

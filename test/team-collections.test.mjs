@@ -760,7 +760,9 @@ test('Wishlist bookmarks and live Saved lookups ignore the other format', () => 
     wishlistedCatalogEntries(readSavedTeams(s), singlesTeam),
     []
   );
-  assert.equal(addCatalogToWishlist(s, singlesTeam).id !== bookmark.id, true);
+  const singlesBookmark = addCatalogToWishlist(s, singlesTeam);
+  assert.equal(singlesBookmark.original.format, 'singles');
+  assert.equal(readSavedTeams(s).length, 2);
   const paste = storage();
   addPokepasteToWishlist(paste, payload, 'M-C', [], 'doubles');
   const imported = addPokepasteToWishlist(paste, payload, 'M-C', [], 'singles');

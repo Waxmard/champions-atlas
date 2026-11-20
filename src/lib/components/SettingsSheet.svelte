@@ -39,7 +39,18 @@
 
   function forgetBrowseFilters() {
     try {
+      const filters = localStorage.getItem(browseStorageKey);
       localStorage.removeItem(browseStorageKey);
+      return filters;
+    } catch {
+      return null;
+    }
+  }
+
+  function restoreBrowseFilters(filters: string | null) {
+    if (filters === null) return;
+    try {
+      localStorage.setItem(browseStorageKey, filters);
     } catch {
       return;
     }
@@ -56,7 +67,7 @@
   async function chooseFormat(format: BattleFormat) {
     if (format === catalogState.format) return;
     onclose();
-    forgetBrowseFilters();
+    const filters = forgetBrowseFilters();
     const previous = catalogState.format;
     const route =
       page.route.id === '/'
@@ -77,9 +88,15 @@
         ? resolve(`saved?team=${encodeURIComponent(target)}`)
         : resolve(route)
     ).catch(() => {});
-    if (page.route.id !== route || page.url.searchParams.get('team') !== target)
+    if (
+      page.route.id !== route ||
+      page.url.searchParams.get('team') !== target
+    ) {
+      restoreBrowseFilters(filters);
       return;
+    }
     if (!setBattleFormat(format)) {
+      restoreBrowseFilters(filters);
       notify('Battle format could not be saved on this device.');
       return;
     }

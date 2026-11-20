@@ -98,6 +98,16 @@ export function pokemonAlert(
   };
 }
 
+export function dueFormats(batches, state) {
+  const announced = {
+    doubles: state?.fields?.announced?.stringValue,
+    singles: state?.fields?.announcedSingles?.stringValue,
+  };
+  return battleFormats.filter(
+    (format) => batches[format] && announced[format] !== batches[format].addedAt
+  );
+}
+
 export function devicePrefs(fields = {}) {
   return {
     newTeams: fields.newTeams?.booleanValue !== false,
@@ -253,16 +263,12 @@ export async function notifyNewTeams({
 
   const accessToken = await googleAccessToken(account);
   const documents = `${FIRESTORE}projects/${account.project_id}/databases/(default)/documents`;
-  const state = testIds.length
-    ? null
-    : await firestore(accessToken, `${documents}/pushState/catalog`);
-  const announced = {
-    doubles: state?.fields?.announced?.stringValue,
-    singles: state?.fields?.announcedSingles?.stringValue,
-  };
-  const due = withBatch.filter(
-    (format) => testIds.length || announced[format] !== batches[format].addedAt
-  );
+  const due = testIds.length
+    ? withBatch
+    : dueFormats(
+        batches,
+        await firestore(accessToken, `${documents}/pushState/catalog`)
+      );
   if (!due.length) return 'No new teams; nothing sent.';
   let summary =
     'The latest batch has no current-regulation teams; nothing sent.';
