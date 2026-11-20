@@ -74,6 +74,7 @@ import {
   writeRegulationOverrides,
 } from './regulation-overrides.ts';
 import {
+  newestBattleFormat,
   parseBattleFormat,
   readBattleFormat,
   writeBattleFormat,
@@ -515,7 +516,7 @@ export async function syncProfile(): Promise<void> {
         ? parseBattleFormat(snapshot.data())
         : null;
       const local = readBattleFormat(localStorage);
-      const newest = remote && remote.at >= local.at ? remote : local;
+      const newest = newestBattleFormat(remote, local);
       if (newest.at > 0 && newest !== remote)
         transaction.set(ref, {
           schemaVersion: 1,

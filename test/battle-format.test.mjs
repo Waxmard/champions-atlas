@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   battleFormatKey,
+  newestBattleFormat,
   parseBattleFormat,
   readBattleFormat,
   teamFormat,
@@ -56,4 +57,16 @@ test('only an explicit singles marker makes a singles team', () => {
   assert.equal(teamFormat({}), 'doubles');
   assert.equal(teamFormat({ format: 'singles' }), 'singles');
   assert.equal(teamFormat({ format: 'other' }), 'doubles');
+});
+
+test('the newer setting wins and the account wins ties', () => {
+  const doubles = { format: 'doubles', at: 5 };
+  const singles = { format: 'singles', at: 5 };
+  assert.equal(newestBattleFormat(null, doubles), doubles);
+  assert.equal(newestBattleFormat(singles, doubles), singles);
+  assert.equal(
+    newestBattleFormat(singles, { ...doubles, at: 6 }).format,
+    'doubles'
+  );
+  assert.equal(newestBattleFormat({ ...singles, at: 4 }, doubles), doubles);
 });

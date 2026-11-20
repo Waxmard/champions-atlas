@@ -415,6 +415,7 @@ async function main() {
     fullHistory,
     currentRegulation,
     refresh: indexRefresh,
+    cache,
   });
   const devonCorp = fullHistory
     ? parseDevonCorp(devonCorpHtml)

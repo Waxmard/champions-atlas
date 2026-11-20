@@ -61,7 +61,13 @@ export async function fetchCached(
   let text;
   try {
     response = await fetchWithRetry(address, fetchOptions);
-    if (optional && response.status === 404) return null;
+    if (optional && response.status === 404) {
+      try {
+        return await readCached();
+      } catch {
+        return null;
+      }
+    }
     if (!response.ok) throw new Error(`${response.status} fetching ${address}`);
     text = await response.text();
   } catch (refreshError) {

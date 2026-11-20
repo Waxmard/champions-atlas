@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs';
+import { readdir, rm } from 'node:fs/promises';
+import { join } from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
@@ -276,7 +278,7 @@ export function parsePokedb(
   return { teams, skipped };
 }
 
-async function loadArticles(fetchCached, season, text) {
+async function loadArticles(fetchCached, season, text, cache) {
   const pages = [];
   try {
     const stamp = JSON.parse(text).updated_at.replace(/\D/g, '');
@@ -295,6 +297,12 @@ async function loadArticles(fetchCached, season, text) {
       if (html === null) break;
       pages.push(html);
     }
+    if (cache) {
+      const prefix = `pokedb-s${season}-articles-`;
+      for (const file of await readdir(cache))
+        if (file.startsWith(prefix) && !file.startsWith(`${prefix}${stamp}-`))
+          await rm(join(cache, file));
+    }
   } catch (error) {
     console.warn(
       `${pokedbName}: write-up links unavailable for season ${season} (${error.message})`
@@ -306,7 +314,7 @@ async function loadArticles(fetchCached, season, text) {
 
 export async function loadPokedb(
   fetchCached,
-  { fullHistory, currentRegulation, refresh }
+  { fullHistory, currentRegulation, refresh, cache }
 ) {
   const files = [];
   for (const entry of pokedbSeasons) {
@@ -319,7 +327,7 @@ export async function loadPokedb(
       { optional: true }
     );
     if (text === null) continue;
-    const articles = await loadArticles(fetchCached, entry.season, text);
+    const articles = await loadArticles(fetchCached, entry.season, text, cache);
     files.push({ ...entry, text, articles });
   }
   return files;

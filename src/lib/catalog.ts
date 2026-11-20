@@ -19,6 +19,9 @@ export interface RegulationInference {
   sourceUrl: string;
 }
 
+export const inferenceSource = (method: RegulationInference['method']) =>
+  method === 'post-date' ? 'post' : 'video';
+
 export interface Member {
   // Saved-team members may retain unknown per-member metadata; the index
   // signature keeps this catalog type assignable to zod's looseObject output.

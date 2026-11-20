@@ -3,7 +3,12 @@
   import { Button } from '#lib/components/ui/button/index.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
-  import { evidence, evidenceGrade, isPasteUrl } from '#lib/catalog.js';
+  import {
+    evidence,
+    evidenceGrade,
+    inferenceSource,
+    isPasteUrl,
+  } from '#lib/catalog.js';
   import type { SavedTeam } from '#lib/workbench.js';
 
   interface Props {
@@ -58,9 +63,8 @@
     href={team.original.regulationInference.sourceUrl}
     target="_blank"
     rel="external noreferrer"
-    >Regulation inferred from {team.original.regulationInference.method.replace(
-      '-date',
-      ''
+    >Regulation inferred from {inferenceSource(
+      team.original.regulationInference.method
     )} date</a
   >{/if}
 {#if missingMetadata}<p class="provenance">

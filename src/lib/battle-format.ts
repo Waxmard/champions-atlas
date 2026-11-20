@@ -40,3 +40,8 @@ export function writeBattleFormat(
 ): void {
   storage.setItem(battleFormatKey, JSON.stringify(setting));
 }
+
+export const newestBattleFormat = (
+  remote: BattleFormatSetting | null,
+  local: BattleFormatSetting
+): BattleFormatSetting => (remote && remote.at >= local.at ? remote : local);

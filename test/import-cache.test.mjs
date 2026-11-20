@@ -799,3 +799,12 @@ test('item icons resolve source aliases, preserve local names, and fail safely',
     await rm(directory, { recursive: true, force: true });
   }
 });
+
+test('cache boundary: optional 404 keeps a valid cached copy', async (t) => {
+  const ctx = await boundary(t);
+  ctx.install(() => new Response('', { status: 404 }));
+  assert.equal(await ctx.load({ optional: true }), cached);
+  const empty = await boundary(t, null);
+  empty.install(() => new Response('', { status: 404 }));
+  assert.equal(await empty.load({ optional: true }), null);
+});

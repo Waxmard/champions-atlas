@@ -17,6 +17,8 @@ import {
   setCurrentTeam,
   shortcutTeam,
   liveSavedTeam,
+  savedOpenTeam,
+  savedOpenTeamKey,
 } from '../src/lib/team-collections.ts';
 import {
   newSavedTeam,
@@ -773,4 +775,19 @@ test('Wishlist bookmarks and live Saved lookups ignore the other format', () => 
   assert.equal(liveSavedTeam(saved, 'd1', 'doubles').id, 'd1');
   assert.equal(liveSavedTeam(saved, 'd1', 'singles'), null);
   assert.equal(liveSavedTeam(saved, 'd1').id, 'd1');
+});
+
+test('the remembered open team must be live in the requested format', () => {
+  const teams = JSON.stringify([snapshot('d1'), singlesSnapshot('s1')]);
+  const open = {
+    [savedOpenTeamKey('doubles')]: 'd1',
+    [savedOpenTeamKey('singles')]: 'd1',
+  };
+  const s = {
+    getItem: (key) => (key === storageKey ? teams : (open[key] ?? null)),
+  };
+  assert.equal(savedOpenTeam(s, 'doubles'), 'd1');
+  assert.equal(savedOpenTeam(s, 'singles'), null);
+  open[savedOpenTeamKey('doubles')] = 'gone';
+  assert.equal(savedOpenTeam(s, 'doubles'), null);
 });
