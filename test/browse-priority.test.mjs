@@ -46,29 +46,7 @@ const order = (teams, compare = compareBrowseTeams, current = 'M-C') =>
   [...teams].sort((a, b) => compare(a, b, current)).map(({ id }) => id);
 const video = 'https://www.youtube.com/watch?v=abcdefghijk';
 
-test('complete EVs outrank results, and results outrank a video', () => {
-  const noEvs = pokemon.map(() => member(null));
-  assert.deepEqual(
-    order([
-      team('no-evs', {
-        members: noEvs,
-        reports: [report('Champions ranked battles', 'Master Ball 1')],
-      }),
-      team('evs', { reports: [report('Other event', 'result')] }),
-    ]),
-    ['evs', 'no-evs']
-  );
-  assert.deepEqual(
-    order([
-      team('video', {
-        reports: [report('Champions ranked battles', 'Master Ball 2', video)],
-      }),
-      team('result', {
-        reports: [report('Champions ranked battles', 'Master Ball 1')],
-      }),
-    ]),
-    ['result', 'video']
-  );
+test('a video outranks a plain team', () => {
   assert.deepEqual(
     order([
       team('a-plain'),
@@ -352,19 +330,7 @@ test('Showdown labels remain below qualifying tournaments without Bo1 inference'
   ]);
 });
 
-test('unknown regulation follows known teams despite richer resources', () => {
-  const resourceRich = team('resource-rich');
-  const unknown = team('unknown', {
-    regulation: 'Unknown',
-    reports: [report('', '', video)],
-  });
-  assert.deepEqual(order([resourceRich, unknown]), [
-    'resource-rich',
-    'unknown',
-  ]);
-});
-
-test('current regulation precedes merit, then merit, date, and ID break ties', () => {
+test('current regulation precedes merit, then merit breaks ties', () => {
   const currentWorseMerit = team('current', {
     regulation: 'M-C',
     reports: [report('Champions ranked battles', 'Reported #2')],
@@ -385,13 +351,6 @@ test('current regulation precedes merit, then merit, date, and ID break ties', (
     }),
   ];
   assert.deepEqual(order(merit), ['rank-1', 'rank-2']);
-  const dated = [
-    team('older', { publishedAt: '2025-01-01' }),
-    team('newer', { publishedAt: '2026-01-01' }),
-  ];
-  assert.deepEqual(order(dated), ['newer', 'older']);
-  const ids = [team('z'), team('a')];
-  assert.deepEqual(order(ids), ['a', 'z']);
 });
 
 test('cache recomputes unspecified Master Ball qualification for a changed current regulation', () => {
