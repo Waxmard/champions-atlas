@@ -32,6 +32,9 @@
   import {
     applyGameResults,
     liveSavedTeam,
+    savedFormat,
+    savedOpenTeam,
+    savedOpenTeamKey,
     shortcutTeam,
   } from '#lib/team-collections.js';
   import { normalizeInitialUrl } from '#lib/initial-url.js';
@@ -73,7 +76,6 @@
       .join('') || '?'
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
-  const savedTeamKey = 'champions-atlas:saved-open-team:v1';
   const lastScrollKey = 'champions-atlas:last-scroll:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   const authReturnSourceKey = 'champions-atlas:auth-return-source:v1';
@@ -156,27 +158,27 @@
     }
   }
 
-  function liveTeamId(id: string): string | null {
+  function openTeamId(): string | null {
     try {
-      return liveSavedTeam(localStorage, id, catalogState.format) ? id : null;
+      return savedOpenTeam(localStorage, catalogState.format);
     } catch {
       return null;
     }
   }
 
-  function trackSavedTeam(from: NavigationTarget | null, to: NavigationTarget) {
-    let id = savedTeamId;
-    if (!from) {
+  function trackSavedTeam(to: NavigationTarget) {
+    if (to.route.id === '/saved') {
+      const id = to.url.searchParams.get('team') || null;
+      let format = catalogState.format;
       try {
-        id = localStorage.getItem(savedTeamKey);
+        const team = id ? liveSavedTeam(localStorage, id) : null;
+        if (team) format = savedFormat(team);
       } catch {
-        id = null;
+        format = catalogState.format;
       }
+      updateStorage('local', savedOpenTeamKey(format), id);
     }
-    if (to.route.id === '/saved') id = to.url.searchParams.get('team') || null;
-    else if (id && from?.route.id !== to.route.id) id = liveTeamId(id);
-    savedTeamId = id;
-    updateStorage('local', savedTeamKey, id);
+    savedTeamId = openTeamId();
   }
 
   function urlString(
@@ -296,7 +298,7 @@
     swipeReset();
     navigationGeneration++;
     if (!to) return;
-    trackSavedTeam(from, to);
+    trackSavedTeam(to);
     settledUrl = urlString(to.url);
     if (!startupReady) return;
     if (pendingScroll && settledUrl !== pendingScroll.url) {
@@ -603,10 +605,7 @@
   $effect(() => {
     void catalogState.format;
     untrack(() => {
-      if (savedTeamId && !liveTeamId(savedTeamId)) {
-        savedTeamId = null;
-        updateStorage('local', savedTeamKey, null);
-      }
+      savedTeamId = openTeamId();
       if (startupSettled) void publishShortcutTeam().catch(() => {});
     });
   });

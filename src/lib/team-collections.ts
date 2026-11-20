@@ -501,3 +501,14 @@ export function liveSavedTeam(
     ? latest
     : null;
 }
+
+export const savedOpenTeamKey = (format: BattleFormat) =>
+  `champions-atlas:saved-open-team:v2:${format}`;
+
+export function savedOpenTeam(
+  storage: Pick<Storage, 'getItem'>,
+  format: BattleFormat
+): string | null {
+  const id = storage.getItem(savedOpenTeamKey(format));
+  return id && liveSavedTeam(storage, id, format) ? id : null;
+}

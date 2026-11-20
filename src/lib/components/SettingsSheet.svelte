@@ -19,6 +19,7 @@
     syncProfile,
     syncPushToken,
   } from '#lib/sync.svelte.js';
+  import { savedOpenTeam, savedOpenTeamKey } from '#lib/team-collections.js';
   import { browseStorageKey } from '#lib/workbench.js';
 
   let { onclose }: { onclose: () => void } = $props();
@@ -44,22 +45,45 @@
     }
   }
 
+  function rememberOpenTeam(format: BattleFormat, team: string) {
+    try {
+      localStorage.setItem(savedOpenTeamKey(format), team);
+    } catch {
+      return;
+    }
+  }
+
   async function chooseFormat(format: BattleFormat) {
     if (format === catalogState.format) return;
     onclose();
     forgetBrowseFilters();
+    const previous = catalogState.format;
     const route =
       page.route.id === '/'
         ? '/'
         : page.route.id === '/wishlist'
           ? '/wishlist'
           : '/saved';
-    await goto(resolve(route)).catch(() => {});
-    if (page.route.id !== route || page.url.searchParams.has('team')) return;
+    const open =
+      page.route.id === '/saved' ? page.url.searchParams.get('team') : null;
+    let target: string | null = null;
+    try {
+      if (open) target = savedOpenTeam(localStorage, format);
+    } catch {
+      target = null;
+    }
+    await goto(
+      target
+        ? resolve(`saved?team=${encodeURIComponent(target)}`)
+        : resolve(route)
+    ).catch(() => {});
+    if (page.route.id !== route || page.url.searchParams.get('team') !== target)
+      return;
     if (!setBattleFormat(format)) {
       notify('Battle format could not be saved on this device.');
       return;
     }
+    if (open) rememberOpenTeam(previous, open);
     void syncProfile();
     void syncPushToken();
     notify(
