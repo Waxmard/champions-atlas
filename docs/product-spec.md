@@ -113,8 +113,7 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 Tournament details support team selection, not a separate tournament-browsing
 product. A compact result label is sufficient.
 
-Sources researched during planning and not imported: Limitless API, VGC History,
-and MetaVGC. PokéKit stays later-use only, because aggregate spreads are not
+Not imported: Limitless API, VGC History, and MetaVGC. PokéKit stays later-use only, because aggregate spreads are not
 proof of an individual team's build or a Champions ladder finish. This policy
 adds no paid API, scraper, or subscription.
 

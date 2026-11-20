@@ -338,12 +338,7 @@ paste and fetches a missing one, and deleting `.cache/catalog/<paste-id>.json` i
 the way to request it again. YouTube discovery refreshes separately with
 `REFRESH=1` or `YOUTUBE_REFRESH=1`; `YOUTUBE_REFRESH=1` alone leaves warm
 ordinary source caches unchanged. `OFFLINE=1` requires the cache.
-The measured 2026-10-05 import, made before singles records were imported,
-held 1713 teams; Poch.ms contributed 332
-accepted records, 92 of them with regulation `Unknown`, and 194 skipped records
-(reported singles and unsupported formats). The 2026-11-05 offline import
-yields 175 singles teams, all M-C. The displayed snapshot date
-tracks catalog generation, not independent verification of source claims.
+The displayed snapshot date tracks catalog generation, not independent verification of source claims.
 By default only a paste missing from the cache is fetched, with three concurrent
 workers. Individual paste failures preserve compatible previous sets and expose
 an error. Sheet schema failures abort the import. `PASTE_LIMIT` is an explicit
@@ -360,7 +355,7 @@ published raw set; manual edits belong to the user's draft.
 Similarity measures shared Pokémon and matching known set details, with result
 priority breaking ties. It does not predict matchup quality or infer EVs.
 
-M-C is the configured current regulation from the planning discussion. Catalog
+M-C is the configured current regulation. Catalog
 admission checks species, forms, and allowed Mega Evolutions under each team's own
 rules. It does not establish full current-rule legality or competitiveness.
 

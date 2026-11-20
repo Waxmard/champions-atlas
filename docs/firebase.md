@@ -318,20 +318,15 @@ fresh sign-in fails, the device signs out and shows an error; sign in and delete
 again. Another device that is still signed in reconciles the emptied cloud copy
 as deletions until its session ends.
 
-Deploy the updated rules before using it, or the deletion fails with a
-permission error and signs the device out:
-
-```sh
-npx firebase-tools deploy --only firestore:rules --project champions-atlas-test
-```
+Deploy the [updated rules](#one-time-configuration) before using it, or the
+deletion fails with a permission error and signs the device out.
 
 ## Secrets and continuous integration
 
-Deploy updated Firestore rules before or with a new client. Until those rules are
-deployed, child access fails visibly; successful local saves remain available
+Until updated Firestore rules are deployed, child access fails visibly; successful local saves remain available
 for **Retry sync**. After a v2 migration, old clients fail their legacy read
 validation instead of clearing local storage. Install an updated client to use
-the new format. Local Xcode installs do not deploy rules.
+the new format.
 
 The TestFlight workflow uses the GitHub `preview` environment and
 `champions-atlas-test`. It reads `VITE_FIREBASE_API_KEY`,
@@ -432,13 +427,6 @@ than `GITHUB_TOKEN` so release and merge events can trigger downstream workflows
   release pull request that bumps `package.json` and writes `CHANGELOG.md`. The
   workflow merges that pull request once the required status checks pass, then
   tags the release.
-
-## Local shared-UI development
-
-Run `npm run dev` to serve the shared UI on loopback for local browser
-development. The browser harness does not initialize Firebase or provide
-authentication or sync, even when Firebase build variables are set. Use the
-iPhone app to check native Google sign-in and sync.
 
 ## Manual console steps
 
