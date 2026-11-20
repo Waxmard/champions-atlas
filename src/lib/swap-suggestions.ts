@@ -18,14 +18,6 @@ import {
 } from './paste.ts';
 import { ladderScore, type LadderShares } from './ladder.ts';
 import { isRosterLegal, rosterSpecies } from './rosters.ts';
-import {
-  missingRoles,
-  postalRole,
-  roleFlags,
-  tagsForTeam,
-  type RoleFlag,
-  type TeamTagsIndex,
-} from './tags.ts';
 
 export interface FavoriteTeamSource {
   id: string;
@@ -65,9 +57,6 @@ export interface PokemonSuggestion {
   member: Member;
   sharedTeammates: number;
   matchingDetails: number;
-  role: string | null;
-  roleFill: boolean;
-  archetype: string | null;
   support: number;
   closeSupport: number;
   ladder: number;
@@ -125,37 +114,16 @@ export function rankFavoriteTeams<
 function rankedSourceTeams(
   teammates: Member[],
   teams: Team[],
-  currentRegulation: string,
-  tags?: TeamTagsIndex
+  currentRegulation: string
 ) {
-  const missing =
-    Object.keys(tags?.teams ?? {}).length > 0
-      ? missingRoles(teammates, teams, tags)
-      : [];
-  return {
-    missing,
-    ranked: teams
-      .map((team) => {
-        const { shared, details } = sourceTeamFit(team, teammates);
-        const roleBonus = missing.some((role) =>
-          team.members.some((member) => roleFlags(member).includes(role))
-        )
-          ? 1
-          : 0;
-        return { team, shared, details, roleBonus };
-      })
-      .sort(
-        (a, b) =>
-          b.shared - a.shared ||
-          b.details - a.details ||
-          compareTeams(
-            a.team,
-            b.team,
-            currentRegulation,
-            b.roleBonus - a.roleBonus
-          )
-      ),
-  };
+  return teams
+    .map((team) => ({ team, ...sourceTeamFit(team, teammates) }))
+    .sort(
+      (a, b) =>
+        b.shared - a.shared ||
+        b.details - a.details ||
+        compareTeams(a.team, b.team, currentRegulation)
+    );
 }
 
 interface Candidate {
@@ -170,7 +138,6 @@ interface Candidate {
   bestShared: number;
   bestDetails: number;
   bestSource: Team;
-  roleFill: boolean;
 }
 
 const empty = (value: string | null) => !normalize(value ?? '');
@@ -242,11 +209,7 @@ function mostCommonName(names: Map<string, number>, fallback: string) {
 
 function synthesize(
   candidate: Candidate,
-  teammates: Member[],
-  teams: Team[],
-  currentRegulation: string,
-  tags: TeamTagsIndex | undefined,
-  missing: readonly RoleFlag[]
+  teammates: Member[]
 ): PokemonSuggestion | null {
   const valid = candidate.members.filter(isKnownMember);
   if (!valid.length) return null;
@@ -371,9 +334,6 @@ function synthesize(
     member,
     sharedTeammates: candidate.bestShared,
     matchingDetails: candidate.bestDetails,
-    role: postalRole(member.pokemon, teams, tags),
-    roleFill: missing.some((role) => roleFlags(member).includes(role)),
-    archetype: tagsForTeam(tags, candidate.bestSource.id)?.archetype ?? null,
     support: candidate.support,
     closeSupport: candidate.closeSupport,
     ladder: candidate.ladder,
@@ -388,10 +348,7 @@ function buildFavoriteSuggestions(
   megas: number,
   queryKey: string,
   minShared: number,
-  teams: Team[],
-  currentRegulation: string,
-  tags: TeamTagsIndex | undefined,
-  missing: readonly RoleFlag[]
+  currentRegulation: string
 ): PokemonSuggestion[] {
   if (!favoriteTeams.length) return [];
   const teammateItems = new Set(
@@ -434,9 +391,6 @@ function buildFavoriteSuggestions(
         member,
         sharedTeammates: shared,
         matchingDetails: details,
-        role: postalRole(member.pokemon, teams, tags),
-        roleFill: missing.some((role) => roleFlags(member).includes(role)),
-        archetype: tagsForTeam(tags, favTeam.id)?.archetype ?? null,
         support: 1,
         closeSupport: shared >= CLOSE_SHARED ? 1 : 0,
         ladder: 0,
@@ -459,7 +413,6 @@ export function pokemonSuggestions(
   teams: Team[],
   currentRegulation: string,
   excludePokemon?: string,
-  tags?: TeamTagsIndex,
   query = '',
   {
     minShared = 1,
@@ -470,12 +423,7 @@ export function pokemonSuggestions(
 ): PokemonSuggestion[] {
   const evidenceTeams = teams.filter((team) => team.regulation !== 'Unknown');
   const weight = voteWeights(evidenceTeams, currentRegulation);
-  const { ranked, missing } = rankedSourceTeams(
-    teammates,
-    evidenceTeams,
-    currentRegulation,
-    tags
-  );
+  const ranked = rankedSourceTeams(teammates, evidenceTeams, currentRegulation);
   const excluded = new Set<string>();
   const exclude = (member: Pick<Member, 'pokemon' | 'item' | 'ability'>) => {
     const form = resolveBattleForm(member);
@@ -498,10 +446,7 @@ export function pokemonSuggestions(
     megas,
     queryKey,
     queryKey ? 0 : minShared,
-    teams,
-    currentRegulation,
-    tags,
-    missing
+    currentRegulation
   );
   for (const row of favoriteRows)
     row.ladder = ladderScore(
@@ -549,7 +494,6 @@ export function pokemonSuggestions(
           bestShared: shared,
           bestDetails: details,
           bestSource: team,
-          roleFill: false,
         };
         candidates.set(form, candidate);
       }
@@ -564,8 +508,6 @@ export function pokemonSuggestions(
         candidate.support += teamWeight;
         if (shared >= CLOSE_SHARED) candidate.closeSupport += teamWeight;
       }
-      if (missing.some((role) => roleFlags(member).includes(role)))
-        candidate.roleFill = true;
     }
   }
   const catalogRows: PokemonSuggestion[] = [];
@@ -575,24 +517,12 @@ export function pokemonSuggestions(
       b.bestShared - a.bestShared ||
       b.support - a.support ||
       b.bestDetails - a.bestDetails ||
-      compareTeams(
-        a.bestSource,
-        b.bestSource,
-        currentRegulation,
-        Number(b.roleFill) - Number(a.roleFill)
-      ) ||
+      compareTeams(a.bestSource, b.bestSource, currentRegulation) ||
       a.form.localeCompare(b.form)
   );
   for (const candidate of ordered) {
     if (catalogRows.length >= limit) break;
-    const suggestion = synthesize(
-      candidate,
-      teammates,
-      teams,
-      currentRegulation,
-      tags,
-      missing
-    );
+    const suggestion = synthesize(candidate, teammates);
     if (!suggestion) continue;
     const key = `${normalize(resolveBattleForm(suggestion.member).pokemon)}|${signatureOf(suggestion.member)}`;
     if (!favoriteKeys.has(key)) catalogRows.push(suggestion);
@@ -625,9 +555,6 @@ export function pokemonSuggestions(
           },
           sharedTeammates: 0,
           matchingDetails: 0,
-          role: null,
-          roleFill: false,
-          archetype: null,
           support: 0,
           closeSupport: 0,
           ladder: 0,
@@ -653,7 +580,6 @@ export function swapSuggestions(
   teams: Team[],
   currentRegulation: string,
   pokemon: string,
-  tags?: TeamTagsIndex,
   favoriteTeams: readonly FavoriteTeamSource[] = []
 ): SwapSuggestion[] {
   const wanted = normalize(pokemon);
@@ -665,7 +591,6 @@ export function swapSuggestions(
       teams,
       currentRegulation,
       replaced.pokemon,
-      tags,
       pokemon,
       { minShared: 1, limit: 6 },
       favoriteTeams

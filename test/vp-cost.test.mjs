@@ -111,6 +111,7 @@ test('team VP cost looks up in-game sets by Browse identity', () => {
   );
   assert.equal(cost.total, 1750);
   assert.equal(cost.unrecorded, 1);
+  assert.equal(cost.estimated, 0);
   assert.equal(formatVp(9000), '9,000 VP');
   assert.equal(formatVp(0), '0 VP');
 });
@@ -122,12 +123,12 @@ test('VP sort orders teams cheapest first and keeps ties in order', () => {
   const c = { id: 'c', members: [{ ...weavile, pokemon: 'Pikachu' }] };
   const teams = [a, b, c];
   assert.deepEqual(
-    sortByVpCost(teams, sets, emptyCatalog).map(({ id }) => id),
+    sortByVpCost(teams, sets).map(({ id }) => id),
     ['b', 'a', 'c']
   );
   assert.deepEqual(teams, [a, b, c]);
   assert.deepEqual(
-    sortByVpCost(teams, null, emptyCatalog).map(({ id }) => id),
+    sortByVpCost(teams, null).map(({ id }) => id),
     ['a', 'b', 'c']
   );
 });
@@ -152,7 +153,52 @@ test('team VP cost estimates stats for a new nature with no EVs listed', () => {
     teamVpCost(sets, [{ ...weavile, nature, spread: null }], catalog).total;
   assert.equal(cost('Adamant'), 650);
   assert.equal(cost('Jolly'), 0);
-  assert.equal(cost(null), 0);
+  assert.equal(cost(null), 650);
+});
+
+test('team VP cost fills a roster-only member from catalog sets', () => {
+  const sets = [{ id: pokemonId('Weavile'), member: weavile }];
+  const bare = {
+    pokemon: 'Weavile',
+    item: 'Focus Sash',
+    ability: null,
+    moves: [],
+    nature: null,
+    spread: null,
+  };
+  const source = team('source', [
+    set('Weavile', {
+      item: 'Focus Sash',
+      ability: 'Pickpocket',
+      moves: ['Fake Out', 'Knock Off', 'Ice Shard', 'Triple Axel'],
+      nature: 'Adamant',
+      spread: '32 HP / 32 Atk / 2 Spe',
+    }),
+  ]);
+  assert.deepEqual(
+    teamVpCost(sets, [bare], { teams: [source], currentRegulation: 'M-C' }),
+    { total: 1400, unrecorded: 0, estimated: 1 }
+  );
+  assert.equal(
+    teamVpCost(sets, [bare], {
+      teams: [],
+      allTeams: [source],
+      currentRegulation: 'M-C',
+    }).total,
+    1400
+  );
+  assert.deepEqual(teamVpCost(sets, [bare], emptyCatalog), {
+    total: 0,
+    unrecorded: 0,
+    estimated: 0,
+  });
+  assert.equal(
+    teamVpCost(sets, [bare], {
+      teams: [team('same', [structuredClone(weavile)])],
+      currentRegulation: 'M-C',
+    }).total,
+    0
+  );
 });
 
 test('unrecorded members skip recorded Pokémon and take the first team', () => {

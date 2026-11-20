@@ -28,7 +28,6 @@ jobs:
         with:
           path: |
             .cache/catalog
-            .cache/jev
             src/lib/data/catalog.json
             static/sprites
             static/items
@@ -43,17 +42,12 @@ jobs:
             echo '::error::YOUTUBE_API_KEY is not configured; refusing to skip YouTube sources.'
             exit 1
           fi
-          if [ -z "$TYPESAFE_API_KEY" ]; then
-            echo '::error::TYPESAFE_API_KEY is not configured; refusing to publish untagged.'
-            exit 1
-          fi
           if [ -z "$FIREBASE_TOKEN" ]; then
             echo '::error::FIREBASE_TOKEN is not configured; refusing to publish without Firebase access.'
             exit 1
           fi
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
       - name: Import catalog
         run: npm run import:catalog
@@ -62,12 +56,6 @@ jobs:
           YOUTUBE_REFRESH: '1'
           REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      - name: Enrich team tags
-        run: npm run enrich:tags
-        env:
-          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-      - name: Evaluate team tags
-        run: npm run eval:tags
       - name: Build catalog release
         run: npm run publish:catalog
         env:

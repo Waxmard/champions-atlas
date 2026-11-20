@@ -1,3 +1,4 @@
+import { teamFormat, type BattleFormat } from './battle-format.ts';
 import { isPasteUrl, teamHeading, type Team } from './catalog.ts';
 import type { PokepastePayload } from './pokepaste.ts';
 import { canonicalSnapshot } from './team-history.ts';
@@ -14,6 +15,9 @@ import {
 
 export const isSavedTeam = (team: SavedTeam): boolean =>
   team.collection !== 'wishlist';
+
+export const savedFormat = (team: SavedTeam): BattleFormat =>
+  teamFormat(team.original);
 
 export const hasSetEdits = (
   team: Pick<SavedTeam, 'members' | 'original'>
@@ -102,9 +106,10 @@ export function applyGameResults(
 }
 
 export function shortcutTeam(
-  storage: Pick<Storage, 'getItem'>
+  storage: Pick<Storage, 'getItem'>,
+  format: BattleFormat
 ): ShortcutTeam | null {
-  const saved = orderedSaved(readSavedTeams(storage));
+  const saved = orderedSaved(readSavedTeams(storage), format);
   const team = saved.find((entry) => entry.current) ?? saved[0];
   return team
     ? {
@@ -135,10 +140,13 @@ const compareIds = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 function orderedCollection(
   teams: SavedTeam[],
-  orderKey: 'wishlistOrder' | 'savedOrder'
+  orderKey: 'wishlistOrder' | 'savedOrder',
+  format: BattleFormat
 ): SavedTeam[] {
   return teams
-    .filter((team) => orderKeyOf(team) === orderKey)
+    .filter(
+      (team) => orderKeyOf(team) === orderKey && savedFormat(team) === format
+    )
     .reverse()
     .sort((a, b) => {
       const rankA = a[orderKey];
@@ -154,10 +162,13 @@ function reorderCollection(
   orderedIds: string[],
   expectedIds: string[],
   orderKey: 'wishlistOrder' | 'savedOrder',
-  label: 'Wishlist' | 'Saved'
+  label: 'Wishlist' | 'Saved',
+  format: BattleFormat
 ): SavedTeam[] | null {
   const saved = readSavedTeams(storage);
-  const currentIds = orderedCollection(saved, orderKey).map((team) => team.id);
+  const currentIds = orderedCollection(saved, orderKey, format).map(
+    (team) => team.id
+  );
   if (
     currentIds.length !== expectedIds.length ||
     currentIds.some((id, index) => id !== expectedIds[index])
@@ -179,46 +190,50 @@ function reorderCollection(
   return writeTeams(
     storage,
     saved.map((team) =>
-      orderKeyOf(team) === orderKey
-        ? { ...team, [orderKey]: ranks.get(team.id) }
-        : team
+      ranks.has(team.id) ? { ...team, [orderKey]: ranks.get(team.id) } : team
     )
   );
 }
 
-export function orderedWishlist(teams: SavedTeam[]): SavedTeam[] {
-  return orderedCollection(teams, 'wishlistOrder');
-}
+export const orderedWishlist = (
+  teams: SavedTeam[],
+  format: BattleFormat
+): SavedTeam[] => orderedCollection(teams, 'wishlistOrder', format);
 
 export function reorderWishlist(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   orderedIds: string[],
-  expectedIds: string[]
+  expectedIds: string[],
+  format: BattleFormat
 ): SavedTeam[] | null {
   return reorderCollection(
     storage,
     orderedIds,
     expectedIds,
     'wishlistOrder',
-    'Wishlist'
+    'Wishlist',
+    format
   );
 }
 
-export function orderedSaved(teams: SavedTeam[]): SavedTeam[] {
-  return orderedCollection(teams, 'savedOrder');
-}
+export const orderedSaved = (
+  teams: SavedTeam[],
+  format: BattleFormat
+): SavedTeam[] => orderedCollection(teams, 'savedOrder', format);
 
 export function reorderSaved(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   orderedIds: string[],
-  expectedIds: string[]
+  expectedIds: string[],
+  format: BattleFormat
 ): SavedTeam[] | null {
   return reorderCollection(
     storage,
     orderedIds,
     expectedIds,
     'savedOrder',
-    'Saved'
+    'Saved',
+    format
   );
 }
 
@@ -266,6 +281,7 @@ export function wishlistedCatalogEntries(
   return saved.filter(
     (entry) =>
       entry.collection === 'wishlist' &&
+      savedFormat(entry) === teamFormat(team) &&
       (entry.original.id === team.id ||
         (pasteUrl !== '' && entry.original.pasteUrl === pasteUrl))
   );
@@ -286,12 +302,15 @@ export function addPokepasteToWishlist(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
   payload: PokepastePayload,
   currentRegulation: string,
-  catalog: Team[]
+  catalog: Team[],
+  format: BattleFormat
 ): SavedTeam {
   const saved = readSavedTeams(storage);
   const existing = saved.find(
     (entry) =>
-      entry.collection === 'wishlist' && entry.original.pasteUrl === payload.url
+      entry.collection === 'wishlist' &&
+      savedFormat(entry) === format &&
+      entry.original.pasteUrl === payload.url
   );
   if (existing) return existing;
   if (catalog.filter((team) => team.pasteUrl === payload.url).length > 1)
@@ -300,7 +319,12 @@ export function addPokepasteToWishlist(
     );
   const team = resolveCatalogTeam({ pasteUrl: payload.url }, catalog);
   if (team) return addCatalogToWishlist(storage, team);
-  const custom = newCustomTeam(payload.title, currentRegulation, payload.paste);
+  const custom = newCustomTeam(
+    payload.title,
+    currentRegulation,
+    payload.paste,
+    format
+  );
   return saveAndGet(storage, {
     ...custom,
     collection: 'wishlist',
@@ -331,6 +355,7 @@ function rejectWishlistCopy(saved: SavedTeam[], latest: SavedTeam) {
       (team) =>
         team.id !== latest.id &&
         team.collection === 'wishlist' &&
+        savedFormat(team) === savedFormat(latest) &&
         (team.original.id === latest.original.id ||
           (latest.original.pasteUrl !== '' &&
             team.original.pasteUrl === latest.original.pasteUrl))
@@ -428,12 +453,12 @@ export function setCurrentTeam(
   current: boolean
 ): SavedTeam[] {
   const saved = readSavedTeams(storage);
-  const order = orderedSaved(saved);
-  const target = order.find((team) => team.id === id);
-  if (!target)
+  const target = saved.find((team) => team.id === id);
+  if (!target || !isSavedTeam(target))
     throw new SavedTeamError(
       'This team is no longer in Saved. Refresh the list.'
     );
+  const order = orderedSaved(saved, savedFormat(target));
   const retiring = order.filter(
     (team) => team.current && !(current && team === target)
   );
@@ -459,13 +484,31 @@ export function setCurrentTeam(
   );
 }
 
-export const favoriteTeams = (teams: SavedTeam[]): SavedTeam[] =>
-  orderedSaved(teams).filter((team) => team.favorite);
+export const favoriteTeams = (
+  teams: SavedTeam[],
+  format: BattleFormat
+): SavedTeam[] => orderedSaved(teams, format).filter((team) => team.favorite);
 
 export function liveSavedTeam(
   storage: Pick<Storage, 'getItem'>,
-  id: string
+  id: string,
+  format?: BattleFormat
 ): SavedTeam | null {
   const latest = readSavedTeams(storage).find((team) => team.id === id);
-  return latest && isSavedTeam(latest) ? latest : null;
+  return latest &&
+    isSavedTeam(latest) &&
+    (format === undefined || savedFormat(latest) === format)
+    ? latest
+    : null;
+}
+
+export const savedOpenTeamKey = (format: BattleFormat) =>
+  `champions-atlas:saved-open-team:v2:${format}`;
+
+export function savedOpenTeam(
+  storage: Pick<Storage, 'getItem'>,
+  format: BattleFormat
+): string | null {
+  const id = storage.getItem(savedOpenTeamKey(format));
+  return id && liveSavedTeam(storage, id, format) ? id : null;
 }

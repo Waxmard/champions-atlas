@@ -1,7 +1,7 @@
 # Product specification
 
 Champion's Atlas is an iOS app that helps you choose Pokémon Champions doubles
-teams. Existing spreadsheets are awkward to browse, and missingNO loses filters
+and singles teams. Existing spreadsheets are awkward to browse, and missingNO loses filters
 when opening a team. The product focuses on reliable, fast discovery. Browser
 development, preview, and tests are local shared-UI tools, not a supported website
 or PWA.
@@ -16,6 +16,21 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 ## Discovery and browsing
 
 - Provide mobile-friendly browsing for personal use.
+- Choose a **Battle format**, **Doubles** or **Singles**, at the top of
+  **Settings**. Doubles is the default and the choice syncs with the account. It
+  limits Browse, Saved, Wishlist, suggestions, Swaps ladder pairings, the
+  current-team shortcut, new-team dots, and notifications to that format's teams.
+  Recorded in-game sets and VP costs are shared across both formats. Choosing a
+  format closes Settings, clears the Browse filters and the Saved and Wishlist
+  Pokémon search, keeps you on the tab you are on (Browse, or the Saved or
+  Wishlist list), opens the Saved list from any other page, and shows "Switched
+  to Singles." (or "Switched to Doubles."). Switching with a saved team open
+  opens the saved team last open in the other format, or the Saved list when
+  there is none. If you keep unsaved edits on the open page, the format does not
+  change. A saved team stays in the format it was saved or created in. Singles
+  teams come from the Poch.ms ranked-ladder posts, Battle Database Champions'
+  season-final ranked teams, and Smogon's singles sample teams; other sources
+  hold doubles teams only (see [data sources](data-sources.md)).
 - Browse teams with or without a Pokémon in mind.
 - Combine multiple Pokémon filters using AND: every selected Pokémon must occur
   on the team.
@@ -35,8 +50,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 - Browse lists every regulation, newest first, with each card labelled by
   regulation. Selected Pokémon stay compact on the page; **Filters** opens a
   pop-up with item, ability, and move controls for each selection, plus
-  **Unknown regulation only** (`?unknown=1`). Older links and saved filters
-  that carry a regulation choice are ignored.
+  **Unknown regulation only** (`?unknown=1`) and **With EVs only** (`?evs=1`),
+  which lists only teams whose six Pokémon all have complete EV spreads. Older
+  links and saved filters that carry a regulation choice are ignored.
 - A team of Unknown regulation shows a regulation picker on its page, offering
   only regulations whose roster the whole team is legal in. The choice is saved
   on the device, marked "Set by you", synced with a signed-in account, and
@@ -63,14 +79,15 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   **VP spend** (`?sort=vp`, lowest expected VP spend first), remembered with
   the Browse filters. When shown, **Clear filters** also resets the sort.
   **VP spend** is unavailable until an in-game set is recorded.
-- Mark Browse cards from the latest catalog batch (the most recent publish that
-  added teams) with a blue dot before the team name; the dot stays until a later
-  batch replaces it. **New teams only** in Browse filters (`?new=1`) shows just
-  those teams.
-- Signed-in iPhone users choose catalog notifications at the top of **Settings**
-  in the account menu; the choices are stored on the device. Under
-  **Notifications**, each of the two groups below is a collapsed row that shows
-  its state (**On**/**Off**, or the number of Pokémon chosen). **New teams** (on
+- Mark Browse cards from the latest catalog batch of the chosen format (the most
+  recent publish that added teams of that format) with a blue dot before the
+  team name; the dot stays until a later batch of that format replaces it.
+  **New teams only** in Browse filters (`?new=1`) shows just those teams.
+- Signed-in iPhone users choose catalog notifications under **Notifications**
+  in **Settings**; the choices are stored on the device. Each device gets
+  banners only for its chosen format. Each of the two groups below is a
+  collapsed row that shows its state (**On**/**Off**, or the number of Pokémon
+  chosen). **New teams** (on
   by default, toggled by **Notify me** inside the row) sends one banner per batch
   counting its current-regulation teams, with a body naming the tournaments and
   YouTubers they came from. Tapping it opens Browse with **New teams only** on.
@@ -85,6 +102,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   default and unavailable while **New teams** is off or the list is empty.
   Turning it off leaves teams without EV spreads out of that banner's count; no
   banner is sent when none remain.
+- Banner titles read `N new Reg M-C teams` and `N new teams with ...` in
+  Doubles, and `N new Reg M-C singles teams` and `N new singles teams with ...`
+  in Singles.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
@@ -93,8 +113,7 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
 Tournament details support team selection, not a separate tournament-browsing
 product. A compact result label is sufficient.
 
-Sources researched during planning and not imported: Limitless API, VGC History,
-and MetaVGC. PokéKit stays later-use only, because aggregate spreads are not
+Not imported: Limitless API, VGC History, and MetaVGC. PokéKit stays later-use only, because aggregate spreads are not
 proof of an individual team's build or a Champions ladder finish. This policy
 adds no paid API, scraper, or subscription.
 
@@ -140,10 +159,9 @@ Saved and Wishlist and syncs like other team content. Saved
 and Wishlist cards show it read-only, with the percentage, once a team has a
 record. On iPhone, the **Log Game Result** shortcut action names the current
 team, or the first team in Saved order when none is current, asks for **Win** or
-**Loss**, and logs it without opening the app. Shortcuts shows the result with
-the team's updated record, and a quiet entry in Notification Center (no banner)
-opens that team in Saved when tapped. Results logged this way join the record
-the next time the app is opened.
+**Loss**, and logs it without opening the app. A banner confirms the result with
+the team's updated record; tapping it opens that team in Saved. Results logged
+this way join the record the next time the app is opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain
@@ -221,9 +239,12 @@ first team in Saved order wins.
 
 Team cards show the expected VP spend to reach the team from the recorded
 in-game sets, labelled **Estimated spend**. A Pokémon with a recorded set whose
-team lists a different nature and no EVs is priced with the top catalog spread
-for that nature. The set editor footer, full-set dialog, and member menu show
-the VP needed to change that Pokémon's in-game set to the shown set.
+team leaves out its ability, nature, a move, or EVs is priced from the most
+common catalog set for the missing details, and the team's set list says how
+many Pokémon were priced that way. The **VP spend** sort uses listed details
+only, so its order can differ slightly from the totals on cards. The set
+editor footer, full-set dialog, and member menu show the VP needed to change
+that Pokémon's in-game set to the shown set.
 
 When a snapshot exists, its item, ability, nature, and move values appear as
 subtly source-labelled choices in the corresponding editor suggestion surfaces.
@@ -295,11 +316,9 @@ favor better-placed and recent teams through a weighted vote (see
 another teammate holds is never reused, and a suggested Mega keeps its own Mega
 Stone. Candidates rank by shared teammates, then by the form's weighted vote,
 then by matching details for those teammates, then by
-recency-adjusted results, regulation, and credentials. Inferred archetype and role
-tags break only
-equally proven ties. Sources need not match the fixed five members exactly. Source
-result claims are not attributed to the user's edited team. Exact forms remain
-distinct.
+recency-adjusted results, regulation, and credentials. Sources need not match the
+fixed five members exactly. Source result claims are not attributed to the
+user's edited team. Exact forms remain distinct.
 
 - One Pokémon toggle replaces individual item, move, and ability locks.
 - Show concrete differences for the proposed single-slot replacement.
@@ -320,7 +339,7 @@ than wrapped. **Show 5 more** reveals further rows in ranked order, each Pokémo
 sharing three or more teammates come first, ranked by the weighted vote of
 those teams. The remaining rows follow by shared teammates, then by how often
 the suggested Pokémon is paired with the rest of the team on the current
-regulation's Smogon ladder, so a team that few catalog teams resemble still gets
+regulation's Smogon ladder for the chosen format, so a team that few catalog teams resemble still gets
 suggestions. A row that would lower the team's ladder pairing is dropped unless
 it is that slot's only idea. Sets from other favorite teams rank in the same list, count as much as
 the best-placed supporting team once they share three teammates, and are
@@ -394,12 +413,6 @@ weather, or other battle modifiers. The app ranks recorded sets rather than
 solving survive, KO, or outspeed benchmarks. It does not show a catalog Speed
 percentile or offer a calculator handoff.
 
-Inferred archetype and role tags are enrichment, never evidence: they carry no
-result label and never outrank a sourced result. They break ties among teams that
-already share the same teammates and set details and are equally proven; the
-keyword half of that tiebreak works without them. See
-[data sources](data-sources.md) for how they are generated and validated.
-
 Custom text import starts from **Add custom team** in Saved with a required name and complete
 Showdown-style paste. It accepts exactly six unique Pokémon, each with an item,
 ability, nature, EVs, and four unique moves. Export the text from
@@ -461,6 +474,18 @@ base and Mega identities as Browse. Search does not change saved records. It
 stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
 
+Wishlist has the same **Filters** pop-up as Browse for item, ability, and move
+constraints on each selected Pokémon, plus **With EVs only**. The With EVs
+choice is remembered on this device, shows as a removable chip, and pauses
+reordering while on. When it is on and no bookmark has complete EV spreads,
+Wishlist offers **Show all**. Saved has the Pokémon search but no **Filters**
+button.
+
+An empty Saved or Wishlist list offers **Browse teams** and the page's own add
+action (**Add custom team** on Saved, **Add a Poképaste** on Wishlist). When
+the other battle format has teams in that list, it also says to set Battle
+format to that format in Settings.
+
 With no Wishlist filters active, reorder bookmarks using the move up and down
 controls. Holding an arrow for half a second offers **Move to top** or
 **Move to bottom**. New bookmarks appear first without changing the relative
@@ -475,11 +500,11 @@ Reordering is paused unless Manual order is selected. Manual order is the
 default, and each list remembers its choice on this device.
 
 Each Saved row has a swords toggle marking it as the **current team**. Marking
-a team moves it to the top of Saved and clears the marker on any other team.
+a team moves it to the top of Saved and clears the marker on any other team of the same format.
 When a team stops being current, by toggling it off or marking another team, it
 moves to just above the first team with a lower win rate (more games break
 ties), leaving the other teams in their order; a team that outranks no one goes
-last. Only one team is current at a time. The marker syncs with the account and
+last. Only one team per format is current at a time. The marker syncs with the account and
 is cleared when the team moves to Wishlist. The current team stays listed while
 Favorites is on, even when unstarred, but Pokémon filters still apply to it.
 
@@ -504,8 +529,8 @@ device was online and the app visible) for troubleshooting and shows
 **Sync log copied.** under the button. Sync failures are also reported to the
 account's cloud data for fixing bugs. A collapsed **Delete account** section at
 the bottom of Settings, after confirmation and a fresh Google sign-in,
-permanently deletes the account and its cloud teams, in-game sets, notification
-registrations, and sync failure reports; saved data on the device stays. The sign-in page
+permanently deletes the account and its cloud teams, in-game sets, battle format
+setting, notification registrations, and sync failure reports; saved data on the device stays. The sign-in page
 then shows **Deleting account…** and, when done, **Account deleted.** Native
 setup and signing are described in
 [iOS installation and Firebase sync](firebase.md).

@@ -4,6 +4,7 @@ import { EventEmitter } from 'node:events';
 import {
   deliver,
   devicePrefs,
+  dueFormats,
   newTeamsAlert,
   pokemonAlert,
 } from '../scripts/notify-new-teams.mjs';
@@ -116,6 +117,7 @@ test('pokemonAlert, the EV toggle and devicePrefs work per device', () => {
     newTeamsWithoutEvs: true,
     pokemon: [],
     pokemonWithoutEvs: true,
+    format: 'doubles',
   });
   assert.deepEqual(
     devicePrefs({
@@ -132,7 +134,69 @@ test('pokemonAlert, the EV toggle and devicePrefs work per device', () => {
       newTeamsWithoutEvs: true,
       pokemon: ['Incineroar'],
       pokemonWithoutEvs: false,
+      format: 'doubles',
     }
+  );
+  assert.equal(
+    devicePrefs({ format: { stringValue: 'singles' } }).format,
+    'singles'
+  );
+});
+
+test('dueFormats announces each format batch once', () => {
+  const batches = {
+    doubles: { addedAt: 'd1' },
+    singles: { addedAt: 's1' },
+  };
+  const state = (fields) => ({
+    fields: Object.fromEntries(
+      Object.entries(fields).map(([key, value]) => [
+        key,
+        { stringValue: value },
+      ])
+    ),
+  });
+  assert.deepEqual(dueFormats(batches, null), ['doubles', 'singles']);
+  assert.deepEqual(dueFormats(batches, state({ announced: 'd1' })), [
+    'singles',
+  ]);
+  assert.deepEqual(
+    dueFormats(batches, state({ announced: 'd1', announcedSingles: 's1' })),
+    []
+  );
+  assert.deepEqual(
+    dueFormats({ doubles: batches.doubles }, state({ announced: 'd0' })),
+    ['doubles']
+  );
+});
+
+test('singles alerts read the singles batch and leave doubles titles unchanged', () => {
+  const doubles = team('d', [regional], 'M-C', members(['Incineroar'], null));
+  const singles = {
+    ...team(
+      's',
+      [report('Poch.ms collection')],
+      'M-C',
+      members(['Incineroar'], null)
+    ),
+    format: 'singles',
+  };
+  const both = {
+    ...bundle([doubles, singles], ['d']),
+    singlesBatch: { addedAt: '2026-11-14T00:00:00.000Z', ids: ['s'] },
+  };
+  assert.equal(
+    newTeamsAlert(both, true, 'singles').title,
+    '1 new Reg M-C singles team'
+  );
+  assert.equal(newTeamsAlert(both).title, '1 new Reg M-C team');
+  assert.equal(
+    pokemonAlert(both, ['Incineroar'], true, 'singles').title,
+    '1 new singles team with Incineroar'
+  );
+  assert.equal(
+    pokemonAlert(both, ['Incineroar']).title,
+    '1 new team with Incineroar'
   );
 });
 

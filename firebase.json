@@ -20,7 +20,7 @@
         ]
       },
       {
-        "source": "/catalog/manifest.json",
+        "source": "/catalog/manifest*.json",
         "headers": [
           {
             "key": "Cache-Control",

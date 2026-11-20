@@ -1,11 +1,15 @@
 import { z } from 'zod';
 import rawCatalog from './data/catalog.json' with { type: 'json' };
-import rawTags from './data/team-tags.json' with { type: 'json' };
+import { teamFormat } from './battle-format.ts';
 import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
-import { normalize, youtubeChannelNames, type Team } from './catalog.ts';
+import {
+  catalogManifestPath,
+  normalize,
+  youtubeChannelNames,
+  type Team,
+} from './catalog.ts';
 import { reportSchema, textSchema } from './spread-provenance.ts';
-import type { TeamTagsIndex } from './tags.ts';
 import { originalSchema } from './workbench.ts';
 
 export interface CatalogSource {
@@ -34,13 +38,10 @@ export interface CatalogBundle extends CatalogData {
   schemaVersion: 1;
   bundleHash?: string;
   latestBatch?: { addedAt: string; ids: string[] };
-  tags: TeamTagsIndex;
+  singlesBatch?: { addedAt: string; ids: string[] };
 }
 
 const bundledCatalog = rawCatalog as CatalogData;
-export const tags: TeamTagsIndex = {
-  teams: (rawTags as TeamTagsIndex).teams ?? {},
-};
 export default bundledCatalog;
 
 export const MANIFEST_MAX_BYTES = 64 * 1024;
@@ -91,12 +92,6 @@ const catalogTeamSchema = originalSchema
     team.members.every((member) => resolveBattleForm(member).error === null)
   );
 
-const teamTagSchema = z.looseObject({
-  archetype: textSchema,
-  speedMode: textSchema.optional(),
-  roles: z.record(textSchema, textSchema),
-});
-
 const bundleSchema = z
   .object({
     schemaVersion: z.literal(1),
@@ -107,11 +102,11 @@ const bundleSchema = z
     latestBatch: z
       .object({ addedAt: isoTimestampSchema, ids: z.array(textSchema) })
       .optional(),
+    singlesBatch: z
+      .object({ addedAt: isoTimestampSchema, ids: z.array(textSchema) })
+      .optional(),
     sources: z.array(catalogSourceSchema).min(1),
     teams: z.array(catalogTeamSchema).min(1),
-    tags: z.object({
-      teams: z.record(textSchema, teamTagSchema),
-    }),
   })
   .refine(
     (bundle) =>
@@ -179,7 +174,7 @@ export function defaultCatalogEndpoint(): string {
   if (typeof catalogUrl === 'string') return catalogUrl.trim();
   const projectId = import.meta.env?.VITE_FIREBASE_PROJECT_ID?.trim();
   if (!projectId) return '';
-  return `https://${projectId}.web.app/catalog/manifest.json`;
+  return `https://${projectId}.web.app${catalogManifestPath}`;
 }
 
 async function fetchJsonWithLimit(
@@ -281,6 +276,7 @@ function isYoutubeCopy(team: Team): boolean {
 const setsKey = (team: Team) =>
   [
     team.regulation,
+    teamFormat(team),
     ...team.members
       .map((member) =>
         [

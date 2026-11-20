@@ -3,8 +3,11 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateCatalogBundle } from '../src/lib/catalog-data.ts';
-import { admittedTeams } from '../src/lib/catalog.ts';
+import { teamFormat } from '../src/lib/battle-format.ts';
+import { admittedTeams, catalogManifestPath } from '../src/lib/catalog.ts';
 import { teamEligibilityError } from './champions-eligibility.mjs';
+
+const previousManifestPath = '/catalog/manifest.json';
 
 function isPlainObject(value) {
   return (
@@ -22,43 +25,41 @@ async function writeAtomic(targetPath, contents) {
   await rename(tempPath, targetPath);
 }
 
-function latestBatch(previous, catalog) {
+function latestBatch(previous, catalog, format, key) {
   if (!previous) return undefined;
   const before = new Set(previous.teams.map((team) => team.id));
   const ids = admittedTeams(catalog.teams, catalog.currentRegulation)
+    .filter((team) => teamFormat(team) === format)
     .map((team) => team.id)
     .filter((id) => !before.has(id));
-  return ids.length
-    ? { addedAt: catalog.updatedAt, ids }
-    : previous.latestBatch;
+  return ids.length ? { addedAt: catalog.updatedAt, ids } : previous[key];
 }
 
-async function publishedBundle(origin) {
-  const manifest = await fetch(`${origin}/catalog/manifest.json`);
-  if (manifest.status === 404) return null;
-  if (!manifest.ok)
-    throw new Error(
-      `Published manifest request failed: HTTP ${manifest.status}.`
-    );
-  const { bundlePath } = await manifest.json();
-  const bundle = await fetch(`${origin}${bundlePath}`);
-  if (!bundle.ok)
-    throw new Error(`Published bundle request failed: HTTP ${bundle.status}.`);
-  return bundle.json();
+export async function publishedBundle(origin) {
+  for (const path of [catalogManifestPath, previousManifestPath]) {
+    const manifest = await fetch(`${origin}${path}`);
+    if (manifest.status === 404) continue;
+    if (!manifest.ok)
+      throw new Error(
+        `Published manifest request failed: HTTP ${manifest.status}.`
+      );
+    const { bundlePath } = await manifest.json();
+    const bundle = await fetch(`${origin}${bundlePath}`);
+    if (!bundle.ok)
+      throw new Error(
+        `Published bundle request failed: HTTP ${bundle.status}.`
+      );
+    return bundle.json();
+  }
+  return null;
 }
 
 export async function buildCatalogRelease({
   catalogPath = 'src/lib/data/catalog.json',
-  tagsPath = 'src/lib/data/team-tags.json',
   outDir = '.cache/hosting',
   previous = null,
 } = {}) {
-  const [catalogRaw, tagsRaw] = await Promise.all([
-    readFile(catalogPath, 'utf8'),
-    readFile(tagsPath, 'utf8'),
-  ]);
-  const catalog = JSON.parse(catalogRaw);
-  const tags = JSON.parse(tagsRaw);
+  const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 
   if (!isPlainObject(catalog))
     throw new Error('Catalog JSON must be an object.');
@@ -84,8 +85,6 @@ export async function buildCatalogRelease({
     throw new Error('Catalog sources must be a non-empty array.');
   if (!Array.isArray(catalog.teams) || !catalog.teams.length)
     throw new Error('Catalog teams must be a non-empty array.');
-  if (!isPlainObject(tags) || !isPlainObject(tags.teams))
-    throw new Error('Team tags must contain a plain teams object.');
 
   const ids = new Set();
   for (const team of catalog.teams) {
@@ -101,39 +100,43 @@ export async function buildCatalogRelease({
       );
   }
 
-  const batch = latestBatch(previous, catalog);
+  const doublesBatch = latestBatch(previous, catalog, 'doubles', 'latestBatch');
+  const singlesBatch = latestBatch(
+    previous,
+    catalog,
+    'singles',
+    'singlesBatch'
+  );
   const bundle = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
     currentRegulation: catalog.currentRegulation,
     sourceHash: catalog.sourceHash,
     sources: catalog.sources,
+    ...(doublesBatch && { latestBatch: doublesBatch }),
     teams: catalog.teams,
-    tags: { teams: tags.teams },
-    ...(batch && { latestBatch: batch }),
+    ...(singlesBatch && { singlesBatch }),
   };
   validateCatalogBundle(bundle);
-  const bundleJson = JSON.stringify(bundle);
-  const bundleHash = createHash('sha256').update(bundleJson).digest('hex');
-  const bundlePath = `/catalog/bundle-${bundleHash}.json`;
+  const json = JSON.stringify(bundle);
+  const bundleHash = createHash('sha256').update(json).digest('hex');
   const manifest = {
     schemaVersion: 1,
-    updatedAt: catalog.updatedAt,
-    currentRegulation: catalog.currentRegulation,
-    sourceHash: catalog.sourceHash,
+    updatedAt: bundle.updatedAt,
+    currentRegulation: bundle.currentRegulation,
+    sourceHash: bundle.sourceHash,
     bundleHash,
-    bundlePath,
+    bundlePath: `/catalog/bundle-${bundleHash}.json`,
   };
 
   await rm(outDir, { recursive: true, force: true });
-  const manifestFilePath = join(outDir, 'catalog', 'manifest.json');
-  const bundleFilePath = join(outDir, 'catalog', `bundle-${bundleHash}.json`);
-  const indexFilePath = join(outDir, 'index.html');
+  const manifestFilePath = join(outDir, catalogManifestPath);
+  const bundleFilePath = join(outDir, manifest.bundlePath);
 
-  await writeAtomic(bundleFilePath, bundleJson);
+  await writeAtomic(bundleFilePath, json);
   await writeAtomic(manifestFilePath, `${JSON.stringify(manifest, null, 2)}\n`);
   await writeAtomic(
-    indexFilePath,
+    join(outDir, 'index.html'),
     '<!doctype html><meta charset="utf-8"><title>Champion\'s Atlas Data</title>\n'
   );
 

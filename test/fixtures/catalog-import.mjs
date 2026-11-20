@@ -5,7 +5,7 @@ import {
   youtubeChannels,
 } from '../../scripts/youtube-source.mjs';
 import { youtubeCandidate } from '../../scripts/youtube-admission.mjs';
-import { teamFromIndex } from '../../scripts/import-catalog.mjs';
+import { teamFromIndex } from '../../scripts/catalog-payloads.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -488,6 +488,25 @@ export const pochPage = (rows, entries = []) =>
   `<script>self.__next_f.push([1,${JSON.stringify(
     `a:${JSON.stringify({ entries, x: rows })}`
   )}])</script>`;
+export const pokedbRoster = [
+  ['0730-00', 'オボンのみ'],
+  ['0448-00', 'ルカリオナイトＺ'],
+  ['0812-00', 'いのちのたま'],
+  ['1018-00', 'たつじんのおび'],
+  ['0199-01', ''],
+  ['0445-00', '持ち物なし'],
+].map(([id, item]) => ({ id, item }));
+export const pokedbFile = (
+  rows = [{ rank: 1, rating_value: 2548.304, team: pokedbRoster }],
+  season = 7
+) =>
+  JSON.stringify({
+    season: `M-${season}`,
+    season_number: season,
+    rule: 'シングル',
+    updated_at: '2026-11-19 13:32:19',
+    teams: rows,
+  });
 
 export async function writeFetchMock(directory, config) {
   const configPath = join(directory, 'fetch-mock.json');

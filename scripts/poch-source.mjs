@@ -3,6 +3,8 @@ import { parse } from 'parse5';
 import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import { exportPaste, setText } from '../src/lib/workbench.ts';
+import { isObject as object, reasonError } from './catalog-sources.mjs';
+import { regulationFromVideoDate } from './youtube-admission.mjs';
 
 export const pochUrl = 'https://poch.ms/en/leaderboard';
 
@@ -23,15 +25,7 @@ const publishedAliases = Object.fromEntries(
   ].map(([published, resolved]) => [normalize(published), resolved])
 );
 
-function fail(reason, message) {
-  const error = new Error(`Poch.ms: ${message}`);
-  error.reason = reason;
-  throw error;
-}
-
-function object(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+const fail = reasonError('Poch.ms');
 
 function sourceData(html) {
   if (typeof html !== 'string') fail('invalid_source', 'HTML must be a string');
@@ -233,10 +227,13 @@ function catalogTeam(row, tournament, canonicalNames) {
     tournament,
     canonicalNames
   );
+  const singles = row.rule === 'single';
   const reports = [];
   let creator;
   let name;
   let replicaCode = null;
+  let regulation = tournament ? row.format : 'Unknown';
+  let regulationInference;
   if (tournament) {
     creator = text(row.player, 'player', true);
     const event = text(row.event, 'event', true);
@@ -257,7 +254,8 @@ function catalogTeam(row, tournament, canonicalNames) {
     creator = displayName || handle;
     if (!creator) fail('invalid_field', 'displayName or handle is required');
     name =
-      text(row.teamName, 'teamName') || `${creator} — Champions doubles team`;
+      text(row.teamName, 'teamName') ||
+      `${creator} — Champions ${singles ? 'singles' : 'doubles'} team`;
     replicaCode = text(row.code, 'code');
     const sourceUrl = postUrl(row.postUrl);
     const event = text(row.event, 'event');
@@ -275,6 +273,15 @@ function catalogTeam(row, tournament, canonicalNames) {
     if (event) {
       reports.push({ event, rank: ordinal(place || rank), sourceUrl });
     } else {
+      const inferred = singles && regulationFromVideoDate(row.date);
+      if (inferred) {
+        regulation = inferred;
+        regulationInference = {
+          method: 'post-date',
+          publishedAt: row.date,
+          sourceUrl,
+        };
+      }
       if (rank)
         reports.push({
           event: 'Champions ranked battles',
@@ -307,7 +314,7 @@ function catalogTeam(row, tournament, canonicalNames) {
     sheetIds: [],
     name,
     creator,
-    regulation: tournament ? row.format : 'Unknown',
+    regulation,
     publishedAt,
     pasteUrl: '',
     replicaCode,
@@ -321,6 +328,8 @@ function catalogTeam(row, tournament, canonicalNames) {
       ? exportPaste(members)
       : null,
     pasteNotes: null,
+    ...(regulationInference && { regulationInference }),
+    ...(singles && { format: 'singles' }),
   };
 }
 
@@ -354,10 +363,6 @@ export function parsePoch(html, canonicalNames = new Map()) {
         seen.set(key, row);
         if (!['single', 'double'].includes(row.rule))
           fail('invalid_rule', 'Record rule must be single or double');
-        if (row.rule === 'single') {
-          skipped.push({ id: row.id, source, reason: 'unsupported_rule' });
-          continue;
-        }
         if (tournament) {
           const format = text(row.format, 'format', true);
           if (!['M-A', 'M-B', 'M-C'].includes(format)) {
@@ -381,7 +386,7 @@ export function parsePoch(html, canonicalNames = new Map()) {
     }
   }
   if (supported && !teams.length)
-    fail('invalid_source', 'Every supported doubles record was rejected');
+    fail('invalid_source', 'Every supported record was rejected');
   if (!supported && invalidDiscriminators)
     fail(
       'invalid_source',

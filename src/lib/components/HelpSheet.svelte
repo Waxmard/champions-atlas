@@ -26,6 +26,11 @@
       body: 'Stat points: 66 per Pokémon, up to 32 in one stat.',
     },
     {
+      id: 'ev-spreads',
+      title: 'EV spreads',
+      body: "Some shared teams don't list EVs. Open Filters in Browse or Wishlist and turn on With EVs only to list only teams where all six Pokémon have them.",
+    },
+    {
       id: 'nature',
       title: 'Nature',
       body: 'Raises one stat by 10% and lowers another.',

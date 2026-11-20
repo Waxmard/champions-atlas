@@ -5,8 +5,12 @@
   import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
+  import Bookmark from '@lucide/svelte/icons/bookmark';
+  import Folder from '@lucide/svelte/icons/folder';
   import Save from '@lucide/svelte/icons/save';
   import Star from '@lucide/svelte/icons/star';
+  import { battleFormats, type BattleFormat } from '#lib/battle-format.js';
+  import WithEvsToggle from '#lib/components/WithEvsToggle.svelte';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SavedTeamEditor from '#lib/components/SavedTeamEditor.svelte';
   import WishlistList from '#lib/components/WishlistList.svelte';
@@ -26,6 +30,7 @@
     saveCurrentSets,
     unrecordedMembers,
   } from '#lib/current-sets.js';
+  import { hasCompleteEvs } from '#lib/paste.js';
   import { notify } from '#lib/notifications.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
@@ -39,6 +44,7 @@
     readSavedTeams,
     savedFavoritesKey,
     savedSortKey,
+    wishlistEvsKey,
     wishlistSortKey,
     type SavedTeam,
   } from '#lib/workbench.js';
@@ -51,6 +57,8 @@
     useTeam,
     removeTeam,
     empty,
+    emptyTitle,
+    emptyAction,
     setFavorite,
     setCurrent,
     busy = false,
@@ -63,15 +71,18 @@
     shareRecovery,
   }: {
     collection: 'wishlist' | 'saved';
-    orderTeams: (teams: SavedTeam[]) => SavedTeam[];
+    orderTeams: (teams: SavedTeam[], format: BattleFormat) => SavedTeam[];
     reorderTeams: (
       storage: Storage,
       orderedIds: string[],
-      expectedIds: string[]
+      expectedIds: string[],
+      format: BattleFormat
     ) => SavedTeam[] | null;
     useTeam?: (storage: Storage, id: string) => SavedTeam;
     removeTeam: (storage: Storage, id: string) => void;
     empty: string;
+    emptyTitle: string;
+    emptyAction?: Snippet;
     busy?: boolean;
     setFavorite?: (
       storage: Storage,
@@ -88,13 +99,15 @@
     storageError?: string;
     errorMessage?: string;
     inlineError?: boolean;
-    importForm?: Snippet;
+    importForm?: Snippet<[boolean]>;
     shareRecovery?: Snippet;
   } = $props();
 
   let entries = $state<SavedTeam[]>([]);
+  let otherFormat = $state<BattleFormat | null>(null);
   let filters = $state<MemberFilter[]>([]);
   let favoritesOnly = $state(false);
+  let withEvsOnly = $state(false);
   type Sort = 'manual' | 'record' | 'vp';
   let sort = $state<Sort>('manual');
   const sortKey = $derived(
@@ -114,18 +127,24 @@
       ? value
       : 'manual';
   const currentSets = createCurrentSetRegistry();
-  const filtered = $derived(filters.length > 0 || favoritesOnly);
+  const filtered = $derived(filters.length > 0 || favoritesOnly || withEvsOnly);
+  const toggles = $derived(
+    withEvsOnly
+      ? [{ label: 'With EVs only', onremove: () => setWithEvsOnly(false) }]
+      : []
+  );
   const pickerTeams = $derived(entries.map(displaySavedTeam));
   const visibleEntries = $derived.by(() => {
     const matching = entries.filter(
       (entry) =>
         matchesTeam(entry, filters) &&
-        (!favoritesOnly || entry.favorite || entry.current)
+        (!favoritesOnly || entry.favorite || entry.current) &&
+        (!withEvsOnly || hasCompleteEvs(entry))
     );
     return sort === 'record'
       ? sortByWinRate(matching)
       : sort === 'vp'
-        ? sortByVpCost(matching, currentSets.sets, catalogState.catalog)
+        ? sortByVpCost(matching, currentSets.sets)
         : matching;
   });
   const unrecorded = $derived(
@@ -140,6 +159,9 @@
   const label = $derived(collection === 'saved' ? 'Saved' : 'Wishlist');
   const route = $derived(`/${collection}`);
   const selectedId = $derived(page.url.searchParams.get('team'));
+  const showEmpty = $derived(
+    selectedId === null && loaded && !storageError && !entries.length
+  );
   const selectedEntry = $derived(
     entries.find((entry) => entry.id === selectedId)
   );
@@ -181,10 +203,18 @@
 
   export function refresh() {
     try {
-      entries = orderTeams(readSavedTeams(localStorage));
+      const saved = readSavedTeams(localStorage);
+      entries = orderTeams(saved, catalogState.format);
+      otherFormat =
+        battleFormats.find(
+          (format) =>
+            format !== catalogState.format &&
+            orderTeams(saved, format).length > 0
+        ) ?? null;
       storageError = '';
     } catch {
       entries = [];
+      otherFormat = null;
       storageError =
         'Saved teams could not be read. Check app storage access. Existing data has been left untouched.';
     }
@@ -225,23 +255,52 @@
     }
   }
 
+  function readWithEvsOnly(): boolean {
+    try {
+      return localStorage.getItem(wishlistEvsKey) === '1';
+    } catch {
+      return false;
+    }
+  }
+
+  function setWithEvsOnly(value: boolean) {
+    withEvsOnly = value;
+    try {
+      localStorage.setItem(wishlistEvsKey, value ? '1' : '0');
+    } catch {
+      return;
+    }
+  }
+
   onMount(() => {
     ready = true;
     sort = readSort();
     if (setFavorite) favoritesOnly = readFavoritesOnly();
+    if (collection === 'wishlist') withEvsOnly = readWithEvsOnly();
     refresh();
   });
 
   $effect(() => {
     void sync.revision;
+    void catalogState.format;
     if (ready) untrack(refresh);
+  });
+
+  $effect(() => {
+    void catalogState.format;
+    untrack(() => (filters = []));
   });
 
   function reorder(orderedIds: string[], expectedIds: string[]): boolean {
     errorMessage = '';
     inlineError = false;
     try {
-      const next = reorderTeams(localStorage, orderedIds, expectedIds);
+      const next = reorderTeams(
+        localStorage,
+        orderedIds,
+        expectedIds,
+        catalogState.format
+      );
       refresh();
       if (next) void pushNow();
       return true;
@@ -266,7 +325,7 @@
       }
       const members = unrecordedMembers(
         readCurrentSets(localStorage),
-        orderTeams(readSavedTeams(localStorage))
+        orderTeams(readSavedTeams(localStorage), catalogState.format)
       );
       if (!members.length) {
         currentSets.refresh();
@@ -408,6 +467,10 @@
   >
 </svelte:head>
 
+{#snippet evControls()}
+  <WithEvsToggle pressed={withEvsOnly} onchange={setWithEvsOnly} />
+{/snippet}
+
 {#snippet alert(message: string)}
   <p
     role="alert"
@@ -422,10 +485,13 @@
   <p class="mt-6 text-[0.9375rem] text-base-content/70">Loading {label}…</p>
 {/snippet}
 
-<main id="main" class="app-container pt-2 pb-8 sm:pb-12">
+<main
+  id="main"
+  class="app-container pt-2 pb-8 sm:pb-12 {showEmpty ? 'flex flex-col' : ''}"
+>
   <div bind:this={listRegion} data-page-under hidden={selectedId !== null}>
     <h1 class="sr-only">{label}</h1>
-    {@render importForm?.()}
+    {@render importForm?.(showEmpty)}
     {#if unrecorded.length}
       <Button
         type="button"
@@ -456,7 +522,9 @@
         <PokemonFilters
           teams={pickerTeams}
           {filters}
+          {toggles}
           onchange={(next) => (filters = next)}
+          controls={collection === 'wishlist' ? evControls : undefined}
         />
         <div
           class="mt-5 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 border-b pb-1.5"
@@ -466,9 +534,8 @@
             aria-atomic="true"
             class="value font-semibold tracking-wide"
           >
-            {visibleEntries.length} matching {visibleEntries.length === 1
-              ? 'team'
-              : 'teams'}
+            {visibleEntries.length} matching {catalogState.format}
+            {visibleEntries.length === 1 ? 'team' : 'teams'}
           </p>
           <div class="flex flex-wrap items-center gap-1">
             <SortMenu
@@ -507,7 +574,9 @@
               ? `Switch to Manual order to reorder ${label}.`
               : favoritesOnly
                 ? 'Turn off Favorites to reorder Saved.'
-                : `Clear filters to reorder ${label}.`}
+                : withEvsOnly
+                  ? 'Turn off With EVs only to reorder Wishlist.'
+                  : `Clear filters to reorder ${label}.`}
           </p>
         {/if}
         {#if visibleEntries.length}
@@ -538,6 +607,21 @@
               onclick={() => setFavoritesOnly(false)}>Show all</Button
             >
           </div>
+        {:else if withEvsOnly && !filters.length}
+          <div class="plate mt-2 max-w-xl px-4 py-3">
+            <h2 class="text-lg leading-tight font-extrabold">
+              No teams with EV spreads
+            </h2>
+            <p class="mt-2 text-[0.9375rem] leading-relaxed">
+              Turn off With EVs only to see every team.
+            </p>
+            <Button
+              type="button"
+              variant="quiet"
+              class="-ms-2 mt-1 min-h-11"
+              onclick={() => setWithEvsOnly(false)}>Show all</Button
+            >
+          </div>
         {:else}
           <div class="plate mt-2 max-w-xl px-4 py-3">
             <h2 class="text-lg leading-tight font-extrabold">
@@ -548,15 +632,43 @@
             </p>
           </div>
         {/if}
-      {:else}
-        <p
-          class="plate mt-2 max-w-xl px-4 py-3 text-[0.9375rem] leading-relaxed"
-        >
-          {empty}
-        </p>
       {/if}
     {/if}
   </div>
+  {#if showEmpty}
+    {@const EmptyIcon = collection === 'saved' ? Folder : Bookmark}
+    <section
+      aria-labelledby="collection-empty"
+      class="flex flex-1 flex-col items-center justify-center py-10 text-center"
+    >
+      <EmptyIcon class="size-8 text-base-content/40" aria-hidden="true" />
+      <h2
+        id="collection-empty"
+        class="mt-3 font-display text-lg leading-tight font-bold tracking-tight"
+      >
+        {emptyTitle}
+      </h2>
+      <p
+        class="mt-2 max-w-[34ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+      >
+        {empty}
+      </p>
+      <div class="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <Button href={resolve('?browse=all')} variant="primary"
+          >Browse teams</Button
+        >
+        {@render emptyAction?.()}
+      </div>
+      {#if otherFormat}
+        <p class="provenance mt-4 max-w-[34ch]">
+          To see your {otherFormat} teams, set Battle format to {otherFormat ===
+          'singles'
+            ? 'Singles'
+            : 'Doubles'} in Settings.
+        </p>
+      {/if}
+    </section>
+  {/if}
   {#if selectedId !== null}
     {#if !loaded || storageError || !selectedEntry}
       <h1 class="sr-only">{label}</h1>

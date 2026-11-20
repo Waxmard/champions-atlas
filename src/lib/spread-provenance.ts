@@ -18,11 +18,20 @@ const youtubeWatchUrlSchema = textSchema.regex(
   /^https:\/\/www\.youtube\.com\/watch\?v=[A-Za-z0-9_-]{11}$/
 );
 
-export const regulationInferenceSchema = z.object({
-  method: z.literal('video-date'),
-  publishedAt: textSchema.datetime({ offset: true }),
-  sourceUrl: youtubeWatchUrlSchema,
-});
+export const regulationInferenceSchema = z.discriminatedUnion('method', [
+  z.object({
+    method: z.literal('video-date'),
+    publishedAt: textSchema.datetime({ offset: true }),
+    sourceUrl: youtubeWatchUrlSchema,
+  }),
+  z.object({
+    method: z.literal('post-date'),
+    publishedAt: textSchema.datetime({ offset: true }),
+    sourceUrl: textSchema.regex(
+      /^https:\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\/\S+$/
+    ),
+  }),
+]);
 export const spreadSourceSchema = z.object({
   pasteUrl: pasteUrlSchema,
   videoUrls: z.array(youtubeWatchUrlSchema).min(1),

@@ -33,7 +33,6 @@ jobs:
         with:
           path: |
             .cache/catalog
-            .cache/jev
             src/lib/data/catalog.json
             static/sprites
             static/items
@@ -55,17 +54,6 @@ jobs:
           ALLOW_STALE_SOURCE_CACHE: '1'
           REFRESH: ${{ github.event_name == 'workflow_dispatch' && inputs.refresh_history && '1' || '0' }}
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
-      - name: Enrich team tags
-        run: |
-          if [ -z "$TYPESAFE_API_KEY" ]; then
-            echo '::error::TYPESAFE_API_KEY is not configured; refusing to deploy untagged.'
-            exit 1
-          fi
-          npm run enrich:tags
-        env:
-          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
-      - name: Evaluate team tags
-        run: npm run eval:tags
       - name: Build catalog release
         run: npm run publish:catalog
         env:

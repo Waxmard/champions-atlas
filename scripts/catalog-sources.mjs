@@ -33,13 +33,22 @@ function errorWithReason(reason, message, details = {}) {
   return error;
 }
 
+export const reasonError = (prefix) => (reason, message) => {
+  const error = new Error(`${prefix}: ${message}`);
+  error.reason = reason;
+  throw error;
+};
+
+export const isObject = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
 function walk(node, visit) {
   if (!node) return;
   visit(node);
   for (const child of node.childNodes || []) walk(child, visit);
 }
 
-function descendants(node, predicate) {
+export function descendants(node, predicate) {
   const found = [];
   walk(node, (child) => {
     if (predicate(child)) found.push(child);
@@ -47,11 +56,11 @@ function descendants(node, predicate) {
   return found;
 }
 
-function attr(node, name) {
+export function attr(node, name) {
   return node.attrs?.find((entry) => entry.name === name)?.value || '';
 }
 
-function text(node) {
+export function text(node) {
   if (!node) return '';
   if (node.nodeName === '#text') return node.value;
   return (node.childNodes || []).map(text).join('');
@@ -404,7 +413,7 @@ export function parseVictoryRoad(html) {
   return { candidates, skipped };
 }
 
-function classHas(node, name) {
+export function classHas(node, name) {
   return attr(node, 'class').split(/\s+/).includes(name);
 }
 

@@ -340,7 +340,7 @@ test('concurrent Wishlist reorders use per-record local changes and stable ties'
   assert.equal(teamsSnapshot(merged), teamsSnapshot(reversed));
   for (const result of [merged, reversed]) {
     assert.deepEqual(
-      orderedWishlist(result).map(({ id }) => id),
+      orderedWishlist(result, 'doubles').map(({ id }) => id),
       [first, second, 'a']
     );
   }
@@ -505,4 +505,23 @@ test('a recovered team never takes the Current marker', () => {
       { name: 'Remote (recovered)', current: undefined },
     ]
   );
+});
+
+test('merging keeps one Current marker per format', () => {
+  const single = (id) => ({
+    ...team(id),
+    original: { ...team(id).original, format: 'singles' },
+    current: true,
+  });
+  const remote = [
+    { ...team('d1'), current: true },
+    { ...team('d2'), current: true },
+    single('s1'),
+    single('s2'),
+  ];
+  const result = merge([], [], remote);
+  const currents = result.filter((entry) => entry.current).map(({ id }) => id);
+  assert.equal(currents.length, 2);
+  assert.equal(currents.filter((id) => id.startsWith('d')).length, 1);
+  assert.equal(currents.filter((id) => id.startsWith('s')).length, 1);
 });

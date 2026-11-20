@@ -1,14 +1,17 @@
 # Champion's Atlas
 
-Champion's Atlas is an iOS app for browsing and editing Pokémon Champions doubles
-teams from multiple published sources, without claiming legality validation. Its
-packaged UI uses SvelteKit and TypeScript, daisyUI with Tailwind CSS, bits-ui
-primitives, and locally bundled Nunito Variable and Unbounded Variable.
+Champion's Atlas is an iOS app for browsing and editing Pokémon Champions
+doubles and singles teams from multiple published sources, without claiming
+legality validation. Its packaged UI uses SvelteKit and TypeScript, daisyUI
+with Tailwind CSS, bits-ui primitives, and locally bundled Nunito Variable and
+Unbounded Variable.
 
 ## Development
 
 Use the Node 26 LTS environment selected by mise. The development and preview
 servers are local tools for the shared UI, not a supported website or PWA.
+The browser harness does not initialize Firebase, authentication, or sync; use
+the iPhone app to check sign-in and sync.
 Install dependencies and start the loopback server with:
 
 ```sh
@@ -71,8 +74,9 @@ and the dev, build, typecheck, and test hooks generate it when missing. See
 [data sources](docs/data-sources.md#species-movepools).
 
 `npm run sync:ladder` refreshes the checked-in `src/lib/data/ladder-partners.json`
-from the latest Smogon M-C ladder stats, which rank Pokémon suggestions that no
-close catalog team supports.
+from the latest Smogon M-C doubles ladder stats and
+`src/lib/data/ladder-partners-singles.json` from the `gen9championsbssregmc`
+singles file. Both rank Pokémon suggestions that no close catalog team supports.
 
 A full refresh replaces historical records that sources change or remove.
 Offline imports require cached source files and do not disable asset downloads.
@@ -116,50 +120,13 @@ scan failures.
 
 ## Using the app
 
-Browse by Pokémon, regulation, and set filters; filters and position survive
-opening a team and returning. Wishlist has its own Pokémon search over saved
-rosters, which resets on reload. Use the **Wishlist** button on a catalog team to
-add or remove its bookmark; removal immediately deletes that saved copy and its
-edits.
-Clear Wishlist filters to reorder bookmarks with the move up and down controls.
-New bookmarks appear first. Your order persists across reloads and syncs with
-your account.
-From a Poképaste page, share the link to **Champion’s Atlas**, select
-**Save link**, then open Atlas to finish importing it to **Wishlist**. Alternatively,
-choose **Add a Poképaste** on **Wishlist**, then enter a
-`pokepast.es` link or 16-character paste ID. Existing bookmarks and catalog
-matches do not require a fetch; other links require a connection. Importing the
-same link again keeps the existing bookmark and its edits.
+- **Browse** teams by Pokémon, regulation, and set filters. **Settings** holds the **Battle format** choice, **Doubles** or **Singles**. See [Discovery and browsing](docs/product-spec.md#discovery-and-browsing).
+- **Saved** holds your own teams, including custom Showdown imports, and opens each in a full editor.
+- **Wishlist** bookmarks catalog teams and Poképaste links, and a bookmark can move to Saved.
+- Edit sets, revert them, export team text, and record in-game set snapshots.
+- **Log Game Result** is a Shortcuts action that logs a win or loss from Back Tap, the Action Button, or Siri.
 
-Move a saved team between **Wishlist** and **Saved** without losing its edits
-or source history. Separate copies are not merged. To save a catalog team, open
-its details and choose **Save**. To save a bookmark, choose **Save** on
-its Wishlist card. Saved teams open in a full editor from their row. Import a complete six-member
-[Showdown team](https://play.pokemonshowdown.com/teambuilder) through
-**Add custom team** in **Saved**.
-
-Edit saved sets, revert a set to how it was when you opened the team, and
-export current team text. On catalog team details, **Published paste text** preserves
-the published text, while **Copy team** and **Copy published sets** use the enriched
-set export. If clipboard access is unavailable, the actual copied text appears in
-a selectable field. A source video can establish a team's sharing date, but not
-a tournament result. Edited teams never gain new rental codes, and legality
-remains unverified. **Record in-game set** and **Record all in-game sets**
-explicitly record committed sets as snapshots: they change Atlas only, never
-Pokémon Champions. Team edits do not update those snapshots. The **Log Game
-Result** action appears under Champion's Atlas in the Shortcuts app; run it from
-Back Tap, the Action Button, or Siri ("Log a game in Champion's Atlas") to log a
-win or a loss for your current team in Saved (the first team in Saved order when
-none is current) without leaving your game. Shortcuts shows the updated record.
-
-Saving requires app-local storage; clearing it removes local saved data. With
-Firebase configured, native Google sign-in is required and syncs saved teams, their
-originals, and current-set snapshots across devices. Without configuration, the
-app runs local-only. Browse preferences remain device-local. Check offline access
-on the device; synchronization requires a connection.
-
-See the [product specification](docs/product-spec.md) for editing, restoration,
-export, and snapshot contracts.
+Saved, Wishlist, editing, snapshots, and Log Game Result are specified in [Saved teams, similarity, and editing](docs/product-spec.md#saved-teams-similarity-and-editing).
 
 ## Documentation
 

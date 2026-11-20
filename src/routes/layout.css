@@ -96,9 +96,16 @@
 }
 
 body:has(nav[aria-label='Main']) {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
   @variant phone-landscape {
     padding-left: var(--app-rail-width);
   }
+}
+
+body:has(nav[aria-label='Main']) #main {
+  flex: 1 0 auto;
 }
 
 @theme inline {

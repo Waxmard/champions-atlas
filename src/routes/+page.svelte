@@ -6,10 +6,11 @@
   import { onMount } from 'svelte';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import BookmarkCheck from '@lucide/svelte/icons/bookmark-check';
-  import Filter from '@lucide/svelte/icons/filter';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SortMenu from '#lib/components/SortMenu.svelte';
   import TeamCard from '#lib/components/TeamCard.svelte';
+  import WithEvsToggle from '#lib/components/WithEvsToggle.svelte';
+  import { hasCompleteEvs } from '#lib/paste.js';
   import { browseStorageKey, type SavedTeam } from '#lib/workbench.js';
   import { notify } from '#lib/notifications.js';
   import {
@@ -30,13 +31,12 @@
     type Team,
   } from '#lib/catalog.js';
   import { sortByVpCost } from '#lib/vp-cost.js';
-  const browseKeys = ['member', 'page', 'new', 'unknown', 'sort'];
+  const browseKeys = ['member', 'page', 'new', 'unknown', 'evs', 'sort'];
   const browseSortOptions = [
     ['default', 'Best results'],
     ['vp', 'VP spend'],
   ] as const;
   let storageError = $state(false);
-  let filtersOpen = $state(false);
   let ready = $state(false);
   let saved = $state.raw<SavedTeam[]>([]);
   let savedError = $state('');
@@ -62,6 +62,7 @@
   const filters = $derived(filterState.filters);
   const unknownOnly = $derived(page.url.searchParams.get('unknown') === '1');
   const newOnly = $derived(page.url.searchParams.get('new') === '1');
+  const withEvsOnly = $derived(page.url.searchParams.get('evs') === '1');
   const toggles = $derived([
     ...(newOnly
       ? [{ label: 'New teams only', onremove: () => changeOption('new', '') }]
@@ -74,19 +75,10 @@
           },
         ]
       : []),
+    ...(withEvsOnly
+      ? [{ label: 'With EVs only', onremove: () => changeOption('evs', '') }]
+      : []),
   ]);
-  const filterCount = $derived(
-    filters.reduce(
-      (count, { item, ability, move }) =>
-        count +
-        Number(!!item.trim()) +
-        Number(!!ability.trim()) +
-        Number(!!move.trim()),
-      0
-    ) +
-      Number(unknownOnly) +
-      Number(newOnly)
-  );
   const sortByVp = $derived(page.url.searchParams.get('sort') === 'vp');
   const results = $derived.by(() => {
     if (filterState.error) return [];
@@ -95,10 +87,11 @@
         (team) =>
           (!unknownOnly || team.regulation === 'Unknown') &&
           (!newOnly || catalogState.freshIds.has(team.id)) &&
+          (!withEvsOnly || hasCompleteEvs(team)) &&
           matchesTeam(team, filters)
       )
       .sort((a, b) => compareBrowseTeams(a, b, current));
-    return sortByVp ? sortByVpCost(ranked, currentSets.sets, catalog) : ranked;
+    return sortByVp ? sortByVpCost(ranked, currentSets.sets) : ranked;
   });
   const pageSize = 8;
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / pageSize)));
@@ -125,6 +118,7 @@
 
     if (params.get('new') === '1') result.set('new', '1');
     if (params.get('unknown') === '1') result.set('unknown', '1');
+    if (params.get('evs') === '1') result.set('evs', '1');
     if (params.get('sort') === 'vp') result.set('sort', 'vp');
 
     return result;
@@ -246,28 +240,7 @@
       {savedError || actionError}
     </p>{/if}
 
-  <PokemonFilters
-    {teams}
-    {filters}
-    {toggles}
-    onchange={changeFilters}
-    expanded={filtersOpen}
-    onclose={() => (filtersOpen = false)}
-  >
-    {#snippet actions()}
-      <Button
-        type="button"
-        variant="quiet"
-        class="shrink-0 max-sm:h-11 max-sm:min-w-11 max-sm:px-1"
-        aria-haspopup="dialog"
-        onclick={() => (filtersOpen = true)}
-      >
-        <Filter class="size-4" aria-hidden="true" />
-        <span class="max-sm:sr-only">Filters</span>
-        {#if filterCount}<span class="badge badge-primary">{filterCount}</span
-          >{/if}
-      </Button>
-    {/snippet}
+  <PokemonFilters {teams} {filters} {toggles} onchange={changeFilters}>
     {#snippet controls()}
       {#if catalogState.freshIds.size || newOnly}
         <label class="flex min-h-11 cursor-pointer items-center gap-3">
@@ -291,6 +264,10 @@
         />
         <span class="font-semibold">Unknown regulation only</span>
       </label>
+      <WithEvsToggle
+        pressed={withEvsOnly}
+        onchange={(value) => changeOption('evs', value ? '1' : '')}
+      />
     {/snippet}
   </PokemonFilters>
 
@@ -302,6 +279,7 @@
         class="value font-semibold tracking-wide"
       >
         {results.length}
+        {catalogState.format}
         {results.length === 1 ? 'team' : 'teams'}
       </p>
       <div class="flex flex-wrap items-center gap-1">
@@ -312,7 +290,7 @@
           onchange={(value) => changeOption('sort', value === 'vp' ? 'vp' : '')}
           disabled={currentSets.sets?.length ? undefined : 'vp'}
         />
-        {#if filters.length || unknownOnly || newOnly || filterState.error}<Button
+        {#if filters.length || unknownOnly || newOnly || withEvsOnly || filterState.error}<Button
             type="button"
             variant="quiet"
             disabled={!ready}
@@ -410,7 +388,9 @@
               ? 'No new teams match. Turn off New teams only or remove a filter.'
               : unknownOnly
                 ? 'No teams with an unknown regulation match. Turn off Unknown regulation only or remove a filter.'
-                : 'Try removing a Pokémon or one of its item, ability, or move filters.')}
+                : withEvsOnly
+                  ? 'No teams with EV spreads match. Turn off With EVs only or remove a filter.'
+                  : 'Try removing a Pokémon or one of its item, ability, or move filters.')}
         </p>
         <Button
           type="button"

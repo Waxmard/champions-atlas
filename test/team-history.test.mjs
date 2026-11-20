@@ -102,7 +102,8 @@ test('legacy origin defaults without inventing it and retains custom starting me
         'P' +
         i +
         ' @ Item\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- One\n- Two\n- Three\n- Four'
-    ).join('\n\n')
+    ).join('\n\n'),
+    'doubles'
   );
   assert.equal(custom.origin, 'custom');
   assert.deepEqual(custom.original.sheetIds, []);
@@ -208,7 +209,8 @@ test('custom and legacy starting originals survive edits without inferred origin
         'Pokemon' +
         i +
         ' @ Item\nAbility: Ability\nEVs: 32 HP\nAdamant Nature\n- One\n- Two\n- Three\n- Four'
-    ).join('\n\n')
+    ).join('\n\n'),
+    'doubles'
   );
   const legacy = newSavedTeam(sourceTeam());
   delete legacy.origin;

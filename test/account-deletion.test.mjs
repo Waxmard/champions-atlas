@@ -80,8 +80,18 @@ const seed = async (uid, { teams = 0, sets = 0, tokens = 0 } = {}) => {
       entries: [],
       updatedAt,
     }),
+    setDoc(doc(parent, 'profile', 'settings'), {
+      schemaVersion: 1,
+      format: 'singles',
+      at: 1,
+      updatedAt,
+    }),
     ...Array.from({ length: tokens }, (_, i) =>
-      setDoc(doc(db, 'pushTokens', tokenId(uid, i)), { uid, updatedAt })
+      setDoc(doc(db, 'pushTokens', tokenId(uid, i)), {
+        uid,
+        updatedAt,
+        ...(i === 0 && { format: 'singles' }),
+      })
     ),
   ]);
   return { teamIds, setIds };
@@ -124,6 +134,7 @@ test(
       await exists('users', 'alice', 'catalogState', 'regulations'),
       false
     );
+    assert.equal(await exists('users', 'alice', 'profile', 'settings'), false);
     assert.equal(await size(collection(admin(), 'users', 'alice', 'teams')), 0);
     assert.equal(
       await size(collection(admin(), 'users', 'alice', 'pokemonSets')),
@@ -137,6 +148,7 @@ test(
       true
     );
     assert.equal(await exists('pushTokens', tokenId('bob', 0)), true);
+    assert.equal(await exists('users', 'bob', 'profile', 'settings'), true);
   }
 );
 
@@ -203,6 +215,28 @@ test('refuses sync failure reports for another account', { skip }, async () => {
   });
   await assert.rejects(
     getDocs(collection(client('anon-reports'), 'syncFailures')),
+    { code: 'permission-denied' }
+  );
+});
+
+test('accepts only known battle formats', { skip }, async () => {
+  const updatedAt = serverTimestamp();
+  const settings = doc(as('judy'), 'users', 'judy', 'profile', 'settings');
+  const token = doc(as('judy'), 'pushTokens', tokenId('judy', 0));
+
+  await setDoc(settings, {
+    schemaVersion: 1,
+    format: 'singles',
+    at: 1,
+    updatedAt,
+  });
+  await setDoc(token, { uid: 'judy', format: 'singles', updatedAt });
+  await assert.rejects(
+    setDoc(settings, { schemaVersion: 1, format: 'triples', at: 2, updatedAt }),
+    { code: 'permission-denied' }
+  );
+  await assert.rejects(
+    setDoc(token, { uid: 'judy', format: 'triples', updatedAt }),
     { code: 'permission-denied' }
   );
 });

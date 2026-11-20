@@ -14,10 +14,13 @@ export interface SpreadSource {
   borrowedNature: boolean;
 }
 export interface RegulationInference {
-  method: 'video-date';
+  method: 'video-date' | 'post-date';
   publishedAt: string;
   sourceUrl: string;
 }
+
+export const inferenceSource = (method: RegulationInference['method']) =>
+  method === 'post-date' ? 'post' : 'video';
 
 export interface Member {
   // Saved-team members may retain unknown per-member metadata; the index
@@ -57,6 +60,7 @@ export interface Team {
   pasteError?: string;
   regulationInference?: RegulationInference;
   regulationSetByUser?: true;
+  format?: 'singles';
   mergedIds?: string[];
 }
 
@@ -79,6 +83,7 @@ export function normalize(text: string): string {
 export const megaStoneTargets = (item: string) =>
   Generations.get(0).items.get(normalize(item) as ID)?.megaStone;
 
+export const catalogManifestPath = '/catalog/manifest-v2.json';
 export const MAX_TEAM_MEGAS = 2;
 export const isMegaSpecies = (pokemon: string) =>
   /-Mega(-[XYZ])?$/i.test(pokemon.trim());

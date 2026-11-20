@@ -4,6 +4,7 @@ import {
   readSavedTeams,
   type SavedTeam,
 } from './workbench.ts';
+import { battleFormats } from './battle-format.ts';
 import { orderedSaved } from './team-collections.ts';
 import { canonicalSnapshot } from './team-history.ts';
 const roomError =
@@ -161,9 +162,13 @@ export function mergeSavedTeams(
   }
   if (result.length + recovered.length > 50) throw new Error(roomError);
   const merged = validatedTeams([...result, ...recovered]);
-  const current = orderedSaved(merged).find((team) => team.current)?.id;
+  const currents = new Set(
+    battleFormats.map(
+      (format) => orderedSaved(merged, format).find((team) => team.current)?.id
+    )
+  );
   return merged.map((team) => {
-    if (!team.current || team.id === current) return team;
+    if (!team.current || currents.has(team.id)) return team;
     const rest = { ...team };
     delete rest.current;
     return rest;

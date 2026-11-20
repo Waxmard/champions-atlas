@@ -183,11 +183,18 @@ test('Wishlist ordering persists safely through edits and collection changes', (
     },
   };
   const order = () =>
-    collections.orderedWishlist(readSavedTeams(storage)).map(({ id }) => id);
+    collections
+      .orderedWishlist(readSavedTeams(storage), 'doubles')
+      .map(({ id }) => id);
   const before = readSavedTeams(storage);
   assert.deepEqual(order(), ['C', 'B', 'A']);
   assert.equal(writes, 0);
-  const after = collections.reorderWishlist(storage, ['A', 'C', 'B'], order());
+  const after = collections.reorderWishlist(
+    storage,
+    ['A', 'C', 'B'],
+    order(),
+    'doubles'
+  );
   assert.deepEqual(order(), ['A', 'C', 'B']);
   assert.equal(writes, 1);
   assert.deepEqual(
@@ -199,7 +206,7 @@ test('Wishlist ordering persists safely through edits and collection changes', (
     delete actual.wishlistOrder;
     assert.deepEqual(actual, entry);
   }
-  collections.reorderWishlist(storage, order(), order());
+  collections.reorderWishlist(storage, order(), order(), 'doubles');
   assert.equal(writes, 1);
   const mine = before[1];
   saveTeam(storage, { ...mine, name: 'Renamed', wishlistOrder: 88 });
@@ -249,7 +256,7 @@ test('Wishlist reorder rejects stale and invalid lists without writing', () => {
   const staleMessage = 'Wishlist changed elsewhere. Refresh before reordering.';
   const rejects = (proposed, baseline, message) =>
     assert.throws(
-      () => collections.reorderWishlist(s, proposed, baseline),
+      () => collections.reorderWishlist(s, proposed, baseline, 'doubles'),
       (error) =>
         error instanceof collections.SavedTeamError && error.message === message
     );
@@ -282,13 +289,13 @@ test('Wishlist reorder preserves data on corrupt or unavailable storage', () => 
     },
   };
   assert.throws(
-    () => collections.reorderWishlist(quota, ['A', 'B'], ['B', 'A']),
+    () => collections.reorderWishlist(quota, ['A', 'B'], ['B', 'A'], 'doubles'),
     /quota/
   );
   assert.equal(s.getItem(storageKey), initial);
   const corrupt = { getItem: () => '{', setItem: () => assert.fail() };
   assert.throws(
-    () => collections.reorderWishlist(corrupt, [], []),
+    () => collections.reorderWishlist(corrupt, [], [], 'doubles'),
     SyntaxError
   );
   const unavailable = {
@@ -298,14 +305,14 @@ test('Wishlist reorder preserves data on corrupt or unavailable storage', () => 
     setItem: () => assert.fail(),
   };
   assert.throws(
-    () => collections.reorderWishlist(unavailable, [], []),
+    () => collections.reorderWishlist(unavailable, [], [], 'doubles'),
     /unavailable/
   );
   for (const wishlistOrder of [0.5, Number.MAX_SAFE_INTEGER + 1, '1', null]) {
     const broken = JSON.stringify([{ ...bookmark('bad'), wishlistOrder }]);
     const unreadable = { getItem: () => broken, setItem: () => assert.fail() };
     assert.throws(
-      () => collections.reorderWishlist(unreadable, [], []),
+      () => collections.reorderWishlist(unreadable, [], [], 'doubles'),
       /untouched/
     );
   }
@@ -318,7 +325,8 @@ test('equal Wishlist ranks sort by IDs independently of input order', () => {
     collection: 'wishlist',
     wishlistOrder: 1,
   }));
-  const ids = (teams) => collections.orderedWishlist(teams).map(({ id }) => id);
+  const ids = (teams) =>
+    collections.orderedWishlist(teams, 'doubles').map(({ id }) => id);
   assert.deepEqual(ids(entries), ['a', 'b', 'c']);
   assert.deepEqual(ids(entries.toReversed()), ids(entries));
 });

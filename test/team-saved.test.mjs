@@ -82,13 +82,13 @@ test('Saved lists every non-Wishlist team, reorders and deletes', () => {
     { ...snapshot('b'), collection: 'saved' },
     wish('w'),
   ]);
-  const ids = () => orderedSaved(readSavedTeams(s)).map((x) => x.id);
+  const ids = () => orderedSaved(readSavedTeams(s), 'doubles').map((x) => x.id);
   const all = ids();
   assert.deepEqual([...all].sort(), ['a', 'b']);
   const reversed = [...all].reverse();
-  reorderSaved(s, reversed, all);
+  reorderSaved(s, reversed, all, 'doubles');
   assert.deepEqual(ids(), reversed);
-  assert.throws(() => reorderSaved(s, all, all), /Saved changed/);
+  assert.throws(() => reorderSaved(s, all, all, 'doubles'), /Saved changed/);
   assert.equal(
     removeSavedTeam(s, 'a').some((x) => x.id === 'a'),
     false
@@ -147,13 +147,13 @@ test('favorite is a flag on current and Saved-only teams', () => {
   moveSavedTeamToWishlist(s, 'a', teamBaseline(a));
   assert.equal(useWishlistedTeam(s, 'a').favorite, true);
   assert.deepEqual(
-    favoriteTeams(readSavedTeams(s))
+    favoriteTeams(readSavedTeams(s), 'doubles')
       .map((team) => team.id)
       .sort(),
     ['a', 'b']
   );
   assert.deepEqual(
-    orderedSaved(readSavedTeams(s))
+    orderedSaved(readSavedTeams(s), 'doubles')
       .map((team) => team.id)
       .sort(),
     ['a', 'b']
@@ -193,16 +193,16 @@ test('Shortcut results add to saved records once and name the current team', () 
     false
   );
   assert.equal(s.writes, 1);
-  assert.equal(shortcutTeam(s).id, 'b');
+  assert.equal(shortcutTeam(s, 'doubles').id, 'b');
   setCurrentTeam(s, 'a', true);
-  reorderSaved(s, ['b', 'a'], ['a', 'b']);
-  assert.deepEqual(shortcutTeam(s), {
+  reorderSaved(s, ['b', 'a'], ['a', 'b'], 'doubles');
+  assert.deepEqual(shortcutTeam(s, 'doubles'), {
     id: 'a',
     name: 'Rain',
     wins: 9999,
     losses: 3,
   });
-  assert.equal(shortcutTeam(storage()), null);
+  assert.equal(shortcutTeam(storage(), 'doubles'), null);
 });
 
 test('Win rate sort ranks by rate, then games, and leaves unplayed teams last in manual order', () => {
@@ -225,11 +225,11 @@ test('Win rate sort ranks by rate, then games, and leaves unplayed teams last in
 
 test('A newly saved team goes to the top of a manually ordered Saved list', () => {
   const s = storage([snapshot('a'), snapshot('b')]);
-  const before = orderedSaved(readSavedTeams(s)).map(({ id }) => id);
-  reorderSaved(s, before.toReversed(), before);
+  const before = orderedSaved(readSavedTeams(s), 'doubles').map(({ id }) => id);
+  reorderSaved(s, before.toReversed(), before, 'doubles');
   saveTeam(s, snapshot('c'));
   assert.deepEqual(
-    orderedSaved(readSavedTeams(s)).map(({ id }) => id),
+    orderedSaved(readSavedTeams(s), 'doubles').map(({ id }) => id),
     ['c', ...before.toReversed()]
   );
 });
@@ -243,12 +243,13 @@ test('Current team goes to the top and returns to its win rate spot', () => {
     { ...snapshot('e'), record: { wins: 4, losses: 0 } },
     wish('w'),
   ]);
-  const ids = () => orderedSaved(readSavedTeams(s)).map(({ id }) => id);
+  const ids = () =>
+    orderedSaved(readSavedTeams(s), 'doubles').map(({ id }) => id);
   const current = () =>
     readSavedTeams(s)
       .filter((team) => team.current)
       .map(({ id }) => id);
-  reorderSaved(s, ['a', 'd', 'b', 'c', 'e'], ids());
+  reorderSaved(s, ['a', 'd', 'b', 'c', 'e'], ids(), 'doubles');
 
   setCurrentTeam(s, 'e', true);
   assert.deepEqual(ids(), ['e', 'a', 'd', 'b', 'c']);
@@ -280,5 +281,5 @@ test('Moving the current team to Wishlist clears the marker', () => {
   const a = readSavedTeams(s).find(({ id }) => id === 'a');
   const moved = moveSavedTeamToWishlist(s, 'a', teamBaseline(a));
   assert.equal(Object.hasOwn(moved, 'current'), false);
-  assert.equal(shortcutTeam(s).id, 'b');
+  assert.equal(shortcutTeam(s, 'doubles').id, 'b');
 });

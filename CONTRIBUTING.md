@@ -33,7 +33,7 @@ Always open one — even for small changes.
 
 A [CODEOWNER](.github/CODEOWNERS) is auto-requested on every PR. This is currently a solo
 repo and the branch ruleset requires 0 approvals, so that request is routing rather than a
-blocking gate — the bot-first review (`pr-review-toolkit`) runs before any human pass.
+blocking gate — the bot-first review ([Claude Review](.github/workflows/claude.yml)) runs before any human pass.
 
 ## Deploys & Releases
 
@@ -43,5 +43,4 @@ tag, bumps the version, updates `CHANGELOG.md`, and tags the release
 matters: every commit on `main` is read by the release tooling.
 
 See [iOS installation and Firebase sync](docs/firebase.md#secrets-and-continuous-integration)
-for release delivery and configuration. A local Xcode install does not deploy Firestore
-rules.
+for release delivery and configuration.

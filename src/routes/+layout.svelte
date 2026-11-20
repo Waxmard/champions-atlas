@@ -11,7 +11,7 @@
     type NavigationTarget,
   } from '$app/navigation';
   import { page } from '$app/state';
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import type { PathnameWithSearchOrHash, ResolvedPathname } from '$app/types';
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Search from '@lucide/svelte/icons/search';
@@ -23,6 +23,7 @@
   import SettingsSheet from '#lib/components/SettingsSheet.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
   import {
+    catalogState,
     initCatalogRuntime,
     refreshCatalogNow,
   } from '#lib/catalog-runtime.svelte.js';
@@ -31,6 +32,9 @@
   import {
     applyGameResults,
     liveSavedTeam,
+    savedFormat,
+    savedOpenTeam,
+    savedOpenTeamKey,
     shortcutTeam,
   } from '#lib/team-collections.js';
   import { normalizeInitialUrl } from '#lib/initial-url.js';
@@ -72,7 +76,6 @@
       .join('') || '?'
   );
   const lastPageKey = 'champions-atlas:last-page:v1';
-  const savedTeamKey = 'champions-atlas:saved-open-team:v1';
   const lastScrollKey = 'champions-atlas:last-scroll:v1';
   const authReturnKey = 'champions-atlas:auth-return:v1';
   const authReturnSourceKey = 'champions-atlas:auth-return-source:v1';
@@ -155,25 +158,27 @@
     }
   }
 
-  function trackSavedTeam(from: NavigationTarget | null, to: NavigationTarget) {
-    let id = savedTeamId;
-    if (!from) {
-      try {
-        id = localStorage.getItem(savedTeamKey);
-      } catch {
-        id = null;
-      }
+  function openTeamId(): string | null {
+    try {
+      return savedOpenTeam(localStorage, catalogState.format);
+    } catch {
+      return null;
     }
-    if (to.route.id === '/saved') id = to.url.searchParams.get('team') || null;
-    else if (id && from?.route.id !== to.route.id) {
+  }
+
+  function trackSavedTeam(to: NavigationTarget) {
+    if (to.route.id === '/saved') {
+      const id = to.url.searchParams.get('team') || null;
+      let format = catalogState.format;
       try {
-        if (!liveSavedTeam(localStorage, id)) id = null;
+        const team = id ? liveSavedTeam(localStorage, id) : null;
+        if (team) format = savedFormat(team);
       } catch {
-        id = null;
+        format = catalogState.format;
       }
+      updateStorage('local', savedOpenTeamKey(format), id);
     }
-    savedTeamId = id;
-    updateStorage('local', savedTeamKey, id);
+    savedTeamId = openTeamId();
   }
 
   function urlString(
@@ -271,7 +276,7 @@
   function canonicalizing(from: URL, to: URL): boolean {
     if (from.pathname !== to.pathname) return false;
     if (from.pathname === resolve('/'))
-      return !['member', 'page', 'new', 'unknown', 'sort'].some((key) =>
+      return !['member', 'page', 'new', 'unknown', 'evs', 'sort'].some((key) =>
         from.searchParams.has(key)
       );
     return false;
@@ -293,7 +298,7 @@
     swipeReset();
     navigationGeneration++;
     if (!to) return;
-    trackSavedTeam(from, to);
+    trackSavedTeam(to);
     settledUrl = urlString(to.url);
     if (!startupReady) return;
     if (pendingScroll && settledUrl !== pendingScroll.url) {
@@ -443,7 +448,9 @@
 
   async function publishShortcutTeam() {
     if (isNativeApp)
-      await AtlasNative.setActiveTeam({ team: shortcutTeam(localStorage) });
+      await AtlasNative.setActiveTeam({
+        team: shortcutTeam(localStorage, catalogState.format),
+      });
   }
 
   async function syncGameResults() {
@@ -593,6 +600,14 @@
         headerHeight + 'px'
       );
     else document.documentElement.style.removeProperty('--app-header-measured');
+  });
+
+  $effect(() => {
+    void catalogState.format;
+    untrack(() => {
+      savedTeamId = openTeamId();
+      if (startupSettled) void publishShortcutTeam().catch(() => {});
+    });
   });
 </script>
 

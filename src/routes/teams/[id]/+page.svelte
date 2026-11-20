@@ -22,6 +22,7 @@
     bestEvidence,
     evidence,
     evidenceGrade,
+    inferenceSource,
     isPasteUrl,
     listingReason,
     regulationLabel,
@@ -215,8 +216,9 @@
             target="_blank"
             rel="external noreferrer"
           >
-            Regulation inferred from video date ({team.regulationInference
-              .publishedAt})
+            Regulation inferred from {inferenceSource(
+              team.regulationInference.method
+            )} date ({team.regulationInference.publishedAt})
             <ExternalLink class="size-3.5" aria-hidden="true" />
           </a>
         {/if}

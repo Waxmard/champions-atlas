@@ -7,7 +7,7 @@
   import FullSetDialog from '#lib/components/FullSetDialog.svelte';
   import TeamSetGrid from '#lib/components/TeamSetGrid.svelte';
   import { Button } from '#lib/components/ui/button/index.js';
-  import { regulationLabel, type Team } from '#lib/catalog.js';
+  import { inferenceSource, regulationLabel, type Team } from '#lib/catalog.js';
   import { savedTeamHeading } from '#lib/team-collections.js';
   import { copyText } from '#lib/clipboard.js';
   import { notify } from '#lib/notifications.js';
@@ -147,7 +147,9 @@
         target="_blank"
         rel="external noreferrer"
       >
-        Regulation inferred from video date
+        Regulation inferred from {inferenceSource(
+          entry.original.regulationInference.method
+        )} date
       </a>
     {/if}
     {#if entry.original.pasteUrl}

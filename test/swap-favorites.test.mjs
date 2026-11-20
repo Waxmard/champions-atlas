@@ -49,12 +49,7 @@ test('swap ideas rank Favorites with catalog suggestions and fill from weaker fi
     ideas.map((idea) => [idea.pokemon, Boolean(idea.favorite)]);
 
   assert.deepEqual(
-    rows(
-      swapIdeas(draft, [strong('strong')], 'M-C', undefined, 4, [
-        favClose,
-        favWeak,
-      ])
-    ),
+    rows(swapIdeas(draft, [strong('strong')], 'M-C', 4, [favClose, favWeak])),
     [
       ['Weavile', true],
       ['Garchomp', false],
@@ -63,14 +58,10 @@ test('swap ideas rank Favorites with catalog suggestions and fill from weaker fi
   );
   assert.deepEqual(
     rows(
-      swapIdeas(
-        draft,
-        [strong('strong'), strong('strong-2')],
-        'M-C',
-        undefined,
-        4,
-        [favEven, favWeak]
-      )
+      swapIdeas(draft, [strong('strong'), strong('strong-2')], 'M-C', 4, [
+        favEven,
+        favWeak,
+      ])
     ),
     [
       ['Garchomp', false],
@@ -126,7 +117,6 @@ test('Favorite sets rank with catalog rows without averaging and preserve catalo
     catTeams,
     'M-C',
     undefined,
-    undefined,
     '',
     { minShared: 1, limit: 3 },
     [favA, favB, favZero]
@@ -147,7 +137,6 @@ test('Favorite sets rank with catalog rows without averaging and preserve catalo
     catTeams,
     'M-C',
     undefined,
-    undefined,
     'pelip',
     { minShared: 1, limit: 3 },
     [favZero]
@@ -158,14 +147,9 @@ test('Favorite sets rank with catalog rows without averaging and preserve catalo
   assert.ok(swapTargets(teammates, [], 'M-C', [favZero]).includes('Pelipper'));
 
   const roster = [sn, kg, set('Garchomp', { item: 'Rocky Helmet' })];
-  const specific = swapSuggestions(
-    roster,
-    catTeams,
-    'M-C',
-    'Pelipper',
-    undefined,
-    [favZero]
-  );
+  const specific = swapSuggestions(roster, catTeams, 'M-C', 'Pelipper', [
+    favZero,
+  ]);
   assert.equal(specific.length, 3);
   assert.ok(
     specific.every((s) => s.favorite && s.favoriteTeamName === 'Fav Zero')

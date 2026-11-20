@@ -6,7 +6,16 @@ import { normalize } from '../src/lib/catalog.ts';
 
 export const ladderIndex = 'https://www.smogon.com/stats/';
 export const ladderRegulation = 'M-C';
-const ladderFile = 'chaos/gen9championsvgc2026regmc-1760.json';
+const ladderFiles = [
+  [
+    'chaos/gen9championsvgc2026regmc-1760.json',
+    'src/lib/data/ladder-partners.json',
+  ],
+  [
+    'chaos/gen9championsbssregmc-1760.json',
+    'src/lib/data/ladder-partners-singles.json',
+  ],
+];
 const MIN_SHARE = 0.02;
 
 const key = (name) => normalize(battleSpecies(name)?.name ?? name);
@@ -39,31 +48,37 @@ async function main() {
     .map((match) => match[1])
     .sort()
     .reverse();
-  for (const month of months.slice(0, 3)) {
-    const source = `${ladderIndex}${month}/${ladderFile}`;
-    const response = await fetch(source, {
-      signal: AbortSignal.timeout(120000),
-      redirect: 'error',
-    });
-    if (response.status === 404) continue;
-    if (!response.ok) throw new Error(`${response.status} fetching ${source}`);
-    const partners = reducePartners((await response.json()).data ?? {});
-    const forms = Object.keys(partners).length;
-    if (forms < 50) throw new Error(`Only ${forms} forms in ${source}`);
-    const output = resolve('src/lib/data/ladder-partners.json');
-    await writeFile(
-      output,
-      JSON.stringify({
-        source,
-        month,
-        regulation: ladderRegulation,
-        partners,
-      }) + '\n'
-    );
-    console.log(`Wrote ${forms} ladder rows from ${month} to ${output}.`);
-    return;
+  for (const [ladderFile, outputPath] of ladderFiles) {
+    let written = false;
+    for (const month of months.slice(0, 3)) {
+      const source = `${ladderIndex}${month}/${ladderFile}`;
+      const response = await fetch(source, {
+        signal: AbortSignal.timeout(120000),
+        redirect: 'error',
+      });
+      if (response.status === 404) continue;
+      if (!response.ok)
+        throw new Error(`${response.status} fetching ${source}`);
+      const partners = reducePartners((await response.json()).data ?? {});
+      const forms = Object.keys(partners).length;
+      if (forms < 50) throw new Error(`Only ${forms} forms in ${source}`);
+      const output = resolve(outputPath);
+      await writeFile(
+        output,
+        JSON.stringify({
+          source,
+          month,
+          regulation: ladderRegulation,
+          partners,
+        }) + '\n'
+      );
+      console.log(`Wrote ${forms} ladder rows from ${month} to ${output}.`);
+      written = true;
+      break;
+    }
+    if (!written)
+      throw new Error(`No ${ladderFile} in the latest three months`);
   }
-  throw new Error(`No ${ladderFile} in the latest three months`);
 }
 
 if (

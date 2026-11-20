@@ -4,7 +4,6 @@ static/sprites/
 static/items/
 src/lib/data/catalog.json
 src/lib/data/movepools.json
-src/lib/data/team-tags.json
 mise.local.toml
 /.omp/skills/
 firebase-debug.log

@@ -29,6 +29,7 @@ export async function deleteUserData(
     ),
     doc(parent, 'pokemonSetState', 'manifest'),
     doc(parent, 'catalogState', 'regulations'),
+    doc(parent, 'profile', 'settings'),
     parent,
   ];
   const batchSize = 500;

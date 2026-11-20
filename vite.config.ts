@@ -43,8 +43,8 @@ export default defineConfig({
     }),
   ],
   build: {
-    // ponytail: catalog.json (1170 teams) ships as one ~4 MB data chunk for
-    // static/offline use; split members/paste by route if payload ever matters.
+    // ponytail: catalog.json ships as one data chunk for static/offline use;
+    // split members/paste by route if payload ever matters.
     chunkSizeWarningLimit: 5000,
     rolldownOptions: {
       checks: { bundlerTimings: false },

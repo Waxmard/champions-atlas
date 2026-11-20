@@ -24,7 +24,6 @@ jobs:
         with:
           path: |
             .cache/catalog
-            .cache/jev
             src/lib/data/catalog.json
             static/sprites
             static/items
@@ -34,7 +33,7 @@ jobs:
           save-always: true
       - name: Run CI checks
         run: make ci
-      - uses: actions/setup-java@v5
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '21'

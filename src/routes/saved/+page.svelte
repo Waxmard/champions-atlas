@@ -12,11 +12,19 @@
   } from '#lib/team-collections.js';
 </script>
 
-{#snippet importForm()}
-  <Button href={resolve('saved/new')} variant="quiet" class="-ms-2 min-h-11">
+{#snippet addTeam(className: string)}
+  <Button href={resolve('saved/new')} variant="quiet" class={className}>
     <Plus class="size-4" aria-hidden="true" />
     <span>Add custom team</span>
   </Button>
+{/snippet}
+
+{#snippet importForm(empty: boolean)}
+  {#if !empty}{@render addTeam('-ms-2 min-h-11')}{/if}
+{/snippet}
+
+{#snippet emptyAction()}
+  {@render addTeam('')}
 {/snippet}
 
 <CollectionPage
@@ -27,5 +35,7 @@
   setFavorite={setTeamFavorite}
   setCurrent={setCurrentTeam}
   {importForm}
-  empty="No saved teams yet. Choose Save on a team in Browse or Wishlist, or add a custom team."
+  {emptyAction}
+  emptyTitle="No saved teams yet"
+  empty="Choose Save on a team in Browse or Wishlist, or add a custom team."
 />

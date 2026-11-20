@@ -91,6 +91,13 @@ export const eligiblePokemonKeys = Object.freeze([
 if (snapshots.size !== sourceStems.length)
   throw new Error('Champions eligibility snapshots are incomplete.');
 
+export const officialPokemonKeys = (regulation, officialId) => {
+  const pokemon = snapshots.get(regulation)?.pokemon;
+  return pokemon && Object.hasOwn(pokemon, officialId)
+    ? pokemon[officialId]
+    : undefined;
+};
+
 function errorForSnapshot(team, snapshot) {
   const { regulation, pokemon, megas } = snapshot;
   const rowIdsByKey = rowIdsByRegulation.get(regulation);
@@ -177,4 +184,37 @@ export function rejectIneligibleTeam(source, team, noteReason) {
     `${source}: skipped ${team?.name || team?.id || 'unnamed team'} (${error})`
   );
   return true;
+}
+
+export function admitSourceTeams(
+  name,
+  parsed,
+  { fullHistory, currentRegulation, frozenIds, noteReason, sourceStats }
+) {
+  for (const team of parsed.teams)
+    if (!fullHistory && team.regulation !== currentRegulation)
+      noteReason('outside_current_regulation');
+  const accepted = parsed.teams.filter((team) => {
+    if (!fullHistory && team.regulation !== currentRegulation) return false;
+    if (!fullHistory && frozenIds.has(team.id)) {
+      noteReason('frozen_history_conflict');
+      console.warn(`${name}: skipped ID ${team.id} (frozen history conflict)`);
+      return false;
+    }
+    return !rejectIneligibleTeam(name, team, noteReason);
+  });
+  for (const entry of parsed.skipped)
+    noteReason(entry.reason || 'invalid_record');
+  const discovered = parsed.teams.length + parsed.skipped.length;
+  sourceStats.push({
+    name,
+    counts: {
+      discovered,
+      accepted: accepted.length,
+      priorRetained: 0,
+      skipped: discovered - accepted.length,
+      merged: 0,
+    },
+  });
+  return accepted;
 }

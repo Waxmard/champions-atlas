@@ -3,11 +3,11 @@ import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { parse as parseCsvRecords } from 'csv-parse/sync';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { parsePaste } from '../src/lib/paste.ts';
 import { restoreCatalogAssets } from './sync-assets.mjs';
 import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { admittedTeams, normalize } from '../src/lib/catalog.ts';
 import {
+  admitSourceTeams,
   eligibilitySourceTexts,
   rejectIneligibleTeam,
   teamEligibilityError,
@@ -20,19 +20,25 @@ import {
   victoryRoadUrl,
 } from './catalog-sources.mjs';
 import {
+  catalogId,
   loadIndexPaste,
-  resolvedPokemon,
   rosterMatches,
-  validateIndexFormat,
+  teamFromIndex,
   enrichPastes,
   mergeSources,
 } from './catalog-payloads.mjs';
-import { reportsWithLadderNotes } from './catalog-results.mjs';
 import {
   enrichLinkedSpreads,
   linkedSpreadPairs,
 } from './catalog-enrichment.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
+import {
+  admitPokedb,
+  loadPokedb,
+  pokedbName,
+  pokedbUrl,
+} from './pokedb-source.mjs';
+import { admitSmogon, smogonSources } from './smogon-source.mjs';
 import {
   loadYoutubeSource,
   youtubeImportRows,
@@ -62,24 +68,6 @@ export function parseCsv(text) {
 
 const hashSources = (sources) =>
   createHash('sha256').update(sources.join('\n')).digest('hex');
-
-const catalogId = (regulation, pasteUrl, members) =>
-  `${regulation.toLowerCase()}-${createHash('sha256')
-    .update(
-      JSON.stringify([
-        regulation,
-        pasteUrl,
-        members.map(({ pokemon, item }) => [pokemon, item]).sort(),
-      ])
-    )
-    .digest('hex')
-    .slice(0, 16)}`;
-
-function errorWithReason(reason, message) {
-  const error = new Error(message);
-  error.reason = reason;
-  return error;
-}
 
 const value = (text = '') =>
   ['-', 'None', 'N/A', 'No Tweet', 'Discord Submission'].includes(text.trim())
@@ -272,84 +260,6 @@ export function deduplicate(teams) {
   return [...unique.values()];
 }
 
-export function teamFromIndex(candidate, payload, canonicalNames) {
-  if (
-    !candidate ||
-    !payload ||
-    typeof payload !== 'object' ||
-    Array.isArray(payload)
-  )
-    throw errorWithReason(
-      'invalid_payload',
-      'Invalid index candidate or paste payload'
-    );
-  validateIndexFormat(candidate, payload);
-  if (typeof payload.paste !== 'string' || !payload.paste)
-    throw errorWithReason('invalid_payload', 'Paste payload is missing sets');
-  if (
-    payload.notes !== undefined &&
-    payload.notes !== null &&
-    typeof payload.notes !== 'string'
-  )
-    throw errorWithReason('invalid_payload', 'Paste notes must be a string');
-  let parsed;
-  try {
-    parsed = parsePaste(payload.paste);
-  } catch (error) {
-    throw errorWithReason('invalid_payload', error.message);
-  }
-  rosterMatches(parsed, candidate.expectedSpecies);
-  const members = parsed.map((member) => {
-    const pokemon = resolvedPokemon(member);
-    return {
-      ...member,
-      pokemon: canonicalNames.get(normalize(pokemon)) || pokemon,
-    };
-  });
-  if (
-    !Array.isArray(candidate.reports) ||
-    candidate.reports.some(
-      (report) =>
-        !report ||
-        typeof report.event !== 'string' ||
-        typeof report.rank !== 'string' ||
-        typeof report.sourceUrl !== 'string'
-    )
-  )
-    throw errorWithReason('invalid_payload', 'Index reports are invalid');
-  if (
-    payload.publishedAt !== undefined &&
-    typeof payload.publishedAt !== 'string'
-  )
-    throw errorWithReason('invalid_payload', 'Published date must be a string');
-  candidate = {
-    ...candidate,
-    reports: reportsWithLadderNotes(
-      candidate.reports,
-      payload.notes,
-      candidate.pasteUrl
-    ),
-  };
-  return {
-    id: catalogId(candidate.regulation, candidate.pasteUrl, members),
-    sheetIds: [],
-    name: candidate.name,
-    creator: candidate.creator,
-    regulation: candidate.regulation,
-    ...(candidate.regulationInference
-      ? { regulationInference: candidate.regulationInference }
-      : {}),
-    publishedAt: payload.publishedAt || '',
-    pasteUrl: candidate.pasteUrl,
-    replicaCode: candidate.replicaCode || null,
-    replicaStatus: '',
-    reports: candidate.reports.map((report) => ({ ...report })),
-    members,
-    paste: payload.paste,
-    pasteNotes: payload.notes || null,
-  };
-}
-
 export async function writeCatalog(path, catalog, previous = null) {
   if (!catalog.teams.length)
     throw new Error('Refusing to write an empty catalog');
@@ -380,7 +290,7 @@ async function main() {
     address,
     validate,
     refresh = false,
-    { fetchOptions, missingMessage } = {}
+    { fetchOptions, missingMessage, optional } = {}
   ) {
     return fetchCachedSource(name, address, {
       cache,
@@ -390,6 +300,7 @@ async function main() {
       allowStale: process.env.ALLOW_STALE_SOURCE_CACHE === '1',
       fetchOptions,
       missingMessage,
+      optional,
     });
   }
   if (process.argv.includes('--if-missing') && !checkSheet) {
@@ -500,6 +411,12 @@ async function main() {
     parsePoch,
     indexRefresh
   );
+  const pokedbFiles = await loadPokedb(fetchCached, {
+    fullHistory,
+    currentRegulation,
+    refresh: indexRefresh,
+    cache,
+  });
   const devonCorp = fullHistory
     ? parseDevonCorp(devonCorpHtml)
     : { candidates: [], skipped: [] };
@@ -517,6 +434,7 @@ async function main() {
     victoryRoadHtml,
     devonCorpHtml,
     pochHtml,
+    ...pokedbFiles.map(({ text }) => text),
     youtubeHash,
     currentRegulation,
     JSON.stringify(frozenTeams),
@@ -710,34 +628,28 @@ async function main() {
     }
   }
   await writeYoutubeDecisions(cache, decisions);
-  const parsedPoch = parsePoch(pochHtml, canonicalNames);
-  const pochInScope = fullHistory
-    ? parsedPoch.teams
-    : parsedPoch.teams.filter((team) => team.regulation === currentRegulation);
-  for (const team of parsedPoch.teams)
-    if (!fullHistory && team.regulation !== currentRegulation)
-      noteReason('outside_current_regulation');
-  const pochTeams = pochInScope.filter((team) => {
-    if (!fullHistory && frozenIds.has(team.id)) {
-      noteReason('frozen_history_conflict');
-      console.warn(`Poch.ms: skipped ID ${team.id} (frozen history conflict)`);
-      return false;
-    }
-    return !rejectIneligibleTeam('Poch.ms', team, noteReason);
-  });
-  const pochCounts = {
-    discovered: parsedPoch.teams.length + parsedPoch.skipped.length,
-    accepted: pochTeams.length,
-    priorRetained: 0,
-    skipped:
-      parsedPoch.skipped.length + parsedPoch.teams.length - pochTeams.length,
-    merged: 0,
+  const direct = {
+    fullHistory,
+    currentRegulation,
+    frozenIds,
+    noteReason,
+    sourceStats,
   };
-  for (const entry of parsedPoch.skipped)
-    noteReason(entry.reason || 'invalid_record');
-  sourceStats.push({ name: 'Poch.ms', counts: pochCounts });
+  const pochTeams = admitSourceTeams(
+    'Poch.ms',
+    parsePoch(pochHtml, canonicalNames),
+    direct
+  );
+  const pokedbTeams = admitPokedb(pokedbFiles, canonicalNames, direct);
+  const smogonTeams = await admitSmogon(fetchCached, canonicalNames, direct);
   const linked = enrichLinkedSpreads(
-    deduplicate([...unique, ...publicTeams, ...pochTeams]),
+    deduplicate([
+      ...unique,
+      ...publicTeams,
+      ...pochTeams,
+      ...pokedbTeams,
+      ...smogonTeams,
+    ]),
     linkedSpreadPairs(admittedYoutubeCandidates),
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
@@ -755,6 +667,8 @@ async function main() {
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
       { name: 'Poch.ms', url: pochUrl },
+      { name: pokedbName, url: pokedbUrl },
+      ...smogonSources,
       ...youtubeRows
         .filter(
           ({ retainedTeams }) => youtubeSource.active || retainedTeams.length
