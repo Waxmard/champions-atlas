@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.18.0](https://github.com/Waxmard/champions-atlas/compare/v0.17.0...v0.18.0) (2026-11-20)
+
+
+### Features
+
+* add Singles battle format ([#128](https://github.com/Waxmard/champions-atlas/issues/128)) ([db5af87](https://github.com/Waxmard/champions-atlas/commit/db5af877af85f8c490da71365035fae4a57fb9ac))
+
 ## [0.17.0](https://github.com/Waxmard/champions-atlas/compare/v0.16.0...v0.17.0) (2026-11-19)
 
 
