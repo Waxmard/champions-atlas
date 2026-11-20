@@ -94,14 +94,6 @@ export function spreadDeltas(
 export const spreadMoved = (deltas: SpreadDelta[]) =>
   deltas.reduce((total, entry) => total + Math.abs(entry.delta), 0);
 
-export const formatSpreadDelta = (deltas: SpreadDelta[]) =>
-  deltas
-    .map(
-      (entry) =>
-        `${entry.delta > 0 ? '+' : '-'}${Math.abs(entry.delta)} ${entry.stat}`
-    )
-    .join(' ');
-
 export const NATURES = [
   'Adamant',
   'Bashful',

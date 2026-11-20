@@ -380,7 +380,7 @@ test('buildCatalogRelease batches teams missing from the previous release and ca
   }
 });
 
-test('buildCatalogRelease keeps singles out of the legacy release and batches them separately', async () => {
+test('buildCatalogRelease batches singles separately from doubles', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'catalog-singles-batch-'));
   try {
     const { catalog } = sampleFixture();
@@ -415,34 +415,6 @@ test('buildCatalogRelease keeps singles out of the legacy release and batches th
     assert.deepEqual(release.bundle.latestBatch, doublesBatch);
     assert.equal('tags' in release.bundle, false);
     assert.ok(release.bundle.teams.some((team) => team.id === 'singles-team'));
-
-    const legacyManifest = JSON.parse(
-      await readFile(join(outDir, 'catalog', 'manifest.json'), 'utf8')
-    );
-    assert.deepEqual(
-      validateCatalogManifest(legacyManifest),
-      release.legacyManifest
-    );
-    const legacyText = await readFile(
-      join(outDir, 'catalog', `bundle-${legacyManifest.bundleHash}.json`),
-      'utf8'
-    );
-    assert.equal(
-      createHash('sha256').update(legacyText).digest('hex'),
-      legacyManifest.bundleHash
-    );
-    const legacy = JSON.parse(legacyText);
-    assert.deepEqual(
-      legacy.teams.map((team) => team.id),
-      catalog.teams.map((team) => team.id)
-    );
-    assert.deepEqual(
-      legacy.tags,
-      { teams: {} },
-      'installed app versions reject a bundle without tags'
-    );
-    assert.deepEqual(legacy.latestBatch, doublesBatch);
-    assert.equal('singlesBatch' in legacy, false);
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

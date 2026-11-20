@@ -9,6 +9,8 @@ import {
   attr,
   classHas,
   descendants,
+  isObject as object,
+  reasonError,
   text as nodeText,
 } from './catalog-sources.mjs';
 import { parse } from 'parse5';
@@ -37,15 +39,7 @@ const { items } = JSON.parse(
   readFileSync(new URL('./data/pokedb-items.json', import.meta.url), 'utf8')
 );
 
-function fail(reason, message) {
-  const error = new Error(`${pokedbName}: ${message}`);
-  error.reason = reason;
-  throw error;
-}
-
-function object(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+const fail = reasonError(pokedbName);
 
 function itemName(value) {
   if (typeof value !== 'string')

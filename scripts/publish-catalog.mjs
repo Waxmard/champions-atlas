@@ -7,8 +7,6 @@ import { teamFormat } from '../src/lib/battle-format.ts';
 import { admittedTeams, catalogManifestPath } from '../src/lib/catalog.ts';
 import { teamEligibilityError } from './champions-eligibility.mjs';
 
-const LEGACY_MANIFEST_PATH = '/catalog/manifest.json';
-
 function isPlainObject(value) {
   return (
     typeof value === 'object' &&
@@ -36,39 +34,17 @@ function latestBatch(previous, catalog, format, key) {
 }
 
 async function publishedBundle(origin) {
-  for (const path of [catalogManifestPath, LEGACY_MANIFEST_PATH]) {
-    const manifest = await fetch(`${origin}${path}`);
-    if (manifest.status === 404) continue;
-    if (!manifest.ok)
-      throw new Error(
-        `Published manifest request failed: HTTP ${manifest.status}.`
-      );
-    const { bundlePath } = await manifest.json();
-    const bundle = await fetch(`${origin}${bundlePath}`);
-    if (!bundle.ok)
-      throw new Error(
-        `Published bundle request failed: HTTP ${bundle.status}.`
-      );
-    return bundle.json();
-  }
-  return null;
-}
-
-function release(bundle) {
-  validateCatalogBundle(bundle);
-  const json = JSON.stringify(bundle);
-  const bundleHash = createHash('sha256').update(json).digest('hex');
-  return {
-    json,
-    manifest: {
-      schemaVersion: 1,
-      updatedAt: bundle.updatedAt,
-      currentRegulation: bundle.currentRegulation,
-      sourceHash: bundle.sourceHash,
-      bundleHash,
-      bundlePath: `/catalog/bundle-${bundleHash}.json`,
-    },
-  };
+  const manifest = await fetch(`${origin}${catalogManifestPath}`);
+  if (manifest.status === 404) return null;
+  if (!manifest.ok)
+    throw new Error(
+      `Published manifest request failed: HTTP ${manifest.status}.`
+    );
+  const { bundlePath } = await manifest.json();
+  const bundle = await fetch(`${origin}${bundlePath}`);
+  if (!bundle.ok)
+    throw new Error(`Published bundle request failed: HTTP ${bundle.status}.`);
+  return bundle.json();
 }
 
 export async function buildCatalogRelease({
@@ -124,53 +100,44 @@ export async function buildCatalogRelease({
     'singles',
     'singlesBatch'
   );
-  const shared = {
+  const bundle = {
     schemaVersion: 1,
     updatedAt: catalog.updatedAt,
     currentRegulation: catalog.currentRegulation,
     sourceHash: catalog.sourceHash,
     sources: catalog.sources,
     ...(doublesBatch && { latestBatch: doublesBatch }),
-  };
-  const bundle = {
-    ...shared,
     teams: catalog.teams,
     ...(singlesBatch && { singlesBatch }),
   };
-  const legacyBundle = {
-    ...shared,
-    teams: catalog.teams.filter((team) => teamFormat(team) === 'doubles'),
-    tags: { teams: {} },
+  validateCatalogBundle(bundle);
+  const json = JSON.stringify(bundle);
+  const bundleHash = createHash('sha256').update(json).digest('hex');
+  const manifest = {
+    schemaVersion: 1,
+    updatedAt: bundle.updatedAt,
+    currentRegulation: bundle.currentRegulation,
+    sourceHash: bundle.sourceHash,
+    bundleHash,
+    bundlePath: `/catalog/bundle-${bundleHash}.json`,
   };
-  const current = release(bundle);
-  const legacy = release(legacyBundle);
 
   await rm(outDir, { recursive: true, force: true });
   const manifestFilePath = join(outDir, catalogManifestPath);
-  const bundleFilePath = join(outDir, current.manifest.bundlePath);
+  const bundleFilePath = join(outDir, manifest.bundlePath);
 
-  await writeAtomic(bundleFilePath, current.json);
-  await writeAtomic(join(outDir, legacy.manifest.bundlePath), legacy.json);
-  await writeAtomic(
-    manifestFilePath,
-    `${JSON.stringify(current.manifest, null, 2)}\n`
-  );
-  await writeAtomic(
-    join(outDir, LEGACY_MANIFEST_PATH),
-    `${JSON.stringify(legacy.manifest, null, 2)}\n`
-  );
+  await writeAtomic(bundleFilePath, json);
+  await writeAtomic(manifestFilePath, `${JSON.stringify(manifest, null, 2)}\n`);
   await writeAtomic(
     join(outDir, 'index.html'),
     '<!doctype html><meta charset="utf-8"><title>Champion\'s Atlas Data</title>\n'
   );
 
   return {
-    manifest: current.manifest,
+    manifest,
     bundle,
     manifestPath: manifestFilePath,
     bundleFilePath,
-    legacyManifest: legacy.manifest,
-    legacyBundle,
   };
 }
 

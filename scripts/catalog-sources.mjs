@@ -33,6 +33,15 @@ function errorWithReason(reason, message, details = {}) {
   return error;
 }
 
+export const reasonError = (prefix) => (reason, message) => {
+  const error = new Error(`${prefix}: ${message}`);
+  error.reason = reason;
+  throw error;
+};
+
+export const isObject = (value) =>
+  value !== null && typeof value === 'object' && !Array.isArray(value);
+
 function walk(node, visit) {
   if (!node) return;
   visit(node);

@@ -3,6 +3,7 @@ import { parse } from 'parse5';
 import { battleSpecies, resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { normalize } from '../src/lib/catalog.ts';
 import { exportPaste, setText } from '../src/lib/workbench.ts';
+import { isObject as object, reasonError } from './catalog-sources.mjs';
 import { regulationFromVideoDate } from './youtube-admission.mjs';
 
 export const pochUrl = 'https://poch.ms/en/leaderboard';
@@ -24,15 +25,7 @@ const publishedAliases = Object.fromEntries(
   ].map(([published, resolved]) => [normalize(published), resolved])
 );
 
-function fail(reason, message) {
-  const error = new Error(`Poch.ms: ${message}`);
-  error.reason = reason;
-  throw error;
-}
-
-function object(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
+const fail = reasonError('Poch.ms');
 
 function sourceData(html) {
   if (typeof html !== 'string') fail('invalid_source', 'HTML must be a string');

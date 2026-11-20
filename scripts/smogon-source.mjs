@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { Dex } from '@pkmn/dex';
 import { normalize } from '../src/lib/catalog.ts';
 import { CHAMPIONS_STATS } from '../src/lib/paste.ts';
+import { reasonError } from './catalog-sources.mjs';
 import { championRegulation, teamFromIndex } from './catalog-payloads.mjs';
 import { admitSourceTeams } from './champions-eligibility.mjs';
 
@@ -11,11 +12,7 @@ const { lists } = JSON.parse(
   readFileSync(new URL('./data/smogon-samples.json', import.meta.url), 'utf8')
 );
 
-function fail(reason, message) {
-  const error = new Error(`${smogonName}: ${message}`);
-  error.reason = reason;
-  throw error;
-}
+const fail = reasonError(smogonName);
 
 export const smogonSources = lists.map(({ name, url }) => ({ name, url }));
 
