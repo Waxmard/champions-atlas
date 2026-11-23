@@ -647,3 +647,45 @@ test('keeps source-backed set construction and explicit-format metadata intact',
     [null, null, [], null, null]
   );
 });
+
+test('admits singles videos only from channels marked singles', () => {
+  const url = pasteUrl('bbbbbbbbbbbbbbbb');
+  const channel = youtubeChannels.find(({ format }) => format === 'singles');
+  const singlesRow = (id, title) => ({
+    ...youtubeRow(url, id, {
+      title,
+      description: url,
+      publishedAt: '2026-10-01T12:00:00Z',
+    }),
+    sourceName: channel.name,
+    indexUrl: channel.url,
+  });
+  const team = asTeam(
+    singlesRow(
+      'aaaaaaaaaaa',
+      'Mega Gengar sweeps Pokémon Champions Ranked Singles!'
+    ),
+    singlesPayload
+  );
+  assert.equal(team.format, 'singles');
+  assert.equal(team.regulation, 'M-C');
+  assert.equal(
+    asTeam(
+      championsDouble(url, 'ddddddddddd', {
+        publishedAt: '2026-10-01T12:00:00Z',
+      }),
+      pastePayload('')
+    ).format,
+    undefined
+  );
+  rejectReason(
+    'unsupported_format',
+    singlesRow('bbbbbbbbbbb', 'Pokémon Champions VGC team'),
+    singlesPayload
+  );
+  rejectReason(
+    'unsupported_format',
+    singlesRow('ccccccccccc', 'Pokémon Champions showcase'),
+    singlesPayload
+  );
+});

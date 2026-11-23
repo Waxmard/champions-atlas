@@ -240,6 +240,7 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
     ...(candidate.regulationInference
       ? { regulationInference: candidate.regulationInference }
       : {}),
+    ...(candidate.format ? { format: candidate.format } : {}),
     publishedAt: payload.publishedAt || '',
     pasteUrl: candidate.pasteUrl,
     replicaCode: candidate.replicaCode || null,

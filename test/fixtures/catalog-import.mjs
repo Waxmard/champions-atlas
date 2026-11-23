@@ -361,7 +361,9 @@ export function snapshotData() {
   return {
     version: 1,
     channels: youtubeChannels.map((channel, index) => ({
-      ...channel,
+      handle: channel.handle,
+      name: channel.name,
+      url: channel.url,
       channelId: channelInfo[channel.handle].id,
       videosScanned: 1,
       videosWithoutPaste: index ? 1 : 0,
@@ -416,7 +418,9 @@ export function youtubeSnapshot(rows = []) {
               video,
             }));
       return {
-        ...channel,
+        handle: channel.handle,
+        name: channel.name,
+        url: channel.url,
         channelId: channelInfo[channel.handle].id,
         videosScanned: index ? 1 : videos.size || 1,
         videosWithoutPaste: index || !videos.size ? 1 : 0,
