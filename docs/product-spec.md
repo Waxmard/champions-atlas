@@ -423,13 +423,19 @@ and Tera Type are omitted from displayed and exported Champions text. Custom
 teams are saved locally under the current regulation with legality unverified and
 no published result claims.
 
-From a Poképaste page, the iOS share extension accepts one direct link or paste
-ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
+The iOS share extension accepts one Poképaste link or paste ID, found anywhere
+in the shared text, or one YouTube video link; a Poképaste link wins when both
+appear. It saves the link as soon as it opens, and opening Atlas finishes the
+import in **Wishlist**. A video bookmarks the catalog teams linked to it;
+otherwise Atlas reads the video description on the phone and imports its
+Poképaste links. When a video has several teams, Atlas lists them unchecked and
+adds only the ones chosen. Once the queue empties, Atlas opens the team from the
+last share when that share added exactly one team.
 The manual fallback, **Add a Poképaste** on the Wishlist list, accepts a
-`pokepast.es` link or 16-character paste ID.
-Imports do not change the last-opened team. An existing bookmark for the link is
-returned unchanged, even if multiple catalog teams share that link. A unique
-catalog match is bookmarked with its source metadata without a network request.
+`pokepast.es` link or 16-character paste ID and stays on the list.
+An existing bookmark for the link is returned unchanged, even if multiple
+catalog teams share that link. A unique catalog match is bookmarked with its
+source metadata without a network request.
 When multiple catalog teams share a link without an existing bookmark, import is
 rejected without fetching or saving. Otherwise the app fetches the paste
 directly from Poképaste and applies the same six-set requirements as custom text
