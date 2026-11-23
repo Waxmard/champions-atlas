@@ -1,17 +1,20 @@
 import { CapacitorHttp } from '@capacitor/core';
 import { youtubeVideoId, type Team } from './catalog.ts';
+import { parsePaste } from './paste.ts';
+import { loadPokepaste, type PokepastePayload } from './pokepaste.ts';
 
 export type ShareOption = { label: string; detail: string } & (
-  { team: Team } | { url: string }
+  { team: Team } | { payload: PokepastePayload } | { error: true }
 );
+export type YoutubeVideo = { title: string; description: string };
 
 export class YoutubeUnavailableError extends Error {}
 
 const pastePattern =
   /(?<![A-Za-z0-9_./@-])(?:https?:\/\/)?pokepast\.es\/([\da-f]{16})(?![\da-z])/gi;
 
-export function descriptionOf(html: string): string | null {
-  const match = /"shortDescription":"((?:[^"\\]|\\.)*)"/.exec(html);
+function jsonString(html: string, pattern: RegExp): string | null {
+  const match = pattern.exec(html);
   if (!match) return null;
   try {
     return JSON.parse(`"${match[1]}"`) as string;
@@ -20,7 +23,22 @@ export function descriptionOf(html: string): string | null {
   }
 }
 
-export function descriptionPastes(description: string): ShareOption[] {
+export function videoOf(html: string): YoutubeVideo | null {
+  const description = jsonString(
+    html,
+    /"shortDescription":"((?:[^"\\]|\\.)*)"/
+  );
+  if (description === null) return null;
+  const title = jsonString(
+    html,
+    /"videoDetails":\{"videoId":"[^"]*","title":"((?:[^"\\]|\\.)*)"/
+  );
+  return { title: (title ?? '').trim(), description };
+}
+
+export function descriptionPastes(
+  description: string
+): { url: string; label: string }[] {
   const found = new Map<string, string>();
   for (const line of description.split('\n'))
     for (const match of line.matchAll(pastePattern)) {
@@ -35,14 +53,10 @@ export function descriptionPastes(description: string): ShareOption[] {
           .slice(-80)
       );
     }
-  return [...found].map(([url, label]) => ({
-    label: label || 'Poképaste',
-    detail: url.slice(8),
-    url,
-  }));
+  return [...found].map(([url, label]) => ({ url, label }));
 }
 
-export async function loadYoutubeDescription(id: string): Promise<string> {
+export async function loadYoutubeVideo(id: string): Promise<YoutubeVideo> {
   const response = await CapacitorHttp.get({
     url: `https://www.youtube.com/watch?v=${id}`,
     headers: { 'Accept-Language': 'en' },
@@ -50,28 +64,70 @@ export async function loadYoutubeDescription(id: string): Promise<string> {
     connectTimeout: 10_000,
     readTimeout: 10_000,
   });
-  const description =
+  const video =
     response.status === 200 && typeof response.data === 'string'
-      ? descriptionOf(response.data)
+      ? videoOf(response.data)
       : null;
-  if (description === null)
+  if (!video)
     throw new YoutubeUnavailableError('YouTube returned no description.');
-  return description;
+  return video;
 }
+
+async function loadPaste(url: string): Promise<PokepastePayload> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    return await loadPokepaste(url, fetch, controller.signal);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+const teamOption = (team: Team): ShareOption => ({
+  label: team.name,
+  detail: team.members.map((member) => member.pokemon).join(' · '),
+  team,
+});
 
 export async function youtubeShareOptions(
   id: string,
   teams: readonly Team[],
-  load: (id: string) => Promise<string> = loadYoutubeDescription
+  video: (id: string) => Promise<YoutubeVideo> = loadYoutubeVideo,
+  paste: (url: string) => Promise<PokepastePayload> = loadPaste
 ): Promise<ShareOption[]> {
   const matches = teams.filter((team) =>
     team.reports.some((report) => youtubeVideoId(report.sourceUrl) === id)
   );
-  if (matches.length)
-    return matches.map((team) => ({
-      label: team.name,
-      detail: team.members.map((member) => member.pokemon).join(' · '),
-      team,
-    }));
-  return descriptionPastes(await load(id));
+  if (matches.length) return matches.map(teamOption);
+  const { title, description } = await video(id);
+  const links = descriptionPastes(description);
+  return Promise.all(
+    links.map(async ({ url, label }): Promise<ShareOption> => {
+      const known = teams.filter((team) => team.pasteUrl === url);
+      if (known.length === 1) return teamOption(known[0]);
+      try {
+        const payload = await paste(url);
+        const part = links.length > 1 ? label || payload.title : '';
+        const name = ([title, part].filter(Boolean).join(': ') || payload.title)
+          .slice(0, 200)
+          .replace(/[\uD800-\uDBFF]$/, '');
+        return {
+          label: name,
+          detail: parsePaste(payload.paste)
+            .map((member) => member.pokemon)
+            .join(' · '),
+          payload: { ...payload, title: name },
+        };
+      } catch (error) {
+        return {
+          label: label || url.slice(8),
+          detail:
+            error instanceof Error && error.name === 'Error'
+              ? error.message
+              : 'Could not load this Poképaste.',
+          error: true,
+        };
+      }
+    })
+  );
 }

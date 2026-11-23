@@ -11,6 +11,7 @@
     canonicalPokepasteUrl,
     loadPokepaste,
     PokepasteUnavailableError,
+    type PokepastePayload,
   } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
@@ -101,7 +102,10 @@
     void importPokepaste(pasteLink).finally(() => void processShares(false));
   }
 
-  async function importPokepaste(input: string): Promise<SavedTeam | null> {
+  async function importPokepaste(
+    input: string,
+    preloaded?: PokepastePayload
+  ): Promise<SavedTeam | null> {
     if (
       !ready ||
       storageError ||
@@ -176,7 +180,8 @@
       controller.abort();
     }, 10_000);
     try {
-      const payload = await loadPokepaste(url, fetch, controller.signal);
+      const payload =
+        preloaded ?? (await loadPokepaste(url, fetch, controller.signal));
       if (!mounted || (controller.signal.aborted && !timedOut)) return null;
       if (timedOut) {
         errorMessage = 'Poképaste request timed out. Try again.';
@@ -242,8 +247,12 @@
     try {
       const options = await youtubeShareOptions(id, catalogState.catalog.teams);
       if (!mounted) return null;
-      if (options.length) return options;
-      errorMessage = "No Poképaste link was found in this video's description.";
+      if (options.length === 1 && 'error' in options[0])
+        errorMessage = options[0].detail;
+      else if (options.length) return options;
+      else
+        errorMessage =
+          "No Poképaste link was found in this video's description.";
     } catch (error) {
       if (mounted)
         errorMessage =
@@ -257,7 +266,9 @@
   }
 
   async function importOption(option: ShareOption): Promise<SavedTeam | null> {
-    if ('url' in option) return importPokepaste(option.url);
+    if ('error' in option) return null;
+    if ('payload' in option)
+      return importPokepaste(option.payload.url, option.payload);
     if (!canProcessShares() || importPending) return null;
     errorMessage = '';
     try {
@@ -440,7 +451,7 @@
           <input
             type="checkbox"
             class="size-5 shrink-0 accent-primary"
-            disabled={queuePending || importPending}
+            disabled={queuePending || importPending || 'error' in option}
             bind:checked={picked[index]}
           />
           <span class="min-w-0">
