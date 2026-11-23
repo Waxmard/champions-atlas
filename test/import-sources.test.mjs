@@ -14,8 +14,8 @@ import {
   mbPokemon,
   pasteText,
   pochPage,
+  pochSets,
   pochTeamRow,
-  pokedbFile,
   pokePasteJson,
   readCatalog,
   reasonChecker,
@@ -88,7 +88,6 @@ test('imports public index teams alongside the sheets and accounts for every row
         pasteText(devonPokemon, devonItems),
         'Format: gen9championsvgc2026regma'
       ),
-      'pokedb-s7-single.json': pokedbFile(),
     });
 
     const output = runImport(directory);
@@ -101,17 +100,11 @@ test('imports public index teams alongside the sheets and accounts for every row
         'Victory Road',
         'DevonCorp',
         'Poch.ms',
-        'Battle Database Champions',
         'Smogon BSS sample teams',
         'Smogon Champions OU sample teams',
       ]
     );
-    assert.equal(catalog.teams.length, 5);
-    assert.ok(catalog.teams.some(({ id }) => id === 'pokedb-single-s7-1'));
-    assert.match(
-      output,
-      /Battle Database Champions: 1 discovered — 1 accepted, 0 retained, 0 skipped, 0 merged\./
-    );
+    assert.equal(catalog.teams.length, 4);
     const alice = catalog.teams.find(({ creator }) => creator === 'Alice');
     assert.ok(alice, 'the accepted Victory Road row is missing');
     assert.equal(alice.name, 'Alice — Spring Cup');
@@ -191,7 +184,7 @@ test('imports public index teams alongside the sheets and accounts for every row
       'missing_paste=1',
     ])
       assert.match(output, new RegExp(reason), `${reason} was not reported`);
-    assert.match(output, /Imported 5 teams/);
+    assert.match(output, /Imported 4 teams/);
 
     const ids = catalog.teams.map(({ id }) => id).sort();
     const again = await readCatalog(directory);
@@ -572,7 +565,7 @@ test('cached import excludes the event and ineligible teams before assets', asyn
       event,
       format: 'M-C',
       rule: 'double',
-      team: mcPokemon.map((name) => ({ name })),
+      team: pochSets(mcPokemon),
     });
     const badSheetUrl = 'https://pokepast.es/cccccccccccccccc';
     const pokemonIds = {

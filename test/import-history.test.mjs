@@ -14,6 +14,7 @@ import {
   mcPokemon,
   pasteText,
   pochPage,
+  pochSets,
   pochTeamRow,
   pokePasteJson,
   readCatalog,
@@ -192,7 +193,12 @@ test('cold then warm: frozen history retained deeply equal, current add/update/r
   assert.equal(warmMc1.members[0].item, 'Life Orb');
   assert.equal(warmMc1.members[0].nature, 'Adamant');
   assert.equal(warmMc1.members[0].spread, '2 HP / 32 Atk');
-  assert.deepEqual(warmMc1.members[0].moves, ['Protect', 'Fake Out']);
+  assert.deepEqual(warmMc1.members[0].moves, [
+    'Protect',
+    'Fake Out',
+    'Substitute',
+    'Facade',
+  ]);
   assert.equal(warmMc1.paste, updatedMc1Paste);
   assert.equal(
     warmMc1.pasteNotes,
@@ -491,7 +497,7 @@ test('creator spread isolation and Poch ID collision', async (t) => {
     rule: 'double',
     placement: 2,
     players: 128,
-    team: mbPokemon.map((name) => ({ name })),
+    team: pochSets(mbPokemon, mbItems),
   };
   const cache = await writeCache(directory, {
     ...defaultFixtureFiles(),
@@ -521,7 +527,7 @@ test('creator spread isolation and Poch ID collision', async (t) => {
       event: 'Spring Cup 2026',
       format: 'M-C',
       placement: 1,
-      team: mcPokemon.map((name) => ({ name })),
+      team: pochSets(mcPokemon),
     },
   ]);
 

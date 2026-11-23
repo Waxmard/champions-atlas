@@ -48,7 +48,7 @@ function walk(node, visit) {
   for (const child of node.childNodes || []) walk(child, visit);
 }
 
-export function descendants(node, predicate) {
+function descendants(node, predicate) {
   const found = [];
   walk(node, (child) => {
     if (predicate(child)) found.push(child);
@@ -56,11 +56,11 @@ export function descendants(node, predicate) {
   return found;
 }
 
-export function attr(node, name) {
+function attr(node, name) {
   return node.attrs?.find((entry) => entry.name === name)?.value || '';
 }
 
-export function text(node) {
+function text(node) {
   if (!node) return '';
   if (node.nodeName === '#text') return node.value;
   return (node.childNodes || []).map(text).join('');
@@ -413,7 +413,7 @@ export function parseVictoryRoad(html) {
   return { candidates, skipped };
 }
 
-export function classHas(node, name) {
+function classHas(node, name) {
   return attr(node, 'class').split(/\s+/).includes(name);
 }
 

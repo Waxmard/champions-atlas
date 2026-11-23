@@ -335,6 +335,16 @@ export async function enrichPastes(
   return { attempted: selected.length, enriched, failed };
 }
 
+const listed = (value) => typeof value === 'string' && value.trim() !== '';
+export const isLowDataTeam = (team) =>
+  !team.members.every(
+    (member) =>
+      listed(member?.item) &&
+      listed(member?.ability) &&
+      Array.isArray(member?.moves) &&
+      member.moves.filter(listed).length === 4
+  );
+
 export function mergeSources(priorSources, frozenTeams, freshSources) {
   const frozenUrls = new Set(
     frozenTeams.flatMap((team) =>

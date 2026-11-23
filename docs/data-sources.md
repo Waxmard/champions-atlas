@@ -2,13 +2,14 @@
 
 The catalog holds Pokémon Champions teams, mostly doubles, from the VGCPastes M-C and M-B
 spreadsheets, Victory Road's Champions replica-team page, DevonCorp's M-A
-collection, the published Poch.ms leaderboard, Battle Database Champions' open
-ranked-singles data, Smogon's singles sample-team threads, and direct paste links from the
+collection, the published Poch.ms leaderboard, Smogon's singles sample-team
+threads, and direct paste links from the
 complete public upload histories of the configured YouTube VGC/Champions channels. Teams from a sheet
 or index include parsed paste sets, and Poch.ms records include the set details
-that page publishes. Missing fields remain unknown. Singles teams come only from
-Poch.ms, Battle Database Champions, and the Smogon sample teams; every other
-source is doubles-only.
+that page publishes. Missing natures and spreads remain unknown. A team is left
+out, and counted as `low_data`, when any member lacks an item, an ability, or
+four moves. Singles teams come only from Poch.ms and the Smogon sample teams;
+every other source is doubles-only.
 
 Sources:
 
@@ -35,18 +36,6 @@ Sources:
   roster and result gates as doubles teams. Other formats are excluded. Existing
   X-linked social coverage remains on this free source; the ranking policy adds
   no paid API, scraper, or subscription.
-- [Battle Database Champions](https://champs.pokedb.tokyo/guide/opendata)
-  publishes one JSON file per finished ranked season with the final rank,
-  rating, six Pokémon, and held items of every top-999 singles team. The
-  importer reads only the files of the seasons listed in `pokedbSeasons`
-  (`scripts/pokedb-source.mjs`), where each season maps to its regulation; a
-  season whose file is not published yet is skipped. Japanese item names map to
-  English through `scripts/data/pokedb-items.json`, which
-  `npm run sync:pokedb-items` regenerates from PokeAPI; a team holding an
-  unmapped item is skipped as `unmapped_item`. The data has no player names,
-  moves, abilities, natures, or spreads, so those stay unknown, and these teams
-  are never merged with Poch.ms teams. Add a row to `pokedbSeasons` when a new
-  season starts.
 - Smogon sample teams come from two forum threads,
   [Battle Stadium Singles sample teams](https://www.smogon.com/forums/threads/battle-stadium-singles-sample-teams-all-gens.3746122/)
   and

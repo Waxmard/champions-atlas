@@ -26,18 +26,13 @@ import {
   teamFromIndex,
   enrichPastes,
   mergeSources,
+  isLowDataTeam,
 } from './catalog-payloads.mjs';
 import {
   enrichLinkedSpreads,
   linkedSpreadPairs,
 } from './catalog-enrichment.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
-import {
-  admitPokedb,
-  loadPokedb,
-  pokedbName,
-  pokedbUrl,
-} from './pokedb-source.mjs';
 import { admitSmogon, smogonSources } from './smogon-source.mjs';
 import {
   loadYoutubeSource,
@@ -411,12 +406,6 @@ async function main() {
     parsePoch,
     indexRefresh
   );
-  const pokedbFiles = await loadPokedb(fetchCached, {
-    fullHistory,
-    currentRegulation,
-    refresh: indexRefresh,
-    cache,
-  });
   const devonCorp = fullHistory
     ? parseDevonCorp(devonCorpHtml)
     : { candidates: [], skipped: [] };
@@ -434,7 +423,6 @@ async function main() {
     victoryRoadHtml,
     devonCorpHtml,
     pochHtml,
-    ...pokedbFiles.map(({ text }) => text),
     youtubeHash,
     currentRegulation,
     JSON.stringify(frozenTeams),
@@ -640,23 +628,19 @@ async function main() {
     parsePoch(pochHtml, canonicalNames),
     direct
   );
-  const pokedbTeams = admitPokedb(pokedbFiles, canonicalNames, direct);
   const smogonTeams = await admitSmogon(fetchCached, canonicalNames, direct);
   const linked = enrichLinkedSpreads(
-    deduplicate([
-      ...unique,
-      ...publicTeams,
-      ...pochTeams,
-      ...pokedbTeams,
-      ...smogonTeams,
-    ]),
+    deduplicate([...unique, ...publicTeams, ...pochTeams, ...smogonTeams]),
     linkedSpreadPairs(admittedYoutubeCandidates),
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
-  const catalogTeams = admittedTeams(
+  const admitted = admittedTeams(
     [...linked.teams, ...frozenTeams],
     currentRegulation
   );
+  const catalogTeams = admitted.filter((team) => !isLowDataTeam(team));
+  const lowData = admitted.length - catalogTeams.length;
+  if (lowData) reasons.set('low_data', lowData);
   if (linked.spread_conflict)
     reasons.set('spread_conflict', linked.spread_conflict);
   const sources = mergeSources(
@@ -667,7 +651,6 @@ async function main() {
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
       { name: 'Poch.ms', url: pochUrl },
-      { name: pokedbName, url: pokedbUrl },
       ...smogonSources,
       ...youtubeRows
         .filter(

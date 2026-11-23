@@ -10,7 +10,11 @@ import {
   deduplicate,
   writeCatalog,
 } from '../scripts/import-catalog.mjs';
-import { enrich, enrichPastes } from '../scripts/catalog-payloads.mjs';
+import {
+  enrich,
+  enrichPastes,
+  isLowDataTeam,
+} from '../scripts/catalog-payloads.mjs';
 import { parseCustomPaste, parsePaste } from '../src/lib/paste.ts';
 import { bestEvidence, evidenceGrade } from '../src/lib/catalog.ts';
 import {
@@ -80,6 +84,25 @@ test('fetchWithRetry retries transient failures only and gives up eventually', a
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test('a team is low data unless every member has an item, ability, and four moves', () => {
+  const team = (change = {}) => ({
+    members: mcPokemon.map((pokemon, index) => ({
+      pokemon,
+      item: 'Item',
+      ability: 'Ability',
+      moves: ['A', 'B', 'C', 'D'],
+      nature: null,
+      spread: null,
+      ...(index === 2 ? change : {}),
+    })),
+  });
+  assert.equal(isLowDataTeam(team()), false);
+  assert.equal(isLowDataTeam(team({ item: null })), true);
+  assert.equal(isLowDataTeam(team({ ability: '' })), true);
+  assert.equal(isLowDataTeam(team({ moves: ['A', 'B', 'C'] })), true);
+  assert.equal(isLowDataTeam(team({ moves: [] })), true);
 });
 
 test('CSV handles quoted commas/newlines/escaped quotes and rejects truncation', () => {
