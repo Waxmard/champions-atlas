@@ -19,6 +19,7 @@ import {
   liveSavedTeam,
   savedOpenTeam,
   savedOpenTeamKey,
+  savedTeamHeading,
 } from '../src/lib/team-collections.ts';
 import {
   newSavedTeam,
@@ -457,6 +458,38 @@ test('Poképaste import saves a custom Wishlist record', () => {
   assert.equal(saved.members[0].spread, '32 HP / 32 Atk / 1 Spe');
   assert.deepEqual(readSavedTeams(s), [saved]);
   assert.equal(s.writes, 1);
+});
+
+test('Poképaste import from a video keeps the report for its heading', () => {
+  const report = {
+    event: 'Glenko Gaming video',
+    rank: '',
+    sourceUrl: 'https://www.youtube.com/watch?v=rukTvl7e3nY',
+    videoTitle: 'My video',
+  };
+  const saved = addPokepasteToWishlist(
+    storage(),
+    { ...payload, title: "Glenko Gaming's Weavile Team", report },
+    'M-C',
+    [],
+    'doubles'
+  );
+  assert.deepEqual(saved.original.reports, [report]);
+  assert.deepEqual(savedTeamHeading(saved), {
+    title: 'Glenko Gaming',
+    context: 'My video',
+  });
+  const plain = addPokepasteToWishlist(
+    storage(),
+    payload,
+    'M-C',
+    [],
+    'doubles'
+  );
+  assert.deepEqual(savedTeamHeading(plain), {
+    title: payload.title,
+    context: '',
+  });
 });
 
 test('duplicate Poképaste import re-reads and preserves edited Wishlist bytes', () => {

@@ -461,7 +461,6 @@
           </span>
         </label>
       {/each}
-      <p>Dismissing removes the pending link, not a saved team.</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <Button
           type="submit"
@@ -478,14 +477,15 @@
           disabled={queuePending || importPending || !canProcessShares()}
           onclick={dismissShare}
         >
-          Dismiss shared link
+          Dismiss
         </Button>
       </div>
     </form>
+  {:else if blockedShare && queuePending && !errorMessage && !queueError}
+    <p role="status" class="provenance mt-2">Importing shared team…</p>
   {:else if blockedShare}
     <div class="plate mt-2 max-w-[68ch] px-4 py-3">
-      <p>Shared link: {blockedShare.url}</p>
-      <p>Dismissing removes the pending link, not a saved team.</p>
+      <p class="wrap-anywhere">Shared link: {blockedShare.url}</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <Button
           variant="quiet"
@@ -499,7 +499,7 @@
           disabled={queuePending || importPending || !canProcessShares()}
           onclick={dismissShare}
         >
-          Dismiss shared link
+          Dismiss
         </Button>
       </div>
     </div>

@@ -1,12 +1,20 @@
 import { CapacitorHttp } from '@capacitor/core';
 import { youtubeVideoId, type Team } from './catalog.ts';
 import { parsePaste } from './paste.ts';
-import { loadPokepaste, type PokepastePayload } from './pokepaste.ts';
+import {
+  loadPokepaste,
+  pasteTeamName,
+  type PokepastePayload,
+} from './pokepaste.ts';
 
 export type ShareOption = { label: string; detail: string } & (
   { team: Team } | { payload: PokepastePayload } | { error: true }
 );
-export type YoutubeVideo = { title: string; description: string };
+export type YoutubeVideo = {
+  title: string;
+  channel: string;
+  description: string;
+};
 
 export class YoutubeUnavailableError extends Error {}
 
@@ -33,7 +41,15 @@ export function videoOf(html: string): YoutubeVideo | null {
     html,
     /"videoDetails":\{"videoId":"[^"]*","title":"((?:[^"\\]|\\.)*)"/
   );
-  return { title: (title ?? '').trim(), description };
+  const channel = jsonString(html, /"author":"((?:[^"\\]|\\.)*)"/);
+  return {
+    title: (title ?? '').trim(),
+    channel: (channel ?? '')
+      .trim()
+      .slice(0, 60)
+      .replace(/[\uD800-\uDBFF]$/, ''),
+    description,
+  };
 }
 
 export function descriptionPastes(
@@ -99,7 +115,7 @@ export async function youtubeShareOptions(
     team.reports.some((report) => youtubeVideoId(report.sourceUrl) === id)
   );
   if (matches.length) return matches.map(teamOption);
-  const { title, description } = await video(id);
+  const { title, channel, description } = await video(id);
   const links = descriptionPastes(description);
   return Promise.all(
     links.map(async ({ url, label }): Promise<ShareOption> => {
@@ -107,16 +123,31 @@ export async function youtubeShareOptions(
       if (known.length === 1) return teamOption(known[0]);
       try {
         const payload = await paste(url);
+        const members = parsePaste(payload.paste);
         const part = links.length > 1 ? label || payload.title : '';
-        const name = ([title, part].filter(Boolean).join(': ') || payload.title)
+        const heading = [title, part]
+          .filter(Boolean)
+          .join(': ')
           .slice(0, 200)
           .replace(/[\uD800-\uDBFF]$/, '');
+        const name = channel
+          ? pasteTeamName(members, channel)
+          : heading || payload.title;
         return {
-          label: name,
-          detail: parsePaste(payload.paste)
-            .map((member) => member.pokemon)
-            .join(' · '),
-          payload: { ...payload, title: name },
+          label: part || name,
+          detail: members.map((member) => member.pokemon).join(' · '),
+          payload: {
+            ...payload,
+            title: name,
+            ...(channel && {
+              report: {
+                event: `${channel} video`,
+                rank: '',
+                sourceUrl: `https://www.youtube.com/watch?v=${id}`,
+                ...(heading && { videoTitle: heading }),
+              },
+            }),
+          },
         };
       } catch (error) {
         return {

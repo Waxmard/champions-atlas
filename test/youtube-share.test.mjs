@@ -73,12 +73,13 @@ const noLoad = () => {
 test('videoOf decodes the JSON-escaped title and description', () => {
   assert.deepEqual(
     videoOf(
-      '{"videoDetails":{"videoId":"rukTvl7e3nY","title":"Sun \\"HO\\" \\u00e9","lengthSeconds":"1","shortDescription":"A\\nB","isCrawlable":true}'
+      '{"videoDetails":{"videoId":"rukTvl7e3nY","title":"Sun \\"HO\\" \\u00e9","lengthSeconds":"1","shortDescription":"A\\nB","isCrawlable":true,"author":"Glenko Gaming"}'
     ),
-    { title: 'Sun "HO" é', description: 'A\nB' }
+    { title: 'Sun "HO" é', channel: 'Glenko Gaming', description: 'A\nB' }
   );
   assert.deepEqual(videoOf('x"shortDescription":"A"'), {
     title: '',
+    channel: '',
     description: 'A',
   });
   assert.equal(videoOf('<html></html>'), null);
@@ -134,7 +135,7 @@ test('youtubeShareOptions names a single description paste after the video', asy
     youtubeShareOptions(
       'rukTvl7e3nY',
       [],
-      async () => ({ title, description: `Team: ${url}` }),
+      async () => ({ title, channel: '', description: `Team: ${url}` }),
       async () => payload(url, 'Paste name')
     );
   assert.deepEqual(await options('My video'), [
@@ -147,6 +148,50 @@ test('youtubeShareOptions names a single description paste after the video', asy
   assert.equal((await options(''))[0].label, 'Paste name');
 });
 
+test('youtubeShareOptions names video pastes after the channel and keeps the video title', async () => {
+  const url = 'https://pokepast.es/138b4ef886ba95e4';
+  const name = "Glenko Gaming's Charizard-Y Venusaur Team";
+  const report = (videoTitle) => ({
+    event: 'Glenko Gaming video',
+    rank: '',
+    sourceUrl: 'https://www.youtube.com/watch?v=rukTvl7e3nY',
+    videoTitle,
+  });
+  const options = (description) =>
+    youtubeShareOptions(
+      'rukTvl7e3nY',
+      [],
+      async () => ({
+        title: 'My video',
+        channel: 'Glenko Gaming',
+        description,
+      }),
+      async (link) => payload(link, 'Paste name')
+    );
+  assert.deepEqual(await options(url), [
+    {
+      label: name,
+      detail: species,
+      payload: { url, title: name, paste, report: report('My video') },
+    },
+  ]);
+  const several = await options(
+    `Rain: ${url}\nhttps://pokepast.es/238b4ef886ba95e4`
+  );
+  assert.deepEqual(
+    several.map((option) => option.label),
+    ['Rain', 'Paste name']
+  );
+  assert.deepEqual(
+    several.map((option) => option.payload.report.videoTitle),
+    ['My video: Rain', 'My video: Paste name']
+  );
+  assert.deepEqual(
+    several.map((option) => option.payload.title),
+    [name, name]
+  );
+});
+
 test('youtubeShareOptions labels several pastes and marks failures', async () => {
   const description = [
     'Rain: https://pokepast.es/138b4ef886ba95e4',
@@ -157,7 +202,7 @@ test('youtubeShareOptions labels several pastes and marks failures', async () =>
     youtubeShareOptions(
       'rukTvl7e3nY',
       [],
-      async () => ({ title: 'My video', description }),
+      async () => ({ title: 'My video', channel: '', description }),
       async (url) => {
         if (url.endsWith('338b4ef886ba95e4')) throw failure;
         return payload(url, 'Paste name');
@@ -166,7 +211,7 @@ test('youtubeShareOptions labels several pastes and marks failures', async () =>
   const loaded = await options(new Error('Garchomp is missing an item'));
   assert.deepEqual(
     loaded.map((option) => option.label),
-    ['My video: Rain', 'My video: Paste name', 'Bad']
+    ['Rain', 'Paste name', 'Bad']
   );
   assert.equal(loaded[1].payload.title, 'My video: Paste name');
   assert.deepEqual(loaded[2], {
@@ -187,7 +232,7 @@ test('youtubeShareOptions reuses the one catalog team using a description paste'
     await youtubeShareOptions(
       'rukTvl7e3nY',
       [known],
-      async () => ({ title: 'My video', description: url }),
+      async () => ({ title: 'My video', channel: '', description: url }),
       noLoad
     ),
     [{ label: 'Known', detail: 'Incineroar · Rillaboom', team: known }]
@@ -199,7 +244,7 @@ test('youtubeShareOptions returns nothing for a description without pastes', asy
     await youtubeShareOptions(
       'rukTvl7e3nY',
       [],
-      async () => ({ title: 'My video', description: 'no links' }),
+      async () => ({ title: 'My video', channel: '', description: 'no links' }),
       noLoad
     ),
     []

@@ -1,9 +1,14 @@
 import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
-import { isMegaSpecies, type Member } from './catalog.ts';
+import { isMegaSpecies, type Member, type Report } from './catalog.ts';
 import { parseCustomPaste } from './paste.ts';
 
-export type PokepastePayload = { url: string; title: string; paste: string };
+export type PokepastePayload = {
+  url: string;
+  title: string;
+  paste: string;
+  report?: Report;
+};
 
 export function canonicalPokepasteUrl(input: string): string {
   const trimmed = input.trim();

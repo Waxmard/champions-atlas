@@ -28,7 +28,12 @@ export const WISHLIST_EDITED_ERROR =
   'Wishlist only holds original teams. This team has set edits, so it stays in Saved.';
 
 export const savedTeamHeading = (entry: SavedTeam) =>
-  teamHeading(entry.name, entry.origin === 'custom' ? null : entry.original);
+  teamHeading(
+    entry.name,
+    entry.origin === 'custom' && !entry.original.reports?.length
+      ? null
+      : entry.original
+  );
 
 export type WinLossRecord = NonNullable<SavedTeam['record']>;
 
@@ -328,7 +333,11 @@ export function addPokepasteToWishlist(
   return saveAndGet(storage, {
     ...custom,
     collection: 'wishlist',
-    original: { ...custom.original, pasteUrl: payload.url },
+    original: {
+      ...custom.original,
+      pasteUrl: payload.url,
+      ...(payload.report && { reports: [payload.report] }),
+    },
     sources: [{ name: payload.title, pasteUrl: payload.url }],
   });
 }
