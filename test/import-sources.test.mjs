@@ -457,7 +457,7 @@ test('public teams built from a real sheet record keep the sheet identity and me
   assert.equal(merged.length, 1);
   assert.deepEqual(merged[0].sheetIds, ['MA1']);
   assert.equal(merged[0].creator, 'Owner');
-  assert.equal(merged[0].paste, null);
+  assert.equal(merged[0].paste, blocks);
   assert.equal(merged[0].reports.length, 2);
 
   const other = teamFromIndex(
@@ -472,7 +472,7 @@ test('public teams built from a real sheet record keep the sheet identity and me
     canonicalNames
   );
   assert.notEqual(changed.id, sheetTeam.id);
-  assert.equal(deduplicate([sheetTeam, publicTeam, other, changed]).length, 3);
+  assert.equal(deduplicate([sheetTeam, publicTeam, other, changed]).length, 2);
 });
 
 test('index payloads are admitted only for the candidate Champions regulation', () => {

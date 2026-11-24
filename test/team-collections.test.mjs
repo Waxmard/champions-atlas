@@ -187,6 +187,27 @@ test('Wishlist deduplicates catalog IDs and promotion preserves the exact saved 
   );
 });
 
+test('a shared video is added once to a new or existing catalog bookmark', () => {
+  const s = storage();
+  const video = {
+    event: 'Chan video',
+    rank: '',
+    sourceUrl: 'https://www.youtube.com/watch?v=rukTvl7e3nY',
+  };
+  const plain = addCatalogToWishlist(s, catalogTeam('source'));
+  const added = addCatalogToWishlist(s, catalogTeam('source'), video);
+  assert.equal(added.id, plain.id);
+  assert.deepEqual(readSavedTeams(s)[0].original.reports, [video]);
+  const writes = s.writes;
+  addCatalogToWishlist(s, catalogTeam('source'), {
+    ...video,
+    sourceUrl: 'https://youtu.be/rukTvl7e3nY',
+  });
+  assert.equal(s.writes, writes);
+  const fresh = addCatalogToWishlist(s, catalogTeam('other'), video);
+  assert.deepEqual(fresh.original.reports, [video]);
+});
+
 test('catalog Use promotes bookmarks and preserves independent repeated copies', () => {
   const s = storage();
   const bookmark = addCatalogToWishlist(s, catalogTeam('catalog'));
@@ -530,24 +551,6 @@ test('duplicate Poképaste import re-reads and preserves edited Wishlist bytes',
   );
   assert.equal(s.data, before);
   assert.equal(s.writes, writes);
-});
-
-test('ambiguous catalog Poképaste imports fail without writing', () => {
-  const catalog = [
-    { ...catalogTeam('first'), pasteUrl },
-    { ...catalogTeam('second'), pasteUrl },
-  ];
-  const s = storage([snapshot('keep')]);
-  const before = s.data;
-
-  assert.throws(
-    () => addPokepasteToWishlist(s, payload, 'M-C', catalog, 'doubles'),
-    (error) =>
-      error instanceof SavedTeamError &&
-      /Multiple catalog teams/.test(error.message)
-  );
-  assert.equal(s.data, before);
-  assert.equal(s.writes, 0);
 });
 
 test('Poképaste catalog matches keep the catalog snapshot and My teams copy independent', () => {

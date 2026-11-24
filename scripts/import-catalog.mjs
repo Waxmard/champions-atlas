@@ -235,10 +235,20 @@ export function parseSheet(text, regulation) {
 export function deduplicate(teams) {
   const unique = new Map();
   for (const team of teams) {
-    const existing = unique.get(team.id);
-    if (!existing) unique.set(team.id, team);
+    const key = team.pasteUrl || team.id;
+    const existing = unique.get(key);
+    if (!existing) unique.set(key, team);
     else {
-      if (!team.regulationInference) delete existing.regulationInference;
+      if (existing.regulationInference && !team.regulationInference) {
+        existing.regulation = team.regulation;
+        delete existing.regulationInference;
+      }
+      if (!existing.paste && team.paste) {
+        existing.members = team.members;
+        existing.paste = team.paste;
+        existing.pasteNotes = team.pasteNotes;
+        delete existing.pasteError;
+      }
       existing.sheetIds = [
         ...new Set([...existing.sheetIds, ...team.sheetIds]),
       ];
@@ -634,7 +644,7 @@ async function main() {
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
   const admitted = admittedTeams(
-    [...linked.teams, ...frozenTeams],
+    deduplicate([...linked.teams, ...frozenTeams]),
     currentRegulation
   );
   const catalogTeams = admitted.filter((team) => !isLowDataTeam(team));

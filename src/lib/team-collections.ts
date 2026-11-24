@@ -1,5 +1,11 @@
 import { teamFormat, type BattleFormat } from './battle-format.ts';
-import { isPasteUrl, teamHeading, type Team } from './catalog.ts';
+import {
+  isPasteUrl,
+  teamHeading,
+  youtubeVideoId,
+  type Report,
+  type Team,
+} from './catalog.ts';
 import type { PokepastePayload } from './pokepaste.ts';
 import { canonicalSnapshot } from './team-history.ts';
 import {
@@ -294,13 +300,39 @@ export function wishlistedCatalogEntries(
 
 export function addCatalogToWishlist(
   storage: Pick<Storage, 'getItem' | 'setItem'>,
-  team: Team
+  team: Team,
+  video?: Report
 ): SavedTeam {
   const saved = readSavedTeams(storage);
   const existing = wishlistedCatalogEntries(saved, team)[0];
-  if (existing) return existing;
-  const candidate = { ...newSavedTeam(team), collection: 'wishlist' as const };
-  return saveAndGet(storage, candidate);
+  const lists = (reports: readonly Report[] = []) =>
+    !video ||
+    reports.some(
+      (report) =>
+        youtubeVideoId(report.sourceUrl) === youtubeVideoId(video.sourceUrl)
+    );
+  if (!existing)
+    return saveAndGet(storage, {
+      ...newSavedTeam(
+        video && !lists(team.reports)
+          ? { ...team, reports: [...team.reports, video] }
+          : team
+      ),
+      collection: 'wishlist' as const,
+    });
+  if (!video || lists(existing.original.reports)) return existing;
+  const next = {
+    ...existing,
+    original: {
+      ...existing.original,
+      reports: [...(existing.original.reports ?? []), video],
+    },
+  };
+  writeTeams(
+    storage,
+    saved.map((entry) => (entry === existing ? next : entry))
+  );
+  return next;
 }
 
 export function addPokepasteToWishlist(
@@ -318,10 +350,6 @@ export function addPokepasteToWishlist(
       entry.original.pasteUrl === payload.url
   );
   if (existing) return existing;
-  if (catalog.filter((team) => team.pasteUrl === payload.url).length > 1)
-    throw new SavedTeamError(
-      'Multiple catalog teams use this Poképaste. Open the team from Browse instead.'
-    );
   const team = resolveCatalogTeam({ pasteUrl: payload.url }, catalog);
   if (team) return addCatalogToWishlist(storage, team);
   const custom = newCustomTeam(

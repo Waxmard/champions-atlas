@@ -259,7 +259,19 @@ test('youtubeShareOptions reuses the one catalog team using a description paste'
       async () => ({ title: 'My video', channel: '', description: url }),
       noLoad
     ),
-    [{ label: 'Known', detail: 'Incineroar · Rillaboom', team: known }]
+    [
+      {
+        label: 'Known',
+        detail: 'Incineroar · Rillaboom',
+        team: known,
+        report: {
+          event: 'YouTube video',
+          rank: '',
+          sourceUrl: 'https://www.youtube.com/watch?v=rukTvl7e3nY',
+          videoTitle: 'My video',
+        },
+      },
+    ]
   );
 });
 

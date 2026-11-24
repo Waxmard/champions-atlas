@@ -321,8 +321,10 @@ so a row that links another team's paste is dropped rather than misattributed. A
 missing result claim is not a rejection: an index row with no explicit placement
 still imports.
 
-Exact duplicates share regulation, paste URL, and member species/items. Their
-sheet IDs and report links merge; different paste URLs remain separate variants.
+A paste URL belongs to one catalog team. Records that share a paste URL merge
+into the first one in source order, with their sheet IDs and report links
+combined; when that record has no paste text, it takes the sets from one that
+does. Different paste URLs remain separate variants.
 Imports are atomic, and source files are cached. `REFRESH=1` or `CHECK_SHEET=1`
 refreshes ordinary source indexes, the Poch.ms leaderboard included. Paste
 payloads are cached indefinitely and never refreshed by `REFRESH=1` (an author

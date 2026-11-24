@@ -18,7 +18,7 @@
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { notify } from '#lib/notifications.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
-  import { youtubeVideoId, type Team } from '#lib/catalog.js';
+  import { youtubeVideoId, type Report, type Team } from '#lib/catalog.js';
   import {
     youtubeShareOptions,
     YoutubeUnavailableError,
@@ -150,13 +150,6 @@
         notify('Already in Wishlist.');
         return existing;
       }
-      if (
-        catalogState.catalog.teams.filter((team) => team.pasteUrl === url)
-          .length > 1
-      )
-        throw new SavedTeamError(
-          'Multiple catalog teams use this Poképaste. Open the team from Browse instead.'
-        );
       const catalogTeam = resolveCatalogTeam(
         { pasteUrl: url },
         catalogState.catalog.teams
@@ -230,10 +223,18 @@
     }
   }
 
-  function bookmarkCatalogTeam(saved: SavedTeam[], team: Team): SavedTeam {
+  function bookmarkCatalogTeam(
+    saved: SavedTeam[],
+    team: Team,
+    video?: Report
+  ): SavedTeam {
     const existing = wishlistedCatalogEntries(saved, team)[0];
-    const entry = existing ?? addCatalogToWishlist(localStorage, team);
-    if (!existing) void pushNow();
+    const entry = addCatalogToWishlist(localStorage, team, video);
+    if (
+      !existing ||
+      entry.original.reports?.length !== existing.original.reports?.length
+    )
+      void pushNow();
     refresh();
     notify(existing ? 'Already in Wishlist.' : 'Added to Wishlist.');
     return entry;
@@ -282,7 +283,7 @@
         errorMessage = 'Account changed. Share the video again.';
         return null;
       }
-      return bookmarkCatalogTeam(saved, option.team);
+      return bookmarkCatalogTeam(saved, option.team, option.report);
     } catch (error) {
       errorMessage =
         error instanceof SavedTeamError ? error.message : SAVE_FAILURE;

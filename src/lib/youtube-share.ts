@@ -1,5 +1,5 @@
 import { CapacitorHttp } from '@capacitor/core';
-import { youtubeVideoId, type Team } from './catalog.ts';
+import { youtubeVideoId, type Report, type Team } from './catalog.ts';
 import { parsePaste } from './paste.ts';
 import {
   loadPokepaste,
@@ -9,7 +9,9 @@ import {
 import { later } from './timers.ts';
 
 export type ShareOption = { label: string; detail: string } & (
-  { team: Team } | { payload: PokepastePayload } | { error: true }
+  | { team: Team; report?: Report }
+  | { payload: PokepastePayload }
+  | { error: true }
 );
 export type YoutubeVideo = {
   title: string;
@@ -120,8 +122,23 @@ export async function youtubeShareOptions(
   const links = descriptionPastes(description).slice(0, 10);
   return Promise.all(
     links.map(async ({ url, label }): Promise<ShareOption> => {
-      const known = teams.filter((team) => team.pasteUrl === url);
-      if (known.length === 1) return teamOption(known[0]);
+      const known = teams.find((team) => team.pasteUrl === url);
+      if (known) {
+        const heading = [title, links.length > 1 ? label : '']
+          .filter(Boolean)
+          .join(': ')
+          .slice(0, 200)
+          .replace(/[\uD800-\uDBFF]$/, '');
+        return {
+          ...teamOption(known),
+          report: {
+            event: channel ? `${channel} video` : 'YouTube video',
+            rank: '',
+            sourceUrl: `https://www.youtube.com/watch?v=${id}`,
+            ...(heading && { videoTitle: heading }),
+          },
+        };
+      }
       try {
         const payload = await paste(url);
         const members = parsePaste(payload.paste);
