@@ -225,6 +225,30 @@ test('youtubeShareOptions labels several pastes and marks failures', async () =>
   );
 });
 
+test('youtubeShareOptions loads at most 10 description pastes', async () => {
+  const urls = Array.from(
+    { length: 11 },
+    (_, index) =>
+      `https://pokepast.es/${String(index).padStart(2, '0')}8b4ef886ba95e4`
+  );
+  const loaded = [];
+  const options = await youtubeShareOptions(
+    'rukTvl7e3nY',
+    [],
+    async () => ({
+      title: 'My video',
+      channel: '',
+      description: urls.join('\n'),
+    }),
+    async (url) => {
+      loaded.push(url);
+      return payload(url, 'Paste name');
+    }
+  );
+  assert.equal(options.length, 10);
+  assert.deepEqual(loaded, urls.slice(0, 10));
+});
+
 test('youtubeShareOptions reuses the one catalog team using a description paste', async () => {
   const url = 'https://pokepast.es/138b4ef886ba95e4';
   const known = { ...team('Known', ''), reports: [], pasteUrl: url };
