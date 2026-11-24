@@ -135,10 +135,7 @@
       const saved = readSavedTeams(localStorage);
       userId = sync.user?.uid;
       owner = localStorage.getItem(syncOwnerKey);
-      if (
-        userId &&
-        owner !== `${import.meta.env.VITE_FIREBASE_PROJECT_ID}:${userId}`
-      ) {
+      if (accountChanged(userId, owner)) {
         errorMessage = 'Account changed. Import the Poképaste again.';
         return null;
       }
@@ -266,6 +263,13 @@
     return null;
   }
 
+  function accountChanged(userId: string | undefined, owner: string | null) {
+    return (
+      !!userId &&
+      owner !== `${import.meta.env.VITE_FIREBASE_PROJECT_ID}:${userId}`
+    );
+  }
+
   async function importOption(option: ShareOption): Promise<SavedTeam | null> {
     if ('error' in option) return null;
     if ('payload' in option)
@@ -274,12 +278,7 @@
     errorMessage = '';
     try {
       const saved = readSavedTeams(localStorage);
-      const userId = sync.user?.uid;
-      if (
-        userId &&
-        localStorage.getItem(syncOwnerKey) !==
-          `${import.meta.env.VITE_FIREBASE_PROJECT_ID}:${userId}`
-      ) {
+      if (accountChanged(sync.user?.uid, localStorage.getItem(syncOwnerKey))) {
         errorMessage = 'Account changed. Share the video again.';
         return null;
       }

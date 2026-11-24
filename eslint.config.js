@@ -29,6 +29,40 @@ const hexSelectors = ['Literal', 'SvelteLiteral'].map((node) => ({
   message:
     'Use a theme colour from src/routes/layout.css instead of a raw hex value.',
 }));
+const keptComment = /^\s*(?:ponytail:|prettier-ignore)|https?:\/\/\S+/;
+const suppression = /eslint-disable|svelte-ignore|@ts-ignore|@ts-expect-error/;
+const cssComment = /\/\*[\s\S]*?\*\//g;
+const noComments = {
+  create(context) {
+    const source = context.sourceCode;
+    const check = (text, loc) => {
+      if (suppression.test(text) || !keptComment.test(text))
+        context.report({
+          loc,
+          message:
+            'Disallowed comment; delete narration or encode the constraint in a type, lint, or test.',
+        });
+    };
+    return {
+      Program() {
+        for (const comment of source.getAllComments())
+          if (comment.type !== 'Shebang') check(comment.value, comment.loc);
+      },
+      SvelteHTMLComment(node) {
+        check(node.value, node.loc);
+      },
+      SvelteStyleElement(node) {
+        for (const match of source.getText(node).matchAll(cssComment)) {
+          const start = node.range[0] + match.index;
+          check(match[0].slice(2, -2), {
+            start: source.getLocFromIndex(start),
+            end: source.getLocFromIndex(start + match[0].length),
+          });
+        }
+      },
+    };
+  },
+};
 
 export default defineConfig(
   includeIgnoreFile(gitignorePath),
@@ -40,7 +74,10 @@ export default defineConfig(
   svelte.configs.prettier,
   {
     languageOptions: { globals: { ...globals.browser, ...globals.node } },
+    linterOptions: { noInlineConfig: true },
+    plugins: { local: { rules: { 'no-comments': noComments } } },
     rules: {
+      'local/no-comments': 'error',
       'no-undef': 'off',
       'no-empty': ['error', { allowEmptyCatch: true }],
       '@typescript-eslint/consistent-type-imports': 'error',
