@@ -11,6 +11,7 @@ import {
 } from './catalog.ts';
 import { reportSchema, textSchema } from './spread-provenance.ts';
 import { originalSchema } from './workbench.ts';
+import { later } from './timers.ts';
 
 export interface CatalogSource {
   name: string;
@@ -186,7 +187,7 @@ async function fetchJsonWithLimit(
   const controller = new AbortController();
   const onAbort = () => controller.abort();
   outerSignal?.addEventListener('abort', onAbort, { once: true });
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const cancelTimeout = later(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const response = await fetcher(url, {
       method: 'GET',
@@ -198,7 +199,7 @@ async function fetchJsonWithLimit(
     });
     return await readBoundedJson(response, maxBytes, 'Catalog');
   } finally {
-    clearTimeout(timer);
+    cancelTimeout();
     outerSignal?.removeEventListener('abort', onAbort);
   }
 }

@@ -187,7 +187,7 @@
     <p
       role="alert"
       tabindex="-1"
-      class="text-[0.9375rem] leading-relaxed"
+      class="text-body leading-relaxed"
       style="color: var(--color-error-content)"
     >
       {error}

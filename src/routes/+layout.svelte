@@ -16,6 +16,7 @@
   import Bookmark from '@lucide/svelte/icons/bookmark';
   import Search from '@lucide/svelte/icons/search';
   import Folder from '@lucide/svelte/icons/folder';
+  import { afterFrame, later } from '#lib/timers.js';
   import ActionNotification from '#lib/components/ActionNotification.svelte';
   import AppFooter from '#lib/components/AppFooter.svelte';
   import HelpButton from '#lib/components/HelpButton.svelte';
@@ -64,7 +65,7 @@
     isBrowse ? resolve(`?${page.url.searchParams}`) : resolve('?browse=all')
   );
   const tabClass = (active: boolean) =>
-    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-[var(--radius-field)] text-[0.6875rem] leading-none font-bold outline-none transition-[scale] duration-150 active:scale-95 [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-[color:var(--color-muted)] hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
+    `flex min-h-11 min-w-0 flex-col items-center justify-center gap-0.5 rounded-field text-tiny leading-none font-bold outline-none transition-[scale] duration-150 active:scale-95 [&>svg]:size-5 [&>svg]:shrink-0 ${active ? 'bg-info text-info-content' : 'text-muted hover:bg-base-200 hover:text-base-content focus-visible:bg-base-200'}`;
 
   const userName = $derived(sync.user?.displayName ?? sync.user?.email ?? '');
   const userInitials = $derived(
@@ -92,7 +93,7 @@
   let pendingScroll: ScrollPosition | null = null;
   let settledUrl: string | null = null;
   let navigationGeneration = 0;
-  let scrollTimer: ReturnType<typeof setTimeout> | undefined;
+  let cancelScrollSave: (() => void) | undefined;
   let shareReadError = $state(false);
   let checkingShares = false;
   let syncingResults = false;
@@ -245,21 +246,21 @@
   }
 
   function flushPosition() {
-    clearTimeout(scrollTimer);
-    scrollTimer = undefined;
+    cancelScrollSave?.();
+    cancelScrollSave = undefined;
     savePosition();
   }
 
   function debouncePosition() {
-    clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(flushPosition, 200);
+    cancelScrollSave?.();
+    cancelScrollSave = later(flushPosition, 200);
   }
 
   async function updateAfterRender() {
     const generation = navigationGeneration;
     await tick();
-    await new Promise<void>((done) => requestAnimationFrame(() => done()));
-    await new Promise<void>((done) => requestAnimationFrame(() => done()));
+    await new Promise<void>((done) => afterFrame(() => done()));
+    await new Promise<void>((done) => afterFrame(() => done()));
     if (generation !== navigationGeneration) return;
     if (pendingScroll) {
       if (urlString(page.url) !== pendingScroll.url) return;
@@ -488,7 +489,7 @@
       await initCatalogRuntime();
       await Promise.race([
         refreshCatalogNow(),
-        new Promise((done) => setTimeout(done, 5000)),
+        new Promise<void>((done) => later(() => done(), 5000)),
       ]);
     }
     void goto(resolve(path as PathnameWithSearchOrHash));
@@ -498,9 +499,7 @@
     initialScroll = readScroll();
     try {
       migrateStoredData(localStorage);
-    } catch {
-      /* storage unavailable */
-    }
+    } catch {}
     initialUrl = normalizeInitialUrl(location.href, resolve('/'));
     void initCatalogRuntime();
     initSync();
@@ -531,7 +530,7 @@
     document.addEventListener('visibilitychange', onVisibility);
     return () => {
       navigationGeneration++;
-      clearTimeout(scrollTimer);
+      cancelScrollSave?.();
       window.removeEventListener('scroll', debouncePosition);
       window.removeEventListener('pagehide', flushPosition);
       window.removeEventListener('hashchange', onHashChange);
@@ -661,7 +660,7 @@
             <DropdownMenu.Root>
               <DropdownMenu.Trigger
                 aria-label="Account menu"
-                class="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--radius-field)] outline-none hover:bg-base-200"
+                class="inline-flex size-11 shrink-0 items-center justify-center rounded-field outline-none hover:bg-base-200"
               >
                 <Avatar.Root
                   class="relative flex size-7 shrink-0 overflow-hidden rounded-full border"

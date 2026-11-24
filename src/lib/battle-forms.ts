@@ -15,8 +15,6 @@ const aliases: Record<string, string> = {
   meowsticmega: 'Meowstic-M-Mega',
 };
 
-// Appearance-only forms: identical stats, types, abilities, and movesets, so a
-// set naming one form is the same set as the other.
 export const cosmeticForms: Record<string, string> = {
   sinistchamasterpiece: 'sinistcha',
   sinisteaantique: 'sinistea',

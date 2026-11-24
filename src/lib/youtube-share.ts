@@ -6,6 +6,7 @@ import {
   pasteTeamName,
   type PokepastePayload,
 } from './pokepaste.ts';
+import { later } from './timers.ts';
 
 export type ShareOption = { label: string; detail: string } & (
   { team: Team } | { payload: PokepastePayload } | { error: true }
@@ -91,11 +92,11 @@ export async function loadYoutubeVideo(id: string): Promise<YoutubeVideo> {
 
 async function loadPaste(url: string): Promise<PokepastePayload> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10_000);
+  const cancelTimeout = later(() => controller.abort(), 10_000);
   try {
     return await loadPokepaste(url, fetch, controller.signal);
   } finally {
-    clearTimeout(timer);
+    cancelTimeout();
   }
 }
 

@@ -39,14 +39,14 @@
   <div class="flex flex-wrap items-center justify-between gap-3">
     <h2
       bind:this={heading}
-      class="min-w-[min(6rem,100%)] flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere sm:text-[1.375rem] phone-landscape:text-lg"
+      class="min-w-[min(6rem,100%)] flex-1 font-display text-lg leading-tight font-semibold tracking-tight wrap-anywhere sm:text-heading phone-landscape:text-lg"
       tabindex="-1"
       data-editor-section={section}
     >
       {SECTIONS.find(({ id }) => id === view)?.title}
     </h2>
     <div
-      class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-[var(--radius-selector)] border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
+      class="ms-auto flex max-w-full min-w-0 items-center gap-1.5 rounded-selector border border-base-300 px-2.5 py-1 text-xs text-base-content/70"
     >
       <SpeciesLabel
         {pokemon}

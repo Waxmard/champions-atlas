@@ -3,6 +3,7 @@
   import { flip } from 'svelte/animate';
   import { fade } from 'svelte/transition';
   import { dur } from '#lib/motion.js';
+  import { later } from '#lib/timers.js';
   import { DropdownMenu } from 'bits-ui';
   import ArrowDownToLine from '@lucide/svelte/icons/arrow-down-to-line';
   import ArrowUpToLine from '@lucide/svelte/icons/arrow-up-to-line';
@@ -50,7 +51,7 @@
     direction: -1 | 1;
     anchor: HTMLElement;
   } | null>(null);
-  let holdTimer: ReturnType<typeof setTimeout> | undefined;
+  let cancelHoldTimer: (() => void) | undefined;
   let holdStart = { x: 0, y: 0 };
   let held = false;
 
@@ -96,10 +97,10 @@
 
   function startHold(event: PointerEvent, entry: SavedTeam, direction: -1 | 1) {
     held = false;
-    clearTimeout(holdTimer);
+    cancelHoldTimer?.();
     const anchor = event.currentTarget as HTMLElement;
     holdStart = { x: event.clientX, y: event.clientY };
-    holdTimer = setTimeout(() => {
+    cancelHoldTimer = later(() => {
       held = true;
       jump = { entry, direction, anchor };
     }, 500);
@@ -109,7 +110,7 @@
     if (
       Math.hypot(event.clientX - holdStart.x, event.clientY - holdStart.y) > 10
     )
-      clearTimeout(holdTimer);
+      cancelHoldTimer?.();
   }
 
   function tap(entry: SavedTeam, direction: -1 | 1) {
@@ -140,9 +141,9 @@
             onclick={() => tap(entry, -1)}
             onpointerdown={(event) => startHold(event, entry, -1)}
             onpointermove={trackHold}
-            onpointerup={() => clearTimeout(holdTimer)}
-            onpointerleave={() => clearTimeout(holdTimer)}
-            onpointercancel={() => clearTimeout(holdTimer)}
+            onpointerup={() => cancelHoldTimer?.()}
+            onpointerleave={() => cancelHoldTimer?.()}
+            onpointercancel={() => cancelHoldTimer?.()}
             oncontextmenu={(event) => event.preventDefault()}
           >
             <ArrowUp class="size-4" aria-hidden="true" />
@@ -158,9 +159,9 @@
             onclick={() => tap(entry, 1)}
             onpointerdown={(event) => startHold(event, entry, 1)}
             onpointermove={trackHold}
-            onpointerup={() => clearTimeout(holdTimer)}
-            onpointerleave={() => clearTimeout(holdTimer)}
-            onpointercancel={() => clearTimeout(holdTimer)}
+            onpointerup={() => cancelHoldTimer?.()}
+            onpointerleave={() => cancelHoldTimer?.()}
+            onpointercancel={() => cancelHoldTimer?.()}
             oncontextmenu={(event) => event.preventDefault()}
           >
             <ArrowDown class="size-4" aria-hidden="true" />

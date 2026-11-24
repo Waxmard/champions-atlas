@@ -302,9 +302,7 @@ export async function enrichPastes(
           notes: prior.pasteNotes,
         })
       );
-    } catch {
-      // A changed sheet composition invalidates stale enrichment.
-    }
+    } catch {}
   }
   const selected = teams.slice(0, limit);
   let enriched = 0;

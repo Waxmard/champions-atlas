@@ -14,6 +14,7 @@
     type PokepastePayload,
   } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
+  import { later } from '#lib/timers.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { notify } from '#lib/notifications.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
@@ -175,7 +176,7 @@
     importController = controller;
     importPending = true;
     let timedOut = false;
-    const timer = window.setTimeout(() => {
+    const cancelTimeout = later(() => {
       timedOut = true;
       controller.abort();
     }, 10_000);
@@ -226,7 +227,7 @@
               : 'Could not load this Poképaste. Try again.';
       return null;
     } finally {
-      window.clearTimeout(timer);
+      cancelTimeout();
       if (importController === controller) importController = null;
       if (mounted) importPending = false;
     }

@@ -1,4 +1,3 @@
-/** @type {import("prettier").Config} */
 const config = {
   useTabs: false,
   tabWidth: 2,

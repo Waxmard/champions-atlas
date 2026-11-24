@@ -32,7 +32,6 @@ export function statRow(pokemon: string): StatRow | null {
     : null;
 }
 
-/* Level-50 stat from a 0-SP intercept and a neutral-nature intercept table. */
 const finalStat = (intercept: number, sp: number, multiplier: number) =>
   Math.floor((intercept + sp) * multiplier);
 

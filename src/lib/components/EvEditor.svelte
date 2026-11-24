@@ -13,6 +13,7 @@
     type ChampionsStat,
   } from '#lib/paste.js';
   import { normalize, type Member, type Team } from '#lib/catalog.js';
+  import { afterFrame } from '#lib/timers.js';
   import Modal from '#lib/components/Modal.svelte';
   import SuggestionList from '#lib/components/SuggestionList.svelte';
   import SuggestionRow from '#lib/components/SuggestionRow.svelte';
@@ -97,7 +98,7 @@
       'set-nature-input'
     ) as HTMLElement | null;
     queueMicrotask(() => input?.focus({ preventScroll: true }));
-    requestAnimationFrame(() => input?.focus({ preventScroll: true }));
+    afterFrame(() => input?.focus({ preventScroll: true }));
     return false;
   }
   const spreadKey = (candidateNature: string, candidateSpread: string) =>
@@ -150,8 +151,6 @@
     }
     let catalogCount = 0;
     let hasMore = false;
-    // Saved-source duplicates take limit slots without counting as catalog
-    // rows; the final +1 proves another eligible spread exists for hasMore.
     for (const option of catalogSpreadSuggestions(
       member,
       teams,
@@ -270,7 +269,6 @@
 </script>
 
 <section class="plate enter-fade min-w-0 p-3.5 sm:p-4" aria-label="EV editor">
-  <!-- Nature modifies the stats below -->
   <fieldset class="mb-4 grid min-w-0 gap-2 border-b pb-4">
     <legend class="sr-only">Nature</legend>
     <div class="flex items-center gap-1">
@@ -418,7 +416,7 @@
                   <Button
                     variant="quiet"
                     size="dense"
-                    class="font-mono text-[11px]"
+                    class="font-mono text-tiny"
                     disabled={values[stat] === 0}
                     onclick={() => update(stat, 0)}
                   >
@@ -427,7 +425,7 @@
                   <Button
                     variant="quiet"
                     size="dense"
-                    class="font-mono text-[11px]"
+                    class="font-mono text-tiny"
                     disabled={values[stat] === 32}
                     onclick={() => update(stat, 32)}
                   >
@@ -436,7 +434,7 @@
                   <Button
                     variant="quiet"
                     size="dense"
-                    class="font-mono text-[11px]"
+                    class="font-mono text-tiny"
                     disabled={delta === 0}
                     aria-label={`Fill remaining EVs into ${stat}`}
                     title={delta === 0

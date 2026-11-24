@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { twMerge } from 'tailwind-merge';
+  import { twMerge } from '#lib/tw.js';
   import PokemonSprite from '#lib/components/PokemonSprite.svelte';
 
   let {

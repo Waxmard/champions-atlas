@@ -361,7 +361,6 @@ async function main() {
   };
   for (const [regulation, gid] of Object.entries(tabs)) {
     if (!fullHistory && regulation !== currentRegulation) continue;
-    // Google CSV exports redirect to a Google-hosted download endpoint.
     const address = `${sheet}/export?format=csv&gid=${gid}`;
     let csv = null;
     if (!indexRefresh) {

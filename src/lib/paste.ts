@@ -152,7 +152,6 @@ const NATURE_EFFECTS: Record<Nature, NatureEffect | null> = {
   Timid: { raised: 'Spe', lowered: 'Atk' },
 };
 
-/** Standard nature effect, or null for neutral and unrecognised natures. */
 export function natureEffect(
   nature: string | null | undefined
 ): NatureEffect | null {

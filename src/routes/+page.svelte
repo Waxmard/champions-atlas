@@ -163,9 +163,7 @@
     if (browseKeys.some((key) => page.url.searchParams.has(key))) {
       try {
         rememberBrowse(browseParams(new URL(page.url.href).searchParams));
-      } catch {
-        // Invalid explicit links stay visible and do not replace saved filters.
-      }
+      } catch {}
       return;
     }
 
@@ -226,12 +224,12 @@
 <main id="main" class="app-container py-6 sm:py-8 phone-landscape:py-2">
   <header class="phone-landscape:sr-only">
     <h1
-      class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
+      class="font-display text-title leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
     >
       Explore teams
     </h1>
     <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+      class="mt-1.5 max-w-[58ch] text-body leading-relaxed text-base-content/70"
     >
       Find a team for the Pokémon you want to use.
     </p>
@@ -242,7 +240,7 @@
     </p>{/if}
   {#if savedError || actionError}<p
       role="alert"
-      class="mt-2 text-[0.9375rem] leading-relaxed"
+      class="mt-2 text-body leading-relaxed"
       style="color: var(--color-error-content)"
     >
       {savedError || actionError}
@@ -320,7 +318,7 @@
         <Button
           variant="quiet"
           size="dense"
-          class="justify-self-start text-[0.8125rem]"
+          class="justify-self-start text-detail"
           disabled={pageNumber === 1}
           onclick={() => changeOption('page', String(pageNumber - 1))}
           >Previous</Button
@@ -329,7 +327,7 @@
         <Button
           variant="quiet"
           size="dense"
-          class="justify-self-end text-[0.8125rem]"
+          class="justify-self-end text-detail"
           disabled={pageNumber === pageCount}
           onclick={() => changeOption('page', String(pageNumber + 1))}
           >Next</Button
@@ -398,7 +396,7 @@
         <h2 class="text-lg leading-tight font-extrabold">
           {filterState.error ? 'Invalid filter link' : 'No matching teams'}
         </h2>
-        <p class="mt-2 max-w-[46ch] text-[0.9375rem] leading-relaxed">
+        <p class="mt-2 max-w-[46ch] text-body leading-relaxed">
           {filterState.error ||
             (newOnly
               ? 'No new teams match. Turn off New teams only or remove a filter.'

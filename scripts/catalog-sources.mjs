@@ -743,13 +743,9 @@ const RETRY_DELAY_MS = 500;
 
 export const isTransient = (status) => status === 429 || status >= 500;
 
-// Source hosts (paste providers, victoryroad.pro, Google Sheets) time out
-// transiently; a single connect timeout used to abort the whole import.
 export async function fetchWithRetry(address, options, timeoutMs = 30000) {
   for (let attempt = 1; ; attempt++) {
     try {
-      // Rebuilt per attempt: AbortSignal.timeout starts at creation and stays
-      // aborted, so a hoisted one would kill every retry with the same error.
       const response = await fetch(address, {
         ...options,
         signal: AbortSignal.timeout(timeoutMs),

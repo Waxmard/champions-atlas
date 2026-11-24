@@ -78,7 +78,7 @@
 {#if help.open}
   <Modal title={topic?.title ?? 'How it works'} onclose={closeHelp}>
     {#if topic}
-      <p class="text-[0.9375rem] leading-relaxed">{topic.body}</p>
+      <p class="text-body leading-relaxed">{topic.body}</p>
     {:else}
       <ul class="space-y-3">
         {#each tabs as { icon: Icon, name, text } (name)}

@@ -49,7 +49,7 @@
   onclick={() => (open = true)}
 >
   <span class="term">Win–loss record</span>
-  <span class="text-[0.9375rem] font-medium">
+  <span class="text-body font-medium">
     <span aria-hidden="true">{summary.text}</span>
     <span class="sr-only">{summary.label}</span>
   </span>
@@ -102,7 +102,7 @@
         {#each [['wins', 'Win', 'bg-success text-success-content'], ['losses', 'Loss', 'bg-error text-error-content']] as const as [key, label, tone] (key)}
           <button
             type="button"
-            class="inline-flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-field text-[0.9375rem] font-bold transition-[filter,scale] hover:brightness-95 focus-visible:brightness-95 not-disabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-base-200 disabled:text-base-content/40 {tone}"
+            class="inline-flex h-12 cursor-pointer items-center justify-center gap-1.5 rounded-field text-body font-bold transition-[filter,scale] hover:brightness-95 focus-visible:brightness-95 not-disabled:active:scale-[0.97] disabled:cursor-not-allowed disabled:bg-base-200 disabled:text-base-content/40 {tone}"
             disabled={disabled || record[key] === 9999}
             onclick={() => step(key, 1)}
           >
@@ -141,7 +141,7 @@
               >
                 <Minus class="size-4" aria-hidden="true" />
               </Button>
-              <span class="min-w-10 text-center text-[0.9375rem] font-medium">
+              <span class="min-w-10 text-center text-body font-medium">
                 <span aria-hidden="true">{record[key]}{mark}</span>
                 <span class="sr-only"
                   >{record[key]} {record[key] === 1 ? noun : key}</span

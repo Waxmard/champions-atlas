@@ -11,3 +11,9 @@ pre-commit:
     line-limit:
       glob: '*.{mjs,ts,svelte,css}'
       run: bash scripts/check-line-limit.sh {staged_files}
+    doc-budgets:
+      glob: '{AGENTS.md,doc-budgets.json}'
+      run: bash scripts/check-doc-budgets.sh
+    no-comments:
+      glob: '*.{js,mjs,ts,svelte,py}'
+      run: python3 scripts/check-comments.py {staged_files}

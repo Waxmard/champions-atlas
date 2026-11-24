@@ -35,12 +35,12 @@
   <header class="border-b pb-4">
     <div>
       <h1
-        class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
+        class="font-display text-title leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
       >
         Add custom team
       </h1>
       <p
-        class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+        class="mt-1.5 max-w-[58ch] text-body leading-relaxed text-base-content/70"
       >
         Build your team in
         <a
@@ -85,7 +85,7 @@
   {#if message}
     <p
       role="alert"
-      class="mt-4 text-[0.9375rem]"
+      class="mt-4 text-body"
       style="color: var(--color-error-content)"
     >
       {message}
