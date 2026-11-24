@@ -426,9 +426,9 @@ and Tera Type are omitted from displayed and exported Champions text. Custom
 teams are saved locally under the current regulation with legality unverified and
 no published result claims.
 
-The iOS share extension accepts one Poképaste link or paste ID, found anywhere
-in the shared text, or one YouTube video link; a Poképaste link wins when both
-appear. It saves the link as soon as it opens, and opening Atlas finishes the
+The iOS share extension accepts one Poképaste link found anywhere in the shared
+text, a paste ID shared on its own, or one YouTube video link; a Poképaste link
+wins when both appear. It saves the link as soon as it opens, and opening Atlas finishes the
 import in **Wishlist**. A video bookmarks the catalog teams linked to it;
 otherwise Atlas reads the video description on the phone and imports its
 Poképaste links. When a video has several teams, Atlas lists them unchecked and

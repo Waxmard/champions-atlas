@@ -8,8 +8,8 @@ complete public upload histories of the configured YouTube VGC/Champions channel
 or index include parsed paste sets, and Poch.ms records include the set details
 that page publishes. Missing natures and spreads remain unknown. A team is left
 out, and counted as `low_data`, when any member lacks an item, an ability, or
-four moves. Singles teams come only from Poch.ms and the Smogon sample teams;
-every other source is doubles-only.
+four moves. Singles teams come only from Poch.ms, the Smogon sample teams, and
+the Vio YouTube channel; every other source is doubles-only.
 
 Sources:
 
@@ -50,9 +50,13 @@ Sources:
 - [pokeaimMD](https://www.youtube.com/@pokeaimMD),
   [Pokeaim+](https://www.youtube.com/@pokeaimplus),
   [CybertronVGC](https://www.youtube.com/@CybertronVGC),
-  [PokeRoy](https://www.youtube.com/@PokeRoyVGC), and
-  [CloverBells](https://www.youtube.com/@CloverBells) are scanned through
-  their complete public upload histories using YouTube Data API v3. The importer
+  [PokeRoy](https://www.youtube.com/@PokeRoyVGC),
+  [CloverBells](https://www.youtube.com/@CloverBells),
+  [PokemaineEvent](https://www.youtube.com/@PokemaineEvent),
+  [James Baek](https://www.youtube.com/@jameswbaekpkmn), and
+  [Vio](https://www.youtube.com/@viosworld) are scanned through
+  their complete public upload histories using YouTube Data API v3. Vio's teams
+  are imported as singles. The importer
   follows each channel's uploads playlist and reads direct supported paste links
   in video descriptions. It does not follow shorteners, social posts, website
   indexes, comments, transcripts, or screen-only teams.
@@ -273,8 +277,8 @@ teams keep their existing additions during routine imports. In inactive keyless
 mode, compatible previously attributed additions also remain because discovery
 is unobserved.
 
-Poch.ms records keep published values and leave the rest unknown. A missing set
-field or scalar stays unknown. The page publishes no spreads, so these records
+Poch.ms records keep published values and leave natures and spreads unknown. A
+record missing an item, ability, or move is dropped as `low_data`. The page publishes no spreads, so these records
 do not contribute EV spread suggestions. A generated paste is an export of the published
 set details, and only when at least one member publishes some; it is not an
 original paste. Every record carries an empty paste URL and no sheet IDs, so the
