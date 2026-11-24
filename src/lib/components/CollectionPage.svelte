@@ -144,7 +144,7 @@
     return sort === 'record'
       ? sortByWinRate(matching)
       : sort === 'vp'
-        ? sortByVpCost(matching, currentSets.sets)
+        ? sortByVpCost(matching, currentSets.sets, catalogState.vpCatalog)
         : matching;
   });
   const unrecorded = $derived(

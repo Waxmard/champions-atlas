@@ -123,13 +123,47 @@ test('VP sort orders teams cheapest first and keeps ties in order', () => {
   const c = { id: 'c', members: [{ ...weavile, pokemon: 'Pikachu' }] };
   const teams = [a, b, c];
   assert.deepEqual(
-    sortByVpCost(teams, sets).map(({ id }) => id),
+    sortByVpCost(teams, sets, emptyCatalog).map(({ id }) => id),
     ['b', 'a', 'c']
   );
   assert.deepEqual(teams, [a, b, c]);
   assert.deepEqual(
-    sortByVpCost(teams, null).map(({ id }) => id),
+    sortByVpCost(teams, null, emptyCatalog).map(({ id }) => id),
     ['a', 'b', 'c']
+  );
+});
+
+test('VP sort uses the estimated total shown on the card', () => {
+  const sets = [{ id: pokemonId('Weavile'), member: weavile }];
+  const catalog = {
+    teams: [
+      team('source', [
+        set('Weavile', {
+          item: 'Focus Sash',
+          ability: 'Pressure',
+          moves: weavile.moves,
+          nature: 'Adamant',
+          spread: '32 HP / 32 Atk / 2 Spe',
+        }),
+      ]),
+    ],
+    currentRegulation: 'M-C',
+  };
+  const noEvs = {
+    id: 'no-evs',
+    members: [{ ...weavile, nature: 'Adamant', spread: null }],
+  };
+  const listed = {
+    id: 'listed',
+    members: [
+      { ...weavile, nature: 'Adamant', spread: '32 Atk / 12 Spe / 22 HP' },
+    ],
+  };
+  assert.equal(teamVpCost(sets, noEvs.members, catalog).total, 650);
+  assert.equal(teamVpCost(sets, listed.members, catalog).total, 600);
+  assert.deepEqual(
+    sortByVpCost([noEvs, listed], sets, catalog).map(({ id }) => id),
+    ['listed', 'no-evs']
   );
 });
 

@@ -91,7 +91,9 @@
           matchesTeam(team, filters)
       )
       .sort((a, b) => compareBrowseTeams(a, b, current));
-    return sortByVp ? sortByVpCost(ranked, currentSets.sets) : ranked;
+    return sortByVp
+      ? sortByVpCost(ranked, currentSets.sets, catalogState.vpCatalog)
+      : ranked;
   });
   const pageSize = 8;
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / pageSize)));
