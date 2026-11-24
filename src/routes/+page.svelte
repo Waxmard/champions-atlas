@@ -315,12 +315,12 @@
       <nav
         bind:this={pager}
         aria-label="Team result pages"
-        class="bleed sticky top-[var(--app-header-height,0px)] z-30 flex items-center justify-center gap-2 border-b border-base-300 bg-base-200 py-0.5 phone-landscape:py-0"
+        class="bleed sticky top-[var(--app-header-height,0px)] z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-base-300 bg-base-200 py-0.5 phone-landscape:py-0"
       >
         <Button
           variant="quiet"
           size="dense"
-          class="text-[0.8125rem]"
+          class="justify-self-start text-[0.8125rem]"
           disabled={pageNumber === 1}
           onclick={() => changeOption('page', String(pageNumber - 1))}
           >Previous</Button
@@ -329,7 +329,7 @@
         <Button
           variant="quiet"
           size="dense"
-          class="text-[0.8125rem]"
+          class="justify-self-end text-[0.8125rem]"
           disabled={pageNumber === pageCount}
           onclick={() => changeOption('page', String(pageNumber + 1))}
           >Next</Button
