@@ -91,13 +91,6 @@ export const eligiblePokemonKeys = Object.freeze([
 if (snapshots.size !== sourceStems.length)
   throw new Error('Champions eligibility snapshots are incomplete.');
 
-export const officialPokemonKeys = (regulation, officialId) => {
-  const pokemon = snapshots.get(regulation)?.pokemon;
-  return pokemon && Object.hasOwn(pokemon, officialId)
-    ? pokemon[officialId]
-    : undefined;
-};
-
 function errorForSnapshot(team, snapshot) {
   const { regulation, pokemon, megas } = snapshot;
   const rowIdsByKey = rowIdsByRegulation.get(regulation);

@@ -80,7 +80,7 @@
       <span class="sr-only">Ability: </span>{member.ability}
     </span>
   {:else}
-    <span class="text-xs text-[color:var(--color-muted)]">Unknown ability</span>
+    <span class="text-xs text-muted">Unknown ability</span>
   {/if}
 {/snippet}
 
@@ -90,7 +90,7 @@
   {:else}
     <span
       aria-hidden="true"
-      class="grid size-7 place-items-center rounded-[var(--radius-field)] bg-base-200 text-sm font-bold text-[color:var(--color-muted)]"
+      class="grid size-7 place-items-center rounded-field bg-base-200 text-sm font-bold text-muted"
       >?</span
     >
   {/if}
@@ -102,7 +102,7 @@
 {#snippet spreadContent()}
   {#if spread === null}
     <span
-      class="line-clamp-2 text-[0.8125rem] wrap-anywhere tabular-nums"
+      class="line-clamp-2 text-detail wrap-anywhere tabular-nums"
       title={member.spread}
     >
       {member.spread}
@@ -121,24 +121,21 @@
               : ''}
         <span class="min-w-0">
           <span
-            class="block text-[0.6875rem] leading-[1.4] font-bold {tone ===
-            'raised'
-              ? 'text-[color:var(--color-error-content)]'
+            class="block text-tiny leading-[1.4] font-bold {tone === 'raised'
+              ? 'text-error-content'
               : tone === 'lowered'
-                ? 'text-[color:var(--color-info-content)]'
-                : 'text-[color:var(--color-muted)]'}"
+                ? 'text-info-content'
+                : 'text-muted'}"
           >
             {stat}{#if tone}<span class="sr-only">, {tone} by nature</span>{/if}
           </span>
-          <span class="block text-[0.8125rem] tabular-nums">
-            <span class={spread[stat] ? '' : 'text-[color:var(--color-muted)]'}
-              >{spread[stat]}</span
+          <span class="block text-detail tabular-nums">
+            <span class={spread[stat] ? '' : 'text-muted'}>{spread[stat]}</span
             >{#if tone}<span
                 aria-hidden="true"
-                class="text-[0.625rem] font-bold {tone === 'raised'
-                  ? 'text-[color:var(--color-error-content)]'
-                  : 'text-[color:var(--color-info-content)]'}"
-                >{tone === 'raised' ? '↑' : '↓'}</span
+                class="text-micro font-bold {tone === 'raised'
+                  ? 'text-error-content'
+                  : 'text-info-content'}">{tone === 'raised' ? '↑' : '↓'}</span
               >{/if}
           </span>
           <span
@@ -147,10 +144,10 @@
           >
             <span
               class="block h-full rounded-full {tone === 'raised'
-                ? 'bg-[var(--color-error-content)]'
+                ? 'bg-error-content'
                 : tone === 'lowered'
-                  ? 'bg-[var(--color-info-content)]'
-                  : 'bg-[var(--color-muted)]'}"
+                  ? 'bg-info-content'
+                  : 'bg-muted'}"
               style:width="{(spread[stat] / 32) * 100}%"
             ></span>
           </span>
@@ -183,16 +180,13 @@
     ? 'cursor-pointer'
     : ''}"
 >
-  <div
-    class="min-w-0 rounded-t-[var(--radius-box)] px-2.5 pt-1 pb-2"
-    style:background={band}
-  >
+  <div class="min-w-0 rounded-t-box px-2.5 pt-1 pb-2" style:background={band}>
     <div class="flex min-h-7 min-w-0 items-center justify-between gap-1.5">
       {#if onedit}
         <button
           bind:this={openButton}
           type="button"
-          class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-[0.8125rem] font-bold text-base-content disabled:pointer-events-none disabled:opacity-50"
+          class="min-w-0 flex-1 truncate rounded-field py-0.5 text-start text-detail font-bold text-base-content disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Change ${member.pokemon}`}
           data-set-field="pokemon"
           title={member.pokemon}
@@ -205,7 +199,7 @@
         <button
           bind:this={openButton}
           type="button"
-          class="min-w-0 flex-1 truncate rounded-[var(--radius-field)] py-0.5 text-start text-[0.8125rem] font-bold text-base-content disabled:pointer-events-none disabled:opacity-50"
+          class="min-w-0 flex-1 truncate rounded-field py-0.5 text-start text-detail font-bold text-base-content disabled:pointer-events-none disabled:opacity-50"
           aria-label={`View full set for ${member.pokemon}`}
           data-set-field="set"
           title={member.pokemon}
@@ -215,7 +209,7 @@
         </button>
       {:else}
         <p
-          class="min-w-0 flex-1 truncate text-[0.8125rem] font-bold text-base-content"
+          class="min-w-0 flex-1 truncate text-detail font-bold text-base-content"
           title={member.pokemon}
         >
           {member.pokemon}
@@ -233,7 +227,7 @@
       {#if onedit}
         <button
           type="button"
-          class="grid size-14 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
+          class="grid size-14 place-items-center rounded-field hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Change ${member.pokemon}`}
           {disabled}
           onclick={() => onedit('pokemon')}
@@ -243,7 +237,7 @@
         <button
           type="button"
           data-set-field="ability"
-          class="flex min-h-11 min-w-0 items-center rounded-[var(--radius-field)] px-1 text-start hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
+          class="flex min-h-11 min-w-0 items-center rounded-field px-1 text-start hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit ${member.pokemon} ability`}
           {disabled}
           onclick={() => onedit('ability')}
@@ -253,7 +247,7 @@
         <button
           type="button"
           data-set-field="item"
-          class="grid size-9 place-items-center rounded-[var(--radius-field)] hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
+          class="grid size-9 place-items-center rounded-field hover:bg-base-100/60 disabled:pointer-events-none disabled:opacity-50"
           aria-label={`Edit ${member.pokemon} item`}
           title={member.item?.trim() || 'Unknown item'}
           {disabled}
@@ -281,7 +275,7 @@
       <button
         type="button"
         data-set-field="spread"
-        class="flex min-h-9 w-full min-w-0 flex-col justify-center gap-0.5 rounded-[var(--radius-field)] px-1 py-1 text-start hover:bg-base-200/70 disabled:pointer-events-none disabled:opacity-50"
+        class="flex min-h-9 w-full min-w-0 flex-col justify-center gap-0.5 rounded-field px-1 py-1 text-start hover:bg-base-200/70 disabled:pointer-events-none disabled:opacity-50"
         aria-label={`Edit ${member.pokemon} EV spread and nature`}
         {disabled}
         onclick={() => onedit('spread')}
@@ -304,7 +298,7 @@
               type="button"
               data-set-field={index === 0 ? 'moves' : undefined}
               data-move-slot={index}
-              class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content disabled:pointer-events-none disabled:opacity-50"
+              class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-field px-2.5 py-1 text-start text-base-content disabled:pointer-events-none disabled:opacity-50"
               style={typeFill(type)}
               aria-label={`Edit ${member.pokemon} move ${index + 1}: ${move || (member.moves.length ? 'Empty' : 'Unknown')}`}
               {disabled}
@@ -314,7 +308,7 @@
             </button>
           {:else}
             <div
-              class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
+              class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-field px-2.5 py-1 text-start text-base-content"
               style={typeFill(type)}
             >
               {@render moveContent(move, type)}

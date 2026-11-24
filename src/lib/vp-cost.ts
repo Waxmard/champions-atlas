@@ -114,18 +114,17 @@ function filled(
   regulation: string,
   teammates: Member[]
 ): Member {
-  const options = catalogSuggestions(member, teams, regulation, teammates);
-  const ability = listed(member.ability)
-    ? member.ability
-    : (seen(options.abilities)[0] ?? null);
-  const nature = listed(member.nature)
-    ? member.nature
-    : (seen(options.natures)[0] ?? null);
+  let { ability, nature } = member;
   const moves = member.moves.filter(listed);
-  const known = new Set(moves.map(normalize));
-  for (const move of seen(options.moves)) {
-    if (moves.length >= 4) break;
-    if (!known.has(normalize(move))) moves.push(move);
+  if (!listed(ability) || !listed(nature) || moves.length < 4) {
+    const options = catalogSuggestions(member, teams, regulation, teammates);
+    if (!listed(ability)) ability = seen(options.abilities)[0] ?? null;
+    if (!listed(nature)) nature = seen(options.natures)[0] ?? null;
+    const known = new Set(moves.map(normalize));
+    for (const move of seen(options.moves)) {
+      if (moves.length >= 4) break;
+      if (!known.has(normalize(move))) moves.push(move);
+    }
   }
   const spread = listed(member.spread)
     ? member.spread
@@ -195,22 +194,14 @@ export function teamVpCost(
 
 export function sortByVpCost<T extends { members: readonly Member[] }>(
   teams: readonly T[],
-  sets: readonly CurrentSet[] | null
+  sets: readonly CurrentSet[] | null,
+  catalog: VpCatalog
 ): T[] {
   if (!sets) return [...teams];
   return teams
     .map((team) => ({
       team,
-      total: team.members.reduce(
-        (sum, member) =>
-          sum +
-          setVpCost(
-            sets.find((entry) => entry.id === pokemonId(member.pokemon))
-              ?.member,
-            member
-          ).vp,
-        0
-      ),
+      total: teamVpCost(sets, team.members, catalog).total,
     }))
     .sort((a, b) => a.total - b.total)
     .map(({ team }) => team);

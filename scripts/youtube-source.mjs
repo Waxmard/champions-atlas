@@ -46,6 +46,12 @@ export const youtubeChannels = Object.freeze([
     name: 'James Baek',
     url: 'https://www.youtube.com/@jameswbaekpkmn',
   }),
+  Object.freeze({
+    handle: 'viosworld',
+    name: 'Vio',
+    url: 'https://www.youtube.com/@viosworld',
+    format: 'singles',
+  }),
 ]);
 
 const object = (value) =>
@@ -326,7 +332,9 @@ async function scanChannel(channel, apiKey) {
   }
   candidates.sort(compareCandidate);
   return {
-    ...channel,
+    handle: channel.handle,
+    name: channel.name,
+    url: channel.url,
     channelId,
     videosScanned: videos.size,
     videosWithoutPaste,
@@ -451,7 +459,9 @@ function validateSnapshot(snapshot) {
     if (entry.videosWithoutPaste + videos.size !== entry.videosScanned)
       throw fail('Cached snapshot is invalid.');
     return {
-      ...identity,
+      handle: identity.handle,
+      name: identity.name,
+      url: identity.url,
       channelId: entry.channelId,
       videosScanned: entry.videosScanned,
       videosWithoutPaste: entry.videosWithoutPaste,

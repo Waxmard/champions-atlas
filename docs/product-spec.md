@@ -7,31 +7,28 @@ development, preview, and tests are local shared-UI tools, not a supported websi
 or PWA.
 
 This document records agreed behavior that lives nowhere else: discovery and
-browsing, saved-team editing and similarity rules, and acceptance criteria.
-Import and result-ordering rules are in
-[data sources](data-sources.md), the synced record model is in
-[iOS installation and Firebase sync](firebase.md), and user-facing behavior, tooling,
-and commands are in the [README](../README.md) and `AGENTS.md`.
+browsing, saved-team editing and similarity rules, and acceptance criteria. It
+holds rules and constraints only. Button labels, row counts, layout, and
+animation stay out, because the running app already shows them. Import and
+result-ordering rules are in [data sources](data-sources.md), the synced record
+model is in [iOS installation and Firebase sync](firebase.md), and user-facing
+behavior, tooling, and commands are in the [README](../README.md) and
+`AGENTS.md`.
 
 ## Discovery and browsing
 
-- Provide mobile-friendly browsing for personal use.
-- Choose a **Battle format**, **Doubles** or **Singles**, at the top of
-  **Settings**. Doubles is the default and the choice syncs with the account. It
-  limits Browse, Saved, Wishlist, suggestions, Swaps ladder pairings, the
-  current-team shortcut, new-team dots, and notifications to that format's teams.
-  Recorded in-game sets and VP costs are shared across both formats. Choosing a
-  format closes Settings, clears the Browse filters and the Saved and Wishlist
-  Pokémon search, keeps you on the tab you are on (Browse, or the Saved or
-  Wishlist list), opens the Saved list from any other page, and shows "Switched
-  to Singles." (or "Switched to Doubles."). Switching with a saved team open
-  opens the saved team last open in the other format, or the Saved list when
-  there is none. If you keep unsaved edits on the open page, the format does not
-  change. A saved team stays in the format it was saved or created in. Singles
-  teams come from the Poch.ms ranked-ladder posts, Battle Database Champions'
-  season-final ranked teams, and Smogon's singles sample teams; other sources
-  hold doubles teams only (see [data sources](data-sources.md)).
-- Browse teams with or without a Pokémon in mind.
+- Choose a **Battle format**, **Doubles** or **Singles**, in **Settings**.
+  Doubles is the default and the choice syncs with the account. It limits
+  Browse, Saved, Wishlist, suggestions, Swaps ladder pairings, the current-team
+  shortcut, new-team dots, and notifications to that format's teams. Recorded
+  in-game sets and VP costs are shared across both formats. Choosing a format
+  clears the Browse filters and the Saved and Wishlist Pokémon search, keeps you
+  on the Browse, Saved, or Wishlist list you are on, and opens the Saved list
+  from any other page. Switching with a saved team open opens the saved team
+  last open in the other format, or the Saved list when there is none. If you
+  keep unsaved edits on the open page, the format does not change. A saved team
+  stays in the format it was saved or created in. Singles teams come from a
+  subset of the sources (see [data sources](data-sources.md)).
 - Combine multiple Pokémon filters using AND: every selected Pokémon must occur
   on the team.
 - Attach item, move, and ability constraints to the selected Pokémon. A matching
@@ -48,11 +45,10 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   calculations. Legacy filters canonicalize to the shared identity while
   retaining explicit constraints; duplicate aliases remain invalid.
 - Browse lists every regulation, newest first, with each card labelled by
-  regulation. Selected Pokémon stay compact on the page; **Filters** opens a
-  pop-up with item, ability, and move controls for each selection, plus
-  **Unknown regulation only** (`?unknown=1`) and **With EVs only** (`?evs=1`),
-  which lists only teams whose six Pokémon all have complete EV spreads. Older
-  links and saved filters that carry a regulation choice are ignored.
+  regulation. Its filters include **Unknown regulation only** (`?unknown=1`) and
+  **With EVs only** (`?evs=1`), which lists only teams whose six Pokémon all
+  have complete EV spreads. Older links and saved filters that carry a
+  regulation choice are ignored.
 - A team of Unknown regulation shows a regulation picker on its page, offering
   only regulations whose roster the whole team is legal in. The choice is saved
   on the device, marked "Set by you", synced with a signed-in account, and
@@ -83,28 +79,20 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   recent publish that added teams of that format) with a blue dot before the
   team name; the dot stays until a later batch of that format replaces it.
   **New teams only** in Browse filters (`?new=1`) shows just those teams.
-- Signed-in iPhone users choose catalog notifications under **Notifications**
-  in **Settings**; the choices are stored on the device. Each device gets
-  banners only for its chosen format. Each of the two groups below is a
-  collapsed row that shows its state (**On**/**Off**, or the number of Pokémon
-  chosen). **New teams** (on
-  by default, toggled by **Notify me** inside the row) sends one banner per batch
-  counting its current-regulation teams, with a body naming the tournaments and
+- Signed-in iPhone users choose catalog notifications in **Settings**; the
+  choices are stored on the device, and each device gets banners only for its
+  chosen format. **New teams** (on by default) sends one banner per batch
+  counting its current-regulation teams and naming the tournaments and
   YouTubers they came from. Tapping it opens Browse with **New teams only** on.
-- **Teams with your Pokémon** below it holds a list of Pokémon (empty
-  by default), chosen from the current regulation's roster and the Pokémon on
-  catalog teams. When a batch has a current-regulation team with any of them,
-  the catalog refresh sends a separate banner counting those teams and naming up
-  to two of the matched Pokémon. Tapping it opens Browse with **New teams only**
-  on, also filtered to that Pokémon when exactly one matched. It is sent whether
-  or not **New teams** is on.
-- Each of the two has its own **Include teams without EV spreads** option, on by
-  default and unavailable while **New teams** is off or the list is empty.
-  Turning it off leaves teams without EV spreads out of that banner's count; no
-  banner is sent when none remain.
-- Banner titles read `N new Reg M-C teams` and `N new teams with ...` in
-  Doubles, and `N new Reg M-C singles teams` and `N new singles teams with ...`
-  in Singles.
+- **Teams with your Pokémon** holds a list of Pokémon (empty by default), chosen
+  from the current regulation's roster and the Pokémon on catalog teams. When a
+  batch has a current-regulation team with any of them, the catalog refresh
+  sends a separate banner counting those teams, whether or not **New teams** is
+  on. Tapping it opens Browse with **New teams only** on, also filtered to that
+  Pokémon when exactly one matched.
+- Each of the two has its own **Include teams without EV spreads** option, on
+  by default. Turning it off leaves teams without EV spreads out of that
+  banner's count; no banner is sent when none remain.
 - Save current teams locally. Configured account sync is described in
   [iOS installation and Firebase sync](firebase.md).
 - Distinguish teams usable unchanged from teams requiring adaptation. Do not
@@ -133,35 +121,21 @@ matches a catalog URL. Current details do not change the original evidence,
 saved edits, or independent team copies. Teams without a match remain usable
 without a catalog link or warning.
 
-Browse and Wishlist share a compact team summary style. Opening a catalog team,
-a Wishlist bookmark, or a Saved team shows the six Pokémon sets in a shared card
-grid. Catalog and Wishlist cards open a read-only full-set view; Saved cards
-open editors for individual fields. When available, **View catalog details**
-opens the matching catalog team from a Saved team or a selected Wishlist team.
-
 **Revert changes** restores a team slot to its state when you opened the team.
 It is unavailable when the set is unchanged, while editing or deleting, or when
 restoration conflicts with the current roster.
 
-The Saved editor shows a **Win–loss record** row for the team, such as
-**3W – 1L · 75%**. The percentage is the share of games won, rounded to a whole
-number, and is omitted before the first game. Tapping the row opens a pop-up.
-**Win** and **Loss** each log one game and the pop-up stays open, so several
-games can be logged in a row. Logging a game animates the score: a win pops
-with a short burst, a loss shakes, and the win-rate bar glides to its new width.
-Removing a game or resetting does not animate. **Edit** reveals buttons to add
-or remove a win or a loss and **Reset**. After a game is logged, the pop-up
-reminds you when in-game sets differ from the team and offers to record them.
-Reset asks for confirmation and returns the record to 0W – 0L. The record never
-goes below zero and is unavailable while edits are pending or the team changed
-elsewhere. It is saved with the team, so it stays when the team moves between
-Saved and Wishlist and syncs like other team content. Saved
-and Wishlist cards show it read-only, with the percentage, once a team has a
-record. On iPhone, the **Log Game Result** shortcut action names the current
-team, or the first team in Saved order when none is current, asks for **Win** or
-**Loss**, and logs it without opening the app. A banner confirms the result with
-the team's updated record; tapping it opens that team in Saved. Results logged
-this way join the record the next time the app is opened.
+A Saved team has a **Win–loss record**. The percentage is the share of games
+won, rounded to a whole number, and is omitted before the first game. The
+record never goes below zero, resets only after confirmation, and is
+unavailable while edits are pending or the team changed elsewhere. It is saved
+with the team, so it stays when the team moves between Saved and Wishlist and
+syncs like other team content. After a game is logged, the app reminds you when
+in-game sets differ from the team and offers to record them. On iPhone, the
+**Log Game Result** shortcut action names the current team, or the first team
+in Saved order when none is current, asks for **Win** or **Loss**, and logs it
+without opening the app. Results logged this way join the record the next time
+the app is opened.
 
 Completed valid text saves on blur or Enter. Selections, clears, and suggestions
 save immediately and close the keyboard; invalid interim EV allocations remain
@@ -190,17 +164,10 @@ Pokémon's metadata and unchanged legacy details. Deleting the team still confir
 before discarding unsaved input. Closing the team text pop-up with unsaved
 changes asks before discarding them. Saving closes the pop-up.
 
-The EV slider keeps vertical page scrolling,
-with a 44-pixel touch target across its full height. **Fill** adds or removes
-points from the selected stat to reach 66 total, within that stat's 0–32 bounds.
-It never changes another stat. If the selected stat cannot absorb the full
-difference, the differing total stays uncommitted and the editor reports it when
-you finish.
-
-The nature field, its suggestion rows, the current allocation, and spread
-suggestions all remain visible on the EV tab. **Adjust EVs manually** opens a
-pop-up over the set editor with the number fields, quick allocation buttons, and
-sliders. It starts closed whenever you open the EV editor.
+**Fill** adds or removes points from the selected stat to reach 66 total,
+within that stat's 0–32 bounds. It never changes another stat. If the selected
+stat cannot absorb the full difference, the differing total stays uncommitted
+and the editor reports it when you finish.
 
 Record and reuse one explicit **my in-game set** per Browse identity,
 representing the set currently in your Pokémon Champions box. Recording changes
@@ -264,14 +231,13 @@ offer a direct reuse action.
 
 Opening an editor focuses its section heading and never a text field, so no
 keyboard opens on a phone. Focus is shown as a fill rather than a ring or
-outline. The selected move slot in the set editor also has a primary-colour
-border. Operation errors use alerts. Deliberate
-actions, including Wishlist additions and removals, imports, collection moves,
-deletions, restorations, copying, and in-game recording, use one temporary status
-message below navigation for three seconds. The message survives navigation but
-is not stored or replayed. Wishlist reordering, autosaved fields, and background
-sync do not produce these messages. Validation errors and failed shared imports
-remain available until corrected or dismissed.
+outline. Operation errors use alerts. Deliberate actions, including Wishlist
+additions and removals, imports, collection moves, deletions, restorations,
+copying, and in-game recording, use one temporary status message. The message
+survives navigation but is not stored or replayed. Wishlist reordering,
+autosaved fields, and background sync do not produce these messages.
+Validation errors and failed shared imports remain available until corrected or
+dismissed.
 
 Background reconciliation remains active while an editor is mounted; the form
 stays unchanged, and stale saves retain pending input rather than overwrite a
@@ -279,23 +245,22 @@ remote change or recreate a deleted team. The immutable original and the current
 team synchronize across devices.
 
 Saved teams can be deleted after confirmation, from the editor or the Saved row;
-deleting from the editor returns to the Saved list. Deletion also discards unsaved edits to that team. The app
-remembers the last successfully visited URL and scroll position on this device
-for a bare-root reopen and returns to that page after sign-in. With no remembered
-page, it opens Browse. Explicit links take precedence, and a missing remembered
-detail falls back to browsing. Editors and dialogs reopen closed. The main
-navigation is a bottom tab bar (Browse, Saved, Wishlist) that
-remains visible while scrolling. From outside Saved, the Saved tab reopens the
+deleting from the editor returns to the Saved list. Deletion also discards
+unsaved edits to that team. The app remembers the last successfully visited URL
+and scroll position on this device for a bare-root reopen and returns to that
+page after sign-in. With no remembered page, it opens Browse. Explicit links
+take precedence, and a missing remembered detail falls back to browsing.
+Editors and dialogs reopen closed. From outside Saved, the Saved tab reopens the
 team that was open when you left Saved, if it is still in Saved; from inside
-Saved, or after returning to the Saved list, it opens the list. Selecting a
-Pokémon clears its
-search input for the next choice. A rightward swipe from the left screen edge
-follows the screen's Back link, a downward swipe inside a dialog closes it as
-Escape does (the set editor cancels its edits), and dragging a Wishlist or
-Saved row left past half its width asks to remove or delete it, while dragging a Wishlist row
-right saves the team and opens it in Saved. On Browse, dragging a card right
-adds it to the Wishlist and dragging a wishlisted card left removes it without
-asking, as its Wishlist button does.
+Saved, or after returning to the Saved list, it opens the list.
+
+A rightward swipe from the left screen edge follows the screen's Back link, a
+downward swipe inside a dialog closes it as Escape does (the set editor cancels
+its edits), and dragging a Wishlist or Saved row left past half its width asks
+to remove or delete it, while dragging a Wishlist row right saves the team and
+opens it in Saved. On Browse, dragging a card right adds it to the Wishlist and
+dragging a wishlisted card left removes it without asking, as its Wishlist
+button does.
 
 An explicit saved-team link, or a resumed link to a deleted saved team, keeps its
 URL and shows a missing-team notice with a link back to the list.
@@ -320,36 +285,27 @@ recency-adjusted results, regulation, and credentials. Sources need not match th
 fixed five members exactly. Source result claims are not attributed to the
 user's edited team. Exact forms remain distinct.
 
-- One Pokémon toggle replaces individual item, move, and ability locks.
-- Show concrete differences for the proposed single-slot replacement.
-- Retain published set text and source history on edits.
-- Preserve the original imported team when creating an edited draft.
-
 The **Details** pop-up holds the team name and the original team's
 results, source links, paste link, and replica code. The original team stays
 stored with the saved team, but it cannot be restored from Saved.
 
 The two-Mega limit applies to Pokémon replacement suggestions.
 
-The **Swaps** pop-up opens with up to four whole-set replacements, at most one per
-slot, each taken from that slot's Pokémon suggestions in the set editor. Each
-row names the suggested Pokémon, the Pokémon it replaces on a second line, and
-the set's item, ability, and nature on a third; long lines are cut off rather
-than wrapped. **Show 5 more** reveals further rows in ranked order, each Pokémon once on the slot where it ranks best; a slot can repeat. Rows backed by a team
-sharing three or more teammates come first, ranked by the weighted vote of
-those teams. The remaining rows follow by shared teammates, then by how often
-the suggested Pokémon is paired with the rest of the team on the current
-regulation's Smogon ladder for the chosen format, so a team that few catalog teams resemble still gets
+The **Swaps** pop-up lists whole-set replacements. The first rows cover at most
+one per slot, each taken from that slot's Pokémon suggestions in the set editor.
+Further rows follow in ranked order, each Pokémon once on the slot where it
+ranks best; a slot can repeat. Rows backed by a team sharing three or more
+teammates come first, ranked by the weighted vote of those teams. The remaining
+rows follow by shared teammates, then by how often the suggested Pokémon is
+paired with the rest of the team on the current regulation's Smogon ladder for
+the chosen format, so a team that few catalog teams resemble still gets
 suggestions. A row that would lower the team's ladder pairing is dropped unless
-it is that slot's only idea. Sets from other favorite teams rank in the same list, count as much as
-the best-placed supporting team once they share three teammates, and are
-labelled **Favorite**. Tapping a row in either list shows the full set inside
-the pop-up with **Back** and **Apply swap**; Back returns to the list where it
-was. Applying replaces the whole set,
-leaves **Revert changes** available, and closes the pop-up. **Swap in a specific Pokémon** looks one
-resolved form up across every slot. Swaps stay unavailable while team text is
-unsaved or an editor is open, and a team already holding two Mega Pokémon is not
-offered another.
+it is that slot's only idea. Sets from other favorite teams rank in the same
+list and count as much as the best-placed supporting team once they share three
+teammates. Applying replaces the whole set and leaves **Revert changes**
+available. **Swap in a specific Pokémon** looks one resolved form up across
+every slot. Swaps stay unavailable while team text is unsaved or an editor is
+open, and a team already holding two Mega Pokémon is not offered another.
 
 Changed item, ability, move, and Pokémon names must be known to the app. An
 unchanged legacy value stays accepted, and a committed value uses its canonical
@@ -357,50 +313,29 @@ spelling. Each item can be held by only one team member. Custom team import and
 Wishlist import remain permissive.
 
 Catalog item, ability, and move suggestions show the value with provenance
-labels: **Original** for the original team's value, **In-game** for the recorded
-in-game set, **Favorite** for a value from a matching set in another favorite team,
-and **Movepool** for a move no catalog team recorded. Favorite values rank after
-Original and In-game values. Items another
-teammate already holds are not offered. Move suggestions include the species'
-newest available movepool, which ranks after catalog observations. In the set
-editor's Pokémon suggestions, favorite teams' sets rank among catalog suggestions by
-shared teammates until a name is typed, then they list first. Tapping a row
-there loads that set into the pop-up only and shows the full-set preview with
-**Back**, which undoes it. While a swap is waiting, **Apply swap** appears in
-the pop-up header, the footer shows its VP cost, **Done** is hidden, and
-Details, EVs, and Moves edit the waiting set. Apply swap saves it and closes
-the pop-up; Cancel or swiping out discards it. Teams of Unknown
-regulation count toward item, ability, move, and Nature totals but carry no
-vote, so their values rank after every voted value.
-
-Every suggestion surface renders as full-width rows with an icon cell, the name,
-and one muted detail line (two in Swaps). Item, ability, move, Pokémon, and spread lists start
-with ten rows; natures start with six. **Show 5 more** appends five rows as a muted
-dashed footer that is not a selectable row. It disappears when the list is
-complete. A check mark marks the
-selected nature and spread. Changing a field's query or committing input
-collapses its list again.
+labels: **Original** for the original team's value, **In-game** for the
+recorded in-game set, **Favorite** for a value from a matching set in another
+favorite team, and **Movepool** for a move no catalog team recorded. Favorite
+values rank after Original and In-game values. Items another teammate already
+holds are not offered. Move suggestions include the species' newest available
+movepool, which ranks after catalog observations. In the set editor's Pokémon
+suggestions, favorite teams' sets rank among catalog suggestions by shared
+teammates until a name is typed, then they list first. Tapping a row there
+loads that set into the pop-up only, as a waiting swap. Details, EVs, and Moves
+edit the waiting set; **Apply swap** saves it, and Cancel or swiping out
+discards it. Teams of Unknown regulation count toward item, ability, move, and
+Nature totals but carry no vote, so their values rank after every voted value.
 
 EV spread suggestions include only complete, standard pairs whose Nature matches
 the selected Nature and whose spread resolves to the current battle form.
 Matching immutable original and in-game pairs come first. Exact duplicate pairs
-appear once with their source labels combined. The initial list contains up to
-ten additional unique catalog pairs after up to two matching saved-source pairs.
-**Show 5 more** appends five additional catalog pairs in the same ranked order. It
-disappears when no eligible pairs remain. Each row shows its Nature and
-allocation, and its muted detail line carries
-the source, moved points, and unmodified Speed without team counts. Expansion
-does not change saved teams. Selecting a spread, adjusting EVs, or selecting the
-same Nature preserves the expanded depth. Selecting a different Nature or
-reopening the EV editor resets the catalog allowance to ten.
-Fewer rows appear when eligible recorded data is insufficient. A catalog pair
-whose best source team shares four or more teammates ranks first, more shared
-teammates first, then by that team's matching set details. Remaining pairs rank
-by the weighted vote of current-regulation sets holding the
-edited set's item, then by the overall vote, then by the best source team's
-shared teammates and matching details, then by recency-adjusted results,
-regulation, and credentials. Total observations break ties before publication
-date or ID. Catalog counts use
+appear once with their source labels combined. A catalog pair whose best source
+team shares four or more teammates ranks first, more shared teammates first,
+then by that team's matching set details. Remaining pairs rank by the weighted
+vote of current-regulation sets holding the edited set's item, then by the
+overall vote, then by the best source team's shared teammates and matching
+details, then by recency-adjusted results, regulation, and credentials. Total
+observations break ties before publication date or ID. Catalog counts use
 catalog observations only. Original and in-game suggestions retain their source
 labels and do not fill in unpublished original EVs.
 
@@ -423,15 +358,22 @@ and Tera Type are omitted from displayed and exported Champions text. Custom
 teams are saved locally under the current regulation with legality unverified and
 no published result claims.
 
-From a Poképaste page, the iOS share extension accepts one direct link or paste
-ID. **Save link** queues it; opening Atlas finishes the import in **Wishlist**.
+The iOS share extension accepts one Poképaste link found anywhere in the shared
+text, a paste ID shared on its own, or one YouTube video link; a Poképaste link
+wins when both appear. It saves the link as soon as it opens, and opening Atlas
+finishes the import in **Wishlist**. A video bookmarks the catalog teams linked
+to it; otherwise Atlas reads the video description on the phone and imports its
+Poképaste links. A description link that a catalog team uses bookmarks that team
+and adds the video to the bookmark's sources, including when the bookmark
+already exists. When a video has several teams, Atlas lists them unchecked and
+adds only the ones chosen. Once
+the queue empties, Atlas opens the team from the last share when that share
+added exactly one team.
 The manual fallback, **Add a Poképaste** on the Wishlist list, accepts a
-`pokepast.es` link or 16-character paste ID.
-Imports do not change the last-opened team. An existing bookmark for the link is
-returned unchanged, even if multiple catalog teams share that link. A unique
-catalog match is bookmarked with its source metadata without a network request.
-When multiple catalog teams share a link without an existing bookmark, import is
-rejected without fetching or saving. Otherwise the app fetches the paste
+`pokepast.es` link or 16-character paste ID and stays on the list.
+An existing bookmark for the link is returned unchanged. A catalog match is
+bookmarked with its source metadata without a network request. Otherwise the
+app fetches the paste
 directly from Poképaste and applies the same six-set requirements as custom text
 import. A failed shared import remains queued for retry or dismissal from the
 Wishlist list or team detail, without deleting a saved team. File, screenshot,
@@ -474,30 +416,21 @@ base and Mega identities as Browse. Search does not change saved records. It
 stays active when opening a bookmark and returning to the list, but resets on
 reload or a new visit. Wishlist search is independent of Browse filters.
 
-Wishlist has the same **Filters** pop-up as Browse for item, ability, and move
-constraints on each selected Pokémon, plus **With EVs only**. The With EVs
-choice is remembered on this device, shows as a removable chip, and pauses
-reordering while on. When it is on and no bookmark has complete EV spreads,
-Wishlist offers **Show all**. Saved has the Pokémon search but no **Filters**
-button.
+Wishlist has the same item, ability, and move constraints as Browse for each
+selected Pokémon, plus **With EVs only**. The With EVs choice is remembered on
+this device and pauses reordering while on. Saved has the Pokémon search but no
+constraint filters.
 
-An empty Saved or Wishlist list offers **Browse teams** and the page's own add
-action (**Add custom team** on Saved, **Add a Poképaste** on Wishlist). When
-the other battle format has teams in that list, it also says to set Battle
-format to that format in Settings.
-
-With no Wishlist filters active, reorder bookmarks using the move up and down
-controls. Holding an arrow for half a second offers **Move to top** or
-**Move to bottom**. New bookmarks appear first without changing the relative
-order of existing bookmarks. Saved uses the same controls and order rules while
-Favorites and Pokémon filters are off. The order persists across reloads and
-syncs with the account.
-Saved and Wishlist each have a **Sort** menu offering **Manual order** and **VP
-spend**; Saved also offers **Win rate**. Win rate puts the highest win
-percentage first, more games first on equal rates, and teams with no games last.
-VP spend puts the lowest expected VP spend first, ties in manual order.
-Reordering is paused unless Manual order is selected. Manual order is the
-default, and each list remembers its choice on this device.
+With no Wishlist filters active, bookmarks reorder manually. New bookmarks
+appear first without changing the relative order of existing bookmarks. Saved
+uses the same order rules while Favorites and Pokémon filters are off. The order
+persists across reloads and syncs with the account. Saved and Wishlist each have
+a **Sort** menu offering **Manual order** and **VP spend**; Saved also offers
+**Win rate**. Win rate puts the highest win percentage first, more games first
+on equal rates, and teams with no games last. VP spend puts the lowest expected
+VP spend first, ties in manual order. Reordering is paused unless Manual order
+is selected. Manual order is the default, and each list remembers its choice on
+this device.
 
 Each Saved row has a swords toggle marking it as the **current team**. Marking
 a team moves it to the top of Saved and clears the marker on any other team of the same format.
@@ -522,23 +455,11 @@ collections share the same storage ceiling and sync path (see
 
 The iOS app uses native Google sign-in, app-local storage, and Firebase sync.
 After a successful sign-in, it can open saved data offline; sync resumes when
-connected. A first sign-in may require connectivity. **Settings** in the account
-menu holds **Troubleshooting**, where **Copy sync log** copies the device's last
-20 sync failures as JSON (time, step, error code and message, and whether the
-device was online and the app visible) for troubleshooting and shows
-**Sync log copied.** under the button. Sync failures are also reported to the
-account's cloud data for fixing bugs. A collapsed **Delete account** section at
-the bottom of Settings, after confirmation and a fresh Google sign-in,
-permanently deletes the account and its cloud teams, in-game sets, battle format
-setting, notification registrations, and sync failure reports; saved data on the device stays. The sign-in page
-then shows **Deleting account…** and, when done, **Account deleted.** Native
-setup and signing are described in
+connected. A first sign-in may require connectivity. **Copy sync log** in
+**Settings** copies the device's last 20 sync failures as JSON for
+troubleshooting. Deleting the account leaves saved data on the device. Sync
+failure reports, account deletion, native setup, and signing are described in
 [iOS installation and Firebase sync](firebase.md).
-
-A **Help** button in the header opens **How it works**: one line per tab, a
-**Glossary** of regulation, EVs, nature, VP, in-game, and replica terms, and
-**About**. It opens once on first launch. Small help buttons beside regulations,
-natures, EVs, and estimated spend open the matching glossary entry.
 
 ## Future scope
 
@@ -560,5 +481,3 @@ natures, EVs, and estimated spend open the matching glossary entry.
 - Saved teams survive reload and app reopening without a cloud account.
 - Mobile layout and reduced-motion behavior work; state
   transitions are smooth without disturbing browsing position.
-- Relevant tests, lint, type checking, and production build pass with the selected
-  toolchain.

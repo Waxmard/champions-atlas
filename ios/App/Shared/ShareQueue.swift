@@ -15,31 +15,28 @@ struct ShareQueue {
         self.directory = directory
     }
 
-    static func canonicalURL(_ input: String) throws -> String {
-        let trimmed = input.trimmingCharacters(in: .whitespacesAndNewlines)
-        let idPattern = try NSRegularExpression(pattern: "^[0-9a-f]{16}$", options: .caseInsensitive)
-        let range = NSRange(trimmed.startIndex..., in: trimmed)
-        let normalized: String
-        if idPattern.firstMatch(in: trimmed, range: range) != nil {
-            normalized = "https://pokepast.es/\(trimmed)"
-        } else if trimmed.lowercased().hasPrefix("pokepast.es/") {
-            normalized = "https://\(trimmed)"
-        } else {
-            normalized = trimmed
+    static func sharedLink(_ input: String) throws -> String {
+        let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.range(of: "^[0-9a-fA-F]{16}$", options: .regularExpression) != nil {
+            return "https://pokepast.es/\(text.lowercased())"
         }
-        let pattern = try NSRegularExpression(
-            pattern: "^https?://pokepast\\.es/([0-9a-f]{16})/?(?:[?#]|$)",
-            options: .caseInsensitive
-        )
-        let normalizedRange = NSRange(normalized.startIndex..., in: normalized)
-        guard let match = pattern.firstMatch(in: normalized, range: normalizedRange),
-              let idRange = Range(match.range(at: 1), in: normalized),
-              let url = URL(string: normalized),
-              let scheme = url.scheme?.lowercased(), ["http", "https"].contains(scheme),
-              url.host?.lowercased() == "pokepast.es" else {
-            throw QueueError.invalidURL
+        let start = "(?<![A-Za-z0-9_./@-])(?:https?://)?"
+        let pastes = try captures("\(start)pokepast\\.es/([0-9a-f]{16})(?![0-9a-z])", in: text)
+            .map { "https://pokepast.es/\($0.lowercased())" }
+        let videos = try captures(
+            "\(start)(?:(?:www\\.|m\\.)?youtube\\.com/(?:watch\\?(?:[^\\s#]*&)?v=|live/|shorts/)|youtu\\.be/)([A-Za-z0-9_-]{11})(?![A-Za-z0-9_-])",
+            in: text
+        ).map { "https://www.youtube.com/watch?v=\($0)" }
+        let links = Set(pastes.isEmpty ? videos : pastes)
+        guard links.count == 1, let link = links.first else { throw QueueError.invalidURL }
+        return link
+    }
+
+    private static func captures(_ pattern: String, in text: String) throws -> [String] {
+        let regex = try NSRegularExpression(pattern: pattern, options: .caseInsensitive)
+        return regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap {
+            Range($0.range(at: 1), in: text).map { String(text[$0]) }
         }
-        return "https://pokepast.es/\(normalized[idRange].lowercased())"
     }
 
     func enqueue(url: String) throws {
@@ -166,7 +163,7 @@ struct ShareQueue {
             switch self {
             case .containerUnavailable: return "Shared link storage is unavailable."
             case .invalidRecord: return "Shared link storage contains an invalid record."
-            case .invalidURL: return "Enter a Poképaste link or 16-character paste ID."
+            case .invalidURL: return "Share a Poképaste link or a YouTube video."
             }
         }
     }

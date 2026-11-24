@@ -5,7 +5,6 @@ final class ShareViewController: UIViewController {
     private let message = UILabel()
     private let action = UIButton(type: .system)
     private let cancel = UIButton(type: .system)
-    private var link: String?
     private var saved = false
 
     override func viewDidLoad() {
@@ -46,7 +45,6 @@ final class ShareViewController: UIViewController {
     }
 
     private func loadShare() {
-        link = nil
         message.text = "Reading shared link…"
         action.isEnabled = false
         let providers = (extensionContext?.inputItems as? [NSExtensionItem] ?? []).flatMap { $0.attachments ?? [] }
@@ -89,15 +87,12 @@ final class ShareViewController: UIViewController {
                 return
             }
             do {
-                let links = try Set(values.map { try ShareQueue.canonicalURL($0) })
+                let links = try Set(values.map { try ShareQueue.sharedLink($0) })
                 guard links.count == 1, let link = links.first else {
                     self.showInvalid()
                     return
                 }
-                self.link = link
-                self.message.text = link
-                self.action.setTitle("Save link", for: .normal)
-                self.action.isEnabled = true
+                self.save(link)
             } catch {
                 self.showInvalid()
             }
@@ -105,7 +100,7 @@ final class ShareViewController: UIViewController {
     }
 
     private func showInvalid() {
-        message.text = "Share one direct Poképaste link or 16-character paste ID."
+        message.text = "Share one Poképaste link or YouTube video."
         action.setTitle("Try again", for: .normal)
         action.isEnabled = true
     }
@@ -113,33 +108,30 @@ final class ShareViewController: UIViewController {
     @objc private func performAction() {
         if saved {
             extensionContext?.completeRequest(returningItems: nil)
-            return
-        }
-        guard let link = link else {
+        } else {
             loadShare()
-            return
         }
-        action.isEnabled = false
+    }
+
+    private func save(_ link: String) {
         cancel.isEnabled = false
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            var stored = true
             do {
                 try ShareQueue().enqueue(url: link)
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    self.saved = true
-                    self.message.text = "Link saved. Open Champion's Atlas to finish importing."
-                    self.action.setTitle("Done", for: .normal)
-                    self.action.isEnabled = true
-                    self.cancel.isHidden = true
-                }
             } catch {
-                DispatchQueue.main.async {
-                    guard let self = self else { return }
-                    self.message.text = "The link could not be saved. Try again."
-                    self.action.setTitle("Try again", for: .normal)
-                    self.action.isEnabled = true
-                    self.cancel.isEnabled = true
-                }
+                stored = false
+            }
+            DispatchQueue.main.async {
+                guard let self = self else { return }
+                self.saved = stored
+                self.message.text = stored
+                    ? "Saved. Open Champion's Atlas to finish importing."
+                    : "The link could not be saved. Try again."
+                self.action.setTitle(stored ? "Done" : "Try again", for: .normal)
+                self.action.isEnabled = true
+                self.cancel.isEnabled = true
+                self.cancel.isHidden = stored
             }
         }
     }

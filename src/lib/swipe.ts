@@ -1,4 +1,5 @@
 import { dur, pageUnder } from './motion.ts';
+import { later } from './timers.ts';
 
 const EDGE = 32;
 const SLOP = 10;
@@ -27,7 +28,7 @@ let start: Start | null = null;
 let gesture: Gesture | null = null;
 let offset = 0;
 let motion: Animation | null = null;
-let timer: ReturnType<typeof setTimeout> | undefined;
+let cancelHoldTimer: (() => void) | undefined;
 let moved: HTMLElement | null = null;
 let under: HTMLElement | null = null;
 
@@ -99,7 +100,7 @@ function find(kind: Kind, { x, target, dialog, top }: Start): Gesture | null {
 }
 
 export function swipeReset() {
-  clearTimeout(timer);
+  cancelHoldTimer?.();
   motion?.cancel();
   motion = null;
   if (moved) delete moved.dataset.swipe;
@@ -141,7 +142,7 @@ function settle(commit: boolean) {
     if (motion !== run) return;
     if (!slide) return swipeReset();
     current.commit();
-    timer = setTimeout(swipeReset, HOLD);
+    cancelHoldTimer = later(swipeReset, HOLD);
   };
 }
 

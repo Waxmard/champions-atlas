@@ -21,7 +21,7 @@
     </div>
     <div class="plate p-6">
       <h1
-        class="text-center font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
+        class="text-center font-display text-title leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
       >
         Champion's Atlas
       </h1>
@@ -32,7 +32,7 @@
 
       {#if sync.configured}
         <p
-          class="mb-4 text-center text-[0.9375rem] leading-relaxed text-base-content/70"
+          class="mb-4 text-center text-body leading-relaxed text-base-content/70"
         >
           Sign in to save and sync your teams.
         </p>
@@ -67,9 +67,7 @@
           Sign in with Google
         </Button>
       {:else}
-        <p
-          class="text-center text-[0.9375rem] leading-relaxed text-base-content/70"
-        >
+        <p class="text-center text-body leading-relaxed text-base-content/70">
           Sign-in is not available in this build.
         </p>
       {/if}

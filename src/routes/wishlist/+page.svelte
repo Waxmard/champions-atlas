@@ -2,6 +2,7 @@
   import { onMount, tick, untrack } from 'svelte';
   import { goto } from '$app/navigation';
   import { resolve } from '$app/paths';
+  import type { ResolvedPathname } from '$app/types';
   import { page } from '$app/state';
   import CollectionPage from '#lib/components/CollectionPage.svelte';
   import Plus from '@lucide/svelte/icons/plus';
@@ -10,11 +11,19 @@
     canonicalPokepasteUrl,
     loadPokepaste,
     PokepasteUnavailableError,
+    type PokepastePayload,
   } from '#lib/pokepaste.js';
   import { syncOwnerKey } from '#lib/storage-migration.js';
+  import { later } from '#lib/timers.js';
   import { AtlasNative, isNativeApp } from '#lib/native.js';
   import { notify } from '#lib/notifications.js';
   import { catalogState } from '#lib/catalog-runtime.svelte.js';
+  import { youtubeVideoId, type Report, type Team } from '#lib/catalog.js';
+  import {
+    youtubeShareOptions,
+    YoutubeUnavailableError,
+    type ShareOption,
+  } from '#lib/youtube-share.js';
   import { SAVE_FAILURE } from '#lib/saved-team-actions.js';
   import { pushNow, sync } from '#lib/sync.svelte.js';
   import {
@@ -29,7 +38,7 @@
     useWishlistedTeam,
     wishlistedCatalogEntries,
   } from '#lib/team-collections.js';
-  import { readSavedTeams } from '#lib/workbench.js';
+  import { readSavedTeams, type SavedTeam } from '#lib/workbench.js';
   let collectionPage = $state<CollectionPage>();
   let ready = $state(false),
     loaded = $state(false),
@@ -44,6 +53,8 @@
   let queuePending = $state(false);
   let queueError = $state('');
   let blockedShare = $state<{ id: string; url: string } | null>(null);
+  let pickOptions = $state.raw<ShareOption[]>([]);
+  let picked = $state<boolean[]>([]);
   const refresh = () => collectionPage?.refresh();
 
   onMount(() => {
@@ -92,14 +103,17 @@
     void importPokepaste(pasteLink).finally(() => void processShares(false));
   }
 
-  async function importPokepaste(input: string): Promise<boolean> {
+  async function importPokepaste(
+    input: string,
+    preloaded?: PokepastePayload
+  ): Promise<SavedTeam | null> {
     if (
       !ready ||
       storageError ||
       importPending ||
       (sync.configured && (!sync.authResolved || !sync.user))
     )
-      return false;
+      return null;
     errorMessage = '';
     invalidLink = false;
 
@@ -112,7 +126,7 @@
         error instanceof Error
           ? error.message
           : 'Enter a Poképaste link or 16-character paste ID.';
-      return false;
+      return null;
     }
 
     let owner: string | null;
@@ -121,68 +135,48 @@
       const saved = readSavedTeams(localStorage);
       userId = sync.user?.uid;
       owner = localStorage.getItem(syncOwnerKey);
-      if (
-        userId &&
-        owner !== `${import.meta.env.VITE_FIREBASE_PROJECT_ID}:${userId}`
-      ) {
+      if (accountChanged(userId, owner)) {
         errorMessage = 'Account changed. Import the Poképaste again.';
-        return false;
+        return null;
       }
-      if (
-        saved.some(
-          (entry) =>
-            entry.collection === 'wishlist' &&
-            savedFormat(entry) === catalogState.format &&
-            entry.original.pasteUrl === url
-        )
-      ) {
+      const existing = saved.find(
+        (entry) =>
+          entry.collection === 'wishlist' &&
+          savedFormat(entry) === catalogState.format &&
+          entry.original.pasteUrl === url
+      );
+      if (existing) {
         refresh();
         notify('Already in Wishlist.');
-        return true;
+        return existing;
       }
-      if (
-        catalogState.catalog.teams.filter((team) => team.pasteUrl === url)
-          .length > 1
-      )
-        throw new SavedTeamError(
-          'Multiple catalog teams use this Poképaste. Open the team from Browse instead.'
-        );
       const catalogTeam = resolveCatalogTeam(
         { pasteUrl: url },
         catalogState.catalog.teams
       );
-      if (catalogTeam) {
-        const alreadySaved =
-          wishlistedCatalogEntries(saved, catalogTeam).length > 0;
-        if (!alreadySaved) {
-          addCatalogToWishlist(localStorage, catalogTeam);
-          void pushNow();
-        }
-        refresh();
-        notify(alreadySaved ? 'Already in Wishlist.' : 'Added to Wishlist.');
-        return true;
-      }
+      if (catalogTeam) return bookmarkCatalogTeam(saved, catalogTeam);
     } catch (error) {
       errorMessage =
         error instanceof SavedTeamError ? error.message : SAVE_FAILURE;
       refresh();
-      return false;
+      return null;
     }
 
     const controller = new AbortController();
     importController = controller;
     importPending = true;
     let timedOut = false;
-    const timer = window.setTimeout(() => {
+    const cancelTimeout = later(() => {
       timedOut = true;
       controller.abort();
     }, 10_000);
     try {
-      const payload = await loadPokepaste(url, fetch, controller.signal);
-      if (!mounted || (controller.signal.aborted && !timedOut)) return false;
+      const payload =
+        preloaded ?? (await loadPokepaste(url, fetch, controller.signal));
+      if (!mounted || (controller.signal.aborted && !timedOut)) return null;
       if (timedOut) {
         errorMessage = 'Poképaste request timed out. Try again.';
-        return false;
+        return null;
       }
       try {
         if (
@@ -191,9 +185,9 @@
           localStorage.getItem(syncOwnerKey) !== owner
         ) {
           errorMessage = 'Account changed. Import the Poképaste again.';
-          return false;
+          return null;
         }
-        addPokepasteToWishlist(
+        const entry = addPokepasteToWishlist(
           localStorage,
           payload,
           catalogState.catalog.currentRegulation,
@@ -203,15 +197,15 @@
         void pushNow();
         refresh();
         notify('Added to Wishlist.');
-        return true;
+        return entry;
       } catch (error) {
         errorMessage =
           error instanceof SavedTeamError ? error.message : SAVE_FAILURE;
         refresh();
-        return false;
+        return null;
       }
     } catch (error) {
-      if (!mounted) return false;
+      if (!mounted) return null;
       errorMessage = timedOut
         ? 'Poképaste request timed out. Try again.'
         : error instanceof TypeError
@@ -221,11 +215,80 @@
             : error instanceof Error
               ? `${error.message.replace(/[.!?]$/, '')}. Check the link or paste and try again.`
               : 'Could not load this Poképaste. Try again.';
-      return false;
+      return null;
     } finally {
-      window.clearTimeout(timer);
+      cancelTimeout();
       if (importController === controller) importController = null;
       if (mounted) importPending = false;
+    }
+  }
+
+  function bookmarkCatalogTeam(
+    saved: SavedTeam[],
+    team: Team,
+    video?: Report
+  ): SavedTeam {
+    const existing = wishlistedCatalogEntries(saved, team)[0];
+    const entry = addCatalogToWishlist(localStorage, team, video);
+    if (
+      !existing ||
+      entry.original.reports?.length !== existing.original.reports?.length
+    )
+      void pushNow();
+    refresh();
+    notify(existing ? 'Already in Wishlist.' : 'Added to Wishlist.');
+    return entry;
+  }
+
+  async function videoOptions(id: string): Promise<ShareOption[] | null> {
+    errorMessage = '';
+    importPending = true;
+    try {
+      const options = await youtubeShareOptions(id, catalogState.catalog.teams);
+      if (!mounted) return null;
+      if (options.length === 1 && 'error' in options[0])
+        errorMessage = options[0].detail;
+      else if (options.length) return options;
+      else
+        errorMessage =
+          "No Poképaste link was found in this video's description.";
+    } catch (error) {
+      if (mounted)
+        errorMessage =
+          error instanceof YoutubeUnavailableError
+            ? 'Could not read this video. Try again later.'
+            : 'Could not read this video. Check your connection and try again.';
+    } finally {
+      if (mounted) importPending = false;
+    }
+    return null;
+  }
+
+  function accountChanged(userId: string | undefined, owner: string | null) {
+    return (
+      !!userId &&
+      owner !== `${import.meta.env.VITE_FIREBASE_PROJECT_ID}:${userId}`
+    );
+  }
+
+  async function importOption(option: ShareOption): Promise<SavedTeam | null> {
+    if ('error' in option) return null;
+    if ('payload' in option)
+      return importPokepaste(option.payload.url, option.payload);
+    if (!canProcessShares() || importPending) return null;
+    errorMessage = '';
+    try {
+      const saved = readSavedTeams(localStorage);
+      if (accountChanged(sync.user?.uid, localStorage.getItem(syncOwnerKey))) {
+        errorMessage = 'Account changed. Share the video again.';
+        return null;
+      }
+      return bookmarkCatalogTeam(saved, option.team, option.report);
+    } catch (error) {
+      errorMessage =
+        error instanceof SavedTeamError ? error.message : SAVE_FAILURE;
+      refresh();
+      return null;
     }
   }
 
@@ -239,12 +302,13 @@
     );
   }
 
-  async function processShares(retry: boolean) {
+  async function processShares(retry: boolean, last: SavedTeam | null = null) {
     if (
       !isNativeApp ||
       !canProcessShares() ||
       queuePending ||
       importPending ||
+      pickOptions.length > 0 ||
       (blockedShare && !retry) ||
       (queueError && !retry)
     )
@@ -266,7 +330,18 @@
           errorMessage = 'Could not read account storage. Try again.';
           return;
         }
-        const imported = await importPokepaste(share.url);
+        let imported: SavedTeam | null;
+        const videoId = youtubeVideoId(share.url);
+        if (videoId) {
+          const options = await videoOptions(videoId);
+          if (!options || !canProcessShares()) return;
+          if (options.length > 1) {
+            picked = options.map(() => false);
+            pickOptions = options;
+            return;
+          }
+          imported = await importOption(options[0]);
+        } else imported = await importPokepaste(share.url);
         invalidLink = false;
         if (!imported || !canProcessShares()) return;
         try {
@@ -284,7 +359,14 @@
         }
         if (!mounted) return;
         blockedShare = null;
+        last = imported;
       }
+      if (last)
+        await goto(
+          (resolve('wishlist') +
+            '?team=' +
+            encodeURIComponent(last.id)) as ResolvedPathname
+        ).catch(() => {});
     } catch {
       if (mounted) queueError = 'Shared links could not be read. Try again.';
     } finally {
@@ -300,6 +382,8 @@
       await AtlasNative.acknowledgeShare({ id: blockedShare.id });
       if (!mounted) return;
       blockedShare = null;
+      pickOptions = [];
+      picked = [];
       queueError = '';
       errorMessage = '';
     } catch {
@@ -309,6 +393,33 @@
       if (mounted) queuePending = false;
     }
     void processShares(false);
+  }
+
+  async function addPicked(event: SubmitEvent) {
+    event.preventDefault();
+    const share = blockedShare;
+    if (!share || !canProcessShares() || queuePending || importPending) return;
+    const added: SavedTeam[] = [];
+    for (const option of pickOptions.filter((_, index) => picked[index])) {
+      const entry = await importOption(option);
+      if (!entry) return;
+      added.push(entry);
+    }
+    queuePending = true;
+    try {
+      await AtlasNative.acknowledgeShare({ id: share.id });
+    } catch {
+      if (mounted) queueError = 'Shared links could not be updated. Try again.';
+      return;
+    } finally {
+      if (mounted) queuePending = false;
+    }
+    if (!mounted) return;
+    pickOptions = [];
+    picked = [];
+    blockedShare = null;
+    queueError = '';
+    void processShares(false, added.length === 1 ? added[0] : null);
   }
 </script>
 
@@ -327,10 +438,55 @@
       {/if}
     </div>
   {/if}
-  {#if blockedShare}
+  {#if blockedShare && pickOptions.length}
+    <form
+      aria-label="Teams in shared video"
+      class="plate mt-2 max-w-[68ch] px-4 py-3"
+      onsubmit={addPicked}
+    >
+      <p class="font-semibold">
+        This video has {pickOptions.length} teams. Choose which to add to Wishlist.
+      </p>
+      {#each pickOptions as option, index (index)}
+        <label class="flex min-h-11 cursor-pointer items-center gap-3 py-1">
+          <input
+            type="checkbox"
+            class="size-5 shrink-0 accent-primary"
+            disabled={queuePending || importPending || 'error' in option}
+            bind:checked={picked[index]}
+          />
+          <span class="min-w-0">
+            <span class="block font-semibold wrap-anywhere">{option.label}</span
+            >
+            <span class="provenance block wrap-anywhere">{option.detail}</span>
+          </span>
+        </label>
+      {/each}
+      <div class="mt-2 flex flex-wrap gap-2">
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={queuePending ||
+            importPending ||
+            !canProcessShares() ||
+            !picked.some(Boolean)}
+        >
+          Add selected
+        </Button>
+        <Button
+          variant="quiet"
+          disabled={queuePending || importPending || !canProcessShares()}
+          onclick={dismissShare}
+        >
+          Dismiss
+        </Button>
+      </div>
+    </form>
+  {:else if blockedShare && queuePending && !errorMessage && !queueError}
+    <p role="status" class="provenance mt-2">Importing shared team…</p>
+  {:else if blockedShare}
     <div class="plate mt-2 max-w-[68ch] px-4 py-3">
-      <p>Shared link: {blockedShare.url}</p>
-      <p>Dismissing removes the pending link, not a saved team.</p>
+      <p class="wrap-anywhere">Shared link: {blockedShare.url}</p>
       <div class="mt-2 flex flex-wrap gap-2">
         <Button
           variant="quiet"
@@ -344,7 +500,7 @@
           disabled={queuePending || importPending || !canProcessShares()}
           onclick={dismissShare}
         >
-          Dismiss shared link
+          Dismiss
         </Button>
       </div>
     </div>
@@ -378,8 +534,8 @@
         >
       </div>
       <p id="wishlist-share-hint" class="provenance mt-2">
-        From a Poképaste page, use Share → Champion's Atlas, then open
-        Champion's Atlas to finish importing.
+        From a Poképaste page or a YouTube video, use Share → Champion's Atlas,
+        then open Champion's Atlas to finish importing.
       </p>
       <form
         aria-label="Import Poképaste"

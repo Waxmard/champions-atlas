@@ -94,7 +94,7 @@ export const pasteText = (species, items) =>
         items[index],
         'Ability',
         'Adamant',
-        ['Protect', 'Fake Out'],
+        ['Protect', 'Fake Out', 'Substitute', 'Facade'],
         '2 HP / 32 Atk'
       )
     )
@@ -361,7 +361,9 @@ export function snapshotData() {
   return {
     version: 1,
     channels: youtubeChannels.map((channel, index) => ({
-      ...channel,
+      handle: channel.handle,
+      name: channel.name,
+      url: channel.url,
       channelId: channelInfo[channel.handle].id,
       videosScanned: 1,
       videosWithoutPaste: index ? 1 : 0,
@@ -416,7 +418,9 @@ export function youtubeSnapshot(rows = []) {
               video,
             }));
       return {
-        ...channel,
+        handle: channel.handle,
+        name: channel.name,
+        url: channel.url,
         channelId: channelInfo[channel.handle].id,
         videosScanned: index ? 1 : videos.size || 1,
         videosWithoutPaste: index || !videos.size ? 1 : 0,
@@ -475,6 +479,13 @@ export const writeYoutubeImportFixture = (directory, rows, payloads = {}) =>
     ),
   });
 
+export const pochSets = (pokemon, items = mcItems) =>
+  pokemon.map((name, index) => ({
+    name,
+    item: items[index],
+    ability: 'Ability',
+    moves: ['Protect', 'Fake Out', 'Substitute', 'Facade'],
+  }));
 export const pochTeamRow = (id, pokemon) => ({
   id,
   handle: id,
@@ -482,32 +493,12 @@ export const pochTeamRow = (id, pokemon) => ({
   date: publishedAt,
   postUrl: `https://x.com/champions-atlas/status/${id}`,
   rule: 'double',
-  mons: pokemon.map((name) => ({ name, gender: null })),
+  mons: pochSets(pokemon),
 });
 export const pochPage = (rows, entries = []) =>
   `<script>self.__next_f.push([1,${JSON.stringify(
     `a:${JSON.stringify({ entries, x: rows })}`
   )}])</script>`;
-export const pokedbRoster = [
-  ['0730-00', 'オボンのみ'],
-  ['0448-00', 'ルカリオナイトＺ'],
-  ['0812-00', 'いのちのたま'],
-  ['1018-00', 'たつじんのおび'],
-  ['0199-01', ''],
-  ['0445-00', '持ち物なし'],
-].map(([id, item]) => ({ id, item }));
-export const pokedbFile = (
-  rows = [{ rank: 1, rating_value: 2548.304, team: pokedbRoster }],
-  season = 7
-) =>
-  JSON.stringify({
-    season: `M-${season}`,
-    season_number: season,
-    rule: 'シングル',
-    updated_at: '2026-11-19 13:32:19',
-    teams: rows,
-  });
-
 export async function writeFetchMock(directory, config) {
   const configPath = join(directory, 'fetch-mock.json');
   const modulePath = join(directory, 'fetch-mock.mjs');

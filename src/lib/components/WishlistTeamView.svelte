@@ -54,7 +54,7 @@
 >
   <div class="min-w-0 flex-1">
     <h1
-      class="w-fit min-w-0 font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-anywhere sm:text-4xl"
+      class="w-fit min-w-0 font-display text-title leading-tight font-bold tracking-tight wrap-anywhere sm:text-4xl"
     >
       {heading.title}
     </h1>
@@ -85,7 +85,7 @@
   <div
     class="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-base-300 pb-2.5"
   >
-    <h2 class="text-[1.375rem] leading-tight font-extrabold">Pokémon sets</h2>
+    <h2 class="text-heading leading-tight font-extrabold">Pokémon sets</h2>
     <Button variant="quiet" class="min-h-11" onclick={copyTeam}>
       <Copy aria-hidden="true" />Copy team text
     </Button>
@@ -112,7 +112,7 @@
 <section aria-labelledby="original-evidence-heading" class="mt-10">
   <h2
     id="original-evidence-heading"
-    class="border-b border-base-300 pb-2 text-[1.375rem] font-extrabold"
+    class="border-b border-base-300 pb-2 text-heading font-extrabold"
   >
     Original evidence
   </h2>

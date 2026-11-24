@@ -5,7 +5,6 @@ import { normalize } from '../src/lib/catalog.ts';
 
 export const statsSource = 'https://championsbattledata.com/api';
 
-/* Level-50 stats at 0 SP and a neutral nature, not mainline base stats. */
 export function reduceStats(data) {
   const stats = {};
   for (const entry of data.pokemon || []) {

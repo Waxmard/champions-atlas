@@ -184,11 +184,28 @@ test('real Poképaste payload retains raw text and uses existing EV normalizatio
   assert.match(rawTeam.original.paste, /^Shiny: Yes$/m);
 });
 
-test('titles are trimmed, capped, and fall back to the canonical ID', async () => {
-  for (const title of [undefined, null, 3, [], '  \t  ']) {
+test('titles are trimmed, capped, and fall back to a generated name', async () => {
+  for (const title of [
+    undefined,
+    null,
+    3,
+    [],
+    '  \t  ',
+    'Untitled',
+    ' untitled ',
+  ]) {
     const loaded = await loadPokepaste(url, jsonResponse({ title, paste }));
-    assert.equal(loaded.title, 'Poképaste 138b4ef886ba95e4');
+    assert.equal(loaded.title, 'Charizard-Y Venusaur Team');
   }
+  assert.equal(
+    (
+      await loadPokepaste(
+        url,
+        jsonResponse({ title: '', author: '  Gworf ', paste })
+      )
+    ).title,
+    "Gworf's Charizard-Y Venusaur Team"
+  );
   for (const [title, expected] of [
     ['  Named team  ', 'Named team'],
     ['x'.repeat(201), 'x'.repeat(200)],

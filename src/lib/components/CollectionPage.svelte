@@ -10,6 +10,7 @@
   import Save from '@lucide/svelte/icons/save';
   import Star from '@lucide/svelte/icons/star';
   import { battleFormats, type BattleFormat } from '#lib/battle-format.js';
+  import { afterFrame } from '#lib/timers.js';
   import WithEvsToggle from '#lib/components/WithEvsToggle.svelte';
   import PokemonFilters from '#lib/components/PokemonFilters.svelte';
   import SavedTeamEditor from '#lib/components/SavedTeamEditor.svelte';
@@ -144,7 +145,7 @@
     return sort === 'record'
       ? sortByWinRate(matching)
       : sort === 'vp'
-        ? sortByVpCost(matching, currentSets.sets)
+        ? sortByVpCost(matching, currentSets.sets, catalogState.vpCatalog)
         : matching;
   });
   const unrecorded = $derived(
@@ -197,7 +198,7 @@
       if (page.route.id !== route || page.url.searchParams.has('team')) return;
       if (listOpener?.isConnected) listOpener.focus({ preventScroll: true });
       restore();
-      requestAnimationFrame(restore);
+      afterFrame(restore);
     });
   });
 
@@ -474,7 +475,7 @@
 {#snippet alert(message: string)}
   <p
     role="alert"
-    class="plate mt-2 max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+    class="plate mt-2 max-w-[68ch] px-4 py-3 text-body leading-relaxed"
     style="color: var(--color-error-content)"
   >
     {message}
@@ -482,7 +483,7 @@
 {/snippet}
 
 {#snippet loading()}
-  <p class="mt-6 text-[0.9375rem] text-base-content/70">Loading {label}…</p>
+  <p class="mt-6 text-body text-base-content/70">Loading {label}…</p>
 {/snippet}
 
 <main
@@ -597,7 +598,7 @@
             <h2 class="text-lg leading-tight font-extrabold">
               No favorite teams yet
             </h2>
-            <p class="mt-2 text-[0.9375rem] leading-relaxed">
+            <p class="mt-2 text-body leading-relaxed">
               Star a team to list it here.
             </p>
             <Button
@@ -612,7 +613,7 @@
             <h2 class="text-lg leading-tight font-extrabold">
               No teams with EV spreads
             </h2>
-            <p class="mt-2 text-[0.9375rem] leading-relaxed">
+            <p class="mt-2 text-body leading-relaxed">
               Turn off With EVs only to see every team.
             </p>
             <Button
@@ -627,7 +628,7 @@
             <h2 class="text-lg leading-tight font-extrabold">
               No matching teams
             </h2>
-            <p class="mt-2 text-[0.9375rem] leading-relaxed">
+            <p class="mt-2 text-body leading-relaxed">
               Remove a Pokémon or clear filters to see more teams.
             </p>
           </div>
@@ -649,7 +650,7 @@
         {emptyTitle}
       </h2>
       <p
-        class="mt-2 max-w-[34ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+        class="mt-2 max-w-[34ch] text-body leading-relaxed text-base-content/70"
       >
         {empty}
       </p>
@@ -679,7 +680,7 @@
       <a
         data-swipe-back
         href={resolve(collection)}
-        class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content phone-landscape:min-h-9"
+        class="provenance inline-flex min-h-11 items-center gap-2 text-detail outline-none hover:text-base-content phone-landscape:min-h-9"
       >
         <ArrowLeft class="size-4" aria-hidden="true" />
         Back to {label}
@@ -717,7 +718,7 @@
       {/key}
     {:else}
       <div class="plate mt-6 max-w-xl px-4 py-3">
-        <p role="status" class="text-[0.9375rem] leading-relaxed">
+        <p role="status" class="text-body leading-relaxed">
           This team is no longer in {label}.
         </p>
         <div class="mt-3">

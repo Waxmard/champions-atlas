@@ -240,6 +240,7 @@ export function teamFromIndex(candidate, payload, canonicalNames) {
     ...(candidate.regulationInference
       ? { regulationInference: candidate.regulationInference }
       : {}),
+    ...(candidate.format ? { format: candidate.format } : {}),
     publishedAt: payload.publishedAt || '',
     pasteUrl: candidate.pasteUrl,
     replicaCode: candidate.replicaCode || null,
@@ -301,9 +302,7 @@ export async function enrichPastes(
           notes: prior.pasteNotes,
         })
       );
-    } catch {
-      // A changed sheet composition invalidates stale enrichment.
-    }
+    } catch {}
   }
   const selected = teams.slice(0, limit);
   let enriched = 0;
@@ -333,6 +332,16 @@ export async function enrichPastes(
   );
   return { attempted: selected.length, enriched, failed };
 }
+
+const listed = (value) => typeof value === 'string' && value.trim() !== '';
+export const isLowDataTeam = (team) =>
+  !team.members.every(
+    (member) =>
+      listed(member?.item) &&
+      listed(member?.ability) &&
+      Array.isArray(member?.moves) &&
+      member.moves.filter(listed).length === 4
+  );
 
 export function mergeSources(priorSources, frozenTeams, freshSources) {
   const frozenUrls = new Set(

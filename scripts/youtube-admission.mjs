@@ -2,6 +2,7 @@ import { resolveBattleForm } from '../src/lib/battle-forms.ts';
 import { isPasteUrl, normalize } from '../src/lib/catalog.ts';
 import { parsePaste } from '../src/lib/paste.ts';
 import { championRegulation } from './catalog-payloads.mjs';
+import { youtubeChannels } from './youtube-source.mjs';
 
 const object = (value) =>
   value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -78,11 +79,11 @@ function formatLabel(format) {
   return normalized || 'unrecognized';
 }
 
-function unsupportedFormat(format) {
+function unsupportedFormat(format, singles) {
   const normalized = normalize(format);
   const generation = /gen(\d+)/.exec(normalized)?.[1];
   return (
-    /singles?/.test(normalized) ||
+    (!singles && /singles?/.test(normalized)) ||
     /\bou\b/i.test(format) ||
     /ou(?:\d{4})?reg/.test(normalized) ||
     /overused|nationaldex|natdex/.test(normalized) ||
@@ -98,9 +99,12 @@ function unsupportedFormat(format) {
   );
 }
 
-function unsupportedTitleFormat(title) {
+function unsupportedTitleFormat(title, singles) {
   const normalized = normalize(title);
-  if (/\bsingles\b|\bsingle\s+battles?\b/i.test(title)) return 'singles';
+  if (singles) {
+    if (/\bvgc\b|\bdoubles\b|\bdouble\s+battles?\b/i.test(title))
+      return 'doubles';
+  } else if (/\bsingles\b|\bsingle\s+battles?\b/i.test(title)) return 'singles';
   const compactOu = /\bgen\d+ou(?=reg|\b)/i.exec(title)?.[0];
   if (compactOu) return normalize(compactOu);
   if (/\bou\b/i.test(title) || /ou(?:\d{4})?reg/.test(normalized)) return 'ou';
@@ -137,11 +141,12 @@ function unsupportedTitleFormat(title) {
   return null;
 }
 
-function unsupportedDescriptionFormat(description) {
+function unsupportedDescriptionFormat(description, singles) {
   if (/\bnational\s*dex\b|\bnatdex\b|\bchampsnatdex\b/i.test(description))
     return 'nationaldex';
   if (/\bpre[- ]?champions\b/i.test(description)) return 'prechampions';
   if (
+    !singles &&
     /\bsingles\s+ladder\b|\b6v6\s+singles\b|\bsingle\s+battles?\b/i.test(
       description
     )
@@ -161,6 +166,10 @@ function championsEvidence(value) {
     /\b(?:pok[eé]mon)?champions\b/i.test(value) ||
     /champions(?:\d{4})?(?:vgc|doubles?)/.test(normalize(value))
   );
+}
+
+function singlesEvidence(value) {
+  return /\bsingles\b|\bsingle\s+battles?\b|\bbss\b/i.test(value);
 }
 
 function doublesEvidence(value) {
@@ -260,6 +269,10 @@ export function youtubeCandidate(discoveryCandidate, payload) {
     throw admissionError('invalid_payload');
   if (payload.notes != null && typeof payload.notes !== 'string')
     throw admissionError('invalid_payload');
+  const singles = youtubeChannels.some(
+    ({ url, format }) =>
+      url === discoveryCandidate.indexUrl && format === 'singles'
+  );
   const formats = [
     ...formatDeclarations(payload.notes),
     ...formatDeclarations(video.description),
@@ -274,7 +287,7 @@ export function youtubeCandidate(discoveryCandidate, payload) {
     formats.push(payload.format);
   }
   for (const format of formats)
-    if (unsupportedFormat(format))
+    if (unsupportedFormat(format, singles))
       throw admissionError('unsupported_format', formatLabel(format));
   const formatRegulations = formats.map((format) => {
     const regulation = championRegulation(format);
@@ -294,11 +307,12 @@ export function youtubeCandidate(discoveryCandidate, payload) {
       'format_conflict',
       [...new Set(regulations)].join(', ')
     );
-  const unsupportedTitle = unsupportedTitleFormat(video.title);
+  const unsupportedTitle = unsupportedTitleFormat(video.title, singles);
   if (unsupportedTitle)
     throw admissionError('unsupported_format', unsupportedTitle);
   const unsupportedDescription = unsupportedDescriptionFormat(
-    video.description
+    video.description,
+    singles
   );
   if (unsupportedDescription)
     throw admissionError('unsupported_format', unsupportedDescription);
@@ -309,15 +323,15 @@ export function youtubeCandidate(discoveryCandidate, payload) {
   ];
   if (
     !context.some(championsEvidence) ||
-    !(
-      context.some(doublesEvidence) ||
-      formats.some(declaredDoublesEvidence) ||
-      pasteDoublesEvidence(payload.paste)
-    )
+    !(singles
+      ? context.some(singlesEvidence)
+      : context.some(doublesEvidence) ||
+        formats.some(declaredDoublesEvidence) ||
+        pasteDoublesEvidence(payload.paste))
   )
     throw admissionError(
       'unsupported_format',
-      'missing Champions doubles evidence'
+      `missing Champions ${singles ? 'singles' : 'doubles'} evidence`
     );
   const videoUrl = `https://www.youtube.com/watch?v=${video.id}`;
   let regulation = regulations[0];
@@ -349,6 +363,7 @@ export function youtubeCandidate(discoveryCandidate, payload) {
     replicaCode: null,
     regulation,
     ...(regulationInference ? { regulationInference } : {}),
+    ...(singles ? { format: 'singles' } : {}),
     name:
       (typeof payload.title === 'string' ? payload.title.trim() : '') ||
       video.title,

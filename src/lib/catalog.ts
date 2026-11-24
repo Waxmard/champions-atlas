@@ -23,8 +23,6 @@ export const inferenceSource = (method: RegulationInference['method']) =>
   method === 'post-date' ? 'post' : 'video';
 
 export interface Member {
-  // Saved-team members may retain unknown per-member metadata; the index
-  // signature keeps this catalog type assignable to zod's looseObject output.
   [key: string]: unknown;
   set?: string;
   pokemon: string;
@@ -675,10 +673,10 @@ const browsePriority = (priority: Priority): Priority => [
   priority[4],
 ];
 
-function isDirectYoutubeVideo(value: string): boolean {
+export function youtubeVideoId(value: string): string | null {
   try {
     const url = new URL(value);
-    if (url.protocol !== 'https:') return false;
+    if (url.protocol !== 'https:') return null;
     let id: string | null = null;
     if (
       ['youtube.com', 'www.youtube.com', 'm.youtube.com'].includes(url.hostname)
@@ -692,9 +690,9 @@ function isDirectYoutubeVideo(value: string): boolean {
     } else if (url.hostname === 'youtu.be') {
       id = /^\/([A-Za-z0-9_-]{11})\/?$/.exec(url.pathname)?.[1] ?? null;
     }
-    return !!id && /^[A-Za-z0-9_-]{11}$/.test(id);
+    return id && /^[A-Za-z0-9_-]{11}$/.test(id) ? id : null;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -713,9 +711,9 @@ function browseRankingOf(team: Team, current: string) {
   if (cached?.current === current) return cached;
   const completeEvs = hasCompleteEvs(team);
   const hasVideo =
-    team.reports.some((report) => isDirectYoutubeVideo(report.sourceUrl)) ||
+    team.reports.some((report) => youtubeVideoId(report.sourceUrl)) ||
     team.members.some((member) =>
-      member.spreadSource?.videoUrls.some(isDirectYoutubeVideo)
+      member.spreadSource?.videoUrls.some(youtubeVideoId)
     );
   let priority: Priority = [11, 0, 0, 0, 0];
   for (const report of team.reports) {

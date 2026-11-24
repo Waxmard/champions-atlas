@@ -375,7 +375,7 @@
   <div class="team-controls min-w-0 space-y-2 wrap-anywhere">
     {#if storageError || errorMessage}<p
         role="alert"
-        class="plate max-w-[68ch] px-4 py-3 text-[0.9375rem] leading-relaxed"
+        class="plate max-w-[68ch] px-4 py-3 text-body leading-relaxed"
         style="color: var(--color-error-content)"
       >
         {storageError || errorMessage}

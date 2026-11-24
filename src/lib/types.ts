@@ -81,7 +81,6 @@ export function getPokemonTypes(pokemon: string): PokemonType[] {
   const key = normalize(pokemon);
   if (typeData.pokemon[key]) return typeData.pokemon[key];
 
-  // Try stripping mega/form suffixes if not found
   const baseKey = key
     .replace(/mega[a-z]?$/, '')
     .replace(/galar|alola|paldea|hisui/, '');

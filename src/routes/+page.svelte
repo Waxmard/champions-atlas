@@ -41,6 +41,7 @@
   let saved = $state.raw<SavedTeam[]>([]);
   let savedError = $state('');
   let actionError = $state('');
+  let pager = $state<HTMLElement>();
   const pending = new SvelteSet<string>();
   const currentSets = createCurrentSetRegistry();
   const catalog = $derived(catalogState.catalog);
@@ -91,9 +92,11 @@
           matchesTeam(team, filters)
       )
       .sort((a, b) => compareBrowseTeams(a, b, current));
-    return sortByVp ? sortByVpCost(ranked, currentSets.sets) : ranked;
+    return sortByVp
+      ? sortByVpCost(ranked, currentSets.sets, catalogState.vpCatalog)
+      : ranked;
   });
-  const pageSize = 8;
+  const pageSize = 6;
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / pageSize)));
   const pageNumber = $derived(
     Math.min(
@@ -145,7 +148,12 @@
       replace: true,
       reset: false,
     }).then(() => {
-      if (!preservePosition) window.scrollTo(0, 0);
+      if (!preservePosition && pager?.previousElementSibling)
+        window.scrollBy(
+          0,
+          pager.previousElementSibling.getBoundingClientRect().bottom -
+            pager.getBoundingClientRect().top
+        );
     });
   }
 
@@ -155,9 +163,7 @@
     if (browseKeys.some((key) => page.url.searchParams.has(key))) {
       try {
         rememberBrowse(browseParams(new URL(page.url.href).searchParams));
-      } catch {
-        // Invalid explicit links stay visible and do not replace saved filters.
-      }
+      } catch {}
       return;
     }
 
@@ -218,12 +224,12 @@
 <main id="main" class="app-container py-6 sm:py-8 phone-landscape:py-2">
   <header class="phone-landscape:sr-only">
     <h1
-      class="font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
+      class="font-display text-title leading-tight font-bold tracking-tight wrap-break-word sm:text-4xl"
     >
       Explore teams
     </h1>
     <p
-      class="mt-1.5 max-w-[58ch] text-[0.9375rem] leading-relaxed text-base-content/70"
+      class="mt-1.5 max-w-[58ch] text-body leading-relaxed text-base-content/70"
     >
       Find a team for the Pokémon you want to use.
     </p>
@@ -234,7 +240,7 @@
     </p>{/if}
   {#if savedError || actionError}<p
       role="alert"
-      class="mt-2 text-[0.9375rem] leading-relaxed"
+      class="mt-2 text-body leading-relaxed"
       style="color: var(--color-error-content)"
     >
       {savedError || actionError}
@@ -272,7 +278,12 @@
   </PokemonFilters>
 
   <section aria-label="Matching teams" class="mt-5 min-w-0">
-    <div class="flex items-baseline justify-between gap-3 border-b pb-1.5">
+    <div
+      class={[
+        'flex items-baseline justify-between gap-3 pb-1.5',
+        pageCount > 1 || 'border-b',
+      ]}
+    >
       <p
         aria-live="polite"
         aria-atomic="true"
@@ -298,6 +309,31 @@
           >{/if}
       </div>
     </div>
+    {#if pageCount > 1}
+      <nav
+        bind:this={pager}
+        aria-label="Team result pages"
+        class="bleed sticky top-[var(--app-header-height,0px)] z-30 grid grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-base-300 bg-base-200 py-0.5 phone-landscape:py-0"
+      >
+        <Button
+          variant="quiet"
+          size="dense"
+          class="justify-self-start text-detail max-md:min-h-11"
+          disabled={pageNumber === 1}
+          onclick={() => changeOption('page', String(pageNumber - 1))}
+          >Previous</Button
+        >
+        <span class="provenance">Page {pageNumber} of {pageCount}</span>
+        <Button
+          variant="quiet"
+          size="dense"
+          class="justify-self-end text-detail max-md:min-h-11"
+          disabled={pageNumber === pageCount}
+          onclick={() => changeOption('page', String(pageNumber + 1))}
+          >Next</Button
+        >
+      </nav>
+    {/if}
     {#if visible.some((team) => catalogState.freshIds.has(team.id))}
       <p class="provenance my-2 flex items-center gap-2">
         <span
@@ -309,7 +345,7 @@
     {/if}
     {#if results.length}
       {#key visibleKey}
-        <div class="enter-fade grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div class="enter-fade mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {#each visible as team (team.id)}
             <TeamCard
               {team}
@@ -355,34 +391,12 @@
             </TeamCard>{/each}
         </div>
       {/key}
-      {#if pageCount > 1}
-        <nav
-          aria-label="Team result pages"
-          class="mt-8 flex items-center justify-center gap-4"
-        >
-          <Button
-            variant="quiet"
-            disabled={pageNumber === 1}
-            onclick={() => changeOption('page', String(pageNumber - 1))}
-            >Previous</Button
-          >
-          <span class="value text-base-content/70"
-            >Page {pageNumber} of {pageCount}</span
-          >
-          <Button
-            variant="quiet"
-            disabled={pageNumber === pageCount}
-            onclick={() => changeOption('page', String(pageNumber + 1))}
-            >Next</Button
-          >
-        </nav>
-      {/if}
     {:else}
       <div class="plate px-6 py-10">
         <h2 class="text-lg leading-tight font-extrabold">
           {filterState.error ? 'Invalid filter link' : 'No matching teams'}
         </h2>
-        <p class="mt-2 max-w-[46ch] text-[0.9375rem] leading-relaxed">
+        <p class="mt-2 max-w-[46ch] text-body leading-relaxed">
           {filterState.error ||
             (newOnly
               ? 'No new teams match. Turn off New teams only or remove a filter.'

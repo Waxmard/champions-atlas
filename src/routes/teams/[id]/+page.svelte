@@ -161,7 +161,7 @@
       data-swipe-back
       href={resolve(`?${page.url.searchParams}`)}
       onclick={back}
-      class="provenance inline-flex min-h-11 items-center gap-2 text-[0.8125rem] outline-none hover:text-base-content phone-landscape:min-h-9"
+      class="provenance inline-flex min-h-11 items-center gap-2 text-detail outline-none hover:text-base-content phone-landscape:min-h-9"
     >
       <ArrowLeft class="size-4" aria-hidden="true" />
       Back to teams
@@ -171,7 +171,7 @@
   <div class="mt-4">
     <div class="min-w-0">
       <h1
-        class="w-fit max-w-3xl font-display text-[1.75rem] leading-tight font-bold tracking-tight wrap-anywhere sm:text-3xl"
+        class="w-fit max-w-3xl font-display text-title leading-tight font-bold tracking-tight wrap-anywhere sm:text-3xl"
       >
         {heading.title}
       </h1>
@@ -320,7 +320,7 @@
 
     {#if savedError || actionError}<p
         role="alert"
-        class="mt-2 text-[0.9375rem] leading-relaxed"
+        class="mt-2 text-body leading-relaxed"
         style="color: var(--color-error-content)"
       >
         {savedError || actionError}
@@ -342,7 +342,7 @@
 
     <section aria-label="Pokémon sets" class="mt-4">
       <h2
-        class="mb-2 border-b border-base-300 pb-2 text-[1.375rem] leading-tight font-extrabold"
+        class="mb-2 border-b border-base-300 pb-2 text-heading leading-tight font-extrabold"
       >
         Pokémon sets
       </h2>
@@ -368,7 +368,7 @@
     <section aria-labelledby="results-heading" class="mt-10">
       <h2
         id="results-heading"
-        class="border-b border-base-300 pb-2 text-[1.375rem] font-extrabold wrap-break-word"
+        class="border-b border-base-300 pb-2 text-heading font-extrabold wrap-break-word"
       >
         Results & sources
       </h2>

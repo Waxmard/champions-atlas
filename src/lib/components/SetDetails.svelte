@@ -108,24 +108,23 @@
                 : ''}
           <div class="min-w-0">
             <dt
-              class="text-[0.6875rem] leading-[1.4] font-bold {tone === 'raised'
-                ? 'text-[color:var(--color-error-content)]'
+              class="text-tiny leading-[1.4] font-bold {tone === 'raised'
+                ? 'text-error-content'
                 : tone === 'lowered'
-                  ? 'text-[color:var(--color-info-content)]'
-                  : 'text-[color:var(--color-muted)]'}"
+                  ? 'text-info-content'
+                  : 'text-muted'}"
             >
               {stat}{#if tone}<span class="sr-only">, {tone} by nature</span
                 >{/if}
             </dt>
             <dd class="text-sm tabular-nums">
-              <span
-                class={spread[stat] ? '' : 'text-[color:var(--color-muted)]'}
+              <span class={spread[stat] ? '' : 'text-muted'}
                 >{spread[stat]}</span
               >{#if tone}<span
                   aria-hidden="true"
-                  class="text-[0.6875rem] font-bold {tone === 'raised'
-                    ? 'text-[color:var(--color-error-content)]'
-                    : 'text-[color:var(--color-info-content)]'}"
+                  class="text-tiny font-bold {tone === 'raised'
+                    ? 'text-error-content'
+                    : 'text-info-content'}"
                   >{tone === 'raised' ? '↑' : '↓'}</span
                 >{/if}
             </dd>
@@ -135,10 +134,10 @@
             >
               <div
                 class="h-full rounded-full {tone === 'raised'
-                  ? 'bg-[var(--color-error-content)]'
+                  ? 'bg-error-content'
                   : tone === 'lowered'
-                    ? 'bg-[var(--color-info-content)]'
-                    : 'bg-[var(--color-muted)]'}"
+                    ? 'bg-info-content'
+                    : 'bg-muted'}"
                 style:width="{(spread[stat] / 32) * 100}%"
               ></div>
             </div>
@@ -182,7 +181,7 @@
         {@const move = member.moves[index]?.trim() ?? ''}
         {@const type = move ? getMoveType(move) : null}
         <li
-          class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-[var(--radius-field)] px-2.5 py-1 text-start text-base-content"
+          class="flex min-h-9 w-full min-w-0 items-center gap-2 rounded-field px-2.5 py-1 text-start text-base-content"
           style={typeFill(type)}
         >
           {#if type}<TypeBadge {type} size="md" />{/if}

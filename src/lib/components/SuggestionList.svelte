@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
-  import { twMerge } from 'tailwind-merge';
+  import { twMerge } from '#lib/tw.js';
 
   interface Props {
     id: string;

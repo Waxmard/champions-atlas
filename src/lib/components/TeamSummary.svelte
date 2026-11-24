@@ -44,7 +44,7 @@
     {@const band = typeBand(types)}
     <li class="flex min-w-0 flex-col gap-0.5">
       <p
-        class="truncate px-0.5 text-[0.75rem] leading-tight font-bold text-[color:var(--color-muted)]"
+        class="truncate px-0.5 text-xs leading-tight font-bold text-muted"
         title={member.pokemon}
       >
         {member.pokemon}

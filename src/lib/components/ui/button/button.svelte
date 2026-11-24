@@ -1,6 +1,6 @@
 <script lang="ts" module>
   import { clsx } from 'clsx';
-  import { twMerge } from 'tailwind-merge';
+  import { twMerge } from '#lib/tw.js';
   import type {
     HTMLAnchorAttributes,
     HTMLButtonAttributes,
@@ -19,7 +19,6 @@
 
   const sizes: Record<ButtonSize, string> = {
     compact: 'h-9 px-3 gap-1.5 max-md:h-auto max-md:min-h-11',
-    // the EV stat row wraps on ≤320px phones; a 36px stepper adds 8px per row
     dense: 'h-9 gap-1 px-2 max-md:h-7 max-md:min-h-7',
     'icon-compact': 'size-9 p-0 max-md:size-11',
   };

@@ -1,6 +1,7 @@
 <script lang="ts">
   import SetEditorPokemonSuggestions from '#lib/components/SetEditorPokemonSuggestions.svelte';
   import { createCurrentSetRegistry } from '#lib/current-set-registry.svelte.js';
+  import { afterFrame } from '#lib/timers.js';
   import { reuseCurrentSet, type CurrentSetChoice } from '#lib/current-sets.js';
   import EvEditor from '#lib/components/EvEditor.svelte';
   import type { EditableSetField } from '#lib/components/MemberCard.svelte';
@@ -529,7 +530,7 @@
       return;
     }
     currentView = view;
-    requestAnimationFrame(() => {
+    afterFrame(() => {
       if (contentElement) contentElement.scrollTop = 0;
       editorHeading?.focus({ preventScroll: true });
     });
@@ -551,7 +552,7 @@
         );
       el?.focus({ preventScroll: true });
     };
-    requestAnimationFrame(focusTarget);
+    afterFrame(focusTarget);
   }
   function done() {
     if (!flush() && !undoFailed) return focusError();
@@ -592,7 +593,7 @@
     return false;
   }
   export function focusInitialSection() {
-    requestAnimationFrame(() => {
+    afterFrame(() => {
       const field = initialField === 'set' ? 'pokemon' : initialField;
       const inputId =
         field === 'item' ||
@@ -645,7 +646,7 @@
     {#if currentSets.error}
       <p
         role="alert"
-        class="mb-3 text-[0.9375rem] leading-relaxed"
+        class="mb-3 text-body leading-relaxed"
         style="color: var(--color-error-content)"
       >
         {currentSets.error}
@@ -730,7 +731,7 @@
           <p
             role="alert"
             tabindex="-1"
-            class="text-[0.9375rem] leading-relaxed"
+            class="text-body leading-relaxed"
             style="color: var(--color-error-content)"
           >
             {error}

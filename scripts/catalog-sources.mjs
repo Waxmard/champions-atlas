@@ -48,7 +48,7 @@ function walk(node, visit) {
   for (const child of node.childNodes || []) walk(child, visit);
 }
 
-export function descendants(node, predicate) {
+function descendants(node, predicate) {
   const found = [];
   walk(node, (child) => {
     if (predicate(child)) found.push(child);
@@ -56,11 +56,11 @@ export function descendants(node, predicate) {
   return found;
 }
 
-export function attr(node, name) {
+function attr(node, name) {
   return node.attrs?.find((entry) => entry.name === name)?.value || '';
 }
 
-export function text(node) {
+function text(node) {
   if (!node) return '';
   if (node.nodeName === '#text') return node.value;
   return (node.childNodes || []).map(text).join('');
@@ -413,7 +413,7 @@ export function parseVictoryRoad(html) {
   return { candidates, skipped };
 }
 
-export function classHas(node, name) {
+function classHas(node, name) {
   return attr(node, 'class').split(/\s+/).includes(name);
 }
 
@@ -743,13 +743,9 @@ const RETRY_DELAY_MS = 500;
 
 export const isTransient = (status) => status === 429 || status >= 500;
 
-// Source hosts (paste providers, victoryroad.pro, Google Sheets) time out
-// transiently; a single connect timeout used to abort the whole import.
 export async function fetchWithRetry(address, options, timeoutMs = 30000) {
   for (let attempt = 1; ; attempt++) {
     try {
-      // Rebuilt per attempt: AbortSignal.timeout starts at creation and stays
-      // aborted, so a hoisted one would kill every retry with the same error.
       const response = await fetch(address, {
         ...options,
         signal: AbortSignal.timeout(timeoutMs),

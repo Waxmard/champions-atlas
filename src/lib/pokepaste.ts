@@ -1,7 +1,14 @@
+import { resolveBattleForm } from './battle-forms.ts';
 import { readBoundedJson } from './bounded-json.ts';
+import { isMegaSpecies, type Member, type Report } from './catalog.ts';
 import { parseCustomPaste } from './paste.ts';
 
-export type PokepastePayload = { url: string; title: string; paste: string };
+export type PokepastePayload = {
+  url: string;
+  title: string;
+  paste: string;
+  report?: Report;
+};
 
 export function canonicalPokepasteUrl(input: string): string {
   const trimmed = input.trim();
@@ -33,6 +40,21 @@ export function canonicalPokepasteUrl(input: string): string {
     throw new Error('Enter a Poképaste link or 16-character paste ID.');
   }
   return `https://pokepast.es/${match[1].toLowerCase()}`;
+}
+
+export function pasteTeamName(
+  members: readonly Member[],
+  author: string
+): string {
+  const megas: string[] = [];
+  const rest: string[] = [];
+  for (const member of members) {
+    const form = resolveBattleForm(member).pokemon;
+    if (isMegaSpecies(form)) megas.push(form.replace(/-Mega(-[XYZ])?$/i, '$1'));
+    else rest.push(member.pokemon);
+  }
+  const pair = [...megas, ...rest].slice(0, 2).join(' ');
+  return `${author ? `${author}'s ` : ''}${pair} Team`;
 }
 
 export class PokepasteUnavailableError extends Error {}
@@ -90,18 +112,22 @@ export async function loadPokepaste(
   if (payload.paste.length > 50_000) {
     throw new Error('Poképaste paste exceeds 50,000 characters.');
   }
-  parseCustomPaste(payload.paste);
-  const title =
-    typeof payload.title === 'string'
-      ? payload.title
+  const members = parseCustomPaste(payload.paste);
+  const text = (value: unknown, max: number) =>
+    typeof value === 'string'
+      ? value
           .trim()
-          .slice(0, 200)
+          .slice(0, max)
           .replace(/[\uD800-\uDBFF]$/, '')
           .trimEnd()
       : '';
+  const title = text(payload.title, 200);
   return {
     url: canonicalUrl,
-    title: title || `Poképaste ${canonicalUrl.slice(-16)}`,
+    title:
+      title && !/^untitled$/i.test(title)
+        ? title
+        : pasteTeamName(members, text(payload.author, 60)),
     paste: payload.paste,
   };
 }

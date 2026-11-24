@@ -61,6 +61,7 @@ import {
 } from './storage-migration.ts';
 import { copyText } from './clipboard.ts';
 import { notify } from './notifications.ts';
+import { later } from './timers.ts';
 import { deleteUserData } from './account-deletion.ts';
 import { uploadSyncFailures } from './sync-reports.ts';
 import {
@@ -651,7 +652,7 @@ export async function signOut(): Promise<void> {
           token ? deleteDoc(doc(firestore, 'pushTokens', token)) : undefined
         )
         .catch(() => undefined),
-      new Promise((done) => setTimeout(done, 3000)),
+      new Promise<void>((done) => later(() => done(), 3000)),
     ]);
   }
   invalidate();

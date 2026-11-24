@@ -14,6 +14,7 @@ import {
   mcPokemon,
   pasteText,
   pochPage,
+  pochSets,
   pochTeamRow,
   pokePasteJson,
   readCatalog,
@@ -192,7 +193,12 @@ test('cold then warm: frozen history retained deeply equal, current add/update/r
   assert.equal(warmMc1.members[0].item, 'Life Orb');
   assert.equal(warmMc1.members[0].nature, 'Adamant');
   assert.equal(warmMc1.members[0].spread, '2 HP / 32 Atk');
-  assert.deepEqual(warmMc1.members[0].moves, ['Protect', 'Fake Out']);
+  assert.deepEqual(warmMc1.members[0].moves, [
+    'Protect',
+    'Fake Out',
+    'Substitute',
+    'Facade',
+  ]);
   assert.equal(warmMc1.paste, updatedMc1Paste);
   assert.equal(
     warmMc1.pasteNotes,
@@ -377,19 +383,28 @@ test('fetch and budget: no historical URL or paste fetches, offline replay witho
     currentYoutubeTeam,
     'a current candidate sharing the frozen paste URL must be processed'
   );
+  assert.ok(
+    currentYoutubeTeam.reports.some(
+      (report) =>
+        report.sourceUrl === `https://www.youtube.com/watch?v=${frozenVideoId}`
+    ),
+    'the frozen team sharing the paste URL merges into the current team'
+  );
   assert.deepEqual(
     replayCatalog.teams
       .filter((team) => team.regulation !== 'M-C')
       .map((team) => team.id),
     baseline.teams
-      .filter((team) => team.regulation !== 'M-C')
+      .filter(
+        (team) => team.regulation !== 'M-C' && team.pasteUrl !== frozenPasteUrl
+      )
       .map((team) => team.id)
   );
 
   const offlineOutput = runImport(directory, { OFFLINE: '1' });
   assert.match(
     offlineOutput,
-    /Frozen history: 4 teams considered; refreshing M-C\./
+    /Frozen history: 3 teams considered; refreshing M-C\./
   );
 });
 
@@ -491,7 +506,7 @@ test('creator spread isolation and Poch ID collision', async (t) => {
     rule: 'double',
     placement: 2,
     players: 128,
-    team: mbPokemon.map((name) => ({ name })),
+    team: pochSets(mbPokemon, mbItems),
   };
   const cache = await writeCache(directory, {
     ...defaultFixtureFiles(),
@@ -521,7 +536,7 @@ test('creator spread isolation and Poch ID collision', async (t) => {
       event: 'Spring Cup 2026',
       format: 'M-C',
       placement: 1,
-      team: mcPokemon.map((name) => ({ name })),
+      team: pochSets(mcPokemon),
     },
   ]);
 
@@ -721,6 +736,7 @@ test('routine imports filter Master Ball 3/4 after merging and including frozen 
   before.teams.push({
     ...frozenSource,
     id: 'frozen-master-ball-4',
+    pasteUrl: 'https://pokepast.es/dddddddddddddddd',
     reports: [
       {
         event: 'Champions ranked battles',

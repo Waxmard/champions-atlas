@@ -17,7 +17,7 @@
 
 <details class={['group', className]}>
   <summary
-    class="option-row -mx-3 cursor-pointer list-none rounded-[var(--radius-field)] font-semibold [&::-webkit-details-marker]:hidden"
+    class="option-row -mx-3 cursor-pointer list-none rounded-field font-semibold [&::-webkit-details-marker]:hidden"
   >
     <span class="flex-1">{label}</span>
     {#if status}

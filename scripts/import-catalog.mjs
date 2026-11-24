@@ -26,18 +26,13 @@ import {
   teamFromIndex,
   enrichPastes,
   mergeSources,
+  isLowDataTeam,
 } from './catalog-payloads.mjs';
 import {
   enrichLinkedSpreads,
   linkedSpreadPairs,
 } from './catalog-enrichment.mjs';
 import { parsePoch, pochUrl } from './poch-source.mjs';
-import {
-  admitPokedb,
-  loadPokedb,
-  pokedbName,
-  pokedbUrl,
-} from './pokedb-source.mjs';
 import { admitSmogon, smogonSources } from './smogon-source.mjs';
 import {
   loadYoutubeSource,
@@ -240,10 +235,20 @@ export function parseSheet(text, regulation) {
 export function deduplicate(teams) {
   const unique = new Map();
   for (const team of teams) {
-    const existing = unique.get(team.id);
-    if (!existing) unique.set(team.id, team);
+    const key = team.pasteUrl || team.id;
+    const existing = unique.get(key);
+    if (!existing) unique.set(key, team);
     else {
-      if (!team.regulationInference) delete existing.regulationInference;
+      if (existing.regulationInference && !team.regulationInference) {
+        existing.regulation = team.regulation;
+        delete existing.regulationInference;
+      }
+      if (!existing.paste && team.paste) {
+        existing.members = team.members;
+        existing.paste = team.paste;
+        existing.pasteNotes = team.pasteNotes;
+        delete existing.pasteError;
+      }
       existing.sheetIds = [
         ...new Set([...existing.sheetIds, ...team.sheetIds]),
       ];
@@ -366,7 +371,6 @@ async function main() {
   };
   for (const [regulation, gid] of Object.entries(tabs)) {
     if (!fullHistory && regulation !== currentRegulation) continue;
-    // Google CSV exports redirect to a Google-hosted download endpoint.
     const address = `${sheet}/export?format=csv&gid=${gid}`;
     let csv = null;
     if (!indexRefresh) {
@@ -411,12 +415,6 @@ async function main() {
     parsePoch,
     indexRefresh
   );
-  const pokedbFiles = await loadPokedb(fetchCached, {
-    fullHistory,
-    currentRegulation,
-    refresh: indexRefresh,
-    cache,
-  });
   const devonCorp = fullHistory
     ? parseDevonCorp(devonCorpHtml)
     : { candidates: [], skipped: [] };
@@ -434,7 +432,6 @@ async function main() {
     victoryRoadHtml,
     devonCorpHtml,
     pochHtml,
-    ...pokedbFiles.map(({ text }) => text),
     youtubeHash,
     currentRegulation,
     JSON.stringify(frozenTeams),
@@ -640,23 +637,19 @@ async function main() {
     parsePoch(pochHtml, canonicalNames),
     direct
   );
-  const pokedbTeams = admitPokedb(pokedbFiles, canonicalNames, direct);
   const smogonTeams = await admitSmogon(fetchCached, canonicalNames, direct);
   const linked = enrichLinkedSpreads(
-    deduplicate([
-      ...unique,
-      ...publicTeams,
-      ...pochTeams,
-      ...pokedbTeams,
-      ...smogonTeams,
-    ]),
+    deduplicate([...unique, ...publicTeams, ...pochTeams, ...smogonTeams]),
     linkedSpreadPairs(admittedYoutubeCandidates),
     { active: youtubeSource.active, previousTeams: activePreviousTeams }
   );
-  const catalogTeams = admittedTeams(
-    [...linked.teams, ...frozenTeams],
+  const admitted = admittedTeams(
+    deduplicate([...linked.teams, ...frozenTeams]),
     currentRegulation
   );
+  const catalogTeams = admitted.filter((team) => !isLowDataTeam(team));
+  const lowData = admitted.length - catalogTeams.length;
+  if (lowData) reasons.set('low_data', lowData);
   if (linked.spread_conflict)
     reasons.set('spread_conflict', linked.spread_conflict);
   const sources = mergeSources(
@@ -667,7 +660,6 @@ async function main() {
       { name: 'Victory Road', url: victoryRoadUrl },
       { name: 'DevonCorp', url: devonCorpUrl },
       { name: 'Poch.ms', url: pochUrl },
-      { name: pokedbName, url: pokedbUrl },
       ...smogonSources,
       ...youtubeRows
         .filter(
