@@ -318,7 +318,7 @@
         <Button
           variant="quiet"
           size="dense"
-          class="justify-self-start text-detail"
+          class="justify-self-start text-detail max-md:min-h-11"
           disabled={pageNumber === 1}
           onclick={() => changeOption('page', String(pageNumber - 1))}
           >Previous</Button
@@ -327,7 +327,7 @@
         <Button
           variant="quiet"
           size="dense"
-          class="justify-self-end text-detail"
+          class="justify-self-end text-detail max-md:min-h-11"
           disabled={pageNumber === pageCount}
           onclick={() => changeOption('page', String(pageNumber + 1))}
           >Next</Button
