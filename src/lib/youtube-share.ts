@@ -117,7 +117,7 @@ export async function youtubeShareOptions(
   );
   if (matches.length) return matches.map(teamOption);
   const { title, channel, description } = await video(id);
-  const links = descriptionPastes(description);
+  const links = descriptionPastes(description).slice(0, 10);
   return Promise.all(
     links.map(async ({ url, label }): Promise<ShareOption> => {
       const known = teams.filter((team) => team.pasteUrl === url);
