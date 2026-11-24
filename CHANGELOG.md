@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.19.0](https://github.com/Waxmard/champions-atlas/compare/v0.18.0...v0.19.0) (2026-11-24)
+
+
+### Features
+
+* share YouTube videos to import teams into Wishlist ([#130](https://github.com/Waxmard/champions-atlas/issues/130)) ([067c2c4](https://github.com/Waxmard/champions-atlas/commit/067c2c4aa2d2cb9a39729cb751c459cef52f7498))
+
 ## [0.18.0](https://github.com/Waxmard/champions-atlas/compare/v0.17.0...v0.18.0) (2026-11-20)
 
 
