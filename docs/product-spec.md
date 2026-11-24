@@ -79,8 +79,9 @@ and commands are in the [README](../README.md) and `AGENTS.md`.
   **VP spend** (`?sort=vp`, lowest expected VP spend first), remembered with
   the Browse filters. When shown, **Clear filters** also resets the sort.
   **VP spend** is unavailable until an in-game set is recorded.
-- Browse shows six teams per page. **Previous** and **Next** stay pinned above
-  the tab bar while the results are on screen.
+- Browse shows six teams per page. **Previous** and **Next** stay pinned below
+  the header while the results are on screen; turning a page keeps them in
+  place and shows the new page from its first team.
 - Mark Browse cards from the latest catalog batch of the chosen format (the most
   recent publish that added teams of that format) with a blue dot before the
   team name; the dot stays until a later batch of that format replaces it.
