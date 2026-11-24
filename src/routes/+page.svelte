@@ -95,7 +95,7 @@
       ? sortByVpCost(ranked, currentSets.sets, catalogState.vpCatalog)
       : ranked;
   });
-  const pageSize = 8;
+  const pageSize = 6;
   const pageCount = $derived(Math.max(1, Math.ceil(results.length / pageSize)));
   const pageNumber = $derived(
     Math.min(
@@ -360,7 +360,7 @@
       {#if pageCount > 1}
         <nav
           aria-label="Team result pages"
-          class="mt-8 flex items-center justify-center gap-4"
+          class="bleed sticky bottom-[var(--app-tabbar-height)] z-30 mt-4 flex items-center justify-center gap-4 border-t border-base-300 bg-base-100 py-1 phone-landscape:py-0"
         >
           <Button
             variant="quiet"
